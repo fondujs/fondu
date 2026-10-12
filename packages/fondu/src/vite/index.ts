@@ -1,13 +1,15 @@
 import { createHash } from 'node:crypto'
-import { createRequire } from 'node:module'
-import { pathToFileURL } from 'node:url'
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import { dirname, join, resolve } from 'node:path'
-import type { Plugin, PluginOption, ResolvedConfig } from 'vite'
-import react, { type Options as ReactOptions } from '@vitejs/plugin-react'
-import inertia from '@inertiajs/vite'
+import { pathToFileURL } from 'node:url'
+
 import devServer, { defaultOptions as devServerDefaults } from '@hono/vite-dev-server'
-import { typegen } from './typegen.ts'
+import inertia from '@inertiajs/vite'
+import react, { type Options as ReactOptions } from '@vitejs/plugin-react'
+import type { Plugin, PluginOption, ResolvedConfig } from 'vite'
+
+import { typegen } from './typegen.js'
 
 /**
  * `vite.config.ts`: `plugins: [fondu({ target: 'node' })]` (or `'bun'`; for Cloudflare: `cloudflare()` and
@@ -63,7 +65,8 @@ export default function fondu(options: FonduOptions): PluginOption[] {
 }
 
 async function buildPlugin(options: FonduOptions): Promise<Plugin> {
-  const { default: build } = options.target === 'bun' ? await import('@hono/vite-build/bun') : await import('@hono/vite-build/node')
+  const { default: build } =
+    options.target === 'bun' ? await import('@hono/vite-build/bun') : await import('@hono/vite-build/node')
   // the app's dependencies stay in node_modules (as with any Node server: native modules cannot be bundled)
   const pkg = JSON.parse(readFileSync(resolve('package.json'), 'utf8')) as { dependencies?: Record<string, string> }
   const external = Object.keys(pkg.dependencies ?? {}).filter((d) => d !== 'fondu')
@@ -73,20 +76,29 @@ async function buildPlugin(options: FonduOptions): Promise<Plugin> {
     outputDir: './dist',
     // Node: graceful shutdown on SIGTERM / SIGINT; the port is read when the server starts (`PORT`, else the
     // option): the adapter writes the value into the entry as code. Bun reads `PORT` itself.
-    ...(options.target === 'node' && { shutdownTimeoutMs: 10_000, port: { toString: () => `(Number(process.env.PORT) || ${options.port ?? 3000})` } }),
+    ...(options.target === 'node' && {
+      shutdownTimeoutMs: 10_000,
+      port: { toString: () => `(Number(process.env.PORT) || ${options.port ?? 3000})` },
+    }),
     // the client build's files (dist/client), found next to the server bundle wherever it runs from; hashed files
     // never change
-    entryContentBeforeHooks: [(app: string) => {
-      const dir = resolve('dist/client') // vite runs in the project root
-      const paths = existsSync(dir) ? readdirSync(dir, { withFileTypes: true }).filter((e) => e.name !== '.vite').map((e) => (e.isDirectory() ? `/${e.name}/*` : `/${e.name}`)) : []
-      return [
-        `import { serveStatic } from '${options.target === 'bun' ? 'hono/bun' : '@hono/node-server/serve-static'}'`,
-        `import { fileURLToPath } from 'node:url'`,
-        `const clientRoot = fileURLToPath(new URL('./client', import.meta.url))`,
-        `${app}.use('/assets/*', async (c, next) => { await next(); if (c.res.ok) c.header('Cache-Control', 'public, max-age=31536000, immutable') })`,
-        ...paths.map((p) => `${app}.use(${JSON.stringify(p)}, serveStatic({ root: clientRoot }))`),
-      ].join('\n')
-    }],
+    entryContentBeforeHooks: [
+      (app: string) => {
+        const dir = resolve('dist/client') // vite runs in the project root
+        const paths = existsSync(dir)
+          ? readdirSync(dir, { withFileTypes: true })
+              .filter((e) => e.name !== '.vite')
+              .map((e) => (e.isDirectory() ? `/${e.name}/*` : `/${e.name}`))
+          : []
+        return [
+          `import { serveStatic } from '${options.target === 'bun' ? 'hono/bun' : '@hono/node-server/serve-static'}'`,
+          `import { fileURLToPath } from 'node:url'`,
+          `const clientRoot = fileURLToPath(new URL('./client', import.meta.url))`,
+          `${app}.use('/assets/*', async (c, next) => { await next(); if (c.res.ok) c.header('Cache-Control', 'public, max-age=31536000, immutable') })`,
+          ...paths.map((p) => `${app}.use(${JSON.stringify(p)}, serveStatic({ root: clientRoot }))`),
+        ].join('\n')
+      },
+    ],
   } as never) as Plugin
   return plugin
 }
@@ -102,9 +114,13 @@ function runtimePlugins(options: FonduOptions): PluginOption[] {
         // the dev server's own copy, as an ES module (its CommonJS build would be another class)
         const fromDevServer = createRequire(createRequire(import.meta.url).resolve('@hono/vite-dev-server'))
         const dir = dirname(dirname(fromDevServer.resolve('@hono/node-server'))) // …/dist/index.js
-        const pkg = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')) as { exports: { '.': { import: string | { default: string } } } }
+        const pkg = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')) as {
+          exports: { '.': { import: string | { default: string } } }
+        }
         const entry = pkg.exports['.'].import
-        const { getRequestListener } = (await import(pathToFileURL(join(dir, typeof entry === 'string' ? entry : entry.default)).href)) as { getRequestListener: (fetch: () => Response) => unknown }
+        const { getRequestListener } = (await import(
+          pathToFileURL(join(dir, typeof entry === 'string' ? entry : entry.default)).href
+        )) as { getRequestListener: (fetch: () => Response) => unknown }
         getRequestListener(() => new Response())
       },
     },
@@ -113,12 +129,7 @@ function runtimePlugins(options: FonduOptions): PluginOption[] {
       injectClientScript: false, // the document has the client tags (with the React refresh preamble)
       adapter: undefined,
       exclude: devServerDefaults.exclude,
-      // server code changed: reload the page; a page component changed: React Fast Refresh (the client's HMR)
-      handleHotUpdate: ({ server, file }) => {
-        if (server.environments.client.moduleGraph.getModulesByFile(file)?.size) return
-        server.hot.send({ type: 'full-reload' })
-        return []
-      },
+      handleHotUpdate: () => {}, // fondu's plugin does it, for every target
     }),
     buildPlugin(options),
   ]
@@ -137,19 +148,36 @@ function core(options: FonduOptions): Plugin {
         return {
           environments: { client: { build: client } },
           // the worker reads the client manifest: client first
-          builder: { async buildApp(builder) {
-            await builder.build(builder.environments.client)
-            for (const env of Object.values(builder.environments)) if (env.name !== 'client') await builder.build(env)
-          } },
+          builder: {
+            async buildApp(builder) {
+              await builder.build(builder.environments.client)
+              for (const env of Object.values(builder.environments)) if (env.name !== 'client') await builder.build(env)
+            },
+          },
           ssr: { noExternal: ['fondu'] },
         }
       }
       // Node / Bun: `vite build --mode client` builds the client into dist/client, `vite build` the server
       return env.mode === 'client'
         ? { build: { ...client, outDir: 'dist/client', emptyOutDir: true } }
-        : { ssr: { noExternal: ['fondu'] }, build: { copyPublicDir: false, rollupOptions: { output: { chunkFileNames: 'server/[name]-[hash].js' } } } }
+        : {
+            ssr: { noExternal: ['fondu'] },
+            build: { copyPublicDir: false, rollupOptions: { output: { chunkFileNames: 'server/[name]-[hash].js' } } },
+          }
     },
-    configResolved(c) { config = c },
+    configResolved(c) {
+      config = c
+    },
+    // dev: server code changed (a module of the server only: routes/, *.server.ts…): reload the page; a page component:
+    // React Fast Refresh (the client's HMR)
+    handleHotUpdate({ server, file }) {
+      const modules = (env: string) => [...(server.environments[env]?.moduleGraph.getModulesByFile(file) ?? [])]
+      // the browser's code (not a file a stylesheet only watches, as Tailwind's sources), or no server's: leave it
+      if (modules('client').some((m) => m.type === 'js')) return
+      if (!Object.keys(server.environments).some((env) => env !== 'client' && modules(env).length)) return
+      server.hot.send({ type: 'full-reload' })
+      return []
+    },
     // dev: the CSS the client entry imports, as a stylesheet in the document, so a server-rendered page is styled
     // at first paint (Vite would add it only once the JS runs); removed once the entry has run
     configureServer(server) {
@@ -166,7 +194,11 @@ function core(options: FonduOptions): Plugin {
             for (const m of mod.importedModules) walk(m)
           }
           walk(env.moduleGraph.getModuleById(resolve(config.root, ENTRY)) as never)
-          const parts = await Promise.all(css.map(async (url) => (await env.transformRequest(url + (url.includes('?') ? '&' : '?') + 'direct'))?.code ?? ''))
+          const parts = await Promise.all(
+            css.map(
+              async (url) => (await env.transformRequest(url + (url.includes('?') ? '&' : '?') + 'direct'))?.code ?? '',
+            ),
+          )
           res.setHeader('Content-Type', 'text/css')
           res.end(parts.join('\n'))
         } catch (error) {
@@ -178,24 +210,39 @@ function core(options: FonduOptions): Plugin {
     // Cloudflare: Workers Static Assets serve the client build; hashed files never change (unless you wrote your own
     // public/_headers)
     generateBundle() {
-      if (options.target !== 'cloudflare' || this.environment.name !== 'client' || existsSync(resolve(config.publicDir, '_headers'))) return
-      this.emitFile({ type: 'asset', fileName: '_headers', source: '/assets/*\n  Cache-Control: public, max-age=31536000, immutable\n' })
+      if (
+        options.target !== 'cloudflare' ||
+        this.environment.name !== 'client' ||
+        existsSync(resolve(config.publicDir, '_headers'))
+      )
+        return
+      this.emitFile({
+        type: 'asset',
+        fileName: '_headers',
+        source: '/assets/*\n  Cache-Control: public, max-age=31536000, immutable\n',
+      })
     },
     resolveId(id) {
       if (id === V.assets || id === V.ssr) return resolved(id)
     },
     load(id) {
-      if (id === resolved(V.ssr)) return options.ssr === false ? 'export const renderPage = null' : `export { default as renderPage } from '/${ENTRY}'`
+      if (id === resolved(V.ssr))
+        return options.ssr === false
+          ? 'export const renderPage = null'
+          : `export { default as renderPage } from '/${ENTRY}'`
       if (id === resolved(V.assets)) return isBuild ? productionAssets(config, options) : devAssets(config.base)
       // the server-only guard: browser code must never import server code
       if (this.environment.config.consumer === 'client' && isServerOnly(id)) {
-        this.error(`fondu: ${id.replace(config.root, '')} is server code (routes/, server.ts, *.server.ts) and cannot be imported by browser code`)
+        this.error(
+          `fondu: ${id.replace(config.root, '')} is server code (routes/, server.ts, *.server.ts) and cannot be imported by browser code`,
+        )
       }
     },
   }
 }
 
-const isServerOnly = (id: string) => /\.server\.[cm]?[jt]sx?(\?.*)?$/.test(id) || /\/app\/(routes\/|server\.ts)/.test(id)
+const isServerOnly = (id: string) =>
+  /\.server\.[cm]?[jt]sx?(\?.*)?$/.test(id) || /\/app\/(routes\/|server\.ts)/.test(id)
 
 const nonceAttr = `\${nonce ? \` nonce="\${nonce}"\` : ''}`
 
@@ -209,14 +256,22 @@ export function assetTags(_component, nonce) {
 }`
 }
 
-interface ManifestChunk { file: string; css?: string[]; imports?: string[] }
+interface ManifestChunk {
+  file: string
+  css?: string[]
+  imports?: string[]
+}
 
 function productionAssets(config: ResolvedConfig, options: FonduOptions): string {
-  const outDir = options.target === 'cloudflare'
-    ? resolve(config.root, config.environments.client?.build.outDir ?? 'dist/client')
-    : resolve(config.root, 'dist/client')
+  const outDir =
+    options.target === 'cloudflare'
+      ? resolve(config.root, config.environments.client?.build.outDir ?? 'dist/client')
+      : resolve(config.root, 'dist/client')
   const file = resolve(outDir, '.vite/manifest.json')
-  if (!existsSync(file)) throw new Error(`fondu: the client manifest (${file}) is missing: build the client first (\`vite build --mode client\`)`)
+  if (!existsSync(file))
+    throw new Error(
+      `fondu: the client manifest (${file}) is missing: build the client first (\`vite build --mode client\`)`,
+    )
   const text = readFileSync(file, 'utf8')
   const manifest = JSON.parse(text) as Record<string, ManifestChunk>
   const collect = (key: string, css: Set<string>, js: Set<string>, seen = new Set<string>()) => {
@@ -228,7 +283,8 @@ function productionAssets(config: ResolvedConfig, options: FonduOptions): string
     for (const i of chunk.imports ?? []) collect(i, css, js, seen)
   }
   const tags = (key: string) => {
-    const css = new Set<string>(), js = new Set<string>()
+    const css = new Set<string>(),
+      js = new Set<string>()
     collect(key, css, js)
     return { css: [...css], js: [...js] }
   }

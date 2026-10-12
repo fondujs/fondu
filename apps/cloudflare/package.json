@@ -2,25 +2,32 @@
   "name": "example-cloudflare",
   "private": true,
   "type": "module",
+  "imports": {
+    "#/*": "./app/*"
+  },
   "scripts": {
-    "dev": "bun run db:migrate:local && vite",
     "build": "vite build",
-    "preview": "bun run build && bun run db:migrate:local && vite preview",
-    "deploy": "bun run build && wrangler deploy",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate:local": "wrangler d1 migrations apply fondu-example --local",
-    "db:migrate": "wrangler d1 migrations apply fondu-example --remote",
     "cf-typegen": "wrangler types --env-interface CloudflareBindings",
-    "typecheck": "tsc --noEmit",
-    "e2e": "node e2e/run.mjs"
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "wrangler d1 migrations apply fondu-example --remote",
+    "db:migrate:local": "wrangler d1 migrations apply fondu-example --local",
+    "deploy": "bun run build && wrangler deploy",
+    "dev": "bun run db:migrate:local && vite",
+    "e2e": "node e2e/run.mjs",
+    "preview": "bun run build && bun run db:migrate:local && vite preview",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@base-ui/react": "1.9.0",
+    "@fontsource-variable/geist-mono": "5.3.0",
+    "@fontsource-variable/inter": "5.3.0",
     "@inertiajs/core": "3.9.1",
     "@inertiajs/react": "3.9.1",
     "better-auth": "1.7.7",
     "drizzle-orm": "0.45.4",
     "fondu": "workspace:*",
     "hono": "4.13.13",
+    "lucide-react": "1.55.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "zod": "4.6.5"

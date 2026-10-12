@@ -14,13 +14,13 @@ apps/cloudflare    every Inertia v3 feature, one page each — Workers, D1, Bett
 
 ## Who does what
 
-| Part | Done by |
-|---|---|
-| Browser: visits, history, prefetch, forms, progress, `<Head>`, deferred, merging, infinite scroll, optimistic updates, Precognition | `@inertiajs/react` |
-| HTTP, middleware, CSRF, security headers, trailing slashes | Hono and its middleware |
-| Dev server, production build | Node / Bun: `@hono/vite-dev-server`, `@hono/vite-build`; Cloudflare: `@cloudflare/vite-plugin` |
-| Page resolution, the server render's entry | `@inertiajs/vite` (rendered in the same process) |
-| The Inertia v3 server protocol, `routes/`, generated types, the document, error pages, server-only guard | Fondu |
+| Part                                                                                                                                | Done by                                                                                        |
+| ----------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| Browser: visits, history, prefetch, forms, progress, `<Head>`, deferred, merging, infinite scroll, optimistic updates, Precognition | `@inertiajs/react`                                                                             |
+| HTTP, middleware, CSRF, security headers, trailing slashes                                                                          | Hono and its middleware                                                                        |
+| Dev server, production build                                                                                                        | Node / Bun: `@hono/vite-dev-server`, `@hono/vite-build`; Cloudflare: `@cloudflare/vite-plugin` |
+| Page resolution, the server render's entry                                                                                          | `@inertiajs/vite` (rendered in the same process)                                               |
+| The Inertia v3 server protocol, `routes/`, generated types, the document, error pages, server-only guard                            | Fondu                                                                                          |
 
 ## This repository
 
@@ -28,8 +28,13 @@ apps/cloudflare    every Inertia v3 feature, one page each — Workers, D1, Bett
 bun install            # also builds packages/fondu (the examples use the built package, like a real app)
 bun run test           # the protocol, on a small app with app.request()
 bun run typecheck      # the package and both examples (with apps/cloudflare/e2e/types.ts)
+bun run check          # format (oxfmt), lint (oxlint), typecheck
 bun run dev            # rebuild packages/fondu on change
 ```
+
+Commits follow [Conventional Commits](https://www.conventionalcommits.org) (lefthook runs commitlint, and formats and
+lints what is staged). A release: `bun run release` picks the version, tags it and pushes; CI publishes the tag to npm
+(trusted publishing, with provenance) and writes the GitHub Release from the commits.
 
 `apps/node`: `bun run dev`; `bun run build && bun run start` (Node); `bun run build:bun && bun run start:bun` (Bun).
 `apps/cloudflare`: `cp .dev.vars.example .dev.vars`, then `bun run dev` (in workerd), `bun run preview`, `bun run deploy`.
@@ -38,6 +43,7 @@ bun run dev            # rebuild packages/fondu on change
 
 ```
 package.json         fondu hono @inertiajs/react react react-dom   (Node: also @hono/node-server)
+                     "imports": { "#/*": "./app/*" }: import '#/lib/db.server.ts' from anywhere in app/
 vite.config.ts       plugins: [fondu({ target: 'node' })]   'bun'; Cloudflare: [cloudflare(), fondu({ target: 'cloudflare' })]
 app/
   server.ts          export default createApp()
@@ -52,9 +58,15 @@ app/
   fondu.gen.d.ts     generated types (commit it)
 ```
 
-`createApp()` comes with CSRF protection, security headers (`Referrer-Policy: same-origin`, which `back()` needs),
-one URL per page (`/users/` → `/users`) and error handling. Options: `document`, `errorPage`, `trailingSlash: 'append'`,
-`csrf` and `secureHeaders` (Hono's options, or `false`).
+`createApp()` comes with CSRF protection, security headers (`Referrer-Policy: same-origin`, which `back()` needs), a
+Content Security Policy, one URL per page (`/users/` → `/users`) and error handling. Options: `document` (the HTML
+around pages: `<html>` attributes, the viewport, fonts…), `errorPage`, `trailingSlash: 'append'`, `csrf` and
+`secureHeaders` (Hono's options, or `false`).
+
+The policy: `default-src 'self'`, scripts of this site or with the request's nonce (the document's scripts have it),
+inline styles (style attributes), `data:` images and fonts, no plugins (`object-src 'none'`), `base-uri 'self'`. A
+directive of yours replaces that one: `secureHeaders: { contentSecurityPolicy: { fontSrc: ["'self'",
+'https://fonts.gstatic.com'] } }` (apps/node does so for Google Fonts); `contentSecurityPolicy: false`: none.
 
 ### routes/: loader, action, actions
 
@@ -65,19 +77,21 @@ import * as z from 'zod/mini'
 
 const params = z.object({ id: z.coerce.number() })
 
-export const loader = defineHandler.withValidator({ params })(async (c, { params }) =>   // GET /users/7
-  render(c, 'users/show', { user: await getUser(params.id) }))
+export const loader = defineHandler.withValidator({ params })(async (c, { params }) =>
+  // GET /users/7
+  render(c, 'users/show', { user: await getUser(params.id) }),
+)
 
 export const actions = {
   rename: defineHandler.withValidator({ params, body: renameSchema })(requireUser, async (c, { params, body }) => {
-    await renameUser(params.id, body.name)                                             // POST /users/7?rename
+    await renameUser(params.id, body.name) // POST /users/7?rename
     return back(c)
   }),
 }
 ```
 
 - `loader` is GET, `action` POST, `actions.x` `POST ?x` (a plain form can pick one). HTTP routes export `GET` / `POST` / `PUT` / `PATCH` / `DELETE`.
-- `defineHandler(...middleware, handler)` is Hono's `createHandlers`. `.withValidator({ body, query, params })(...middleware, (c, input) => …)`: the middleware first, then the schemas (any Standard Schema).
+- `defineHandler(...middleware, handler)` is Hono's `createHandlers`. `.withValidator({ body, query, params })(...middleware, (c, input) => …)`: the middleware first (up to three; more: `every()` from `hono/combine`), then the schemas (any Standard Schema).
 - Every `.ts` file in `routes/` is a route, except `_middleware.ts` and tests. `(group)` directories take no URL segment.
 
 ### Validation (Inertia's way)
@@ -97,14 +111,14 @@ export default function Show({ user }: { user: User }) { … }
 `render(c, 'users/show', props, options?)` takes only pages that exist, with the component's props; a page prop named
 like a shared prop is a type error. A function prop is called only when it is sent.
 
-| prop | |
-|---|---|
-| `optional(fn)` | only when a partial reload names it |
-| `always(v)` | partial reloads too |
-| `defer(fn, { group?, rescue? })` | after the page renders, one request per group; `rescue`: a failure is listed in `rescuedProps` |
-| `merge` / `prepend` / `deepMerge(v, { matchOn? })` | merged with what the client holds |
-| `once(fn, { key?, ttl?, fresh? })` | skipped when the client holds it |
-| `scroll(fn, { pageName? })` | a page of a list for `<InfiniteScroll>`: `{ data, currentPage, previousPage, nextPage }` |
+| prop                                               |                                                                                                |
+| -------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `optional(fn)`                                     | only when a partial reload names it                                                            |
+| `always(v)`                                        | partial reloads too                                                                            |
+| `defer(fn, { group?, rescue? })`                   | after the page renders, one request per group; `rescue`: a failure is listed in `rescuedProps` |
+| `merge` / `prepend` / `deepMerge(v, { matchOn? })` | merged with what the client holds                                                              |
+| `once(fn, { key?, ttl?, fresh? })`                 | skipped when the client holds it                                                               |
+| `scroll(fn, { pageName? })`                        | a page of a list for `<InfiniteScroll>`: `{ data, currentPage, previousPage, nextPage }`       |
 
 Options: `status`, `encryptHistory`, `clearHistory`, `preserveFragment`. Also `flash(c, data)`, `clearHistory(c)`,
 `back(c)`, `location(c, url)` (409 + `X-Inertia-Location`); a redirect with a `#fragment` becomes a 409
@@ -115,12 +129,14 @@ Options: `status`, `encryptHistory`, `clearHistory`, `preserveFragment`. Also `f
 ```ts
 // where the values are set (e.g. routes/_middleware.ts)
 declare module 'hono' {
-  interface ContextVariableMap { user: User | null }                   // c.get('user')
+  interface ContextVariableMap {
+    user: User | null
+  } // c.get('user')
 }
 declare module '@inertiajs/core' {
   interface InertiaConfig {
-    sharedPageProps: { auth: { user: { name: string } | null } }      // share(), usePage().props
-    flashDataType: { message?: string }                               // flash(), usePage().flash
+    sharedPageProps: { auth: { user: { name: string } | null } } // share(), usePage().props
+    flashDataType: { message?: string } // flash(), usePage().flash
   }
 }
 ```
@@ -143,8 +159,8 @@ during a visit). `render()` of a page that doesn't exist says which file to crea
 
 ### Editor snippets
 
-Both examples have `.vscode/fondu.code-snippets`: `/route`, `/api`, `/loader`, `/action`, `/actions`, `/validated`,
-`/get` … `/delete`, `/middleware` in routes; `/page`, `/layout`, `/form` in pages. Copy and edit them freely.
+`.vscode/fondu.code-snippets`: `/route`, `/api`, `/loader`, `/action`, `/actions`, `/validated`, `/get` … `/delete`,
+`/middleware` in routes; `/page`, `/layout`, `/form` in pages. Copy it into your app's `.vscode/` and edit it freely.
 
 ## Deploying
 

@@ -1,12 +1,14 @@
+import { createApp } from 'fondu'
 // The Inertia v3 protocol and the app conventions, on test/app/ with `app.request()`.
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import { createApp } from 'fondu'
 
 const app = createApp()
 const ORIGIN = 'http://localhost'
 const inertia = (extra: Record<string, string> = {}) => ({ 'X-Inertia': 'true', 'X-Inertia-Version': 'v1', ...extra })
-const page = async (res: Response) => (await res.json()) as { component: string; props: Record<string, unknown>; [key: string]: unknown }
-const partial = (data: string, extra: Record<string, string> = {}) => inertia({ 'X-Inertia-Partial-Component': 'home', 'X-Inertia-Partial-Data': data, ...extra })
+const page = async (res: Response) =>
+  (await res.json()) as { component: string; props: Record<string, unknown>; [key: string]: unknown }
+const partial = (data: string, extra: Record<string, string> = {}) =>
+  inertia({ 'X-Inertia-Partial-Component': 'home', 'X-Inertia-Partial-Data': data, ...extra })
 const html = { Accept: 'text/html' }
 
 afterEach(() => vi.unstubAllEnvs())
@@ -15,16 +17,30 @@ describe('pages', () => {
   test('a document: the page data in the HTML, props by kind, headers', async () => {
     const res = await app.request('/')
     const body = await res.text()
-    const data = JSON.parse(body.match(/<script data-page="app" type="application\/json">(.*?)<\/script>/)![1]!.replace(/\\\//g, '/'))
+    const data = JSON.parse(
+      body.match(/<script data-page="app" type="application\/json">(.*?)<\/script>/)![1]!.replace(/\\\//g, '/'),
+    )
     expect(res.headers.get('content-type')).toContain('text/html')
     expect(data.component).toBe('home')
-    expect(Object.keys(data.props).sort()).toEqual(['app', 'count', 'errors', 'fn', 'items', 'people', 'plain', 'plan', 'tree'])
+    expect(Object.keys(data.props).sort()).toEqual([
+      'app',
+      'count',
+      'errors',
+      'fn',
+      'items',
+      'people',
+      'plain',
+      'plan',
+      'tree',
+    ])
     expect(data.deferredProps).toEqual({ default: ['stats', 'flaky'], slow: ['slow'] })
     expect(data.onceProps.plan).toEqual({ prop: 'plan', expiresAt: null })
     expect(data.mergeProps).toEqual(['items', 'people.data'])
     expect(data.matchPropsOn).toEqual(['items.id'])
     expect(data.deepMergeProps).toEqual(['tree'])
-    expect(data.scrollProps).toEqual({ people: { pageName: 'page', currentPage: 1, previousPage: null, nextPage: 2, reset: false } })
+    expect(data.scrollProps).toEqual({
+      people: { pageName: 'page', currentPage: 1, previousPage: null, nextPage: 2, reset: false },
+    })
     expect(data.sharedProps).toEqual(['app'])
     expect(res.headers.get('vary')).toContain('X-Inertia')
     expect(res.headers.get('cache-control')).toBe('private, no-cache')
@@ -45,10 +61,16 @@ describe('pages', () => {
 
 describe('partial reloads', () => {
   test('only: the named props, always props and errors', async () => {
-    expect(Object.keys((await page(await app.request('/', { headers: partial('fn') }))).props).sort()).toEqual(['count', 'errors', 'fn'])
+    expect(Object.keys((await page(await app.request('/', { headers: partial('fn') }))).props).sort()).toEqual([
+      'count',
+      'errors',
+      'fn',
+    ])
   })
   test('except', async () => {
-    const res = await app.request('/', { headers: inertia({ 'X-Inertia-Partial-Component': 'home', 'X-Inertia-Partial-Except': 'plain' }) })
+    const res = await app.request('/', {
+      headers: inertia({ 'X-Inertia-Partial-Component': 'home', 'X-Inertia-Partial-Except': 'plain' }),
+    })
     const props = (await page(res)).props
     expect(props).not.toHaveProperty('plain')
     expect(props).toHaveProperty('fn')
@@ -73,7 +95,9 @@ describe('partial reloads', () => {
     expect(res.mergeProps).toBeUndefined()
   })
   test('scroll: the previous page is prepended', async () => {
-    const res = await page(await app.request('/', { headers: partial('people', { 'X-Inertia-Infinite-Scroll-Merge-Intent': 'prepend' }) }))
+    const res = await page(
+      await app.request('/', { headers: partial('people', { 'X-Inertia-Infinite-Scroll-Merge-Intent': 'prepend' }) }),
+    )
     expect(res.prependProps).toEqual(['people.data'])
   })
 })
@@ -86,7 +110,9 @@ describe('routes', () => {
     expect((await post('constructor')).status).toBe(404)
   })
   test('a 302 after PUT is a 303 for Inertia', async () => {
-    expect((await app.request('/redirect', { method: 'PUT', headers: { ...inertia(), Origin: ORIGIN } })).status).toBe(303)
+    expect((await app.request('/redirect', { method: 'PUT', headers: { ...inertia(), Origin: ORIGIN } })).status).toBe(
+      303,
+    )
   })
   test('a redirect with a #fragment: 409 + X-Inertia-Redirect', async () => {
     const res = await app.request('/redirect?fragment', { method: 'POST', headers: { ...inertia(), Origin: ORIGIN } })
@@ -108,15 +134,39 @@ describe('routes', () => {
     expect((await appended.request('/boom', { headers: html })).headers.get('location')).toBe(`${ORIGIN}/boom/`)
     expect((await appended.request('/api/data/')).status).toBe(200)
   })
+  test('CSP: the default, scripts with the nonce; a directive of yours replaces that one; false: none', async () => {
+    expect((await app.request('/', { headers: html })).headers.get('content-security-policy')).toMatch(
+      /script-src 'self' 'nonce-[\w+/=]+';/,
+    )
+    const fonts = createApp({ secureHeaders: { contentSecurityPolicy: { fontSrc: ['https://fonts.gstatic.com'] } } })
+    const csp = (await fonts.request('/')).headers.get('content-security-policy')!
+    expect([csp.includes('font-src https://fonts.gstatic.com'), csp.includes("object-src 'none'")]).toEqual([
+      true,
+      true,
+    ])
+    expect(
+      (await createApp({ secureHeaders: { contentSecurityPolicy: false } }).request('/')).headers.get(
+        'content-security-policy',
+      ),
+    ).toBeNull()
+  })
   test('CSRF: a cross-site form post is refused', async () => {
-    const res = await app.request('/items', { method: 'POST', headers: { Origin: 'https://evil.example', 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'name=x' })
+    const res = await app.request('/items', {
+      method: 'POST',
+      headers: { Origin: 'https://evil.example', 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'name=x',
+    })
     expect(res.status).toBe(403)
   })
 })
 
 describe('withValidator', () => {
   const post = (body: unknown, headers: Record<string, string> = {}) =>
-    app.request('/items', { method: 'POST', headers: { 'Content-Type': 'application/json', Origin: ORIGIN, Referer: `${ORIGIN}/`, ...headers }, body: JSON.stringify(body) })
+    app.request('/items', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: ORIGIN, Referer: `${ORIGIN}/`, ...headers },
+      body: JSON.stringify(body),
+    })
   test('a page request with invalid input: 303 back, the errors in the flash cookie', async () => {
     const res = await post({ name: 'x' }, inertia())
     expect([res.status, res.headers.get('location')]).toEqual([303, '/'])
@@ -133,7 +183,11 @@ describe('withValidator', () => {
     expect(next.flash).toEqual({ message: 'added Ada' })
   })
   test('an API client: 422 { errors }', async () => {
-    const res = await app.request('/api/data', { method: 'POST', headers: { 'Content-Type': 'application/json', Origin: ORIGIN }, body: '{"n":"x"}' })
+    const res = await app.request('/api/data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: ORIGIN },
+      body: '{"n":"x"}',
+    })
     expect(res.status).toBe(422)
     expect(Object.keys(((await res.json()) as { errors: object }).errors)).toEqual(['n'])
   })
@@ -149,7 +203,11 @@ describe('withValidator', () => {
     const only = await post({ name: 'x', email: 'no' }, { ...pre, 'Precognition-Validate-Only': 'email' })
     expect(await only.json()).toEqual({ errors: { email: 'Bad email' } })
     const valid = await post({ name: 'Ada' }, pre)
-    expect([valid.status, valid.headers.get('precognition-success'), valid.headers.get('set-cookie')]).toEqual([204, 'true', null]) // the action did not run
+    expect([valid.status, valid.headers.get('precognition-success'), valid.headers.get('set-cookie')]).toEqual([
+      204,
+      'true',
+      null,
+    ]) // the action did not run
   })
 })
 
@@ -164,7 +222,9 @@ describe('errors', () => {
     expect([api.status, await api.text()]).toEqual([404, 'Not Found'])
   })
   test('an HTTPException: its status on the error page', async () => {
-    expect(await page(await app.request('/forbidden', { headers: inertia() }))).toMatchObject({ props: { status: 403 } })
+    expect(await page(await app.request('/forbidden', { headers: inertia() }))).toMatchObject({
+      props: { status: 403 },
+    })
   })
   test('a thrown error in development: the report, also for a visit (Inertia shows it in its dialog)', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -176,7 +236,10 @@ describe('errors', () => {
   test('a thrown error in production: the error page with status 500', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
     vi.stubEnv('DEV', false)
-    expect(await page(await app.request('/boom', { headers: inertia() }))).toMatchObject({ component: 'error', props: { status: 500 } })
+    expect(await page(await app.request('/boom', { headers: inertia() }))).toMatchObject({
+      component: 'error',
+      props: { status: 500 },
+    })
   })
   test('a page that does not exist: said so, with the file to create', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {})

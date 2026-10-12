@@ -1,14 +1,22 @@
+import type { FlashData } from '@inertiajs/core'
 import type { Context, MiddlewareHandler } from 'hono'
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
-import type { FlashData } from '@inertiajs/core'
 
 /**
  * Flash data and validation errors for the next page, the way Laravel keeps them in the session: here a short
  * cookie (Hono has no session). Set before a redirect, shown by the next page, once. A page rendered in the same
  * request gets them directly (no cookie).
  */
-interface Carried { flash?: Record<string, unknown>; errors?: Record<string, unknown>; clearHistory?: boolean }
-interface State { outgoing: Carried; incoming: Carried | undefined; read: boolean }
+interface Carried {
+  flash?: Record<string, unknown>
+  errors?: Record<string, unknown>
+  clearHistory?: boolean
+}
+interface State {
+  outgoing: Carried
+  incoming: Carried | undefined
+  read: boolean
+}
 
 const states = new WeakMap<Context, State>()
 const state = (c: Context): State => {
@@ -39,13 +47,24 @@ export function clearHistory(c: Context) {
 }
 
 /** What this page shows: carried over from the previous request (read once), plus what this request set. */
-export function takeCarried(c: Context, consume: boolean): { flash: Record<string, unknown>; errors: Record<string, unknown>; clearHistory: boolean } {
+export function takeCarried(
+  c: Context,
+  consume: boolean,
+): { flash: Record<string, unknown>; errors: Record<string, unknown>; clearHistory: boolean } {
   const s = state(c)
   if (consume && !s.read) {
     s.read = true
-    try { s.incoming = JSON.parse(getCookie(c, cookieName(c)) ?? 'null') ?? undefined } catch { s.incoming = undefined }
+    try {
+      s.incoming = JSON.parse(getCookie(c, cookieName(c)) ?? 'null') ?? undefined
+    } catch {
+      s.incoming = undefined
+    }
   }
-  const carried = { flash: { ...s.incoming?.flash, ...s.outgoing.flash }, errors: { ...s.incoming?.errors, ...s.outgoing.errors }, clearHistory: Boolean(s.incoming?.clearHistory || s.outgoing.clearHistory) }
+  const carried = {
+    flash: { ...s.incoming?.flash, ...s.outgoing.flash },
+    errors: { ...s.incoming?.errors, ...s.outgoing.errors },
+    clearHistory: Boolean(s.incoming?.clearHistory || s.outgoing.clearHistory),
+  }
   if (consume) s.outgoing = {}
   return carried
 }
@@ -60,8 +79,10 @@ export const flashCookie: MiddlewareHandler = async (c, next) => {
   if (s.outgoing.flash || s.outgoing.errors || s.outgoing.clearHistory) {
     const value = JSON.stringify(s.outgoing)
     // browsers drop a cookie over ~4 KB without a word: the next page would show no errors, no flash
-    if (encodeURIComponent(value).length > 4000) console.error(`[fondu] flash data and errors are too large for a cookie (${encodeURIComponent(value).length} bytes, about 4000 fit): the browser will drop them`)
+    if (encodeURIComponent(value).length > 4000)
+      console.error(
+        `[fondu] flash data and errors are too large for a cookie (${encodeURIComponent(value).length} bytes, about 4000 fit): the browser will drop them`,
+      )
     setCookie(c, name, value, { ...options, maxAge: 60 })
-  }
-  else if (s.read && s.incoming) deleteCookie(c, name, options)
+  } else if (s.read && s.incoming) deleteCookie(c, name, options)
 }

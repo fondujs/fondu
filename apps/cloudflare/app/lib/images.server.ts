@@ -13,7 +13,11 @@ const TYPES: Array<[type: string, magic: number[]]> = [
 ]
 export async function toDataUrl(file: File): Promise<string> {
   const bytes = new Uint8Array(await file.arrayBuffer())
-  const type = TYPES.find(([t, magic]) => magic.every((b, i) => bytes[i] === b) && (t !== 'image/webp' || String.fromCharCode(...bytes.subarray(8, 12)) === 'WEBP'))?.[0]
+  const type = TYPES.find(
+    ([t, magic]) =>
+      magic.every((b, i) => bytes[i] === b) &&
+      (t !== 'image/webp' || String.fromCharCode(...bytes.subarray(8, 12)) === 'WEBP'),
+  )?.[0]
   if (!type) throw new ValidationError({ avatar: 'Choose a PNG, JPEG, GIF or WebP image' })
   let binary = ''
   for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000))

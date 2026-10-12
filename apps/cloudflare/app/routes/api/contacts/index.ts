@@ -1,9 +1,10 @@
-import { defineHandler } from 'fondu'
 import { desc } from 'drizzle-orm'
-import { db } from '../../../db/index.server'
-import { contacts } from '../../../db/schema'
-import { requireApiUser } from '../../../lib/api.server'
-import { contactSchema } from '../../../schemas/contact'
+import { defineHandler } from 'fondu'
+
+import { db } from '#/db/index.server.ts'
+import { contacts } from '#/db/schema/index.ts'
+import { requireApiUser } from '#/lib/api.server.ts'
+import { contactSchema } from '#/schemas/contact.ts'
 
 // signed-in users only (guests: 401 JSON); invalid input: 422 { errors }
 export const GET = defineHandler(requireApiUser, async (c) => {

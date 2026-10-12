@@ -17,7 +17,12 @@ export function routePattern(file: string): string {
 
 /** a path inside `routes/` that is a route file: every `.ts` file but `_middleware.ts`, tests and declarations */
 export function isRouteFile(file: string): boolean {
-  return file.endsWith('.ts') && !file.endsWith('.d.ts') && !/\.(test|spec)\.ts$/.test(file) && file.split('/').at(-1) !== '_middleware.ts'
+  return (
+    file.endsWith('.ts') &&
+    !file.endsWith('.d.ts') &&
+    !/\.(test|spec)\.ts$/.test(file) &&
+    file.split('/').at(-1) !== '_middleware.ts'
+  )
 }
 
 /** the `_middleware.ts` files that apply to a route file, outermost first */
@@ -37,7 +42,8 @@ export function fillPattern(pattern: string, params: Record<string, string | num
     const value = params[name]
     if (value === undefined) throw new Error(`fondu: missing param "${name}" for ${pattern}`)
     const parts = catchAll ? String(value).split('/') : [String(value)]
-    if (parts.some((p) => p === '' || p === '.' || p === '..')) throw new Error(`fondu: param "${name}" is not a path segment: ${JSON.stringify(value)}`)
+    if (parts.some((p) => p === '' || p === '.' || p === '..'))
+      throw new Error(`fondu: param "${name}" is not a path segment: ${JSON.stringify(value)}`)
     return parts.map(encodeURIComponent).join('/')
   })
 }

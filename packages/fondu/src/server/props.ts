@@ -39,13 +39,17 @@ const make = <T>(spec: PropSpec) => spec as unknown as Prop<T>
 
 export const optional = <T>(value: Resolver<T>) => make<T>({ [PROP]: 'optional', value })
 export const always = <T>(value: Lazy<T>) => make<T>({ [PROP]: 'always', value })
-export const defer = <T>(value: Resolver<T>, { group = 'default', rescue = false }: { group?: string; rescue?: boolean } = {}) =>
-  make<T>({ [PROP]: 'defer', value, group, rescue })
-export const once = <T>(value: Resolver<T>, options: { key?: string; ttl?: number; fresh?: boolean } = {}) => make<T>({ [PROP]: 'once', value, ...options })
+export const defer = <T>(
+  value: Resolver<T>,
+  { group = 'default', rescue = false }: { group?: string; rescue?: boolean } = {},
+) => make<T>({ [PROP]: 'defer', value, group, rescue })
+export const once = <T>(value: Resolver<T>, options: { key?: string; ttl?: number; fresh?: boolean } = {}) =>
+  make<T>({ [PROP]: 'once', value, ...options })
 export const scroll = <T>(value: Resolver<Paginated<T>>, { pageName = 'page' }: { pageName?: string } = {}) =>
   make<Paginated<T>>({ [PROP]: 'scroll', value, pageName })
 
-const merger = (strategy: 'append' | 'prepend' | 'deep') =>
+const merger =
+  (strategy: 'append' | 'prepend' | 'deep') =>
   <T>(value: Lazy<T>, options: { matchOn?: string | string[] } = {}) =>
     make<T>({ [PROP]: 'merge', value, strategy, matchOn: [options.matchOn ?? []].flat() })
 export const merge = merger('append')
@@ -57,4 +61,5 @@ export const propSpec = (value: unknown): PropSpec | null =>
 
 export const kindOf = (spec: PropSpec) => spec[PROP]
 
-export const resolve = async (value: Lazy<unknown>) => (typeof value === 'function' ? (value as Resolver<unknown>)() : value)
+export const resolve = async (value: Lazy<unknown>) =>
+  typeof value === 'function' ? (value as Resolver<unknown>)() : value

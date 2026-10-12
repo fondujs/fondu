@@ -1,6 +1,8 @@
 import { back, defineHandler, flash, location, render } from 'fondu'
 
-export const loader = defineHandler((c) => render(c, 'redirects', { visitedAt: new Date().toISOString().slice(11, 23) }))
+export const loader = defineHandler((c) =>
+  render(c, 'redirects', { visitedAt: new Date().toISOString().slice(11, 23) }),
+)
 
 export const actions = {
   // 303 back to the page the form was on, with a flash message

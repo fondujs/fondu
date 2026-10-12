@@ -12,9 +12,19 @@ export default function Dashboard({ accounts }: Props) {
     <>
       <Head title="Admin" />
       <h1>Accounts</h1>
-      <p className="lede">Only admins get here (<code>routes/admin/_middleware.ts</code>: <code>requireAdmin</code>, <code>withoutSsr()</code>). Roles are Better Auth's admin plugin.</p>
+      <p className="lede">
+        Only admins get here (<code>routes/admin/_middleware.ts</code>: <code>requireAdmin</code>,{' '}
+        <code>withoutSsr()</code>). Roles are Better Auth's admin plugin.
+      </p>
       <table className="w-full text-left text-[13px]" data-testid="accounts">
-        <thead className="text-muted"><tr><th className="py-2 font-normal">Name</th><th className="font-normal">Email</th><th className="font-normal">Role</th><th /></tr></thead>
+        <thead className="text-muted">
+          <tr>
+            <th className="py-2 font-normal">Name</th>
+            <th className="font-normal">Email</th>
+            <th className="font-normal">Role</th>
+            <th />
+          </tr>
+        </thead>
         <tbody className="divide-y divide-line">
           {accounts.map((a) => (
             <tr key={a.id}>

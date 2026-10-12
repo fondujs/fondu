@@ -1,6 +1,7 @@
 import { back, defineHandler, render } from 'fondu'
 import * as z from 'zod/mini'
-import { addTodo, listTodos } from '../lib/todos.server'
+
+import { addTodo, listTodos } from '#/lib/todos.server.ts'
 
 // GET /
 export const loader = defineHandler((c) => render(c, 'home', { todos: listTodos() }))

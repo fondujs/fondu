@@ -1,6 +1,7 @@
 import { back, defineHandler, flash, render } from 'fondu'
 import * as z from 'zod/mini'
-import { auth } from '../../lib/auth.server'
+
+import { auth } from '#/lib/auth.server.ts'
 
 export const loader = defineHandler(async (c) => {
   const { users } = await auth.api.listUsers({ query: { limit: 100, sortBy: 'createdAt' }, headers: c.req.raw.headers })
@@ -11,9 +12,11 @@ export const loader = defineHandler(async (c) => {
 
 export const actions = {
   // POST /admin/dashboard?role — Better Auth's admin plugin checks the caller is an admin too
-  role: defineHandler.withValidator({ body: z.object({ userId: z.string(), role: z.enum(['user', 'admin']) }) })(async (c, { body }) => {
-    await auth.api.setRole({ body, headers: c.req.raw.headers })
-    flash(c, { message: `Role changed to ${body.role}` })
-    return back(c)
-  }),
+  role: defineHandler.withValidator({ body: z.object({ userId: z.string(), role: z.enum(['user', 'admin']) }) })(
+    async (c, { body }) => {
+      await auth.api.setRole({ body, headers: c.req.raw.headers })
+      flash(c, { message: `Role changed to ${body.role}` })
+      return back(c)
+    },
+  ),
 }

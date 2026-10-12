@@ -2,7 +2,11 @@ import { defineHandler, render, scroll } from 'fondu'
 
 const TOTAL = 120
 const PER_PAGE = 15
-const people = Array.from({ length: TOTAL }, (_, i) => ({ id: i + 1, name: `Person ${i + 1}`, email: `person${i + 1}@example.com` }))
+const people = Array.from({ length: TOTAL }, (_, i) => ({
+  id: i + 1,
+  name: `Person ${i + 1}`,
+  email: `person${i + 1}@example.com`,
+}))
 
 // `scroll()`: one page of the list (the page in `?page=`) and where the others are, for <InfiniteScroll>
 export const loader = defineHandler((c) => {

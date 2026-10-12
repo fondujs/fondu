@@ -1,9 +1,10 @@
+import { Hono } from 'hono'
 // The routes/ conventions, form bodies, typed URLs.
 import { describe, expect, test } from 'vitest'
-import { Hono } from 'hono'
-import { fillPattern, isRouteFile, middlewareFor, routePattern } from '../src/paths.ts'
-import { readBody } from '../src/server/validate.ts'
-import { href } from '../src/client.ts'
+
+import { href } from '../src/client.js'
+import { fillPattern, isRouteFile, middlewareFor, routePattern } from '../src/paths.js'
+import { readBody } from '../src/server/validate.js'
 
 describe('routes/ files', () => {
   test('file -> URL pattern', () => {
@@ -39,16 +40,24 @@ describe('form bodies', () => {
     return (await app.request('/', { method: 'POST', body, headers: type ? { 'Content-Type': type } : {} })).json()
   }
   test('PHP-style names, as Inertia sends files and as plain forms write lists', async () => {
-    expect(await read('notify%5B%5D=email&notify%5B%5D=push&name=Ada', 'application/x-www-form-urlencoded')).toEqual({ notify: ['email', 'push'], name: 'Ada' })
+    expect(await read('notify%5B%5D=email&notify%5B%5D=push&name=Ada', 'application/x-www-form-urlencoded')).toEqual({
+      notify: ['email', 'push'],
+      name: 'Ada',
+    })
     const fd = new FormData()
-    fd.append('notify[0]', 'email'); fd.append('notify[1]', 'push'); fd.append('user[name]', 'Ada')
+    fd.append('notify[0]', 'email')
+    fd.append('notify[1]', 'push')
+    fd.append('user[name]', 'Ada')
     expect(await read(fd)).toEqual({ notify: ['email', 'push'], user: { name: 'Ada' } })
   })
   test('one value under one name stays a string; a repeated name becomes a list', async () => {
     expect(await read('a=1&b=2&b=3', 'application/x-www-form-urlencoded')).toEqual({ a: '1', b: ['2', '3'] })
   })
   test('names that would change the object itself are ignored', async () => {
-    const body = await read('__proto__%5Bx%5D=1&constructor=y&a%5B__proto__%5D=2&name=Ada', 'application/x-www-form-urlencoded')
+    const body = await read(
+      '__proto__%5Bx%5D=1&constructor=y&a%5B__proto__%5D=2&name=Ada',
+      'application/x-www-form-urlencoded',
+    )
     expect(body).toEqual({ name: 'Ada' })
     expect(({} as Record<string, unknown>).x).toBeUndefined()
   })

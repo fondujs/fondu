@@ -4,3 +4,12 @@ dist
 .dev.vars
 .wrangler
 .data
+.DS_Store
+Thumbs.db
+*.log
+.env
+.env.*
+!.env.example
+coverage
+.idea
+packages/fondu/README.md

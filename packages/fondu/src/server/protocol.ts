@@ -1,12 +1,13 @@
+import type { Page, SharedPageProps } from '@inertiajs/core'
 /// <reference path="../virtual.d.ts" />
 import type { Context, MiddlewareHandler } from 'hono'
-import type { Page, SharedPageProps } from '@inertiajs/core'
 import { pages, version } from 'virtual:fondu/assets'
-import type { Pages } from '../types.ts'
-import { renderDocument } from './document.ts'
-import { flashCookie, takeCarried } from './flash.ts'
-import { kindOf, propSpec, resolve, type Paginated } from './props.ts'
-import { isInertia, sameOrigin } from './http.ts'
+
+import type { Pages } from '../types.js'
+import { renderDocument } from './document.js'
+import { flashCookie, takeCarried } from './flash.js'
+import { isInertia, sameOrigin } from './http.js'
+import { kindOf, propSpec, resolve, type Paginated } from './props.js'
 
 /**
  * The server side of the Inertia v3 protocol (https://inertiajs.com/docs/v3/core-concepts/the-protocol).
@@ -27,17 +28,23 @@ export function share(c: Context, props: Shareable<SharedPageProps> & Record<str
 
 type PageName = [keyof Pages] extends [never] ? string : Extract<keyof Pages, string>
 type ComponentProps<N> = N extends keyof Pages
-  ? Pages[N] extends { default: (...args: infer A) => unknown } ? (A extends [infer P, ...unknown[]] ? P : Record<string, never>) : Record<string, unknown>
+  ? Pages[N] extends { default: (...args: infer A) => unknown }
+    ? A extends [infer P, ...unknown[]]
+      ? P
+      : Record<string, never>
+    : Record<string, unknown>
   : Record<string, unknown>
 /** shared props the page takes with the same type: `render` may leave them out (every page gets them) */
-type FromShared<P> = { [K in keyof P & keyof SharedPageProps]: SharedPageProps[K] extends P[K] ? K : never }[keyof P & keyof SharedPageProps]
+type FromShared<P> = { [K in keyof P & keyof SharedPageProps]: SharedPageProps[K] extends P[K] ? K : never }[keyof P &
+  keyof SharedPageProps]
 /** a page prop named like a shared prop, of another type: it would hide the shared one from the layout */
-type Clashing<P> = string extends keyof SharedPageProps ? never : Exclude<keyof P & keyof SharedPageProps, FromShared<P>>
+type Clashing<P> = string extends keyof SharedPageProps
+  ? never
+  : Exclude<keyof P & keyof SharedPageProps, FromShared<P>>
 type ClashError = 'fondu: this page prop has the name of a shared prop (share()); rename it'
 /** what `render` takes: the component's props, less `errors` and the shared props it gets anyway (may still be given) */
-type OwnProps<N> = Omit<ComponentProps<N>, FromShared<ComponentProps<N>> | Clashing<ComponentProps<N>> | 'errors'>
-  & Partial<Pick<ComponentProps<N>, FromShared<ComponentProps<N>>>>
-  & { [K in Clashing<ComponentProps<N>>]: ClashError }
+type OwnProps<N> = Omit<ComponentProps<N>, FromShared<ComponentProps<N>> | Clashing<ComponentProps<N>> | 'errors'> &
+  Partial<Pick<ComponentProps<N>, FromShared<ComponentProps<N>>>> & { [K in Clashing<ComponentProps<N>>]: ClashError }
 type PropsInput<P> = { [K in keyof P]: P[K] | (() => P[K] | Promise<P[K]>) }
 type RequiredKeys<T> = { [K in keyof T]-?: object extends Pick<T, K> ? never : K }[keyof T]
 
@@ -47,7 +54,11 @@ export interface RenderOptions {
   clearHistory?: boolean
   preserveFragment?: boolean
 }
-type RenderArgs<N> = [RequiredKeys<OwnProps<N>>] extends [never] ? OptionalArgs<N> : string extends keyof OwnProps<N> ? OptionalArgs<N> : RequiredArgs<N>
+type RenderArgs<N> = [RequiredKeys<OwnProps<N>>] extends [never]
+  ? OptionalArgs<N>
+  : string extends keyof OwnProps<N>
+    ? OptionalArgs<N>
+    : RequiredArgs<N>
 type OptionalArgs<N> = [props?: PropsInput<OwnProps<N>>, options?: RenderOptions]
 type RequiredArgs<N> = [props: PropsInput<OwnProps<N>>, options?: RenderOptions]
 
@@ -58,14 +69,22 @@ export const hasPage = (name: string) =>
 
 const headerSet = (c: Context, name: string) => {
   const value = c.req.header(name)
-  return value === undefined ? null : new Set(value.split(',').map((s) => s.trim()).filter(Boolean))
+  return value === undefined
+    ? null
+    : new Set(
+        value
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean),
+      )
 }
-const isPrefetch = (c: Context) => c.req.header('purpose') === 'prefetch' || c.req.header('sec-purpose')?.includes('prefetch') === true
+const isPrefetch = (c: Context) =>
+  c.req.header('purpose') === 'prefetch' || c.req.header('sec-purpose')?.includes('prefetch') === true
 
 /** This URL as the page's: the request's for a GET, the page the request came from otherwise. */
 function pageUrl(c: Context): string {
   const here = new URL(c.req.url)
-  const from = c.req.method === 'GET' ? here : sameOrigin(c, c.req.header('referer')) ?? here
+  const from = c.req.method === 'GET' ? here : (sameOrigin(c, c.req.header('referer')) ?? here)
   return from.pathname.replace(/^\/+/, '/') + from.search
 }
 
@@ -73,7 +92,11 @@ function pageUrl(c: Context): string {
  * The page `component` (a file in `pages/`, without extension) with these props: JSON for Inertia's requests,
  * the HTML document (server-rendered) otherwise. Props are checked against the component's own props.
  */
-export async function render<N extends PageName>(c: Context, component: N, ...[props = {} as PropsInput<OwnProps<N>>, options = {}]: RenderArgs<N>): Promise<Response> {
+export async function render<N extends PageName>(
+  c: Context,
+  component: N,
+  ...[props = {} as PropsInput<OwnProps<N>>, options = {}]: RenderArgs<N>
+): Promise<Response> {
   if (!hasPage(component)) throw new Error(`fondu: there is no page "${component}": create app/pages/${component}.tsx`)
   const partial = c.req.header('x-inertia-partial-component') === component
   const only = partial ? headerSet(c, 'x-inertia-partial-data') : null
@@ -85,9 +108,18 @@ export async function render<N extends PageName>(c: Context, component: N, ...[p
   const all: Record<string, unknown> = { ...sharedProps, ...(props as Record<string, unknown>) }
 
   const page: Page & Record<string, unknown> = {
-    component, props: { errors: {} }, url: pageUrl(c), version: version ?? null, flash: carried.flash,
+    component,
+    props: { errors: {} },
+    url: pageUrl(c),
+    version: version ?? null,
+    flash: carried.flash,
   } as unknown as Page & Record<string, unknown>
-  const lists = { mergeProps: [] as string[], prependProps: [] as string[], deepMergeProps: [] as string[], matchPropsOn: [] as string[] }
+  const lists = {
+    mergeProps: [] as string[],
+    prependProps: [] as string[],
+    deepMergeProps: [] as string[],
+    matchPropsOn: [] as string[],
+  }
   const deferred: Record<string, string[]> = {}
   const onceProps: Record<string, { prop: string; expiresAt: number | null }> = {}
   const pending: Array<[string, unknown]> = []
@@ -111,27 +143,33 @@ export async function render<N extends PageName>(c: Context, component: N, ...[p
     if (!sent) continue
     if (kind === 'merge' && !reset.has(key)) {
       const m = spec as { strategy: 'append' | 'prepend' | 'deep'; matchOn: string[] }
-      lists[m.strategy === 'append' ? 'mergeProps' : m.strategy === 'prepend' ? 'prependProps' : 'deepMergeProps'].push(key)
+      lists[m.strategy === 'append' ? 'mergeProps' : m.strategy === 'prepend' ? 'prependProps' : 'deepMergeProps'].push(
+        key,
+      )
       lists.matchPropsOn.push(...m.matchOn.map((field) => `${key}.${field}`))
     }
     if (kind === 'scroll' && !reset.has(key)) {
       // <InfiniteScroll> says which side it loads: the previous page goes before what the client holds
-      lists[c.req.header('x-inertia-infinite-scroll-merge-intent') === 'prepend' ? 'prependProps' : 'mergeProps'].push(`${key}.data`)
+      lists[c.req.header('x-inertia-infinite-scroll-merge-intent') === 'prepend' ? 'prependProps' : 'mergeProps'].push(
+        `${key}.data`,
+      )
     }
     pending.push([key, value])
   }
   const rescued: string[] = []
-  const resolved = await Promise.all(pending.map(async ([key, value]) => {
-    const spec = propSpec(value)
-    try {
-      return [[key, await resolve(spec ? spec.value : value)] as const]
-    } catch (error) {
-      if (!(spec && kindOf(spec) === 'defer' && (spec as { rescue: boolean }).rescue)) throw error
-      console.error(`[fondu] deferred prop "${key}" failed (rescued):`, error)
-      rescued.push(key)
-      return []
-    }
-  }))
+  const resolved = await Promise.all(
+    pending.map(async ([key, value]) => {
+      const spec = propSpec(value)
+      try {
+        return [[key, await resolve(spec ? spec.value : value)] as const]
+      } catch (error) {
+        if (!(spec && kindOf(spec) === 'defer' && (spec as { rescue: boolean }).rescue)) throw error
+        console.error(`[fondu] deferred prop "${key}" failed (rescued):`, error)
+        rescued.push(key)
+        return []
+      }
+    }),
+  )
   page.props = { ...Object.fromEntries(resolved.flat()), errors: carried.errors } as Page['props']
   if (rescued.length) page.rescuedProps = rescued
 
@@ -140,7 +178,13 @@ export async function render<N extends PageName>(c: Context, component: N, ...[p
     const spec = propSpec(value)
     if (spec && kindOf(spec) === 'scroll' && key in page.props) {
       const { currentPage, previousPage, nextPage } = page.props[key] as Paginated<unknown>
-      scrollProps[key] = { pageName: (spec as { pageName: string }).pageName, currentPage, previousPage, nextPage, reset: reset.has(key) }
+      scrollProps[key] = {
+        pageName: (spec as { pageName: string }).pageName,
+        currentPage,
+        previousPage,
+        nextPage,
+        reset: reset.has(key),
+      }
     }
   }
   if (Object.keys(scrollProps).length) page.scrollProps = scrollProps

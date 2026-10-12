@@ -1,5 +1,6 @@
 import { defineHandler } from 'fondu'
-import { addTodo, listTodos } from '../../lib/todos.server'
+
+import { addTodo, listTodos } from '#/lib/todos.server.ts'
 
 // plain HTTP: JSON in and out
 export const GET = defineHandler((c) => c.json(listTodos()))

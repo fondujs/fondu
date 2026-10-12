@@ -1,7 +1,8 @@
 import type { Context, MiddlewareHandler } from 'hono'
 import { HTTPException } from 'hono/http-exception'
-import { back, wantsPage } from './http.ts'
-import { flashErrors } from './flash.ts'
+
+import { flashErrors } from './flash.js'
+import { back, wantsPage } from './http.js'
 
 /** The Standard Schema interface (zod, valibot, arktype…), the part used here. */
 export interface StandardSchemaV1<Input = unknown, Output = Input> {
@@ -12,7 +13,14 @@ export interface StandardSchemaV1<Input = unknown, Output = Input> {
     readonly types?: { readonly input: Input; readonly output: Output } | undefined
   }
 }
-type StandardResult<Output> = { readonly value: Output; readonly issues?: undefined } | { readonly issues: ReadonlyArray<{ readonly message: string; readonly path?: ReadonlyArray<PropertyKey | { readonly key: PropertyKey }> }> }
+type StandardResult<Output> =
+  | { readonly value: Output; readonly issues?: undefined }
+  | {
+      readonly issues: ReadonlyArray<{
+        readonly message: string
+        readonly path?: ReadonlyArray<PropertyKey | { readonly key: PropertyKey }>
+      }>
+    }
 type InferOutput<S> = S extends StandardSchemaV1<unknown, infer O> ? O : never
 
 /**
@@ -78,7 +86,11 @@ const pathOf = (path: ReadonlyArray<PropertyKey | { readonly key: PropertyKey }>
   (path ?? []).map((p) => String(typeof p === 'object' ? p.key : p)).join('.')
 
 /** What `withValidator` checks: the request body (JSON or form), the query, the route params. */
-export interface Schemas { body?: StandardSchemaV1; query?: StandardSchemaV1; params?: StandardSchemaV1 }
+export interface Schemas {
+  body?: StandardSchemaV1
+  query?: StandardSchemaV1
+  params?: StandardSchemaV1
+}
 export type Input<S extends Schemas> = { [K in keyof S]: S[K] extends StandardSchemaV1 ? InferOutput<S[K]> : never }
 
 /**
@@ -108,7 +120,9 @@ export function validator<S extends Schemas>(schemas: S): [MiddlewareHandler, (c
       const only = c.req.header('precognition-validate-only')?.split(',').filter(Boolean)
       const shown = only ? Object.fromEntries(Object.entries(errors).filter(([field]) => only.includes(field))) : errors
       const headers = { Precognition: 'true', Vary: 'Precognition' }
-      return Object.keys(shown).length ? c.json({ errors: shown }, 422, headers) : c.body(null, 204, { ...headers, 'Precognition-Success': 'true' })
+      return Object.keys(shown).length
+        ? c.json({ errors: shown }, 422, headers)
+        : c.body(null, 204, { ...headers, 'Precognition-Success': 'true' })
     }
     if (Object.keys(errors).length) throw new ValidationError(errors)
     inputs.set(c, input as Input<S>)

@@ -1,6 +1,6 @@
+import type { Page } from '@inertiajs/core'
 /// <reference path="../virtual.d.ts" />
 import type { Context, MiddlewareHandler } from 'hono'
-import type { Page } from '@inertiajs/core'
 import { assetTags } from 'virtual:fondu/assets'
 import { renderPage } from 'virtual:fondu/ssr'
 

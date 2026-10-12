@@ -1,37 +1,29 @@
-@import "tailwindcss";
+@import 'tailwindcss';
+@import '@fontsource-variable/inter';
+@import '@fontsource-variable/geist-mono';
 
-/* A sidebar of demos, each a page of cards. One accent (blue) for what you can act on and where you are. */
+/* A sidebar of demos, each a page of cards. One accent (blue) for what you can act on and where you are.
+   Each color is light-dark(): the theme is the color-scheme (the system's, or the one chosen). */
 :root {
-  --canvas: oklch(98.5% 0.002 247.839);
-  --surface: #fff;
-  --ink: oklch(21% 0.034 264.665);
-  --muted: oklch(55.1% 0.027 264.364);
-  --line: oklch(92.8% 0.006 264.531);
-  --accent: oklch(54.6% 0.245 262.881);
-  --accent-soft: oklch(97% 0.014 254.604);
-  --code: oklch(21% 0.006 285.885);
-  --ok: oklch(52.7% 0.154 150.069);
-  --ok-soft: oklch(96.2% 0.044 156.743);
-  --danger: oklch(50.5% 0.213 27.518);
-  --danger-soft: oklch(97.1% 0.013 17.38);
+  color-scheme: light dark; /* the system's, until a theme is chosen: <html class="light"> or "dark" */
+  --canvas: light-dark(oklch(98.5% 0.002 247.839), oklch(17% 0.006 285.885));
+  --surface: light-dark(#fff, oklch(21% 0.006 285.885));
+  --ink: light-dark(oklch(21% 0.034 264.665), oklch(96.7% 0.003 264.542));
+  --muted: light-dark(oklch(55.1% 0.027 264.364), oklch(70.7% 0.022 261.325));
+  --line: light-dark(oklch(92.8% 0.006 264.531), oklch(27.4% 0.006 286.033));
+  --accent: light-dark(oklch(54.6% 0.245 262.881), oklch(70.7% 0.165 254.624));
+  --accent-soft: light-dark(oklch(97% 0.014 254.604), oklch(28.2% 0.091 267.935));
+  --code: light-dark(oklch(21% 0.006 285.885), oklch(14.1% 0.005 285.823));
+  --ok: light-dark(oklch(52.7% 0.154 150.069), oklch(79.2% 0.209 151.711));
+  --ok-soft: light-dark(oklch(96.2% 0.044 156.743), oklch(26.6% 0.065 152.934));
+  --danger: light-dark(oklch(50.5% 0.213 27.518), oklch(70.4% 0.191 22.216));
+  --danger-soft: light-dark(oklch(97.1% 0.013 17.38), oklch(25.8% 0.092 26.042));
+}
+:root.light {
   color-scheme: light;
 }
-@media (prefers-color-scheme: dark) {
-  :root {
-    --canvas: oklch(17% 0.006 285.885);
-    --surface: oklch(21% 0.006 285.885);
-    --ink: oklch(96.7% 0.003 264.542);
-    --muted: oklch(70.7% 0.022 261.325);
-    --line: oklch(27.4% 0.006 286.033);
-    --accent: oklch(70.7% 0.165 254.624);
-    --accent-soft: oklch(28.2% 0.091 267.935);
-    --code: oklch(14.1% 0.005 285.823);
-    --ok: oklch(79.2% 0.209 151.711);
-    --ok-soft: oklch(26.6% 0.065 152.934);
-    --danger: oklch(70.4% 0.191 22.216);
-    --danger-soft: oklch(25.8% 0.092 26.042);
-    color-scheme: dark;
-  }
+:root.dark {
+  color-scheme: dark;
 }
 
 @theme inline {
@@ -47,46 +39,105 @@
   --color-ok-soft: var(--ok-soft);
   --color-danger: var(--danger);
   --color-danger-soft: var(--danger-soft);
-  --font-sans: "Inter var", "Segoe UI Variable", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'Geist Mono Variable', ui-monospace, Menlo, Consolas, monospace;
 }
 
 @layer base {
-  body { @apply bg-canvas font-sans text-[14px] leading-relaxed text-ink antialiased; }
-  h1 { @apply mb-2 text-[22px] leading-tight font-semibold tracking-[-0.01em]; }
-  h2 { @apply mb-3 text-[15px] font-medium; }
-  a { @apply text-accent; }
-  code { @apply rounded bg-line/70 px-1 py-px font-mono text-[0.85em]; }
-  :focus-visible { @apply outline-2 outline-offset-2 outline-accent; }
+  #app {
+    isolation: isolate;
+  } /* Base UI's popups (menus, toasts) stack above the page */
+  body {
+    @apply bg-canvas font-sans text-sm/relaxed text-ink antialiased;
+  }
+  h1 {
+    @apply mb-2 text-[22px] leading-tight font-semibold tracking-tight;
+  }
+  h2 {
+    @apply mb-3 text-[15px] font-medium;
+  }
+  a {
+    @apply text-accent;
+  }
+  code {
+    @apply rounded bg-line/70 px-1 py-px font-mono text-[0.85em];
+  }
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-accent;
+  }
 }
 
 @layer components {
-  .lede { @apply mb-8 max-w-[62ch] text-[15px] text-muted; }
-  .card { @apply rounded-lg border border-line bg-surface p-4 shadow-[0_1px_2px_rgb(0_0_0/0.04)]; }
-  .grid-cards { @apply grid gap-4 sm:grid-cols-2; }
+  .lede {
+    @apply mb-8 max-w-[62ch] text-[15px] text-muted;
+  }
+  .card {
+    @apply rounded-lg border border-line bg-surface p-4 shadow-xs;
+  }
+  .grid-cards {
+    @apply grid gap-4 sm:grid-cols-2;
+  }
   .btn {
     @apply inline-flex items-center gap-1.5 rounded-md border border-line bg-surface px-3 py-1.5 text-[13px] font-medium text-ink no-underline transition-colors;
     @apply hover:bg-canvas disabled:cursor-not-allowed disabled:opacity-50;
   }
-  .btn-primary { @apply border-accent bg-accent text-white hover:bg-accent hover:brightness-110; }
-  .input {
-    @apply w-full rounded-md border border-line bg-surface px-3 py-1.5 text-[13px] text-ink outline-none transition-colors;
-    @apply placeholder:text-muted/70 focus:border-accent;
+  .btn-primary {
+    @apply border-accent bg-accent text-white hover:bg-accent hover:brightness-110;
   }
-  .field { @apply grid gap-1 text-[13px] font-medium; }
-  .err { @apply text-[13px] font-normal text-danger; }
-  .note { @apply text-[13px] text-muted; }
-  .json { @apply overflow-x-auto rounded-md bg-code p-3 font-mono text-[12px] leading-relaxed text-white/90; }
-  .tag { @apply font-mono text-[11px] text-muted; }
-  .skeleton { @apply h-2.5 animate-pulse rounded bg-line motion-reduce:animate-none; }
-  .rows { @apply divide-y divide-line; }
+  /* 16px on phones: iOS zooms into a focused input with smaller text */
+  .input {
+    @apply w-full rounded-md border border-line bg-surface px-3 py-1.5 text-base text-ink transition-[border-color,box-shadow] outline-none sm:text-[13px];
+    @apply placeholder:text-muted/70 focus:border-accent focus:ring-3 focus:ring-accent/15;
+    @apply aria-invalid:border-danger aria-invalid:ring-3 aria-invalid:ring-danger/15;
+  }
+  .field {
+    @apply grid gap-1 text-[13px] font-medium;
+  }
+  .err {
+    @apply text-[13px] font-normal text-danger;
+  }
+  .note {
+    @apply text-[13px] text-muted;
+  }
+  .json {
+    @apply overflow-x-auto rounded-md bg-code p-3 font-mono text-xs/relaxed text-white/90;
+  }
+  .tag {
+    @apply font-mono text-[11px] text-muted;
+  }
+  .skeleton {
+    @apply h-2.5 animate-pulse rounded bg-line motion-reduce:animate-none;
+  }
+  .rows {
+    @apply divide-y divide-line;
+  }
+  .popup {
+    @apply rounded-lg border border-line bg-surface p-1 text-[13px] text-ink shadow-lg outline-none;
+  }
 }
 
 /* Only for visits that opt in with <Link viewTransition> */
-@keyframes vt-out { to { opacity: 0; transform: translateY(-6px); } }
-@keyframes vt-in { from { opacity: 0; transform: translateY(6px); } }
-::view-transition-old(main) { animation: 160ms ease-in both vt-out; }
-::view-transition-new(main) { animation: 200ms ease-out both vt-in; }
+@keyframes vt-out {
+  to {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+@keyframes vt-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+::view-transition-old(main) {
+  animation: 160ms ease-in both vt-out;
+}
+::view-transition-new(main) {
+  animation: 200ms ease-out both vt-in;
+}
 @media (prefers-reduced-motion: reduce) {
-  ::view-transition-old(main), ::view-transition-new(main) { animation: none; }
+  ::view-transition-old(main),
+  ::view-transition-new(main) {
+    animation: none;
+  }
 }

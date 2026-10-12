@@ -3,17 +3,9 @@
   "compilerOptions": {
     "module": "ESNext",
     "moduleResolution": "Bundler",
-    "types": [
-      "node",
-      "vite/client"
-    ],
-    "allowImportingTsExtensions": true,
+    "types": ["node", "vite/client"],
     "erasableSyntaxOnly": true,
     "noEmit": true
   },
-  "include": [
-    "src",
-    "test/*.ts",
-    "vitest.config.ts"
-  ]
+  "include": ["src", "test/*.ts", "vitest.config.ts"]
 }

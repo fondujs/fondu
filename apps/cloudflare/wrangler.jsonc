@@ -9,5 +9,12 @@
 
   // Once: `bunx wrangler d1 create fondu-example`, put the id below, then `bun run db:migrate` (remote).
   // dev / preview apply the migrations locally.
-  "d1_databases": [{ "binding": "DB", "database_name": "fondu-example", "database_id": "00000000-0000-0000-0000-000000000000", "migrations_dir": "migrations" }]
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "fondu-example",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations",
+    },
+  ],
 }

@@ -1,7 +1,7 @@
-import { APIError } from 'better-auth/api'
-import { defineHandler, flash, render, ValidationError } from 'fondu'
+import { defineHandler, flash, render } from 'fondu'
 import * as z from 'zod/mini'
-import { auth, forwardCookies } from '../lib/auth.server'
+
+import { callAuth } from '#/lib/auth.server.ts'
 
 export const loader = defineHandler(async (c) => (c.get('user') ? c.redirect('/account', 303) : render(c, 'signup')))
 
@@ -12,13 +12,7 @@ export const action = defineHandler.withValidator({
     password: z.string().check(z.minLength(8, 'At least 8 characters')),
   }),
 })(async (c, { body }) => {
-  try {
-    const { headers } = await auth.api.signUpEmail({ body, headers: c.req.raw.headers, returnHeaders: true })
-    forwardCookies(c, headers)
-  } catch (error) {
-    if (error instanceof APIError) throw new ValidationError({ email: error.body?.message ?? 'Could not create the account' })
-    throw error
-  }
+  await callAuth(c, '/sign-up/email', body, 'email')
   flash(c, { message: `Welcome, ${body.name}` })
   return c.redirect('/account', 303)
 })

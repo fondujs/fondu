@@ -7,8 +7,8 @@
       "import { defineHandler, render } from 'fondu'",
       "",
       "export const loader = defineHandler((c) => render(c, '${1:${TM_FILEPATH/^.*[\\\\/]app[\\\\/]routes[\\\\/](.+)\\.ts$/$1/}}'$2))",
-      "$0"
-    ]
+      "$0",
+    ],
   },
   "api": {
     "scope": "typescript",
@@ -22,16 +22,14 @@
       "export const POST = defineHandler(async (c) => {",
       "  const body = await c.req.json()",
       "  return c.json(body, 201)$0",
-      "})"
-    ]
+      "})",
+    ],
   },
   "loader": {
     "scope": "typescript",
     "prefix": "/loader",
     "description": "GET: render a page",
-    "body": [
-      "export const loader = defineHandler((c) => render(c, '${1:page}'${2:, { \\}}))$0"
-    ]
+    "body": ["export const loader = defineHandler((c) => render(c, '${1:page}'${2:, { \\}}))$0"],
   },
   "action": {
     "scope": "typescript",
@@ -41,8 +39,8 @@
       "export const action = defineHandler.withValidator({ body: ${1:schema} })((c, { body }) => {",
       "  $0",
       "  return back(c)",
-      "})"
-    ]
+      "})",
+    ],
   },
   "actions": {
     "scope": "typescript",
@@ -54,73 +52,44 @@
       "    $0",
       "    return back(c)",
       "  }),",
-      "}"
-    ]
+      "}",
+    ],
   },
   "validated": {
     "scope": "typescript",
     "prefix": "/validated",
     "description": "A handler with validated body, query and params",
-    "body": [
-      "defineHandler.withValidator({ ${1:body}: ${2:schema} })((c, { ${1:body} }) => {",
-      "  $0",
-      "})"
-    ]
+    "body": ["defineHandler.withValidator({ ${1:body}: ${2:schema} })((c, { ${1:body} }) => {", "  $0", "})"],
   },
   "get": {
     "scope": "typescript",
     "prefix": "/get",
     "description": "GET: a plain HTTP handler",
-    "body": [
-      "export const GET = defineHandler((c) => {",
-      "  $0",
-      "  return c.json({})",
-      "})"
-    ]
+    "body": ["export const GET = defineHandler((c) => {", "  $0", "  return c.json({})", "})"],
   },
   "post": {
     "scope": "typescript",
     "prefix": "/post",
     "description": "POST: a plain HTTP handler",
-    "body": [
-      "export const POST = defineHandler((c) => {",
-      "  $0",
-      "  return c.json({})",
-      "})"
-    ]
+    "body": ["export const POST = defineHandler((c) => {", "  $0", "  return c.json({})", "})"],
   },
   "put": {
     "scope": "typescript",
     "prefix": "/put",
     "description": "PUT: a plain HTTP handler",
-    "body": [
-      "export const PUT = defineHandler((c) => {",
-      "  $0",
-      "  return c.json({})",
-      "})"
-    ]
+    "body": ["export const PUT = defineHandler((c) => {", "  $0", "  return c.json({})", "})"],
   },
   "patch": {
     "scope": "typescript",
     "prefix": "/patch",
     "description": "PATCH: a plain HTTP handler",
-    "body": [
-      "export const PATCH = defineHandler((c) => {",
-      "  $0",
-      "  return c.json({})",
-      "})"
-    ]
+    "body": ["export const PATCH = defineHandler((c) => {", "  $0", "  return c.json({})", "})"],
   },
   "delete": {
     "scope": "typescript",
     "prefix": "/delete",
     "description": "DELETE: a plain HTTP handler",
-    "body": [
-      "export const DELETE = defineHandler((c) => {",
-      "  $0",
-      "  return c.json({})",
-      "})"
-    ]
+    "body": ["export const DELETE = defineHandler((c) => {", "  $0", "  return c.json({})", "})"],
   },
   "middleware": {
     "scope": "typescript",
@@ -132,8 +101,8 @@
       "export default defineMiddleware(async (c, next) => {",
       "  $0",
       "  await next()",
-      "})"
-    ]
+      "})",
+    ],
   },
   "page": {
     "scope": "typescriptreact",
@@ -150,8 +119,8 @@
       "      $0",
       "    </>",
       "  )",
-      "}"
-    ]
+      "}",
+    ],
   },
   "layout": {
     "scope": "typescriptreact",
@@ -162,8 +131,8 @@
       "",
       "export default function ${TM_FILENAME_BASE/[^a-zA-Z0-9]*([a-zA-Z0-9])([a-zA-Z0-9]*)/${1:/capitalize}${2}/g}Layout({ children }: { children: ReactNode }) {",
       "  return <main>{children}</main>$0",
-      "}"
-    ]
+      "}",
+    ],
   },
   "form": {
     "scope": "typescriptreact",
@@ -178,7 +147,7 @@
       "      <button disabled={processing}>${3:Save}</button>$0",
       "    </>",
       "  )}",
-      "</Form>"
-    ]
-  }
+      "</Form>",
+    ],
+  },
 }

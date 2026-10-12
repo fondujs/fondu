@@ -9,7 +9,9 @@ export default function ErrorPage({ status }: { status: number }) {
     <>
       <Head title={titles[status] ?? 'Error'} />
       <h1>{titles[status] ?? 'Error'}</h1>
-      <p>Status {status}. <Link href={href('/')}>Back to the todos</Link></p>
+      <p className="text-muted">
+        Status {status}. <Link href={href('/')}>Back to the todos</Link>
+      </p>
     </>
   )
 }

@@ -1,9 +1,10 @@
-import { defineHandler } from 'fondu'
 import { eq } from 'drizzle-orm'
+import { defineHandler } from 'fondu'
 import * as z from 'zod/mini'
-import { db } from '../../../db/index.server'
-import { contacts } from '../../../db/schema'
-import { requireApiUser } from '../../../lib/api.server'
+
+import { db } from '#/db/index.server.ts'
+import { contacts } from '#/db/schema/index.ts'
+import { requireApiUser } from '#/lib/api.server.ts'
 
 const params = z.object({ id: z.coerce.number().check(z.int()) })
 

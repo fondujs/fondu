@@ -1,1 +1,3 @@
-export default function Home(_: { plain: string }) { return null }
+export default function Home(_: { plain: string }) {
+  return null
+}

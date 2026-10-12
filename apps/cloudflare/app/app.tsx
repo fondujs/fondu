@@ -1,6 +1,8 @@
 import { createInertiaApp } from '@inertiajs/react'
+
 import AdminLayout from './layouts/admin'
 import AppLayout from './layouts/app'
+
 import './styles/app.css'
 
 // The Inertia app, in the browser and (wrapped by @inertiajs/vite) for the server render. Pages are the files in
@@ -9,5 +11,5 @@ createInertiaApp({
   pages: './pages',
   title: (title) => (title ? `${title} · Fondu` : 'Fondu'),
   layout: (name) => (name.startsWith('admin/') ? AdminLayout : AppLayout),
-  progress: { delay: 250, color: 'var(--accent)' },
+  progress: { delay: 350, color: 'var(--accent)' },
 })

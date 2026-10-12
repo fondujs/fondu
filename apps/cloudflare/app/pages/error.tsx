@@ -14,9 +14,13 @@ export default function ErrorPage({ status }: { status: number }) {
   return (
     <>
       <Head title={title} />
-      <p className="mb-2 font-mono text-[13px] text-accent" data-testid="error-status">{status}</p>
+      <p className="mb-2 font-mono text-[13px] text-accent" data-testid="error-status">
+        {status}
+      </p>
       <h1>{title}</h1>
-      <p className="lede">{text} <Link href={href('/')}>Go to the overview</Link>.</p>
+      <p className="lede">
+        {text} <Link href={href('/')}>Go to the overview</Link>.
+      </p>
     </>
   )
 }

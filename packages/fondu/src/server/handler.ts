@@ -1,18 +1,29 @@
 import type { Context, Handler, MiddlewareHandler } from 'hono'
 import { createFactory } from 'hono/factory'
-import { validator, type Input, type Schemas } from './validate.ts'
+
+import { validator, type Input, type Schemas } from './validate.js'
 
 const factory = createFactory()
 
 type Final<S extends Schemas> = (c: Context, input: Input<S>) => Response | Promise<Response>
+type Handlers = Array<Handler | MiddlewareHandler>
+
+/** overloads, as Hono's `createHandlers` has them: the last handler's parameters are typed reliably */
+interface WithInput<S extends Schemas> {
+  (handler: Final<S>): Handlers
+  (m1: MiddlewareHandler, handler: Final<S>): Handlers
+  (m1: MiddlewareHandler, m2: MiddlewareHandler, handler: Final<S>): Handlers
+  (m1: MiddlewareHandler, m2: MiddlewareHandler, m3: MiddlewareHandler, handler: Final<S>): Handlers
+}
 
 /**
  * Validated input for the handler, after the middleware (a guard runs before the request body is read):
  * `defineHandler.withValidator({ body, query, params })(...middleware, (c, { body, query, params }) => …)`.
  * Any Standard Schema. Invalid input: back to the page with the errors (Inertia), or 422 `{ errors }`.
+ * More than three middleware: combine them with `every()` from `hono/combine`.
  */
-function withValidator<S extends Schemas>(schemas: S) {
-  return (...handlers: [...middleware: MiddlewareHandler[], handler: Final<S>]): Array<Handler | MiddlewareHandler> => {
+function withValidator<S extends Schemas>(schemas: S): WithInput<S> {
+  return (...handlers: Array<MiddlewareHandler | Final<S>>): Handlers => {
     const handler = handlers.pop() as Final<S>
     const [validate, input] = validator(schemas)
     return [...(handlers as MiddlewareHandler[]), validate, (c) => handler(c, input(c))]

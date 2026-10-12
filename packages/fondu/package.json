@@ -2,12 +2,19 @@
   "name": "fondu",
   "version": "0.1.0",
   "description": "Inertia v3 on Hono, with file routes (loader, action, actions) and pages. Node, Bun and Cloudflare Workers.",
+  "homepage": "https://github.com/fondujs/fondu#readme",
+  "bugs": "https://github.com/fondujs/fondu/issues",
   "license": "MIT",
-  "type": "module",
-  "sideEffects": false,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fondujs/fondu.git",
+    "directory": "packages/fondu"
+  },
   "files": [
     "dist"
   ],
+  "type": "module",
+  "sideEffects": false,
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -24,9 +31,9 @@
   },
   "scripts": {
     "build": "rm -rf dist && tsc -p tsconfig.build.json && cp src/virtual.d.ts dist/",
-    "typecheck": "tsc -p tsconfig.json",
     "dev": "tsc -p tsconfig.build.json --watch",
-    "test": "vitest run"
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
     "@hono/vite-build": "1.11.1",
@@ -34,25 +41,25 @@
     "@inertiajs/vite": "3.9.1",
     "@vitejs/plugin-react": "6.1.2"
   },
-  "peerDependencies": {
-    "hono": "^4.13.0",
-    "vite": "^8.3.0",
-    "@inertiajs/react": "^3.9.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0"
-  },
   "devDependencies": {
-    "@types/node": "26.6.4",
-    "typescript": "7.0.2",
-    "vite": "8.3.4",
-    "hono": "4.13.13",
     "@inertiajs/core": "3.9.1",
     "@inertiajs/react": "3.9.1",
+    "@types/node": "26.6.4",
+    "hono": "4.13.13",
+    "typescript": "7.0.2",
+    "vite": "8.3.4",
     "vitest": "5.0.3",
     "zod": "4.6.5"
   },
+  "peerDependencies": {
+    "@inertiajs/react": "^3.9.0",
+    "hono": "^4.13.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "vite": "^8.3.0"
+  },
   "engines": {
-    "node": ">=20.19",
-    "bun": ">=1.3.14"
+    "bun": ">=1.3.14",
+    "node": ">=20.19"
   }
 }

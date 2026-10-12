@@ -1,13 +1,20 @@
-// Type checks (run by `tsc --noEmit`): each @ts-expect-error must be an error, the rest must compile.
-import type { Context } from 'hono'
 import { defineHandler, flash, render, share } from 'fondu'
 import { href } from 'fondu/client'
+// Type checks (run by `tsc --noEmit`): each @ts-expect-error must be an error, the rest must compile.
+import type { Context } from 'hono'
 import * as z from 'zod/mini'
 
 declare const c: Context
 
 // ---- href(): only patterns of app/routes/, and one of a file's actions; params required
-const urls: string[] = [href('/'), href('/contacts'), href('/contacts/:id', { id: 7 }), href('/contacts?delete'), href('/contacts/:id?rename', { id: 7 }), href('/api/contacts/:id', { id: 7 })]
+const urls: string[] = [
+  href('/'),
+  href('/contacts'),
+  href('/contacts/:id', { id: 7 }),
+  href('/contacts?delete'),
+  href('/contacts/:id?rename', { id: 7 }),
+  href('/api/contacts/:id', { id: 7 }),
+]
 // @ts-expect-error no such route
 href('/nope')
 // @ts-expect-error params are required
@@ -45,9 +52,11 @@ const name: string | undefined = c.get('user')?.name
 void name
 
 // ---- withValidator: the handler's input is the schemas' output
-defineHandler.withValidator({ params: z.object({ id: z.coerce.number() }), body: z.object({ name: z.string() }) })((ctx, { params, body }) => {
-  const id: number = params.id
-  // @ts-expect-error not in the schema
-  void body.email
-  return ctx.json({ id, name: body.name, urls })
-})
+defineHandler.withValidator({ params: z.object({ id: z.coerce.number() }), body: z.object({ name: z.string() }) })(
+  (ctx, { params, body }) => {
+    const id: number = params.id
+    // @ts-expect-error not in the schema
+    void body.email
+    return ctx.json({ id, name: body.name, urls })
+  },
+)

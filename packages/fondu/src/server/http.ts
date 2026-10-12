@@ -11,7 +11,9 @@ export function sameOrigin(c: Context, url: string | undefined): URL | null {
   try {
     const parsed = new URL(url, c.req.url)
     return parsed.origin === new URL(c.req.url).origin ? parsed : null
-  } catch { return null }
+  } catch {
+    return null
+  }
 }
 
 /** Back to the page the request came from (303), or `fallback` when there is none on this site. */

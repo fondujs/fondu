@@ -1,1 +1,3 @@
-export default function ErrorPage(_: { status: number }) { return null }
+export default function ErrorPage(_: { status: number }) {
+  return null
+}

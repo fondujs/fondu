@@ -8,10 +8,14 @@ export const loader = defineHandler((c) => {
   return render(c, 'merging', {
     page,
     // appended to what the client holds; an item with the same id replaces the old one (matchOn)
-    messages: merge(() => Array.from({ length: PER_PAGE }, (_, i) => {
-      const id = (page - 1) * PER_PAGE + i + 1
-      return { id, subject: `Message ${id}` }
-    }), { matchOn: 'id' }),
+    messages: merge(
+      () =>
+        Array.from({ length: PER_PAGE }, (_, i) => {
+          const id = (page - 1) * PER_PAGE + i + 1
+          return { id, subject: `Message ${id}` }
+        }),
+      { matchOn: 'id' },
+    ),
     // put in front of what the client holds
     log: prepend(() => [{ id: crypto.randomUUID(), at: new Date().toISOString().slice(11, 23) }]),
     // merged key by key, at any depth
