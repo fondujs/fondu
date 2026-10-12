@@ -1,0 +1,14 @@
+# The actions of the workflows, weekly in one pull request. npm dependencies are updated by hand before a release
+# (`bun outdated`); Dependabot's security updates still cover them.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 5
+    groups:
+      github-actions:
+        patterns:
+          - '*'
