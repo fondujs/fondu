@@ -1,0 +1,13 @@
+// Worker config, used by the Cloudflare Vite plugin (dev / build / preview) and by `wrangler deploy`.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "fondu-example",
+  // The Worker is the app: app/server.ts exports a Hono app (a Worker module).
+  "main": "./app/server.ts",
+  "compatibility_date": "2026-10-01",
+  "observability": { "enabled": true },
+
+  // Once: `bunx wrangler d1 create fondu-example`, put the id below, then `bun run db:migrate` (remote).
+  // dev / preview apply the migrations locally.
+  "d1_databases": [{ "binding": "DB", "database_name": "fondu-example", "database_id": "00000000-0000-0000-0000-000000000000", "migrations_dir": "migrations" }]
+}

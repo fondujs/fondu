@@ -1,0 +1,2 @@
+# Copy to .dev.vars (local dev and preview; never commit it). In production: `wrangler secret put BETTER_AUTH_SECRET`.
+BETTER_AUTH_SECRET=change-me-to-32-random-characters-or-more

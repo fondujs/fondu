@@ -1,0 +1,31 @@
+{
+  "name": "example-node",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build --mode client && vite build",
+    "start": "node dist/index.js",
+    "build:bun": "TARGET=bun bun run build",
+    "start:bun": "bun dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "e2e": "node e2e/run.mjs"
+  },
+  "dependencies": {
+    "@hono/node-server": "2.1.4",
+    "@inertiajs/react": "3.9.1",
+    "fondu": "workspace:*",
+    "hono": "4.13.13",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.4",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "puppeteer-core": "25.13.0",
+    "typescript": "7.0.2",
+    "vite": "8.3.4"
+  }
+}
