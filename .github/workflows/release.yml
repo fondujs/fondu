@@ -1,5 +1,6 @@
-# `bun run release` pushes a tag v*; this publishes it to npm (trusted publishing: no token, with provenance)
-# and writes the GitHub Release from the commits since the last tag.
+# `bun run release` pushes a tag v*; this stages it on npm (trusted publishing: no token, with provenance) and
+# writes the GitHub Release from the commits since the last tag. The version goes live once a maintainer approves it
+# with 2FA: npmjs.com → Staged Packages, or `npm stage approve <stage-id>`.
 name: Release
 
 on:
@@ -25,7 +26,8 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run test
       - run: cp README.md packages/fondu/
-      - run: npm publish
+      - run: npm install -g npm@latest # `npm stage` needs npm 11.15 or later
+      - run: npm stage publish
         working-directory: packages/fondu
       - run: bunx changelogithub
         env:
