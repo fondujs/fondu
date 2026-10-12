@@ -1,6 +1,6 @@
 {
   "name": "create-fondu",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Create a Fondu app: Inertia v3 on Hono, for Node, Bun or Cloudflare Workers.",
   "homepage": "https://github.com/fondujs/fondu#readme",
   "bugs": "https://github.com/fondujs/fondu/issues",

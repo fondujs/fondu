@@ -1,6 +1,6 @@
 {
   "name": "fondu",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Inertia v3 on Hono, with file routes (loader, action, actions) and pages. Node, Bun and Cloudflare Workers.",
   "homepage": "https://github.com/fondujs/fondu#readme",
   "bugs": "https://github.com/fondujs/fondu/issues",
