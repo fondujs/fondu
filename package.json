@@ -13,7 +13,7 @@
     "fmt": "oxfmt",
     "lint": "oxlint",
     "postinstall": "bun run build",
-    "release": "bumpp packages/fondu/package.json -x \"bun install\"",
+    "release": "bumpp packages/fondu/package.json -x \"bun install\" --all",
     "test": "bun run --filter fondu test",
     "typecheck": "bun run build && bun run --filter '*' typecheck"
   },
