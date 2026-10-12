@@ -1,0 +1,13 @@
+{
+  "scripts": {
+    "build": "vite build",
+    "cf-typegen": "wrangler types --env-interface CloudflareBindings",
+    "deploy": "vite build && wrangler deploy",
+    "dev": "vite",
+    "preview": "vite build && vite preview"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "1.63.1",
+    "wrangler": "4.149.0"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "fondu-app",
+  // The Worker is the app: app/server.ts exports a Hono app (a Worker module).
+  "main": "./app/server.ts",
+  "compatibility_date": "2026-10-01",
+  "observability": { "enabled": true },
+}

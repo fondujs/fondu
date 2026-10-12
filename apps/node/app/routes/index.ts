@@ -4,7 +4,7 @@ import * as z from 'zod/mini'
 import { addTodo, listTodos } from '#/lib/todos.server.ts'
 
 // GET /
-export const loader = defineHandler((c) => render(c, 'home', { todos: listTodos() }))
+export const loader = defineHandler((c) => render(c, 'index', { todos: listTodos() }))
 
 // POST / — invalid input: back to the page, the errors in its `errors` prop
 export const action = defineHandler.withValidator({

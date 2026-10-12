@@ -16,3 +16,4 @@ jobs:
       - run: bun run lint
       - run: bun run typecheck
       - run: bun run test
+      - run: bun run --filter create-fondu test # an app per target, built and served

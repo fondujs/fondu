@@ -1,0 +1,30 @@
+{
+  "name": "create-fondu",
+  "version": "0.1.1",
+  "description": "Create a Fondu app: Inertia v3 on Hono, for Node, Bun or Cloudflare Workers.",
+  "homepage": "https://github.com/fondujs/fondu#readme",
+  "bugs": "https://github.com/fondujs/fondu/issues",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fondujs/fondu.git",
+    "directory": "packages/create-fondu"
+  },
+  "bin": {
+    "create-fondu": "index.js"
+  },
+  "files": [
+    "index.js",
+    "template"
+  ],
+  "type": "module",
+  "scripts": {
+    "test": "node test/run.mjs"
+  },
+  "dependencies": {
+    "@clack/prompts": "1.8.1"
+  },
+  "engines": {
+    "node": ">=20.19"
+  }
+}

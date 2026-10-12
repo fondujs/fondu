@@ -4,7 +4,7 @@ declare module 'fondu' {
     pages: {
       "about": typeof import("./pages/about")
       "error": typeof import("./pages/error")
-      "home": typeof import("./pages/home")
+      "index": typeof import("./pages/index")
       "todos/show": typeof import("./pages/todos/show")
     }
     routes: {

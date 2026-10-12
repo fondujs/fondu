@@ -485,8 +485,10 @@ const histBefore = await page.evaluate(() => history.length)
 await setValue('[data-testid=rename] input', 'x')
 await page.click('[data-testid=rename] button')
 await page.waitForSelector('[data-testid=err-rename]')
-await until(() => lastBody()?.body.props.errors?.rename)
-res = lastBody()
+// the response with the bag (a later one, e.g. a prefetch, may follow it)
+const withBag = () => pageJson.filter((p) => p.body?.props?.errors?.rename).at(-1)
+await until(withBag)
+res = withBag()
 ok(
   'error bags: the rename errors arrive in its bag and show only there',
   fetches.filter((f) => f.method === 'POST').at(-1)?.headers['x-inertia-error-bag'] === 'rename' &&

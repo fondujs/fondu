@@ -22,6 +22,9 @@ cd apps/cloudflare && bun run dev
 CHROME_PATH=/path/to/chrome node e2e/run.mjs http://localhost:5173
 ```
 
+`bun run --filter create-fondu test` creates an app for each target with `packages/fondu` as built here, then builds and
+serves it.
+
 A change to `packages/fondu` should pass both examples: `apps/node` (`bun run dev`, and after `bun run build`,
 `bun run start`) and `apps/cloudflare` (`bun run dev`, `bun run preview`).
 

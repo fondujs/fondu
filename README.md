@@ -8,6 +8,7 @@ Fondu is glue, not a new framework: it joins Hono, Inertia and Vite, and writes 
 
 ```
 packages/fondu     the package (≈1,100 lines)
+packages/create-fondu   `bun create fondu`: a new app for Node, Bun or Cloudflare
 apps/node          a small example: Link, loader, action, HTTP routes — Node and Bun
 apps/cloudflare    every Inertia v3 feature, one page each — Workers, D1, Better Auth
 ```
@@ -40,6 +41,10 @@ lints what is staged). A release: `bun run release` picks the version, tags it a
 `apps/cloudflare`: `cp .dev.vars.example .dev.vars`, then `bun run dev` (in workerd), `bun run preview`, `bun run deploy`.
 
 ## An app
+
+```bash
+bun create fondu my-app         # or: npm create fondu@latest my-app — asks for the target, then installs
+```
 
 ```
 package.json         fondu hono @inertiajs/react react react-dom   (Node: also @hono/node-server)
