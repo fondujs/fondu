@@ -1,0 +1,45 @@
+name: Bug report
+description: Something in Fondu doesn't work as documented.
+labels: [bug]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Fondu version
+      placeholder: 0.1.1
+    validations:
+      required: true
+  - type: dropdown
+    id: target
+    attributes:
+      label: Target
+      options: [Node, Bun, Cloudflare Workers]
+      multiple: true
+    validations:
+      required: true
+  - type: dropdown
+    id: mode
+    attributes:
+      label: When
+      options: [Development (vite), Production build, Both]
+    validations:
+      required: true
+  - type: input
+    id: runtime
+    attributes:
+      label: Runtime and browser versions
+      placeholder: Node 24.10, Bun 1.4.2, wrangler 4.149, Chrome 141…
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: A repository, or the smallest route and page that show it, and the steps.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected and actual
+      description: What you expected, what happened (errors, the response, the dev error report).
+    validations:
+      required: true

@@ -1,0 +1,16 @@
+name: Feature request
+description: Something Fondu could do.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What you are trying to do, and why it is hard today.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: A proposal
+      description: How it could work. Can Hono, Inertia or Vite already do it, with Fondu only passing it on?
