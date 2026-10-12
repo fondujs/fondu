@@ -2,6 +2,6 @@
   "scripts": {
     "build": "vite build --mode client && vite build",
     "dev": "vite",
-    "start": "bun dist/index.js"
+    "start": "NODE_ENV=production bun dist/index.js"
   }
 }

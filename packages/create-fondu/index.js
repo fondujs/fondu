@@ -15,7 +15,7 @@ const TARGETS = {
 const SCRIPTS = {
   dev: 'the dev server (Vite), with server rendering',
   build: 'the production build',
-  start: 'the production server (after build)',
+  start: 'the production server (after build), on `PORT` (default 3000)',
   preview: 'the production build, run locally in workerd',
   deploy: 'build and deploy with wrangler',
   'cf-typegen': 'types for the bindings in wrangler.jsonc',

@@ -74,11 +74,19 @@ async function buildPlugin(options: FonduOptions): Promise<Plugin> {
     entry: SERVER,
     external,
     outputDir: './dist',
-    // Node: graceful shutdown on SIGTERM / SIGINT; the port is read when the server starts (`PORT`, else the
-    // option): the adapter writes the value into the entry as code. Bun reads `PORT` itself.
+    // Node: @hono/node-server's serve() on `PORT` (else the option), saying where it listens, with a graceful
+    // shutdown on SIGTERM / SIGINT (10 s). Bun serves the default export itself and reads `PORT`.
     ...(options.target === 'node' && {
-      shutdownTimeoutMs: 10_000,
-      port: { toString: () => `(Number(process.env.PORT) || ${options.port ?? 3000})` },
+      entryContentAfterHooks: [
+        (app: string) =>
+          [
+            `import { serve } from '@hono/node-server'`,
+            `const server = serve({ fetch: ${app}.fetch, port: Number(process.env.PORT) || ${options.port ?? 3000} }, (info) => console.log(\`Listening on http://localhost:\${info.port}\`))`,
+            `const shutdown = () => { server.close(() => process.exit(0)); setTimeout(() => process.exit(1), 10_000).unref() }`,
+            `process.on('SIGINT', shutdown)`,
+            `process.on('SIGTERM', shutdown)`,
+          ].join('\n'),
+      ],
     }),
     // the client build's files (dist/client), found next to the server bundle wherever it runs from; hashed files
     // never change
@@ -164,6 +172,24 @@ function core(options: FonduOptions): Plugin {
             ssr: { noExternal: ['fondu'] },
             build: { copyPublicDir: false, rollupOptions: { output: { chunkFileNames: 'server/[name]-[hash].js' } } },
           }
+    },
+    // dev: the dependencies are found before the first request (Vite scans index.html by default; an app has none),
+    // so the first page is not reloaded once they are optimized
+    configEnvironment(name, env) {
+      const pages = ['app/pages/**/*.tsx', 'app/pages/**/*.jsx']
+      if (name === 'client') return { optimizeDeps: { entries: [ENTRY, ...pages] } }
+      if (options.target !== 'cloudflare') return
+      // the Worker: fondu is not pre-bundled (its routes import it back: a bundle would hand them a half-loaded
+      // module); react-dom/server is imported by @inertiajs/vite's generated render, which the scan does not see.
+      // The build is minified, as Workers start faster with less code to parse
+      return {
+        optimizeDeps: {
+          exclude: ['fondu'],
+          include: options.ssr === false ? [] : ['react-dom/server'],
+          entries: [SERVER.slice(2), 'app/routes/**/*.ts', ENTRY, ...pages],
+        },
+        ...(env.build?.minify === undefined && { build: { minify: true } }),
+      }
     },
     configResolved(c) {
       config = c

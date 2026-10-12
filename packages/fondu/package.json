@@ -36,10 +36,10 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@hono/vite-build": "1.11.1",
-    "@hono/vite-dev-server": "0.26.1",
-    "@inertiajs/vite": "3.9.1",
-    "@vitejs/plugin-react": "6.1.2"
+    "@hono/vite-build": "^1.11.1",
+    "@hono/vite-dev-server": "^0.26.1",
+    "@inertiajs/vite": "^3.9.1",
+    "@vitejs/plugin-react": "^6.1.2"
   },
   "devDependencies": {
     "@inertiajs/core": "3.9.1",

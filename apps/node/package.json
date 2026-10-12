@@ -10,8 +10,8 @@
     "build:bun": "TARGET=bun bun run build",
     "dev": "vite",
     "e2e": "node e2e/run.mjs",
-    "start": "node dist/index.js",
-    "start:bun": "bun dist/index.js",
+    "start": "NODE_ENV=production node dist/index.js",
+    "start:bun": "NODE_ENV=production bun dist/index.js",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
