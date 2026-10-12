@@ -6,12 +6,19 @@ runs on **Node, Bun and Cloudflare Workers**.
 
 Fondu is glue, not a new framework: it joins Hono, Inertia and Vite, and writes as little of its own as it can.
 
+## Quick start
+
+```bash
+bun create fondu my-app      # or: npm create fondu@latest my-app · pnpm create fondu my-app
+cd my-app
+bun dev
 ```
-packages/fondu     the package (≈1,100 lines)
-packages/create-fondu   `bun create fondu`: a new app for Node, Bun or Cloudflare
-apps/node          a small example: Link, loader, action, HTTP routes — Node and Bun
-apps/cloudflare    every Inertia v3 feature, one page each — Workers, D1, Better Auth
-```
+
+It asks where the app runs (Node, Bun or Cloudflare Workers; or `--target node|bun|cloudflare`) and writes a small
+app: a route, its page, the error page, Tailwind CSS, editor snippets and an `AGENTS.md` for coding agents.
+
+Two examples in this repository show more: [apps/node](apps/node) (Node and Bun) and [apps/cloudflare](apps/cloudflare)
+(every Inertia v3 feature, one page each, with D1 and Better Auth).
 
 ## Who does what
 
@@ -23,28 +30,7 @@ apps/cloudflare    every Inertia v3 feature, one page each — Workers, D1, Bett
 | Page resolution, the server render's entry                                                                                          | `@inertiajs/vite` (rendered in the same process)                                               |
 | The Inertia v3 server protocol, `routes/`, generated types, the document, error pages, server-only guard                            | Fondu                                                                                          |
 
-## This repository
-
-```bash
-bun install            # also builds packages/fondu (the examples use the built package, like a real app)
-bun run test           # the protocol, on a small app with app.request()
-bun run typecheck      # the package and both examples (with apps/cloudflare/e2e/types.ts)
-bun run check          # format (oxfmt), lint (oxlint), typecheck
-bun run dev            # rebuild packages/fondu on change
-```
-
-Commits follow [Conventional Commits](https://www.conventionalcommits.org) (lefthook runs commitlint, and formats and
-lints what is staged). A release: `bun run release` picks the version, tags it and pushes; CI publishes the tag to npm
-(trusted publishing, with provenance) and writes the GitHub Release from the commits.
-
-`apps/node`: `bun run dev`; `bun run build && bun run start` (Node); `bun run build:bun && bun run start:bun` (Bun).
-`apps/cloudflare`: `cp .dev.vars.example .dev.vars`, then `bun run dev` (in workerd), `bun run preview`, `bun run deploy`.
-
 ## An app
-
-```bash
-bun create fondu my-app         # or: npm create fondu@latest my-app — asks for the target, then installs
-```
 
 ```
 package.json         fondu hono @inertiajs/react react react-dom   (Node: also @hono/node-server)
@@ -165,10 +151,40 @@ during a visit). `render()` of a page that doesn't exist says which file to crea
 ### Editor snippets
 
 `.vscode/fondu.code-snippets`: `/route`, `/api`, `/loader`, `/action`, `/actions`, `/validated`, `/get` … `/delete`,
-`/middleware` in routes; `/page`, `/layout`, `/form` in pages. Copy it into your app's `.vscode/` and edit it freely.
+`/middleware` in routes; `/page`, `/layout`, `/form` in pages. A new app has it; edit it freely.
 
 ## Deploying
 
-- **Node**: `vite build --mode client && vite build`, then `node dist/index.js` (dependencies stay in `node_modules`). `PORT` sets the port; SIGTERM / SIGINT wait for running requests (10 s).
-- **Bun**: `fondu({ target: 'bun' })`, `bun dist/index.js`.
-- **Cloudflare Workers**: `wrangler.jsonc` `main` is `./app/server.ts`; one `vite build`; `wrangler deploy`. `/assets/*` get long-lived caching from a generated `_headers` (unless `public/_headers` exists).
+- **Node**: `vite build --mode client && vite build`, then `NODE_ENV=production node dist/index.js` (dependencies stay in `node_modules`; `NODE_ENV` makes React use its production build). `PORT` sets the port (default 3000); SIGTERM / SIGINT wait for running requests (10 s).
+- **Bun**: `fondu({ target: 'bun' })`, `NODE_ENV=production bun dist/index.js`.
+- **Cloudflare Workers**: `wrangler.jsonc` `main` is `./app/server.ts`; one `vite build` (the Worker minified: it starts faster; `build.minify: false` in its Vite environment keeps it readable); `wrangler deploy`. `/assets/*` get long-lived caching from a generated `_headers` (unless `public/_headers` exists).
+
+## Contributing
+
+```
+packages/fondu          the package (≈1,100 lines)
+packages/create-fondu   `bun create fondu`
+apps/node               a small example: Link, loader, action, HTTP routes — Node and Bun
+apps/cloudflare         every Inertia v3 feature, one page each — Workers, D1, Better Auth, Base UI
+```
+
+```bash
+bun install            # also builds packages/fondu (the examples use the built package, like a real app)
+bun run test           # the protocol, on a small app with app.request()
+bun run typecheck      # the package and both examples (with apps/cloudflare/e2e/types.ts)
+bun run check          # format (oxfmt), lint (oxlint), typecheck
+bun run dev            # rebuild packages/fondu on change
+```
+
+Commits follow [Conventional Commits](https://www.conventionalcommits.org) (lefthook runs commitlint, and formats and
+lints what is staged). A release: `bun run release` picks the version, tags it and pushes; CI publishes the tag to npm
+(trusted publishing, with provenance) and writes the GitHub Release from the commits.
+
+`apps/node`: `bun run dev`; `bun run build && bun run start` (Node); `bun run build:bun && bun run start:bun` (Bun).
+`apps/cloudflare`: `cp .dev.vars.example .dev.vars`, then `bun run dev` (in workerd), `bun run preview`, `bun run deploy`.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the details, and [SECURITY.md](SECURITY.md) to report a vulnerability.
+
+## License
+
+Distributed under the MIT License. See [LICENSE](LICENSE) for more information.
