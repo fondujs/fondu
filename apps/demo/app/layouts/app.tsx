@@ -80,7 +80,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                       prefetch
                       onClick={() => setOpen(false)}
                       aria-current={active(to) ? 'page' : undefined}
-                      className="relative block rounded-md px-2 py-1.5 text-sm text-foreground/72 transition-colors hover:bg-accent hover:text-foreground aria-[current=page]:bg-accent aria-[current=page]:font-medium aria-[current=page]:text-foreground aria-[current=page]:before:absolute aria-[current=page]:before:inset-y-1.5 aria-[current=page]:before:-left-3 aria-[current=page]:before:w-0.5 aria-[current=page]:before:rounded-full aria-[current=page]:before:bg-brand"
+                      className="relative block rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-accent aria-[current=page]:bg-accent aria-[current=page]:font-medium aria-[current=page]:before:absolute aria-[current=page]:before:inset-y-1.5 aria-[current=page]:before:-left-3 aria-[current=page]:before:w-0.5 aria-[current=page]:before:rounded-full aria-[current=page]:before:bg-brand"
                     >
                       {label}
                     </Link>
