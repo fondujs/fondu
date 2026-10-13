@@ -1,7 +1,7 @@
 # Notes for coding agents
 
-This is a Fondu app: Inertia v3 (React) on Hono, built with Vite. There is no client-side router and no API layer
-for pages: a route's loader renders a page with props, and Inertia does the rest.
+This is a Fondu app: React pages with Inertia (its v3 API), a Hono server, built with Vite. There is no client-side
+router and no API layer for pages: a route's loader renders a page with props, and Inertia does the rest.
 
 - `app/routes/`: server code only. The file path is the URL: `index.ts` is `/`, `users/[id].ts` is `/users/:id`,
   `api/[...rest].ts` a catch-all, `(group)/` adds no segment. A file exports `loader` (GET), `action` (POST),

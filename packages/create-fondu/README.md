@@ -1,7 +1,7 @@
 # create-fondu
 
-Create a [Fondu](https://github.com/fondujs/fondu) app: Inertia v3 (React) on Hono, with Tailwind CSS, for Node, Bun
-or Cloudflare Workers.
+Create a [Fondu](https://github.com/fondujs/fondu) app: full-stack React on Hono, Vite and Inertia, with Tailwind CSS,
+for Node, Bun or Cloudflare Workers.
 
 ```bash
 bun create fondu my-app
