@@ -485,16 +485,13 @@ const histBefore = await page.evaluate(() => history.length)
 await setValue('[data-testid=rename] input', 'x')
 await page.click('[data-testid=rename] button')
 await page.waitForSelector('[data-testid=err-rename]')
-// the response with the bag (a later one, e.g. a prefetch, may follow it)
-const withBag = () => pageJson.filter((p) => p.body?.props?.errors?.rename).at(-1)
-await until(withBag)
-res = withBag()
+// the form shows its bag's errors only (useForm with errorBag: the response's errors.rename)
 ok(
   'error bags: the rename errors arrive in its bag and show only there',
   fetches.filter((f) => f.method === 'POST').at(-1)?.headers['x-inertia-error-bag'] === 'rename' &&
     (await page.$('[data-testid=err-email]')) === null &&
-    res?.body.props.errors.rename?.name,
-  JSON.stringify(res?.body.props.errors),
+    Boolean(await testid('err-rename')),
+  await testid('err-rename'),
 )
 await setValue('[data-testid=email] input', 'nope')
 await page.click('[data-testid=email] button')
@@ -917,7 +914,10 @@ ok(
   await page.goto(BASE + '/login', { waitUntil: 'networkidle0' })
   await page.type('input[name=email]', 'admin@fondu.dev')
   await page.type('input[name=password]', 'fondu-admin')
+  // from an address of its own: the sign-ins above may have used this one's tries (Better Auth: 3 in 10 s)
+  await page.setExtraHTTPHeaders({ 'CF-Connecting-IP': '203.0.113.20' })
   await Promise.all([page.waitForFunction(() => location.pathname === '/account'), page.click('main form button')])
+  await page.setExtraHTTPHeaders({})
   ok('Better Auth: the admin account, its role', (await testid('account-role')) === 'admin')
   const doc = await (await fetchAs(BASE + '/admin/dashboard')).text()
   ok(
@@ -950,33 +950,23 @@ ok(
   await page.waitForSelector('aside')
 }
 
-// ---- sign up
+// ---- sign up: turned off in the demo (Better Auth's disableSignUp); its answer shows under the field
 {
   const sp = await (await browser.createBrowserContext()).newPage() // signed out
   await sp.goto(BASE + '/signup', { waitUntil: 'networkidle0' })
-  const email = `new-${Date.now()}@x.org`
   await sp.type('[data-testid=signup] input[name=name]', 'New Person')
-  await sp.type('[data-testid=signup] input[name=email]', email)
+  await sp.type('[data-testid=signup] input[name=email]', `new-${Date.now()}@x.org`)
   await sp.type('[data-testid=signup] input[name=password]', 'long-enough-1')
-  await Promise.all([
-    sp.waitForFunction(() => location.pathname === '/account'),
-    sp.click('[data-testid=signup] button'),
-  ])
+  await sp.click('[data-testid=signup] button')
+  await sp.waitForSelector('[data-testid=err-email]')
   ok(
-    'sign up: an account, signed in, flash',
-    (await text(sp)).includes('Welcome, New Person') && (await testid('account-email', sp)) === email,
+    "sign up is turned off: Better Auth's answer under the field, still signed out",
+    (await testid('err-email', sp)) === 'Email and password sign up is not enabled' &&
+      (await path(sp)) === '/signup' &&
+      (await sp.$('[data-testid=sign-in]')) !== null,
+    await testid('err-email', sp),
   )
   await sp.close()
-  const again = await fetch(BASE + '/signup', {
-    method: 'POST',
-    redirect: 'manual',
-    headers: { 'Content-Type': 'application/json', Origin: ORIGIN, 'X-Inertia': 'true', Referer: BASE + '/signup' },
-    body: JSON.stringify({ name: 'Copy', email, password: 'long-enough-1' }),
-  })
-  ok(
-    'sign up with an email that has an account: back with the error',
-    again.status === 303 && decodeURIComponent(again.headers.get('set-cookie') ?? '').includes('"email"'),
-  )
 }
 
 // ---- small screens: the menu folds into a button
@@ -1316,6 +1306,19 @@ ok(
 
 ok('no console errors or warnings (incl. hydration)', problems.length === 0, problems.slice(0, 3).join(' | '))
 if (problems.length) console.log(problems.join('\n'))
+// ---- the demo's reset (the cron of wrangler.jsonc), run by hand: the seed again, the changes above gone
+{
+  const reset = await fetch(BASE + '/cdn-cgi/handler/scheduled')
+  const names = (await (await fetch(BASE + '/contacts', { headers: inertia() })).json()).props.contacts.map(
+    (c) => c.name,
+  )
+  ok(
+    'the scheduled reset: the contacts are the seed again',
+    reset.ok && JSON.stringify(names.sort()) === '["Ada Lovelace","Alan Turing","Grace Hopper"]',
+    JSON.stringify(names),
+  )
+}
+
 console.log(`\n${results.filter(Boolean).length}/${results.length} passed`)
 await browser.close()
 process.exitCode = results.every(Boolean) ? 0 : 1

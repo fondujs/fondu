@@ -15,9 +15,10 @@ import * as schema from '#/db/schema/index.ts'
 export const auth = betterAuth({
   secret: env.BETTER_AUTH_SECRET,
   // the hosts this app answers on (add your domain): Better Auth builds its URLs from the request's
-  baseURL: { allowedHosts: ['localhost:*', '*.workers.dev'] },
+  baseURL: { allowedHosts: ['localhost:*', 'demo.fondu.dev'] },
   database: drizzleAdapter(db, { provider: 'sqlite', schema, usePlural: true }),
-  emailAndPassword: { enabled: true },
+  // the demo signs in with its two seeded accounts: sign-up is refused (the page shows Better Auth's answer)
+  emailAndPassword: { enabled: true, disableSignUp: true },
   // the signed-in user from a signed cookie for 5 minutes: most requests read no session from D1
   session: { cookieCache: { enabled: true, maxAge: 5 * 60 } },
   // on: Better Auth turns it on by NODE_ENV, which a Worker doesn't have; in D1, shared by every isolate

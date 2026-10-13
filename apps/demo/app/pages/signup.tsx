@@ -11,6 +11,9 @@ export default function Signup() {
       <p className="lede">
         Accounts, sessions and passwords are Better Auth's; this page posts to an action that calls it.
       </p>
+      <p className="note mb-4" data-testid="signup-off">
+        Sign-up is turned off in this demo: sign in with one of its accounts instead.
+      </p>
       <Form
         action={href('/signup')}
         method="post"

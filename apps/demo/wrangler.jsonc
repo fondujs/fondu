@@ -2,19 +2,20 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "fondu-demo",
-  // The Worker is the app: app/server.ts exports a Hono app (a Worker module).
+  // The Worker is the app: app/server.ts exports a Hono app (a Worker module) and the demo's data reset.
   "main": "./app/server.ts",
   "compatibility_date": "2026-10-01",
   "observability": { "enabled": true },
 
-  // Once: `bunx wrangler d1 create fondu-demo`, put the id below, then `bun run db:migrate` (remote).
+  // demo.fondu.dev only (the fondu.dev zone is on the same account): no *.workers.dev or preview URLs
+  "routes": [{ "pattern": "demo.fondu.dev", "custom_domain": true }],
+  "workers_dev": false,
+  "preview_urls": false,
+
+  // Every 6 hours: the demo data back to the seed (app/server.ts `scheduled`)
+  "triggers": { "crons": ["0 */6 * * *"] },
+
+  // The first `wrangler deploy` creates the database and writes its id here (commit it); then `bun run db:migrate`.
   // dev / preview apply the migrations locally.
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "fondu-demo",
-      "database_id": "00000000-0000-0000-0000-000000000000",
-      "migrations_dir": "migrations",
-    },
-  ],
+  "d1_databases": [{ "binding": "DB", "database_name": "fondu-demo", "migrations_dir": "migrations" }],
 }
