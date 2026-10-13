@@ -1,10 +1,15 @@
 # Fondu
 
-**Inertia v3 on Hono.** The browser runs `@inertiajs/react` as it is; the server is Hono with Fondu's Inertia v3
-protocol; `app/routes/` holds the server side (loader, action, actions), `app/pages/` the React pages. The same app
-runs on **Node, Bun and Cloudflare Workers**.
+**A small meta-framework for full-stack React apps.** It stands on the shoulders of giants: built on Hono, Vite and
+Inertia.
 
-Fondu is glue, not a new framework: it joins Hono, Inertia and Vite, and writes as little of its own as it can.
+Routes are Hono handlers in `app/routes/`; pages are React components in `app/pages/`. A route renders a page with its
+props, and Inertia does the rest in the browser: visits without full reloads, forms with validation, deferred and
+merged props, all without an API to write or a client-side router to keep in sync. The same app runs on **Node, Bun and
+Cloudflare Workers**.
+
+Fondu writes as little of its own as it can: the server side of Inertia's protocol, file routes, typed pages and
+URLs, the document and error pages. Everything else is Hono's, Vite's and Inertia's.
 
 ## Quick start
 
