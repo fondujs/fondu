@@ -145,6 +145,32 @@ Document loads are rendered on the server in the same process, then hydrated. Of
 `fondu({ ssr: false })`. Off for some routes: `withoutSsr()` (in a `_middleware.ts` for a directory, or in one
 handler). A browser-only part of a page: Inertia's `<WhenMounted>`.
 
+### Static pages (Cloudflare)
+
+`fondu({ target: 'cloudflare', prerender: true })` writes chosen pages as static files at build time. Workers Static
+Assets serve them without running the Worker, and Inertia's visits keep working: each page is written as a document
+(`docs/intro.html`) and as its page object (`_fondu/pages/docs/intro.json`), which visits read instead.
+
+Choose the pages with `export const prerender` in a route, or in a `_middleware.ts` for its directory (the nearest
+setting wins):
+
+```ts
+// routes/(marketing)/_middleware.ts: every page below
+export const prerender = true
+
+// routes/blog/[slug].ts: a dynamic route lists its pages' params
+export const prerender = () => posts.map((p) => ({ slug: p.slug }))
+
+// routes/(marketing)/contact.ts: not this one
+export const prerender = false
+```
+
+A static page is the same for everyone: rendered for an anonymous visitor (shared props included), without cookies or
+a query string. The Worker answers every other page, and in development all of them. The build stops, naming the
+route, when a page cannot be static: it answers other than 200, takes POSTs at its URL (Cloudflare answers those 405
+for a static file), or uses deferred props or infinite scroll. The documents' security headers go to `_headers`, the
+CSP without its nonce.
+
 ### Errors
 
 Unknown URLs and thrown errors: API clients get plain text; pages get `pages/error.tsx` with `{ status }`, inside the

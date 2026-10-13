@@ -4,15 +4,19 @@ import { csrf } from 'hono/csrf'
 import { HTTPException } from 'hono/http-exception'
 import { NONCE, secureHeaders } from 'hono/secure-headers'
 import { appendTrailingSlash, trimTrailingSlash } from 'hono/trailing-slash'
+import { prerender, version } from 'virtual:fondu/assets'
 
 import { isRouteFile, middlewareFor, routePattern } from '../paths.js'
 import { settings, type DocumentTemplate } from './document.js'
 import { errorResponse } from './errors.js'
+import { prerenderRoutes, type Prerender, type PrerenderRoute } from './prerender.js'
 import { protocol } from './protocol.js'
 import { ValidationError, validationErrorResponse } from './validate.js'
 
 type Handlers = Handler | MiddlewareHandler | ReadonlyArray<Handler | MiddlewareHandler>
 interface RouteModule {
+  /** `fondu({ prerender: true })`: written as static files at build time (also in a `_middleware.ts`) */
+  prerender?: Prerender
   loader?: Handlers
   action?: Handlers
   actions?: Record<string, Handlers>
@@ -106,6 +110,8 @@ export function createApp(options: CreateAppOptions = {}): Hono {
     )
   }
   if (options.csrf !== false) app.use(csrf(options.csrf))
+  const prerendered: PrerenderRoute[] = []
+  if (prerender) prerenderRoutes(app, () => prerendered, version)
   app.use(append ? appendTrailingSlash() : trimTrailingSlash(), ...protocol)
   app.notFound((c) => errorResponse(c, 404))
   app.onError((error, c) => {
@@ -118,7 +124,9 @@ export function createApp(options: CreateAppOptions = {}): Hono {
     { eager: true },
   )
   const files = Object.keys(modules).map((k) => k.slice(ROOT.length))
-  if (modules[ROOT + '_middleware.ts']) app.use(...chain(modules[ROOT + '_middleware.ts']!.default ?? []))
+  // a _middleware.ts may only set what applies to its directory (`prerender`), without a default export
+  const rootMiddleware = modules[ROOT + '_middleware.ts']?.default
+  if (rootMiddleware) app.use(...chain(rootMiddleware))
   const middlewareFiles = files.filter((f) => f.endsWith('/_middleware.ts'))
   const routes = files
     .filter(isRouteFile)
@@ -128,6 +136,18 @@ export function createApp(options: CreateAppOptions = {}): Hono {
 
   for (const { file, pattern, mod } of routes) {
     const mws = middlewareFor(file, middlewareFiles).flatMap((f) => chain(modules[ROOT + f]!.default ?? []))
+    prerendered.push({
+      file,
+      pattern,
+      settings: [file, ...middlewareFor(file, [...middlewareFiles, '_middleware.ts']).reverse()].map(
+        (f) => modules[ROOT + f]?.prerender,
+      ),
+      get: Boolean(mod.loader ?? mod.GET),
+      others: [
+        ...(mod.action || mod.actions || mod.POST ? ['POST'] : []),
+        ...METHODS.filter((m) => m !== 'GET' && m !== 'POST' && mod[m]),
+      ],
+    })
     const conflict = (a: keyof RouteModule, b: keyof RouteModule) => {
       if (mod[a] && mod[b])
         throw new Error(`fondu: routes/${file} exports both \`${a}\` and \`${b}\`, which handle the same requests`)

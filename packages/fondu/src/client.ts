@@ -1,4 +1,6 @@
-import { fillPattern } from './paths.js'
+import { http } from '@inertiajs/react'
+
+import { fillPattern, pageDataPath } from './paths.js'
 import type { Routes } from './types.js'
 
 /**
@@ -23,4 +25,25 @@ type Args<P extends string> = [ParamNames<P>] extends [never] ? [] : [params: { 
 
 export function href<P extends Href>(path: P, ...[params]: Args<P>): string {
   return fillPattern(path, params)
+}
+
+/**
+ * `fondu({ prerender: true })` adds this to the client entry: visits ask for the page object at
+ * `/_fondu/pages/<path>.json`, a static file for a prerendered page, the server's answer for any other. A page
+ * object of another build reloads the page as a document, as the server's 409 would.
+ */
+export function prerendered() {
+  const loaded = document.querySelector('script[data-page]')?.textContent
+  const version = loaded ? (JSON.parse(loaded) as { version?: string | null }).version : null
+  http.onRequest((config) => {
+    const url = new URL(config.url, location.href)
+    if (config.method !== 'get' || !config.headers?.['X-Inertia'] || url.origin !== location.origin) return config
+    return { ...config, url: pageDataPath(url.pathname) + url.search }
+  })
+  http.onResponse((response) => {
+    if (!version || response.status !== 200 || !response.headers['x-inertia']) return response
+    const page = JSON.parse(response.data) as { url: string; version?: string | null }
+    if (!page.version || page.version === version) return response
+    return { status: 409, data: '', headers: { 'x-inertia-location': page.url, 'x-inertia-version': page.version } }
+  })
 }
