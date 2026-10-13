@@ -1,6 +1,6 @@
 # Contributing
 
-Fondu is glue between Hono, Inertia and Vite, and tries to write as little of its own as it can: a change that lets
+Fondu is built on Hono, Inertia and Vite, and tries to write as little of its own as it can: a change that lets
 the platform (Hono, Inertia, Vite, the runtime) do the work is preferred to one that adds code. For anything larger
 than a fix, open an issue first to agree on the approach.
 

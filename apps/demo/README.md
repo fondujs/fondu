@@ -1,6 +1,6 @@
 # Fondu demo
 
-Every Inertia v3 feature, one page each, on Cloudflare Workers with D1 and Better Auth: https://demo.fondu.dev
+Every Inertia feature, one page each, on Cloudflare Workers with D1 and Better Auth: https://demo.fondu.dev
 
 ## Run it
 

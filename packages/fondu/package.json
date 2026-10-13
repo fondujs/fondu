@@ -1,7 +1,7 @@
 {
   "name": "fondu",
   "version": "0.1.3",
-  "description": "Inertia v3 on Hono, with file routes (loader, action, actions) and pages. Node, Bun and Cloudflare Workers.",
+  "description": "A small meta-framework for full-stack React apps, built on Hono, Vite and Inertia. Node, Bun and Cloudflare Workers.",
   "homepage": "https://github.com/fondujs/fondu#readme",
   "bugs": "https://github.com/fondujs/fondu/issues",
   "license": "MIT",

@@ -22,7 +22,7 @@ bun dev
 It asks where the app runs (Node, Bun or Cloudflare Workers; or `--target node|bun|cloudflare`) and writes a small
 app: a route, its page, the error page, Tailwind CSS, editor snippets and an `AGENTS.md` for coding agents.
 
-[apps/demo](apps/demo) shows every Inertia v3 feature, one page each, on Cloudflare Workers with D1 and Better Auth.
+[apps/demo](apps/demo) shows every Inertia feature, one page each, on Cloudflare Workers with D1 and Better Auth.
 
 ## Who does what
 
@@ -32,7 +32,7 @@ app: a route, its page, the error page, Tailwind CSS, editor snippets and an `AG
 | HTTP, middleware, CSRF, security headers, trailing slashes                                                                          | Hono and its middleware                                                                        |
 | Dev server, production build                                                                                                        | Node / Bun: `@hono/vite-dev-server`, `@hono/vite-build`; Cloudflare: `@cloudflare/vite-plugin` |
 | Page resolution, the server render's entry                                                                                          | `@inertiajs/vite` (rendered in the same process)                                               |
-| The Inertia v3 server protocol, `routes/`, generated types, the document, error pages, server-only guard                            | Fondu                                                                                          |
+| Inertia's server protocol, `routes/`, generated types, the document, error pages, server-only guard                                 | Fondu                                                                                          |
 
 ## An app
 
@@ -168,7 +168,7 @@ during a visit). `render()` of a page that doesn't exist says which file to crea
 ```
 packages/fondu          the package (≈1,100 lines)
 packages/create-fondu   `bun create fondu`
-apps/demo               every Inertia v3 feature, one page each — Workers, D1, Better Auth, Base UI
+apps/demo               every Inertia feature, one page each — Workers, D1, Better Auth, coss ui
 ```
 
 ```bash

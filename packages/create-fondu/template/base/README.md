@@ -1,6 +1,6 @@
 # {{name}}
 
-A [Fondu](https://github.com/fondujs/fondu) app: Inertia v3 on Hono, on {{target}}.
+A [Fondu](https://github.com/fondujs/fondu) app: full-stack React on Hono, Vite and Inertia, on {{target}}.
 
 {{scripts}}
 
