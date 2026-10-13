@@ -1,6 +1,9 @@
-import { useFormContext } from '@inertiajs/react'
+import { Link, useFormContext, usePage } from '@inertiajs/react'
+import { href } from 'fondu/client'
+import { InfoIcon } from 'lucide-react'
 import { useEffect, useRef, useSyncExternalStore, type HTMLAttributes, type ReactNode } from 'react'
 
+import { Alert, AlertDescription } from '#/components/ui/alert.tsx'
 import { Badge } from '#/components/ui/badge.tsx'
 import { Button, type ButtonProps } from '#/components/ui/button.tsx'
 import { Card, CardDescription, CardHeader, CardPanel, CardTitle } from '#/components/ui/card.tsx'
@@ -108,4 +111,19 @@ export function SubmitButton({
     if (Object.keys(errors).length) ref.current?.form?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus()
   }, [processing, errors])
   return <Button ref={ref} type="submit" loading={processing} onClick={() => (sent.current = true)} {...props} />
+}
+
+/** For guests, in place of forms whose actions need an account (requireUser): the way in, and back here */
+export function SignInFirst({ children }: { children: ReactNode }) {
+  const { url } = usePage()
+  return (
+    <Alert variant="info" data-testid="sign-in-first">
+      <InfoIcon />
+      <AlertDescription>
+        <p>
+          <Link href={`${href('/login')}?next=${encodeURIComponent(url)}`}>Sign in</Link> {children}
+        </p>
+      </AlertDescription>
+    </Alert>
+  )
 }

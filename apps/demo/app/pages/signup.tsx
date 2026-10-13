@@ -1,7 +1,9 @@
 import { Form, Head, Link } from '@inertiajs/react'
 import { href } from 'fondu/client'
+import { TriangleAlertIcon } from 'lucide-react'
 
 import { SubmitButton, TextField } from '#/components/demo.tsx'
+import { Alert, AlertDescription, AlertTitle } from '#/components/ui/alert.tsx'
 
 export default function Signup() {
   return (
@@ -11,9 +13,11 @@ export default function Signup() {
       <p className="lede">
         Accounts, sessions and passwords are Better Auth's; this page posts to an action that calls it.
       </p>
-      <p className="mb-6 text-sm text-muted-foreground" data-testid="signup-off">
-        Sign-up is turned off in this demo: sign in with one of its accounts instead.
-      </p>
+      <Alert variant="warning" className="mb-6" data-testid="signup-off">
+        <TriangleAlertIcon />
+        <AlertTitle>Sign-up is turned off in this demo</AlertTitle>
+        <AlertDescription>Sign in with one of its accounts instead.</AlertDescription>
+      </Alert>
       <Form
         action={href('/signup')}
         method="post"

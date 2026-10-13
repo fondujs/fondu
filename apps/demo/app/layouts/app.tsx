@@ -94,7 +94,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       <div className="min-w-0">
         <header className="flex h-14 items-center gap-2 border-b px-5">
           <span className="truncate font-mono text-xs text-muted-foreground" data-testid="component">
-            {component}
+            /{component}
           </span>
           <RenderBadge />
           <span className="ml-auto flex items-center gap-2">

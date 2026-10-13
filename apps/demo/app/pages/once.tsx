@@ -33,18 +33,20 @@ export default function Once({ which, renderedAt, plans, rates }: Props) {
         Once props are resolved a single time and remembered by the client. On later visits the client lists them in{' '}
         <code>X-Inertia-Except-Once-Props</code> and the server skips their (slow) functions.
       </p>
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <span className="text-muted-foreground">You're on the {which} page.</span>
-        <Button variant="outline" render={<Link href={href('/once')} />} data-testid="first">
-          First page
-        </Button>
-        <Button variant="outline" render={<Link href={`${href('/once')}?page=second`} />} data-testid="second">
-          Second page
-        </Button>
-        <Button variant="outline" render={<Link href={`${href('/once')}?fresh`} />} data-testid="fresh">
-          First page with <code>fresh</code>
-        </Button>
-      </div>
+      <DemoCard title="Visits" className="mb-4">
+        <p className="mb-4 text-muted-foreground">You're on the {which} page.</p>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" render={<Link href={href('/once')} />} data-testid="first">
+            First page
+          </Button>
+          <Button variant="outline" render={<Link href={`${href('/once')}?page=second`} />} data-testid="second">
+            Second page
+          </Button>
+          <Button variant="outline" render={<Link href={`${href('/once')}?fresh`} />} data-testid="fresh">
+            First page with <code>fresh</code>
+          </Button>
+        </div>
+      </DemoCard>
       <div className="mb-4 grid gap-4 sm:grid-cols-3">
         {stat('renderedAt (regular)', renderedAt, 'Changes on every visit.', 'rendered-at')}
         {stat('plans (once)', plans, 'Resolved once, reused when switching pages.', 'plans')}

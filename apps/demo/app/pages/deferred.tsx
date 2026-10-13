@@ -1,7 +1,9 @@
 import { Deferred, Head, usePage } from '@inertiajs/react'
+import { CircleAlertIcon } from 'lucide-react'
 import { useState } from 'react'
 
 import { DemoCard, Json, Loading } from '#/components/demo.tsx'
+import { Alert, AlertDescription } from '#/components/ui/alert.tsx'
 
 interface Props {
   renderedAt: string
@@ -39,10 +41,15 @@ export default function DeferredDemo({ renderedAt, stats, flaky, activity, recom
             data="flaky"
             fallback={<Loading />}
             rescue={
-              <p className="rounded-lg bg-destructive/8 p-3 text-destructive-foreground" data-testid="rescued">
-                This prop failed on the server. Because it uses <code>rescue: true</code>, the error was logged, the
-                prop was listed in <code>rescuedProps</code>, and the rest of the response still succeeded.
-              </p>
+              <Alert variant="error" data-testid="rescued">
+                <CircleAlertIcon />
+                <AlertDescription>
+                  <p>
+                    This prop failed on the server. Because it uses <code>rescue: true</code>, the error was logged, the
+                    prop was listed in <code>rescuedProps</code>, and the rest of the response still succeeded.
+                  </p>
+                </AlertDescription>
+              </Alert>
             }
           >
             <p>{flaky}</p>
