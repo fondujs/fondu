@@ -102,9 +102,9 @@ const signIn = async (p = page) => {
 }
 const signOut = async (p = page) => {
   await p.goto(BASE + '/', { waitUntil: 'networkidle0' })
-  const button = await p.$('[data-testid=sign-out]')
-  if (button) {
-    await button.click()
+  if (await p.$('[data-testid=user]')) {
+    await p.click('[data-testid=user]') // the account menu
+    await (await p.waitForSelector('[data-testid=sign-out]')).click()
     await p.waitForSelector('[data-testid=sign-in]')
   }
 }
@@ -437,6 +437,12 @@ ok(
   formErrors.every(Boolean) && (await path()) === '/contacts',
   JSON.stringify(formErrors),
 )
+await page.waitForFunction(() => document.activeElement?.name === 'name', { timeout: 2000 }).catch(() => {})
+ok(
+  'an invalid submit: the first field to fix has the focus',
+  await page.evaluate(() => document.activeElement?.name === 'name'),
+  await page.evaluate(() => document.activeElement?.outerHTML.slice(0, 80)),
+)
 await setValue('[data-testid=add-contact] input[name=name]', 'Grace Hopper')
 const graceEmail = `grace-${Date.now()}@x.org`
 await setValue('[data-testid=add-contact] input[name=email]', graceEmail)
@@ -449,6 +455,26 @@ ok(
     (await page.$eval('[data-testid=add-contact] input[name=name]', (e) => e.value)) === '',
 )
 {
+  // the same address again, typed in capitals: checked as the field is left (Precognition), refused on submit
+  const before = precognition.length
+  await setValue('[data-testid=add-contact] input[name=email]', graceEmail.toUpperCase())
+  const typing = precognition.length - before
+  await page.keyboard.press('Tab')
+  await page.waitForSelector('[data-testid=add-contact] [data-testid=err-email]', { timeout: 6000 }).catch(() => {})
+  const live = await testid('err-email')
+  await setValue('[data-testid=add-contact] input[name=name]', 'Grace Again')
+  await page.$eval('[data-testid=add-contact] button', (b) => b.click())
+  await page.waitForFunction(() => document.activeElement?.name === 'email', { timeout: 4000 }).catch(() => {})
+  ok(
+    'an address already in the contacts (any case): refused when the field is left, and on submit',
+    typing === 0 &&
+      live === 'Already in your contacts' &&
+      (await testid('err-email')) === 'Already in your contacts' &&
+      !(await text()).includes('Added Grace Again'),
+    JSON.stringify({ typing, live }),
+  )
+}
+{
   const rows = (await page.$$('[data-testid=contacts] li')).length
   await page.setRequestInterception(true)
   const hold = (r) => {
@@ -459,15 +485,20 @@ ok(
   }
   page.on('request', hold)
   await page.$eval('[data-testid=contacts] li:last-child button', (b) => b.click())
+  const asked = await page.waitForSelector('[role=alertdialog]', { timeout: 3000 }).then(
+    () => true,
+    () => false,
+  )
+  await page.click('[data-testid=confirm-delete]')
   await sleep(300)
   const during = (await page.$$('[data-testid=contacts] li')).length
   await waitText('Contact deleted')
   page.off('request', hold)
   await page.setRequestInterception(false)
   ok(
-    'optimistic delete: the row is gone before the server answers',
-    during === rows - 1 && (await page.$$('[data-testid=contacts] li')).length === rows - 1,
-    `${rows} -> ${during}`,
+    'delete: confirmed first, then the row is gone before the server answers (optimistic)',
+    asked && during === rows - 1 && (await page.$$('[data-testid=contacts] li')).length === rows - 1,
+    `${asked} ${rows} -> ${during}`,
   )
 }
 const api = await fetchAs(BASE + '/api/contacts', {
@@ -677,7 +708,8 @@ ok(
 // ---- history encryption
 await nav('/history')
 await h1('History encryption')
-await sleep(300)
+// Inertia writes the history entry once it is encrypted (Web Crypto: asynchronous)
+await page.waitForFunction(() => window.history.state?.page, { timeout: 3000 }).catch(() => {})
 await page.click('[data-testid=read]')
 ok(
   'encryptHistory: the page state in history is encrypted',
@@ -793,7 +825,7 @@ await waitText('Signed in as Demo User')
 ok(
   'login: redirect to ?next, flash, the shared user in the header',
   (await path()) === '/account' &&
-    (await testid('user')) === 'Demo User' &&
+    (await page.$eval('[data-testid=user]', (e) => e.getAttribute('aria-label'))) === 'Demo User' &&
     (await testid('account-email')) === 'demo@fondu.dev',
 )
 await nav('/props')
@@ -822,26 +854,27 @@ await setValue('main form input[name=name]', 'Demo Person')
 await page.click('main form button')
 await waitText('Profile saved')
 await page
-  .waitForFunction(() => document.querySelector('[data-testid=user]')?.textContent === 'Demo Person', {
+  .waitForFunction(() => document.querySelector('[data-testid=user]')?.ariaLabel === 'Demo Person', {
     timeout: 4000,
   })
   .catch(() => {})
 ok(
   "<Form>: the profile saved by Better Auth, the header's user renewed with it (its session cookie)",
-  (await testid('user')) === 'Demo Person',
+  (await page.$eval('[data-testid=user]', (e) => e.ariaLabel)) === 'Demo Person',
 )
 await setValue('main form input[name=name]', 'Demo User')
 await page.click('main form button')
-await page.waitForFunction(() => document.querySelector('[data-testid=user]')?.textContent === 'Demo User')
+await page.waitForFunction(() => document.querySelector('[data-testid=user]')?.ariaLabel === 'Demo User')
 
 // ---- live validation (Precognition) and the same schema in the browser
 {
   await nav('/contacts')
   await h1('Forms & validation')
   await page.type('[data-testid=add-contact] input[name=email]', 'nope')
+  await page.keyboard.press('Tab')
   await page.waitForSelector('[data-testid=add-contact] [data-testid=err-email]', { timeout: 6000 }).catch(() => {})
   ok(
-    "Precognition: the field is checked by the action's schema as you type (nothing is added)",
+    "Precognition: the field is checked by the action's schema when it is left (nothing is added)",
     precognition.at(-1) === '/contacts' &&
       (await testid('err-email')) === 'Enter a valid email' &&
       !(await text()).includes('Added'),
@@ -942,7 +975,7 @@ await page.waitForFunction(() => document.querySelector('[data-testid=user]')?.t
   )
   await waitText('Role changed to user')
   ok("an admin action (Better Auth's setRole), there and back", true)
-  await page.click('[data-testid=admin-home] ~ a')
+  await page.click('header a[href="/"]')
   await page.waitForSelector('aside')
 }
 
@@ -1012,7 +1045,7 @@ await page.waitForFunction(() => document.querySelector('[data-testid=user]')?.t
   await tp.evaluate(() => fetch('/redirects?back', { method: 'POST', redirect: 'manual' })) // a flash for the next document
   await tp.goto(BASE + '/', { waitUntil: 'networkidle0' })
   const toast = await tp
-    .waitForSelector('[data-testid=flash]', { timeout: 4000 })
+    .waitForSelector('[data-slot=toast-title]', { timeout: 4000 })
     .then((e) => e.evaluate((n) => n.textContent))
     .catch(() => null)
   ok(
@@ -1265,8 +1298,11 @@ await page.waitForFunction(() => document.querySelector('[data-testid=user]')?.t
   await at('/account')
   await nav('/', hp)
   await at('/')
-  await hp.evaluate(() => document.querySelector('[data-testid=sign-out]').click())
-  await hp.waitForFunction(() => document.querySelector('[data-testid=flash]')?.textContent === 'Signed out')
+  await hp.click('[data-testid=user]')
+  await (await hp.waitForSelector('[data-testid=sign-out]')).click()
+  await hp.waitForFunction(() =>
+    [...document.querySelectorAll('[data-slot=toast-title]')].some((t) => t.textContent === 'Signed out'),
+  )
   await hp.evaluate(() => {
     window.__headings = []
     const t0 = performance.now()

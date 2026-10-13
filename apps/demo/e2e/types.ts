@@ -40,9 +40,9 @@ void render(c, 'contacts/show', { contact: { id: 'x', name: 'Ada', email: 'a@x.o
 void render(c, 'routes', { extra: 1 })
 
 // ---- shared props and flash: typed by Inertia's own InertiaConfig (routes/_middleware.ts)
-share(c, { auth: { user: { name: 'Ada', role: 'user' } } })
+share(c, { auth: { user: { name: 'Ada', email: 'ada@x.org', role: 'user' } } })
 // @ts-expect-error name is a string
-share(c, { auth: { user: { name: 1, role: 'user' } } })
+share(c, { auth: { user: { name: 1, email: 'ada@x.org', role: 'user' } } })
 flash(c, { message: 'Saved' })
 // @ts-expect-error message is a string
 flash(c, { message: 1 })

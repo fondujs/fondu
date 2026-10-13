@@ -1,10 +1,14 @@
 import { Link, usePage } from '@inertiajs/react'
 import { href } from 'fondu/client'
+import { Menu, X } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 
-import { ThemeMenu } from '#/components/theme-menu.tsx'
+import { AccountMenu } from '#/components/account-menu.tsx'
+import { RenderBadge } from '#/components/demo.tsx'
+import { Logo } from '#/components/logo.tsx'
 import { Toasts } from '#/components/toasts.tsx'
-import { Account, RenderBadge } from '#/components/ui.tsx'
+import { Button } from '#/components/ui/button.tsx'
+import { cn } from '#/lib/utils.ts'
 
 const sections: Array<[group: string, links: Array<[url: string, label: string]>]> = [
   [
@@ -44,39 +48,39 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const path = url.split(/[?#]/)[0]!
   const active = (to: string) => (to === '/' ? path === '/' : path === to || path.startsWith(to + '/'))
   return (
-    <div className="min-h-dvh md:grid md:grid-cols-[13rem_1fr]">
-      <aside className="border-b border-line bg-surface px-3 py-3 md:sticky md:top-0 md:h-dvh md:overflow-y-auto md:border-r md:border-b-0 md:py-4">
-        <div className="flex items-center justify-between md:mb-5">
-          <Link
-            href={href('/')}
-            className="flex items-center gap-2 px-2 text-[15px] font-semibold text-ink no-underline"
-          >
-            <span className="grid size-7 place-items-center rounded-md bg-accent text-[13px] text-white">F</span> Fondu
+    <div className="min-h-dvh md:grid md:grid-cols-[14rem_1fr]">
+      <aside className="border-b px-3 py-2.5 md:sticky md:top-0 md:h-dvh md:overflow-y-auto md:border-r md:border-b-0 md:py-3">
+        <div className="flex h-9 items-center justify-between md:mb-4">
+          <Link href={href('/')} className="flex items-center gap-2 px-2 font-heading font-semibold">
+            <Logo className="size-6" /> Fondu
           </Link>
-          <button
-            type="button"
-            className="btn md:hidden"
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden"
+            aria-label="Menu"
             aria-expanded={open}
             aria-controls="menu"
             onClick={() => setOpen(!open)}
             data-testid="menu"
           >
-            {open ? 'Close' : 'Menu'}
-          </button>
+            {open ? <X /> : <Menu />}
+          </Button>
         </div>
-        <nav id="menu" aria-label="Demos" className={`mt-3 gap-4 md:mt-0 md:grid ${open ? 'grid' : 'hidden'}`}>
+        <nav id="menu" aria-label="Demos" className={cn('mt-3 gap-5 md:mt-0 md:grid', open ? 'grid' : 'hidden')}>
           {sections.map(([group, links]) => (
             <div key={group}>
-              <p className="mb-1 px-2 text-[11px] font-medium text-muted">{group}</p>
-              <ul className="grid">
+              <p className="mb-1 px-2 text-xs font-medium text-muted-foreground">{group}</p>
+              <ul className="grid gap-px">
                 {links.map(([to, label]) => (
                   <li key={to}>
+                    {/* where you are: a bar of the brand's gold */}
                     <Link
                       href={to}
                       prefetch
                       onClick={() => setOpen(false)}
                       aria-current={active(to) ? 'page' : undefined}
-                      className={`block rounded-md px-2 py-1 text-[13px] no-underline transition-colors ${active(to) ? 'bg-accent-soft font-medium text-accent' : 'text-ink/80 hover:bg-canvas hover:text-ink'}`}
+                      className="relative block rounded-md px-2 py-1.5 text-sm text-foreground/72 transition-colors hover:bg-accent hover:text-foreground aria-[current=page]:bg-accent aria-[current=page]:font-medium aria-[current=page]:text-foreground aria-[current=page]:before:absolute aria-[current=page]:before:inset-y-1.5 aria-[current=page]:before:-left-3 aria-[current=page]:before:w-0.5 aria-[current=page]:before:rounded-full aria-[current=page]:before:bg-brand"
                     >
                       {label}
                     </Link>
@@ -88,14 +92,13 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         </nav>
       </aside>
       <div className="min-w-0">
-        <header className="flex flex-wrap items-center gap-2 border-b border-line px-5 py-3 text-[13px]">
-          <span className="font-mono text-xs text-muted capitalize" data-testid="component">
+        <header className="flex h-14 items-center gap-2 border-b px-5">
+          <span className="truncate font-mono text-xs text-muted-foreground" data-testid="component">
             {component}
           </span>
           <RenderBadge />
           <span className="ml-auto flex items-center gap-2">
-            <ThemeMenu />
-            <Account />
+            <AccountMenu />
           </span>
         </header>
         <Toasts />

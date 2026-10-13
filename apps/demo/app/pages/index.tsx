@@ -1,6 +1,8 @@
 import { Head, Link } from '@inertiajs/react'
 import { href } from 'fondu/client'
 
+import { Card, CardDescription, CardHeader, CardTitle } from '#/components/ui/card.tsx'
+
 const demos: Array<[url: string, title: string, text: string]> = [
   [href('/props'), 'Props', 'Values, lists, objects, lazy functions and shared props, typed by the page component.'],
   [
@@ -41,17 +43,18 @@ export default function Overview() {
         Every page in this app is rendered by a Hono handler in <code>routes/</code> through Fondu, on Cloudflare
         Workers, with Better Auth and D1. Pick a demo to see a part of the protocol in action.
       </p>
-      <div className="grid-cards">
+      <div className="grid gap-4 sm:grid-cols-2">
         {demos.map(([url, title, text]) => (
-          <Link
+          <Card
             key={url}
-            href={url}
-            prefetch
-            className="card block text-ink no-underline transition-colors hover:border-accent/40"
+            render={<Link href={url} prefetch />}
+            className="transition-colors hover:border-foreground/16"
           >
-            <h2 className="mb-1">{title}</h2>
-            <p className="note">{text}</p>
-          </Link>
+            <CardHeader className="p-5">
+              <CardTitle className="text-base">{title}</CardTitle>
+              <CardDescription>{text}</CardDescription>
+            </CardHeader>
+          </Card>
         ))}
       </div>
     </>

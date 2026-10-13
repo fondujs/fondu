@@ -1,7 +1,8 @@
 import { Head, usePage } from '@inertiajs/react'
 import { useState } from 'react'
 
-import { Card, Json } from '#/components/ui.tsx'
+import { DemoCard, Json } from '#/components/demo.tsx'
+import { Button } from '#/components/ui/button.tsx'
 
 export default function Versioning() {
   const { version } = usePage()
@@ -22,21 +23,21 @@ export default function Versioning() {
         differ, and the server answers <code>409</code> with <code>X-Inertia-Location</code>: the client loads the page
         again as a document, with the new assets.
       </p>
-      <div className="grid-cards">
-        <Card title="This page's version">
-          <p className="font-mono text-[13px]" data-testid="version">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <DemoCard title="This page's version">
+          <p className="font-mono break-all" data-testid="version">
             {version ?? 'null'}
           </p>
-          <p className="note mt-2">
+          <p className="mt-2 text-muted-foreground">
             A hash of the client build's manifest; <code>null</code> in development, where nothing is checked.
           </p>
-        </Card>
-        <Card title="A visit from the previous deploy">
-          <button className="btn btn-primary mb-3" onClick={visitAsOldDeploy} data-testid="stale">
+        </DemoCard>
+        <DemoCard title="A visit from the previous deploy">
+          <Button className="mb-4" onClick={visitAsOldDeploy} data-testid="stale">
             Send a stale version
-          </button>
+          </Button>
           {answer ? <Json value={answer} data-testid="stale-answer" /> : null}
-        </Card>
+        </DemoCard>
       </div>
     </>
   )

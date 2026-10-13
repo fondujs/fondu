@@ -1,7 +1,7 @@
 import { Form, Head, Link } from '@inertiajs/react'
 import { href } from 'fondu/client'
 
-import { Field } from '#/components/ui.tsx'
+import { SubmitButton, TextField } from '#/components/demo.tsx'
 
 export default function Signup() {
   return (
@@ -11,20 +11,21 @@ export default function Signup() {
       <p className="lede">
         Accounts, sessions and passwords are Better Auth's; this page posts to an action that calls it.
       </p>
-      <p className="note mb-4" data-testid="signup-off">
+      <p className="mb-6 text-sm text-muted-foreground" data-testid="signup-off">
         Sign-up is turned off in this demo: sign in with one of its accounts instead.
       </p>
       <Form
         action={href('/signup')}
         method="post"
         resetOnError={['password']}
+        showProgress={false}
         className="grid gap-4"
         data-testid="signup"
       >
-        {({ errors, processing }) => (
+        {({ errors }) => (
           <>
-            <Field label="Name" name="name" autoComplete="name" error={errors.name} />
-            <Field
+            <TextField label="Name" name="name" autoComplete="name" error={errors.name} />
+            <TextField
               label="Email"
               name="email"
               type="email"
@@ -32,20 +33,18 @@ export default function Signup() {
               error={errors.email}
               testid="err-email"
             />
-            <Field
+            <TextField
               label="Password"
               name="password"
               type="password"
               autoComplete="new-password"
               error={errors.password}
             />
-            <button className="btn btn-primary justify-center" disabled={processing}>
-              Create account
-            </button>
+            <SubmitButton>Create account</SubmitButton>
           </>
         )}
       </Form>
-      <p className="note mt-4">
+      <p className="mt-4 text-sm text-muted-foreground">
         Have one? <Link href={href('/login')}>Sign in</Link>
       </p>
     </div>

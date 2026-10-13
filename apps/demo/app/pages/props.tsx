@@ -1,6 +1,6 @@
 import { Head, usePage } from '@inertiajs/react'
 
-import { Card, Json } from '#/components/ui.tsx'
+import { DemoCard, Json } from '#/components/demo.tsx'
 
 interface Props {
   text: string
@@ -32,35 +32,35 @@ export default function PropsDemo({ text, number, float, boolean, nothing, list,
         <code>render()</code> checks the loader against them. A function prop is called only when it's included in the
         response.
       </p>
-      <div className="grid-cards">
-        <Card title="Scalars & lists">
-          <dl className="grid grid-cols-[5rem_1fr] gap-y-1 text-[13px]" data-testid="scalars">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <DemoCard title="Scalars & lists">
+          <dl className="grid grid-cols-[5rem_1fr] gap-y-1" data-testid="scalars">
             {rows.map(([k, v]) => (
               <div key={k} className="contents">
-                <dt className="text-muted">{k}</dt>
+                <dt className="text-muted-foreground">{k}</dt>
                 <dd>{v}</dd>
               </div>
             ))}
           </dl>
-        </Card>
-        <Card title="An object">
+        </DemoCard>
+        <DemoCard title="An object">
           <Json value={profile} />
-        </Card>
-        <Card title="A function" tag="computed when sent">
-          <p className="text-[13px]">
+        </DemoCard>
+        <DemoCard title="A function" tag="computed when sent">
+          <p>
             <code>computedAt: () =&gt; new Date().toISOString()</code> ran at{' '}
             <span className="font-mono" data-testid="computed-at">
               {computedAt}
             </span>
             .
           </p>
-        </Card>
-        <Card title="Shared props" tag="share()">
-          <p className="note mb-2">
+        </DemoCard>
+        <DemoCard title="Shared props" tag="share()">
+          <p className="mb-3 text-muted-foreground">
             Set for every page by <code>routes/_middleware.ts</code>, typed by Inertia's <code>InertiaConfig</code>.
           </p>
           <Json value={{ auth }} />
-        </Card>
+        </DemoCard>
       </div>
     </>
   )

@@ -11,5 +11,5 @@ createInertiaApp({
   pages: './pages',
   title: (title) => (title ? `${title} · Fondu` : 'Fondu'),
   layout: (name) => (name.startsWith('admin/') ? AdminLayout : AppLayout),
-  progress: { delay: 350, color: 'var(--accent)' },
+  progress: { delay: 350, color: 'var(--brand)' },
 })

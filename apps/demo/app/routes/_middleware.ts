@@ -12,7 +12,10 @@ declare module 'hono' {
 }
 declare module '@inertiajs/core' {
   interface InertiaConfig {
-    sharedPageProps: { auth: { user: { name: string; role: string } | null }; theme: 'system' | 'light' | 'dark' }
+    sharedPageProps: {
+      auth: { user: { name: string; email: string; role: string } | null }
+      theme: 'system' | 'light' | 'dark'
+    }
     flashDataType: { message?: string; error?: string }
   }
 }
@@ -22,6 +25,9 @@ export default defineMiddleware(async (c, next) => {
   const session = await auth.api.getSession({ headers: c.req.raw.headers })
   const user = session?.user ?? null
   c.set('user', user)
-  share(c, { auth: { user: user && { name: user.name, role: user.role ?? 'user' } }, theme: themeOf(c) })
+  share(c, {
+    auth: { user: user && { name: user.name, email: user.email, role: user.role ?? 'user' } },
+    theme: themeOf(c),
+  })
   await next()
 })

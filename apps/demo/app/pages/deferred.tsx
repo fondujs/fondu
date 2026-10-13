@@ -1,7 +1,7 @@
 import { Deferred, Head, usePage } from '@inertiajs/react'
 import { useState } from 'react'
 
-import { Card, Json, Skeleton } from '#/components/ui.tsx'
+import { DemoCard, Json, Loading } from '#/components/demo.tsx'
 
 interface Props {
   renderedAt: string
@@ -21,25 +21,25 @@ export default function DeferredDemo({ renderedAt, stats, flaky, activity, recom
         The page rendered at {renderedAt} without waiting for these props. The server announced them in{' '}
         <code>deferredProps</code>, and the client fetched each group in its own request.
       </p>
-      <div className="grid-cards mb-4">
-        <Card title="stats" tag="group: default · ~0.8s">
-          <Deferred data="stats" fallback={<Skeleton />}>
+      <div className="mb-4 grid gap-4 sm:grid-cols-2">
+        <DemoCard title="stats" tag="group: default · ~0.8s">
+          <Deferred data="stats" fallback={<Loading />}>
             <dl className="grid grid-cols-3 gap-2 text-center" data-testid="stats">
               {Object.entries(stats ?? {}).map(([k, v]) => (
-                <div key={k} className="rounded-md bg-canvas p-2">
-                  <dt className="note capitalize">{k}</dt>
+                <div key={k} className="rounded-lg bg-muted p-2">
+                  <dt className="text-xs text-muted-foreground capitalize">{k}</dt>
                   <dd className="font-mono text-lg">{v.toLocaleString('en')}</dd>
                 </div>
               ))}
             </dl>
           </Deferred>
-        </Card>
-        <Card title="flaky" tag="group: default · rescued">
+        </DemoCard>
+        <DemoCard title="flaky" tag="group: default · rescued">
           <Deferred
             data="flaky"
-            fallback={<Skeleton />}
+            fallback={<Loading />}
             rescue={
-              <p className="rounded-md bg-danger-soft p-3 text-[13px] text-danger" data-testid="rescued">
+              <p className="rounded-lg bg-destructive/8 p-3 text-destructive-foreground" data-testid="rescued">
                 This prop failed on the server. Because it uses <code>rescue: true</code>, the error was logged, the
                 prop was listed in <code>rescuedProps</code>, and the rest of the response still succeeded.
               </p>
@@ -47,29 +47,29 @@ export default function DeferredDemo({ renderedAt, stats, flaky, activity, recom
           >
             <p>{flaky}</p>
           </Deferred>
-        </Card>
-        <Card title="activity" tag="group: slow · ~1.8s">
-          <Deferred data="activity" fallback={<Skeleton />}>
-            <ul className="grid gap-1 text-[13px]" data-testid="activity">
+        </DemoCard>
+        <DemoCard title="activity" tag="group: slow · ~1.8s">
+          <Deferred data="activity" fallback={<Loading />}>
+            <ul className="grid gap-1" data-testid="activity">
               {activity?.map((a) => (
                 <li key={a}>{a}</li>
               ))}
             </ul>
           </Deferred>
-        </Card>
-        <Card title="recommendations" tag="group: slow">
-          <Deferred data="recommendations" fallback={<Skeleton />}>
-            <ul className="list-disc pl-5 text-[13px]" data-testid="recommendations">
+        </DemoCard>
+        <DemoCard title="recommendations" tag="group: slow">
+          <Deferred data="recommendations" fallback={<Loading />}>
+            <ul className="list-disc pl-5" data-testid="recommendations">
               {recommendations?.map((r) => (
                 <li key={r}>{r}</li>
               ))}
             </ul>
           </Deferred>
-        </Card>
+        </DemoCard>
       </div>
-      <Card title="Initial deferredProps metadata">
+      <DemoCard title="Initial deferredProps metadata">
         <Json value={initial} data-testid="deferred-meta" />
-      </Card>
+      </DemoCard>
     </>
   )
 }

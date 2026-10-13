@@ -1,7 +1,7 @@
 import { Form, Head, Link } from '@inertiajs/react'
 import { href } from 'fondu/client'
 
-import { Field } from '#/components/ui.tsx'
+import { SubmitButton, TextField } from '#/components/demo.tsx'
 
 export default function Login({ next }: { next: string }) {
   return (
@@ -18,12 +18,13 @@ export default function Login({ next }: { next: string }) {
         method="post"
         options={{ replace: true }}
         resetOnError={['password']}
+        showProgress={false}
         className="grid gap-4"
       >
-        {({ errors, processing }) => (
+        {({ errors }) => (
           <>
             <input type="hidden" name="next" value={next} />
-            <Field
+            <TextField
               label="Email"
               name="email"
               type="email"
@@ -31,7 +32,7 @@ export default function Login({ next }: { next: string }) {
               error={errors.email}
               testid="err-email"
             />
-            <Field
+            <TextField
               label="Password"
               name="password"
               type="password"
@@ -39,13 +40,11 @@ export default function Login({ next }: { next: string }) {
               error={errors.password}
               testid="err-password"
             />
-            <button className="btn btn-primary justify-center" disabled={processing}>
-              {processing ? 'Signing in…' : 'Sign in'}
-            </button>
+            <SubmitButton>Sign in</SubmitButton>
           </>
         )}
       </Form>
-      <p className="note mt-4">
+      <p className="mt-4 text-sm text-muted-foreground">
         No account? <Link href={href('/signup')}>Create one</Link>
       </p>
     </div>

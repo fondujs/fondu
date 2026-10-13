@@ -2,7 +2,8 @@ import { Head, Link, useHttp, usePage } from '@inertiajs/react'
 import { href } from 'fondu/client'
 import { useState } from 'react'
 
-import { Card, Field, Json } from '#/components/ui.tsx'
+import { DemoCard, Json, SubmitButton, TextField } from '#/components/demo.tsx'
+import { Button } from '#/components/ui/button.tsx'
 
 type Contact = { id: number; name: string; email: string }
 
@@ -30,58 +31,58 @@ export default function Http() {
           </>
         )}
       </p>
-      <div className="grid-cards">
-        <Card title="GET /api/contacts">
-          <button
-            className="btn btn-primary mb-3"
+      <div className="grid gap-4 sm:grid-cols-2">
+        <DemoCard title="GET /api/contacts">
+          <Button
+            className="mb-3"
             onClick={() => list.get(href('/api/contacts'), { onHttpException })}
             disabled={list.processing}
             data-testid="load"
           >
             {list.processing ? 'Loading…' : 'Load contacts'}
-          </button>
+          </Button>
           {list.response ? (
-            <ul className="text-[13px]" data-testid="api-users">
+            <ul data-testid="api-users">
               {list.response.contacts.map((u) => (
                 <li key={u.id}>{u.name}</li>
               ))}
             </ul>
           ) : null}
           {status ? (
-            <p className="err" data-testid="status">
+            <p className="text-destructive-foreground" data-testid="status">
               HTTP {status}
             </p>
           ) : null}
-        </Card>
-        <Card title="POST /api/contacts">
+        </DemoCard>
+        <DemoCard title="POST /api/contacts">
           <form
-            className="grid gap-2"
+            className="grid gap-4"
             onSubmit={(e) => {
               e.preventDefault()
               create.post(href('/api/contacts'), { onHttpException })
             }}
             data-testid="create"
           >
-            <Field
+            <TextField
               label="Name"
               value={create.data.name}
               onChange={(e) => create.setData('name', e.target.value)}
               error={create.errors.name}
               testid="err-name"
             />
-            <Field
+            <TextField
               label="Email"
               value={create.data.email}
               onChange={(e) => create.setData('email', e.target.value)}
               error={create.errors.email}
               testid="err-email"
             />
-            <button className="btn btn-primary justify-center" disabled={create.processing}>
+            <SubmitButton processing={create.processing} errors={create.errors}>
               Create
-            </button>
+            </SubmitButton>
           </form>
-          {create.response ? <Json value={create.response} className="json mt-3" data-testid="created" /> : null}
-        </Card>
+          {create.response ? <Json value={create.response} className="mt-4" data-testid="created" /> : null}
+        </DemoCard>
       </div>
     </>
   )

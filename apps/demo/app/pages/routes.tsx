@@ -1,7 +1,8 @@
 import { Head, Link } from '@inertiajs/react'
 import { href } from 'fondu/client'
 
-import { Card } from '#/components/ui.tsx'
+import { DemoCard } from '#/components/demo.tsx'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '#/components/ui/table.tsx'
 
 const files: Array<[file: string, url: string, exports: string]> = [
   ['routes/_middleware.ts', 'every request', 'default: the session, shared props'],
@@ -12,6 +13,10 @@ const files: Array<[file: string, url: string, exports: string]> = [
   ['routes/api/contacts/index.ts', '/api/contacts', 'GET, POST'],
   ['routes/api/auth/[...all].ts', '/api/auth/*', 'GET, POST: Better Auth'],
 ]
+
+const Code = ({ children }: { children: string }) => (
+  <pre className="overflow-x-auto rounded-lg bg-muted p-3 font-mono text-xs/relaxed">{children}</pre>
+)
 
 export default function Routes() {
   return (
@@ -24,47 +29,47 @@ export default function Routes() {
         one); an API route exports <code>GET</code>, <code>POST</code>, <code>PUT</code>, <code>PATCH</code>,{' '}
         <code>DELETE</code>. The page it renders lives in <code>app/pages/</code>.
       </p>
-      <Card title="This app's routes" className="mb-4">
-        <table className="w-full text-left text-[13px]" data-testid="routes">
-          <thead className="text-muted">
-            <tr>
-              <th className="py-1 font-normal">File</th>
-              <th className="font-normal">URL</th>
-              <th className="font-normal">Exports</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-line">
+      <DemoCard title="This app's routes" className="mb-4">
+        <Table data-testid="routes">
+          <TableHeader>
+            <TableRow>
+              <TableHead>File</TableHead>
+              <TableHead>URL</TableHead>
+              <TableHead>Exports</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {files.map(([file, url, exports]) => (
-              <tr key={file}>
-                <td className="py-1.5 font-mono text-[12px]">{file}</td>
-                <td className="font-mono text-[12px]">{url}</td>
-                <td className="note">{exports}</td>
-              </tr>
+              <TableRow key={file}>
+                <TableCell className="font-mono text-xs">{file}</TableCell>
+                <TableCell className="font-mono text-xs">{url}</TableCell>
+                <TableCell className="text-muted-foreground">{exports}</TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
-      </Card>
-      <div className="grid-cards">
-        <Card title="Typed URLs" tag="href()">
-          <p className="note mb-2">
+          </TableBody>
+        </Table>
+      </DemoCard>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <DemoCard title="Typed URLs" tag="href()">
+          <p className="mb-3 text-muted-foreground">
             Only patterns that exist in <code>routes/</code>, with every param: a typo is a type error.
           </p>
-          <pre className="json">{`href('/contacts/:id', { id: 1 })  // '${href('/contacts/:id', { id: 1 })}'\nhref('/contacts?delete')          // '${href('/contacts?delete')}'`}</pre>
-          <p className="mt-3 text-[13px]">
+          <Code>{`href('/contacts/:id', { id: 1 })  // '${href('/contacts/:id', { id: 1 })}'\nhref('/contacts?delete')          // '${href('/contacts?delete')}'`}</Code>
+          <p className="mt-3">
             <Link href={href('/contacts/:id', { id: 1 })} data-testid="contact-1">
               Open contact 1
             </Link>
           </p>
-        </Card>
-        <Card title="Validated input" tag="withValidator">
-          <pre className="json">{`defineHandler.withValidator({ params, body })(\n  requireUser,\n  (c, { params, body }) => …)`}</pre>
-          <p className="note mt-2">
+        </DemoCard>
+        <DemoCard title="Validated input" tag="withValidator">
+          <Code>{`defineHandler.withValidator({ params, body })(\n  requireUser,\n  (c, { params, body }) => …)`}</Code>
+          <p className="mt-3 text-muted-foreground">
             The guard runs first, then the schemas; <code>params.id</code> is a number.
           </p>
-        </Card>
-        <Card title="The method is Inertia's">
-          <pre className="json">{`<Link href={href('/logout')}\n      method="post" as="button">\n<Form action={href('/contacts')}\n      method="post">`}</pre>
-        </Card>
+        </DemoCard>
+        <DemoCard title="The method is Inertia's">
+          <Code>{`<Link href={href('/logout')}\n      method="post" as="button">\n<Form action={href('/contacts')}\n      method="post">`}</Code>
+        </DemoCard>
       </div>
     </>
   )

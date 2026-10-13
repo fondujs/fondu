@@ -1,9 +1,12 @@
 import { Head, Link, WhenMounted } from '@inertiajs/react'
 import { href } from 'fondu/client'
 
-import { Card } from '#/components/ui.tsx'
+import { DemoCard } from '#/components/demo.tsx'
+import { Button } from '#/components/ui/button.tsx'
 
-const code = (lines: string[]) => <pre className="json">{lines.join('\n')}</pre>
+const code = (lines: string[]) => (
+  <pre className="overflow-x-auto rounded-lg bg-muted p-3 font-mono text-xs/relaxed">{lines.join('\n')}</pre>
+)
 
 export default function Ssr({ ssr }: { ssr: boolean }) {
   return (
@@ -15,34 +18,30 @@ export default function Ssr({ ssr }: { ssr: boolean }) {
         in the same process), then hydrated. Visits after that render in the browser. Reload this page to see it: the
         badge at the top says how the document was rendered.
       </p>
-      <div className="mb-4 flex gap-2">
-        <a href={href('/ssr')} className="btn" data-testid="doc-ssr">
+      <div className="mb-4 flex flex-wrap gap-2">
+        <Button variant="outline" render={<a href={href('/ssr')} />} data-testid="doc-ssr">
           Load with SSR
-        </a>
-        <a href={href('/ssr/browser')} className="btn" data-testid="doc-browser">
+        </Button>
+        <Button variant="outline" render={<a href={href('/ssr/browser')} />} data-testid="doc-browser">
           Load without SSR
-        </a>
-        <Link href={href('/ssr/browser')} className="btn">
+        </Button>
+        <Button variant="outline" render={<Link href={href('/ssr/browser')} />}>
           Visit (no document load)
-        </Link>
+        </Button>
       </div>
-      <div className="grid-cards">
-        <Card title="This route" tag={ssr ? '/ssr' : '/ssr/browser'}>
-          <p className="text-[13px]" data-testid="route-ssr">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <DemoCard title="This route" tag={ssr ? '/ssr' : '/ssr/browser'}>
+          <p data-testid="route-ssr">
             {ssr ? 'Server-rendered when loaded as a document.' : 'Never server-rendered: withoutSsr().'}
           </p>
-        </Card>
-        <Card title="Browser-only parts" tag="<WhenMounted>">
-          <WhenMounted fallback={<p className="note">Rendered on the server: no window here.</p>}>
-            {() => (
-              <p className="text-[13px]" data-testid="mounted">
-                Window width: {window.innerWidth}px
-              </p>
-            )}
+        </DemoCard>
+        <DemoCard title="Browser-only parts" tag="<WhenMounted>">
+          <WhenMounted fallback={<p className="text-muted-foreground">Rendered on the server: no window here.</p>}>
+            {() => <p data-testid="mounted">Window width: {window.innerWidth}px</p>}
           </WhenMounted>
-        </Card>
-        <Card title="Some routes without SSR" className="sm:col-span-2">
-          <p className="note mb-2">
+        </DemoCard>
+        <DemoCard title="Some routes without SSR" className="sm:col-span-2">
+          <p className="mb-3 text-muted-foreground">
             Like Laravel's <code>withoutSsr</code>: a middleware, wherever middleware goes.
           </p>
           {code([
@@ -52,11 +51,13 @@ export default function Ssr({ ssr }: { ssr: boolean }) {
             '// one route',
             'export const loader = defineHandler(withoutSsr(), (c) => render(c, …))',
           ])}
-        </Card>
-        <Card title="No SSR at all" className="sm:col-span-2">
-          <p className="note mb-2">An app that never needs it (a dashboard): no server render is built.</p>
+        </DemoCard>
+        <DemoCard title="No SSR at all" className="sm:col-span-2">
+          <p className="mb-3 text-muted-foreground">
+            An app that never needs it (a dashboard): no server render is built.
+          </p>
           {code(["fondu({ target: 'cloudflare', ssr: false })"])}
-        </Card>
+        </DemoCard>
       </div>
     </>
   )

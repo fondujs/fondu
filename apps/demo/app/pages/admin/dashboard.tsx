@@ -1,6 +1,10 @@
 import { Form, Head, usePage } from '@inertiajs/react'
 import { href } from 'fondu/client'
 
+import { SubmitButton } from '#/components/demo.tsx'
+import { Badge } from '#/components/ui/badge.tsx'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '#/components/ui/table.tsx'
+
 interface Props {
   accounts: Array<{ id: string; name: string; email: string; role: string }>
 }
@@ -16,34 +20,43 @@ export default function Dashboard({ accounts }: Props) {
         Only admins get here (<code>routes/admin/_middleware.ts</code>: <code>requireAdmin</code>,{' '}
         <code>withoutSsr()</code>). Roles are Better Auth's admin plugin.
       </p>
-      <table className="w-full text-left text-[13px]" data-testid="accounts">
-        <thead className="text-muted">
-          <tr>
-            <th className="py-2 font-normal">Name</th>
-            <th className="font-normal">Email</th>
-            <th className="font-normal">Role</th>
-            <th />
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-line">
+      <Table variant="card" data-testid="accounts">
+        <TableHeader>
+          <TableRow>
+            <TableHead>Name</TableHead>
+            <TableHead>Email</TableHead>
+            <TableHead>Role</TableHead>
+            <TableHead />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {accounts.map((a) => (
-            <tr key={a.id}>
-              <td className="py-2 font-medium">{a.name}</td>
-              <td className="text-muted">{a.email}</td>
-              <td>{a.role}</td>
-              <td className="text-right">
-                {a.name === me?.name ? null : (
-                  <Form action={href('/admin/dashboard?role')} method="post" options={{ preserveScroll: true }}>
+            <TableRow key={a.id}>
+              <TableCell className="font-medium">{a.name}</TableCell>
+              <TableCell className="text-muted-foreground">{a.email}</TableCell>
+              <TableCell>
+                <Badge variant={a.role === 'admin' ? 'info' : 'secondary'}>{a.role}</Badge>
+              </TableCell>
+              <TableCell className="text-right">
+                {a.email === me?.email ? null : (
+                  <Form
+                    action={href('/admin/dashboard?role')}
+                    method="post"
+                    showProgress={false}
+                    options={{ preserveScroll: true }}
+                  >
                     <input type="hidden" name="userId" value={a.id} />
                     <input type="hidden" name="role" value={a.role === 'admin' ? 'user' : 'admin'} />
-                    <button className="btn">{a.role === 'admin' ? 'Make user' : 'Make admin'}</button>
+                    <SubmitButton variant="outline" size="sm">
+                      {a.role === 'admin' ? 'Make user' : 'Make admin'}
+                    </SubmitButton>
                   </Form>
                 )}
-              </td>
-            </tr>
+              </TableCell>
+            </TableRow>
           ))}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
     </>
   )
 }

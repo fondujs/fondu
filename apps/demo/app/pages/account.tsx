@@ -1,7 +1,8 @@
 import { Form, Head } from '@inertiajs/react'
 import { href } from 'fondu/client'
 
-import { Card, Field } from '#/components/ui.tsx'
+import { DemoCard, SubmitButton, TextField } from '#/components/demo.tsx'
+import { Card, CardPanel } from '#/components/ui/card.tsx'
 
 interface Props {
   account: { name: string; email: string; role: string }
@@ -17,38 +18,36 @@ export default function Account({ account }: Props) {
         JavaScript.
       </p>
       <div className="grid gap-4 md:grid-cols-[1fr_16rem]">
-        <Card title="Profile">
-          <Form action={href('/account')} method="post" className="grid gap-4">
-            {({ errors, processing }) => (
+        <DemoCard title="Profile">
+          <Form action={href('/account')} method="post" showProgress={false} className="grid gap-4">
+            {({ errors }) => (
               <>
-                <Field
+                <TextField
                   label="Display name"
                   name="name"
                   defaultValue={account.name}
                   error={errors.name}
                   testid="err-name"
                 />
-                <button className="btn btn-primary justify-center" disabled={processing}>
-                  {processing ? 'Saving…' : 'Save profile'}
-                </button>
+                <SubmitButton>Save profile</SubmitButton>
               </>
             )}
           </Form>
+        </DemoCard>
+        <Card className="h-fit">
+          <CardPanel className="p-5">
+            <dl className="grid grid-cols-[4rem_1fr] gap-y-1.5 text-sm">
+              <dt className="text-muted-foreground">Name</dt>
+              <dd className="truncate font-medium">{account.name}</dd>
+              <dt className="text-muted-foreground">Email</dt>
+              <dd className="truncate" data-testid="account-email">
+                {account.email}
+              </dd>
+              <dt className="text-muted-foreground">Role</dt>
+              <dd data-testid="account-role">{account.role}</dd>
+            </dl>
+          </CardPanel>
         </Card>
-        <section className="card h-fit text-[13px]">
-          <div className="mb-4 flex items-center gap-3">
-            <span className="grid size-12 place-items-center rounded-full bg-accent-soft font-semibold text-accent">
-              {account.name.slice(0, 1)}
-            </span>
-            <span className="font-medium">{account.name}</span>
-          </div>
-          <dl className="grid grid-cols-[4rem_1fr] gap-y-1.5">
-            <dt className="text-muted">Email</dt>
-            <dd data-testid="account-email">{account.email}</dd>
-            <dt className="text-muted">Role</dt>
-            <dd data-testid="account-role">{account.role}</dd>
-          </dl>
-        </section>
       </div>
     </>
   )

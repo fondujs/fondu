@@ -1,6 +1,10 @@
 import { Head, InfiniteScroll } from '@inertiajs/react'
 import type { Paginated } from 'fondu'
 
+import { Loading } from '#/components/demo.tsx'
+import { Avatar, AvatarFallback } from '#/components/ui/avatar.tsx'
+import { Card } from '#/components/ui/card.tsx'
+
 interface Props {
   total: number
   people: Paginated<{ id: number; name: string; email: string }>
@@ -18,31 +22,31 @@ export default function Infinite({ total, people }: Props) {
         sends the pagination metadata in <code>scrollProps</code>, and <code>&lt;InfiniteScroll&gt;</code> loads more
         pages as you scroll, appending to <code>people.data</code>. Watch the URL's <code>?page=</code> update.
       </p>
-      <InfiniteScroll
-        data="people"
-        className="card p-0"
-        loading={
-          <div className="grid gap-2 p-4">
-            <div className="skeleton w-4/5" />
-            <div className="skeleton w-3/5" />
-          </div>
-        }
-      >
-        <ul className="rows" data-testid="people">
-          {people.data.map((p) => (
-            <li key={p.id} className="flex items-center gap-3 px-4 py-2.5">
-              <span className="grid size-8 shrink-0 place-items-center rounded-full bg-accent-soft text-[12px] font-medium text-accent">
-                {p.id}
-              </span>
-              <span>
-                <span className="block text-[13px] font-medium">{p.name}</span>
-                <span className="note text-[12px]">{p.email}</span>
-              </span>
-            </li>
-          ))}
-        </ul>
-      </InfiniteScroll>
-      <p className="note mt-4 text-center" data-testid="showing">
+      <Card>
+        <InfiniteScroll
+          data="people"
+          loading={
+            <div className="p-4">
+              <Loading />
+            </div>
+          }
+        >
+          <ul className="divide-y" data-testid="people">
+            {people.data.map((p) => (
+              <li key={p.id} className="flex items-center gap-3 px-4 py-2.5">
+                <Avatar>
+                  <AvatarFallback className="bg-secondary font-mono">{p.id}</AvatarFallback>
+                </Avatar>
+                <span className="min-w-0">
+                  <span className="block font-medium">{p.name}</span>
+                  <span className="block truncate text-xs text-muted-foreground">{p.email}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </InfiniteScroll>
+      </Card>
+      <p className="mt-4 text-center text-muted-foreground" data-testid="showing">
         Showing {people.data.length} of {total}
       </p>
     </>

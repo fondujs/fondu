@@ -3,7 +3,18 @@ import { href } from 'fondu/client'
 import type { FormEvent } from 'react'
 import * as z from 'zod/mini'
 
-import { Card, Field } from '#/components/ui.tsx'
+import { DemoCard, SubmitButton, TextField } from '#/components/demo.tsx'
+import {
+  AlertDialog,
+  AlertDialogClose,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogPopup,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '#/components/ui/alert-dialog.tsx'
+import { Button } from '#/components/ui/button.tsx'
 import { contactSchema } from '#/schemas/contact.ts'
 
 type Contact = { id: number; name: string; email: string }
@@ -22,7 +33,7 @@ export default function Contacts({ contacts }: { contacts: Contact[] }) {
       quick.setError({ name: fields.name?.[0] ?? '', email: fields.email?.[0] ?? '' })
       return
     }
-    quick.post(href('/contacts'), { preserveScroll: true, onSuccess: () => quick.reset() })
+    quick.post(href('/contacts'), { preserveScroll: true, showProgress: false, onSuccess: () => quick.reset() })
   }
   return (
     <>
@@ -31,91 +42,116 @@ export default function Contacts({ contacts }: { contacts: Contact[] }) {
       <p className="lede">
         One schema (<code>schemas/contact.ts</code>) validates on the server; invalid input is answered with a 303 back
         to this page and the errors in its <code>errors</code> prop. The same schema can check in the browser first, or
-        the server can check field by field as you type (Precognition). Contacts are stored in D1.
+        the server can check each field as you leave it (Precognition), the address not yet taken included. Contacts are
+        stored in D1.
       </p>
-      <div className="grid-cards mb-4">
-        <Card title="Live validation" tag="<Form> · Precognition">
-          {/* each field is checked by the action's own schema when it changes; the action itself runs on submit */}
+      <div className="mb-4 grid gap-4 sm:grid-cols-2">
+        <DemoCard title="Live validation" tag="<Form> · Precognition">
+          {/* each field is checked by the action's own schema when you leave it; the action itself runs on submit */}
           <Form
             action={href('/contacts')}
             method="post"
             resetOnSuccess
-            className="grid gap-3"
+            showProgress={false}
+            className="grid gap-4"
             data-testid="add-contact"
           >
-            {({ errors: formErrors, processing, validate, validating }) => {
+            {({ errors: formErrors, validate }) => {
               const errors = { ...pageErrors, ...formErrors }
               return (
                 <>
-                  <Field
+                  <TextField
                     label="Name"
                     name="name"
-                    onChange={() => validate('name')}
+                    onBlur={() => validate('name')}
                     error={errors.name}
                     testid="err-name"
                   />
-                  <Field
+                  <TextField
                     label="Email"
                     name="email"
-                    onChange={() => validate('email')}
+                    onBlur={() => validate('email')}
                     error={errors.email}
                     testid="err-email"
                   />
-                  <button className="btn btn-primary justify-center" disabled={processing}>
-                    {processing ? 'Adding…' : validating ? 'Checking…' : 'Add contact'}
-                  </button>
+                  <SubmitButton>Add contact</SubmitButton>
                 </>
               )
             }}
           </Form>
-        </Card>
-        <Card title="Checked in the browser" tag="useForm · safeParse">
-          <form onSubmit={addQuickly} className="grid gap-3" data-testid="quick-contact">
-            <Field
+        </DemoCard>
+        <DemoCard title="Checked in the browser" tag="useForm · safeParse">
+          <form onSubmit={addQuickly} className="grid gap-4" data-testid="quick-contact">
+            <TextField
               label="Name"
               value={quick.data.name}
               onChange={(e) => quick.setData('name', e.target.value)}
               error={quick.errors.name}
               testid="quick-err-name"
             />
-            <Field
+            <TextField
               label="Email"
               value={quick.data.email}
               onChange={(e) => quick.setData('email', e.target.value)}
               error={quick.errors.email}
               testid="quick-err-email"
             />
-            <button className="btn btn-primary justify-center" disabled={quick.processing}>
+            <SubmitButton processing={quick.processing} errors={quick.errors}>
               Add contact
-            </button>
+            </SubmitButton>
           </form>
-        </Card>
+        </DemoCard>
       </div>
-      <Card title="Contacts" tag="optimistic delete">
-        <ul className="rows" data-testid="contacts">
+      <DemoCard title="Contacts" tag="confirmed, optimistic delete">
+        <ul className="divide-y" data-testid="contacts">
           {contacts.map((contact) => (
-            <li key={contact.id} className="flex items-center gap-3 py-2 text-[13px]">
-              <Link href={href('/contacts/:id', { id: contact.id })} className="font-medium">
+            <li key={contact.id} className="flex items-center gap-3 py-2">
+              <Link href={href('/contacts/:id', { id: contact.id })} className="font-medium hover:underline">
                 {contact.name}
               </Link>
-              <span className="note">{contact.email}</span>
-              {/* POST /contacts?delete; the row disappears at once (optimistic), and comes back if the request fails */}
+              <span className="truncate text-muted-foreground">{contact.email}</span>
+              {/* POST /contacts?delete once confirmed; the row disappears at once (optimistic), and comes back if
+                  the request fails. Without JavaScript, the button deletes at once. */}
               <Form
+                id={`delete-${contact.id}`}
                 action={href('/contacts?delete')}
                 method="post"
+                showProgress={false}
                 options={{ preserveScroll: true }}
                 optimistic={(props) => ({ contacts: (props.contacts as Contact[]).filter((x) => x.id !== contact.id) })}
                 className="ml-auto"
               >
                 <input type="hidden" name="id" value={contact.id} />
-                <button className="btn" aria-label={`Delete ${contact.name}`}>
-                  Delete
-                </button>
+                <AlertDialog>
+                  <AlertDialogTrigger
+                    type="submit"
+                    onClick={(e) => e.preventDefault()}
+                    render={<Button variant="ghost" size="sm" aria-label={`Delete ${contact.name}`} />}
+                  >
+                    Delete
+                  </AlertDialogTrigger>
+                  <AlertDialogPopup>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete {contact.name}?</AlertDialogTitle>
+                      <AlertDialogDescription>This removes {contact.email} from the contacts.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogClose render={<Button variant="ghost" />}>Cancel</AlertDialogClose>
+                      <AlertDialogClose
+                        type="submit"
+                        form={`delete-${contact.id}`}
+                        render={<Button variant="destructive" data-testid="confirm-delete" />}
+                      >
+                        Delete
+                      </AlertDialogClose>
+                    </AlertDialogFooter>
+                  </AlertDialogPopup>
+                </AlertDialog>
               </Form>
             </li>
           ))}
         </ul>
-      </Card>
+      </DemoCard>
     </>
   )
 }

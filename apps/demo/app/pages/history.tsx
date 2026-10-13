@@ -2,7 +2,8 @@ import { Form, Head } from '@inertiajs/react'
 import { href } from 'fondu/client'
 import { useState } from 'react'
 
-import { Card } from '#/components/ui.tsx'
+import { DemoCard } from '#/components/demo.tsx'
+import { Button } from '#/components/ui/button.tsx'
 
 export default function History({ secret }: { secret: string }) {
   const [stored, setStored] = useState<string | null>(null)
@@ -24,27 +25,27 @@ export default function History({ secret }: { secret: string }) {
         after signing out nobody can press Back to see it. <code>clearHistory(c)</code> discards the key, making every
         encrypted entry unreadable.
       </p>
-      <div className="grid-cards">
-        <Card title="A sensitive prop">
-          <p className="font-mono text-[13px]">{secret}</p>
-        </Card>
-        <Card title="In history.state">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <DemoCard title="A sensitive prop">
+          <p className="font-mono">{secret}</p>
+        </DemoCard>
+        <DemoCard title="In history.state">
           {stored ? (
-            <p className="mb-3 font-mono text-[13px]" data-testid="stored">
+            <p className="mb-3 font-mono" data-testid="stored">
               {stored}
             </p>
           ) : null}
-          <div className="flex gap-2">
-            <button className="btn" onClick={read} data-testid="read">
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={read} data-testid="read">
               Read history.state.page
-            </button>
+            </Button>
             <Form action={href('/history?clear')} method="post">
-              <button className="btn btn-primary" data-testid="clear">
+              <Button type="submit" data-testid="clear">
                 Clear history
-              </button>
+              </Button>
             </Form>
           </div>
-        </Card>
+        </DemoCard>
       </div>
     </>
   )

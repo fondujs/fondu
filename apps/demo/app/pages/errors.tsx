@@ -1,7 +1,8 @@
 import { Form, Head, Link } from '@inertiajs/react'
 import { href } from 'fondu/client'
 
-import { Card } from '#/components/ui.tsx'
+import { DemoCard } from '#/components/demo.tsx'
+import { Button } from '#/components/ui/button.tsx'
 
 const cases: Array<[url: string, label: string, what: string]> = [
   ['/nope', 'An unknown URL', '404'],
@@ -9,6 +10,10 @@ const cases: Array<[url: string, label: string, what: string]> = [
   ['/errors/loader', 'A loader that throws', '500'],
   ['/errors/missing', 'A page that does not exist', '500'],
 ]
+
+const Status = ({ children }: { children: string }) => (
+  <span className="font-mono text-xs text-muted-foreground">{children}</span>
+)
 
 export default function Errors() {
   return (
@@ -20,33 +25,33 @@ export default function Errors() {
         status. A 500 in development is a report of the error (during a visit, Inertia shows it in its dialog); in
         production it is the same error page with status 500. API clients get plain text.
       </p>
-      <div className="grid-cards">
-        <Card title="During a visit" tag="<Link>">
-          <ul className="grid gap-2 text-[13px]">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <DemoCard title="During a visit" tag="<Link>">
+          <ul className="grid gap-2">
             {cases.map(([url, label, status]) => (
               <li key={url}>
                 <Link href={url} data-testid={`visit-${status}-${url.split('/').pop()}`}>
                   {label}
                 </Link>{' '}
-                <span className="tag">{status}</span>
+                <Status>{status}</Status>
               </li>
             ))}
           </ul>
-          <Form action={href('/errors?fail')} method="post" className="mt-3">
-            <button className="btn" data-testid="action-fail">
+          <Form action={href('/errors?fail')} method="post" className="mt-4">
+            <Button type="submit" variant="outline" data-testid="action-fail">
               An action that throws
-            </button>
+            </Button>
           </Form>
-        </Card>
-        <Card title="As a document load" tag="<a>">
-          <ul className="grid gap-2 text-[13px]">
+        </DemoCard>
+        <DemoCard title="As a document load" tag="<a>">
+          <ul className="grid gap-2">
             {cases.map(([url, label, status]) => (
               <li key={url}>
-                <a href={url}>{label}</a> <span className="tag">{status}</span>
+                <a href={url}>{label}</a> <Status>{status}</Status>
               </li>
             ))}
           </ul>
-        </Card>
+        </DemoCard>
       </div>
     </>
   )
