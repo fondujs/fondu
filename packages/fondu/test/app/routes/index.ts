@@ -1,5 +1,7 @@
 import { always, deepMerge, defer, defineHandler, merge, once, optional, render, scroll } from 'fondu'
 
+export const prerender = true
+
 export const loader = defineHandler((c) =>
   render(
     c,

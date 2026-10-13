@@ -47,3 +47,17 @@ export function fillPattern(pattern: string, params: Record<string, string | num
     return parts.map(encodeURIComponent).join('/')
   })
 }
+
+/** where prerendered pages keep their page objects (`fondu({ prerender: true })`) */
+export const PAGE_DATA = '/_fondu/pages'
+
+/** a page's URL path → the URL of its page object: `/docs/intro` → `/_fondu/pages/docs/intro.json` (`/` → `/index`) */
+export function pageDataPath(path: string): string {
+  return `${PAGE_DATA}${path.endsWith('/') ? path + 'index' : path}.json`
+}
+
+/** the other way: `/_fondu/pages/docs/intro.json` → `/docs/intro`; null for any other path */
+export function pathOfPageData(pathname: string): string | null {
+  const m = pathname.match(/^\/_fondu\/pages(\/.+)\.json$/)
+  return m ? m[1]!.replace(/\/index$/, '/') : null
+}

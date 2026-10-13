@@ -10,7 +10,7 @@ const virtual: Plugin = {
   resolveId: (id) => (id.startsWith('virtual:fondu/') ? '\0' + id : undefined),
   load(id) {
     if (id === '\0virtual:fondu/assets')
-      return `export const version = 'v1'; export const pages = null; export const assetTags = () => ''`
+      return `export const version = 'v1'; export const pages = null; export const prerender = true; export const assetTags = () => ''`
     if (id === '\0virtual:fondu/ssr') return 'export const renderPage = null'
   },
 }

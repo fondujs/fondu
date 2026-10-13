@@ -9,6 +9,7 @@ import inertia from '@inertiajs/vite'
 import react, { type Options as ReactOptions } from '@vitejs/plugin-react'
 import type { Plugin, PluginOption, ResolvedConfig } from 'vite'
 
+import { prerender } from './prerender.js'
 import { typegen } from './typegen.js'
 
 /**
@@ -26,6 +27,11 @@ export interface FonduOptions {
   /** `false`: pages render in the browser only, no server render is built (an admin app). Per route: `withoutSsr()` */
   ssr?: boolean
   react?: ReactOptions
+  /**
+   * Cloudflare: routes with `export const prerender` (or under a `_middleware.ts` with it) are written as static
+   * files at build time, and visits read them; the Worker answers the other pages
+   */
+  prerender?: boolean
 }
 
 const ENTRY = 'app/app.tsx'
@@ -54,6 +60,8 @@ export default async function renderPage(page) {
 
 export default function fondu(options: FonduOptions): PluginOption[] {
   const node = options.target !== 'cloudflare'
+  if (options.prerender && node)
+    throw new Error('fondu: `prerender` is for the Cloudflare target only, so far (github.com/fondujs/fondu/issues/6)')
   return [
     react(options.react),
     // `ssr: {}`: the server transform without an entry, so without @inertiajs/vite's dev SSR endpoint (Laravel's model)
@@ -158,8 +166,15 @@ function core(options: FonduOptions): Plugin {
           // the worker reads the client manifest: client first
           builder: {
             async buildApp(builder) {
-              await builder.build(builder.environments.client)
-              for (const env of Object.values(builder.environments)) if (env.name !== 'client') await builder.build(env)
+              const client = builder.environments.client!
+              await builder.build(client)
+              for (const env of Object.values(builder.environments)) {
+                if (env.name === 'client') continue
+                await builder.build(env)
+                const worker = resolve(config.root, env.config.build.outDir, 'wrangler.json')
+                if (options.prerender && existsSync(worker))
+                  await prerender(config.root, worker, resolve(config.root, client.config.build.outDir), config.logger)
+              }
             },
           },
           ssr: { noExternal: ['fondu'] },
@@ -251,12 +266,22 @@ function core(options: FonduOptions): Plugin {
     resolveId(id) {
       if (id === V.assets || id === V.ssr) return resolved(id)
     },
+    // prerender: the client entry reads page objects from the prerendered files (fondu/client's `prerendered`)
+    transform(code, id) {
+      if (!options.prerender || this.environment.config.consumer !== 'client' || id !== resolve(config.root, ENTRY))
+        return
+      return { code: `import { prerendered } from 'fondu/client';prerendered();${code}`, map: null }
+    },
     load(id) {
       if (id === resolved(V.ssr))
         return options.ssr === false
           ? 'export const renderPage = null'
           : `export { default as renderPage } from '/${ENTRY}'`
-      if (id === resolved(V.assets)) return isBuild ? productionAssets(config, options) : devAssets(config.base)
+      if (id === resolved(V.assets))
+        return (
+          (isBuild ? productionAssets(config, options) : devAssets(config.base)) +
+          `\nexport const prerender = ${Boolean(options.prerender)}`
+        )
       // the server-only guard: browser code must never import server code
       if (this.environment.config.consumer === 'client' && isServerOnly(id)) {
         this.error(
