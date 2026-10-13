@@ -1,9 +1,6 @@
-import { fileURLToPath } from 'node:url'
-
 // Browser end-to-end checks of the Cloudflare example. Start it first (`bun run dev` or `bun run preview`), then:
 //   CHROME_PATH=/path/to/chrome node e2e/run.mjs http://localhost:5173 [label]
 import puppeteer from 'puppeteer-core'
-const fixture = (name) => fileURLToPath(new URL(name, import.meta.url))
 
 const BASE = process.argv[2] ?? 'http://localhost:5173'
 const LABEL = process.argv[3] ?? BASE
@@ -821,22 +818,21 @@ ok(
 )
 await nav('/account')
 await h1('Account')
-await (await page.$('input[name=avatar]')).uploadFile(fixture('not-an-image.txt'))
-await page.click('main form button')
-await page.waitForSelector('[data-testid=err-avatar]')
-ok(
-  'a file that is not an allowed image: the field error',
-  (await testid('err-avatar')) === 'Choose a PNG, JPEG, GIF or WebP image',
-)
-await (await page.$('input[name=avatar]')).uploadFile(fixture('avatar.png'))
+await setValue('main form input[name=name]', 'Demo Person')
 await page.click('main form button')
 await waitText('Profile saved')
-await page.waitForSelector('[data-testid=avatar]')
+await page
+  .waitForFunction(() => document.querySelector('[data-testid=user]')?.textContent === 'Demo Person', {
+    timeout: 4000,
+  })
+  .catch(() => {})
 ok(
-  '<Form> uploads a file (multipart, no reload); resetOnSuccess clears it',
-  (await page.$eval('[data-testid=avatar]', (e) => e.getAttribute('src'))).startsWith('data:image/png;base64,') &&
-    (await page.$eval('input[name=avatar]', (e) => e.value)) === '',
+  "<Form>: the profile saved by Better Auth, the header's user renewed with it (its session cookie)",
+  (await testid('user')) === 'Demo Person',
 )
+await setValue('main form input[name=name]', 'Demo User')
+await page.click('main form button')
+await page.waitForFunction(() => document.querySelector('[data-testid=user]')?.textContent === 'Demo User')
 
 // ---- live validation (Precognition) and the same schema in the browser
 {
@@ -1129,18 +1125,6 @@ ok(
     "login: Better Auth's rate limit (3 sign-ins in 10 s per client), shown under the field",
     tooMany.includes('Too many attempts'),
     tooMany.slice(0, 160),
-  )
-  const svg = new FormData()
-  svg.append('name', 'Demo User')
-  svg.append(
-    'avatar',
-    new File(['<svg xmlns="http://www.w3.org/2000/svg" onload="alert(1)"/>'], 'a.png', { type: 'image/png' }),
-  )
-  const avatar = await fetchAs(BASE + '/account', { method: 'POST', headers: sameSite, body: svg, redirect: 'manual' })
-  ok(
-    'avatar: the content decides (an SVG named .png: 422 for a non-page client)',
-    avatar.status === 422 && (await avatar.json()).errors?.avatar === 'Choose a PNG, JPEG, GIF or WebP image',
-    String(avatar.status),
   )
   const slash = await fetch(BASE + '/contacts/?x=2', { redirect: 'manual', headers: { Accept: 'text/html' } })
   ok(

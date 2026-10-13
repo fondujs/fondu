@@ -1,10 +1,12 @@
 import { eq } from 'drizzle-orm'
-import { back, defineHandler, flash, render } from 'fondu'
+import { back, defineHandler, flash, render, ValidationError } from 'fondu'
 import { HTTPException } from 'hono/http-exception'
 import * as z from 'zod/mini'
 
 import { db } from '#/db/index.server.ts'
 import { contacts } from '#/db/schema/index.ts'
+import { EMAIL_TAKEN, emailFree } from '#/lib/contacts.server.ts'
+import { contactSchema } from '#/schemas/contact.ts'
 
 const params = z.object({ id: z.coerce.number().check(z.int()) })
 
@@ -26,8 +28,9 @@ export const actions = {
     return back(c)
   }),
   // POST /contacts/:id?email — the `email` bag
-  email: defineHandler.withValidator({ params, body: z.object({ email: z.email('Enter a valid email') }) })(
+  email: defineHandler.withValidator({ params, body: z.object({ email: contactSchema.shape.email }) })(
     async (c, { params, body }) => {
+      if (!(await emailFree(body.email, params.id))) throw new ValidationError({ email: EMAIL_TAKEN })
       await db.update(contacts).set(body).where(eq(contacts.id, params.id))
       flash(c, { message: 'Email changed' })
       return back(c)
