@@ -17,10 +17,13 @@ function walk(dir: string, out: string[] = [], base = dir): string[] {
   return out
 }
 
-/** The registry the types are read from: page name → module, URL pattern → route module. Only `typeof import`s. */
+/**
+ * The registry the types are read from: page name → module, URL pattern → route module. Only `typeof import`s; an
+ * MDX page's keeps its extension, which `declare module '*.mdx'` (@types/mdx) types.
+ */
 export function generateTypes(root: string): string {
   const pages = walk(join(root, 'app/pages'))
-    .filter((f) => /\.[jt]sx$/.test(f))
+    .filter((f) => /\.(?:[jt]sx|mdx)$/.test(f))
     .sort()
   const routes = walk(join(root, 'app/routes')).filter(isRouteFile).sort()
   const line = (key: string, path: string) => `      ${JSON.stringify(key)}: typeof import(${JSON.stringify(path)})`
@@ -28,7 +31,7 @@ export function generateTypes(root: string): string {
 declare module 'fondu' {
   interface Register {
     pages: {
-${pages.map((f) => line(f.replace(/\.[jt]sx$/, ''), `./pages/${f.replace(/\.[jt]sx$/, '')}`)).join('\n')}
+${pages.map((f) => line(f.replace(/\.(?:[jt]sx|mdx)$/, ''), `./pages/${f.replace(/\.[jt]sx$/, '')}`)).join('\n')}
     }
     routes: {
 ${routes.map((f) => line(routePattern(f), `./routes/${f.replace(/\.ts$/, '')}`)).join('\n')}

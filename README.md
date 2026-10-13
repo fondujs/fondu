@@ -119,6 +119,10 @@ Options: `status`, `encryptHistory`, `clearHistory`, `preserveFragment`. Also `f
 `back(c)`, `location(c, url)` (409 + `X-Inertia-Location`); a redirect with a `#fragment` becomes a 409
 `X-Inertia-Redirect` by itself.
 
+A page can be MDX (`pages/guide/intro.mdx`: Markdown, with React components) once
+[`@mdx-js/rollup`](https://mdxjs.com/packages/rollup/) is in `vite.config.ts`: `plugins: [{ enforce: 'pre', ...mdx() },
+fondu(…)]`. It is rendered like any page, with the route's props as `props`.
+
 ### Types
 
 ```ts

@@ -46,6 +46,9 @@ describe('pages', () => {
     expect(res.headers.get('cache-control')).toBe('private, no-cache')
     expect(res.headers.get('referrer-policy')).toBe('same-origin')
   })
+  test('a page in MDX: found like a .tsx one', async () => {
+    expect(await page(await app.request('/notes', { headers: inertia() }))).toMatchObject({ component: 'notes' })
+  })
   test('a visit: the page object as JSON', async () => {
     const res = await app.request('/', { headers: inertia() })
     expect(res.headers.get('x-inertia')).toBe('true')

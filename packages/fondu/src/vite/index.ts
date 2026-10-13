@@ -46,7 +46,7 @@ const resolved = (id: string) => '\0' + id
  */
 const inertiaInProcess = {
   package: '@inertiajs/react',
-  extensions: ['.tsx', '.jsx'],
+  extensions: ['.tsx', '.jsx', '.mdx'],
   extractDefault: true,
   ssr: (configureCall: string) => `
 import { renderToString } from 'react-dom/server'
@@ -56,6 +56,22 @@ export default async function renderPage(page) {
   return (await renderPromise)(page, renderToString)
 }
 `,
+}
+
+/** For the dependency scan: an MDX page as the JavaScript @mdx-js/rollup makes of it (nothing without it) */
+function scanMdx(config: () => ResolvedConfig): Plugin {
+  return {
+    name: 'fondu:scan-mdx',
+    load: {
+      filter: { id: /\.mdx$/ },
+      async handler(id) {
+        const hook = config().plugins.find((p) => p.name === '@mdx-js/rollup')?.transform
+        const transform = typeof hook === 'function' ? hook : hook?.handler
+        const out = await transform?.call(this as never, readFileSync(id, 'utf8'), id)
+        return { code: typeof out === 'string' ? out : String(out?.code ?? ''), moduleType: 'js' }
+      },
+    },
+  }
 }
 
 export default function fondu(options: FonduOptions): PluginOption[] {
@@ -189,10 +205,12 @@ function core(options: FonduOptions): Plugin {
           }
     },
     // dev: the dependencies are found before the first request (Vite scans index.html by default; an app has none),
-    // so the first page is not reloaded once they are optimized
+    // so the first page is not reloaded once they are optimized. The scan reads JavaScript: an MDX page is compiled
+    // for it by the app's @mdx-js/rollup
     configEnvironment(name, env) {
-      const pages = ['app/pages/**/*.tsx', 'app/pages/**/*.jsx']
-      if (name === 'client') return { optimizeDeps: { entries: [ENTRY, ...pages] } }
+      const pages = ['app/pages/**/*.{tsx,jsx,mdx}']
+      const mdx = { extensions: ['.mdx'], rolldownOptions: { plugins: [scanMdx(() => config)] } }
+      if (name === 'client') return { optimizeDeps: { entries: [ENTRY, ...pages], ...mdx } }
       if (options.target !== 'cloudflare') return
       // the Worker: fondu is not pre-bundled (its routes import it back: a bundle would hand them a half-loaded
       // module); react-dom/server is imported by @inertiajs/vite's generated render, which the scan does not see.
@@ -202,6 +220,7 @@ function core(options: FonduOptions): Plugin {
           exclude: ['fondu'],
           include: options.ssr === false ? [] : ['react-dom/server'],
           entries: [SERVER.slice(2), 'app/routes/**/*.ts', ENTRY, ...pages],
+          ...mdx,
         },
         ...(env.build?.minify === undefined && { build: { minify: true } }),
       }
@@ -342,7 +361,7 @@ function productionAssets(config: ResolvedConfig, options: FonduOptions): string
   const entry = tags(ENTRY)
   const pages: Record<string, { css: string[]; js: string[] }> = {}
   for (const key of Object.keys(manifest)) {
-    const m = key.match(/^app\/pages\/(.+)\.[jt]sx$/)
+    const m = key.match(/^app\/pages\/(.+)\.(?:[jt]sx|mdx)$/)
     if (m) pages[m[1]!] = tags(key)
   }
   const version = createHash('sha256').update(text).digest('hex').slice(0, 16)

@@ -63,9 +63,9 @@ type OptionalArgs<N> = [props?: PropsInput<OwnProps<N>>, options?: RenderOptions
 type RequiredArgs<N> = [props: PropsInput<OwnProps<N>>, options?: RenderOptions]
 
 // development: the files in app/pages/ (Vite keeps the list current); a build: the pages in the client manifest
-const devPages = import.meta.env.DEV ? import.meta.glob(['/app/pages/**/*.tsx', '/app/pages/**/*.jsx']) : {}
+const devPages = import.meta.env.DEV ? import.meta.glob('/app/pages/**/*.{tsx,jsx,mdx}') : {}
 export const hasPage = (name: string) =>
-  pages ? pages.includes(name) : `/app/pages/${name}.tsx` in devPages || `/app/pages/${name}.jsx` in devPages
+  pages ? pages.includes(name) : ['tsx', 'jsx', 'mdx'].some((ext) => `/app/pages/${name}.${ext}` in devPages)
 
 const headerSet = (c: Context, name: string) => {
   const value = c.req.header(name)
@@ -97,7 +97,8 @@ export async function render<N extends PageName>(
   component: N,
   ...[props = {} as PropsInput<OwnProps<N>>, options = {}]: RenderArgs<N>
 ): Promise<Response> {
-  if (!hasPage(component)) throw new Error(`fondu: there is no page "${component}": create app/pages/${component}.tsx`)
+  if (!hasPage(component))
+    throw new Error(`fondu: there is no page "${component}": create app/pages/${component}.tsx (or .mdx)`)
   const partial = c.req.header('x-inertia-partial-component') === component
   const only = partial ? headerSet(c, 'x-inertia-partial-data') : null
   const except = partial ? headerSet(c, 'x-inertia-partial-except') : null
