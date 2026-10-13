@@ -1,5 +1,5 @@
 {
-  "name": "example-cloudflare",
+  "name": "demo",
   "private": true,
   "type": "module",
   "imports": {
@@ -9,8 +9,8 @@
     "build": "vite build",
     "cf-typegen": "wrangler types --env-interface CloudflareBindings",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "wrangler d1 migrations apply fondu-example --remote",
-    "db:migrate:local": "wrangler d1 migrations apply fondu-example --local",
+    "db:migrate": "wrangler d1 migrations apply fondu-demo --remote",
+    "db:migrate:local": "wrangler d1 migrations apply fondu-demo --local",
     "deploy": "bun run build && wrangler deploy",
     "dev": "bun run db:migrate:local && vite",
     "e2e": "node e2e/run.mjs",

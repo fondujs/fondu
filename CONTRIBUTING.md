@@ -15,18 +15,18 @@ bun run test           # the protocol, on a small app with app.request()
 bun run check          # format (oxfmt), lint (oxlint), typecheck
 ```
 
-The examples are the end-to-end tests. Start one (see README), then run its checks with Chrome or Chromium:
+`bun run --filter create-fondu test` creates an app for each target (Node, Bun, Cloudflare) with `packages/fondu` as
+built here, and runs it in development and production.
+
+`apps/demo` is the end-to-end test of every feature. Start it (`bun run dev`, or `bun run preview`), then run its
+checks with Chrome or Chromium:
 
 ```bash
-cd apps/cloudflare && bun run dev
+cd apps/demo && bun run dev
 CHROME_PATH=/path/to/chrome node e2e/run.mjs http://localhost:5173
 ```
 
-`bun run --filter create-fondu test` creates an app for each target with `packages/fondu` as built here, then builds and
-serves it.
-
-A change to `packages/fondu` should pass both examples: `apps/node` (`bun run dev`, and after `bun run build`,
-`bun run start`) and `apps/cloudflare` (`bun run dev`, `bun run preview`).
+A change to `packages/fondu` should pass both.
 
 ## Commits and pull requests
 

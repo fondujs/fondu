@@ -4,15 +4,17 @@
   "semi": false,
   "singleQuote": true,
   "sortImports": true,
-  "sortPackageJson": { "sortScripts": true },
+  "sortPackageJson": {
+    "sortScripts": true
+  },
   "overrides": [
     {
-      "files": ["apps/cloudflare/**"],
-      "options": { "sortTailwindcss": { "stylesheet": "./apps/cloudflare/app/styles/app.css" } }
-    },
-    {
-      "files": ["apps/node/**"],
-      "options": { "sortTailwindcss": { "stylesheet": "./apps/node/app/styles/app.css" } }
+      "files": ["apps/demo/**"],
+      "options": {
+        "sortTailwindcss": {
+          "stylesheet": "./apps/demo/app/styles/app.css"
+        }
+      }
     }
   ],
   "ignorePatterns": ["**/worker-configuration.d.ts", "**/fondu.gen.d.ts", "**/migrations/**", "bun.lock"]
