@@ -23,7 +23,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           <RenderBadge />
           <Link
             href={href('/')}
-            className="order-last w-full text-muted no-underline hover:text-ink sm:order-none sm:w-auto"
+            className="order-last w-full text-muted no-underline hover:text-ink sm:order-0 sm:w-auto"
           >
             ← Back to the demos
           </Link>
