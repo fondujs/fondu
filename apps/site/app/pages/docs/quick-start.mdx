@@ -1,0 +1,69 @@
+## Create an app
+
+```sh
+npm create fondu@latest my-app
+# or: bun create fondu my-app · pnpm create fondu my-app
+```
+
+It asks where the app runs: Node, Bun or Cloudflare Workers (or pass `--target node`, `--target bun` or
+`--target cloudflare`). Then it writes a small app: one route, its page, the error page, Tailwind CSS, editor snippets
+and an `AGENTS.md` for coding agents.
+
+## Run it
+
+```sh
+cd my-app
+npm run dev
+```
+
+The app is at `http://localhost:5173`. Edit `app/pages/index.tsx` and the page updates in place; edit
+`app/routes/index.ts` and the page reloads with the new props.
+
+## Add a page
+
+A page is a route file and a page component. Add `app/routes/about.ts`:
+
+```ts
+import { defineHandler, render } from 'fondu'
+
+// GET /about
+export const loader = defineHandler((c) => render(c, 'about', { team: ['Ada', 'Grace'] }))
+```
+
+And `app/pages/about.tsx`:
+
+```tsx
+import { Head } from '@inertiajs/react'
+
+export default function About({ team }: { team: string[] }) {
+  return (
+    <>
+      <Head title="About" />
+      <h1>About</h1>
+      <ul>
+        {team.map((name) => (
+          <li key={name}>{name}</li>
+        ))}
+      </ul>
+    </>
+  )
+}
+```
+
+`render(c, 'about', …)` is checked against the page: a page that doesn't exist, a missing prop or one of the wrong type
+is a type error. Link to it with Inertia's `<Link>` and a typed URL:
+
+```tsx
+import { Link } from '@inertiajs/react'
+import { href } from 'fondu/client'
+
+;<Link href={href('/about')}>About</Link>
+```
+
+## Build
+
+```sh
+npm run build
+```
+
+Then `npm start` on Node or Bun, or `npm run deploy` on Cloudflare. [Deploying](/docs/deploying) has the details.

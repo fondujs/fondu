@@ -1,0 +1,58 @@
+On Cloudflare Workers, Fondu can write pages as static files at build time. Workers Static Assets serve them without
+running the Worker, and Inertia's visits keep working. This site is built that way.
+
+```ts
+// vite.config.ts
+fondu({ target: 'cloudflare', prerender: true })
+```
+
+Static pages on Node and Bun are planned.
+
+## Choosing the pages
+
+A route opts in with `export const prerender`; a `_middleware.ts` sets it for its directory and below. The nearest
+setting wins:
+
+```ts
+// app/routes/(marketing)/_middleware.ts: every page below
+export const prerender = true
+
+// app/routes/(marketing)/contact.ts: not this one
+export const prerender = false
+
+// app/routes/blog/[slug].ts: a dynamic route lists its pages' params
+export const prerender = () => posts.map((post) => ({ slug: post.slug }))
+```
+
+`app/routes/_middleware.ts` with `export const prerender = true` makes every page static.
+
+## How it works
+
+Each page is written twice:
+
+- as a document, `docs/intro.html`, for a first visit;
+- as its page object, `_fondu/pages/docs/intro.json`, for Inertia's visits: Fondu's client reads it instead of asking
+  the Worker.
+
+The Worker still answers every other URL, a page that isn't static or one that doesn't exist. In development, it
+answers all of them.
+
+## What a static page can be
+
+A static page is the same for everyone. It is rendered once, for a visitor with no cookies and no query string, shared
+props included. So the build stops, naming the route, when a page:
+
+- answers with a status other than 200, such as a redirect;
+- takes POSTs at its URL (an `action`): Cloudflare answers those with 405 for a static file;
+- uses deferred props or infinite scroll, which need the Worker.
+
+## Headers
+
+The pages' security headers, the Content Security Policy included, are written to `_headers`, which Cloudflare applies
+to static files. The policy drops its nonce, as a static file can't have one: the document's scripts are the site's
+own files.
+
+## A new deploy
+
+Each page records the build it belongs to. After a deploy, a visit from a tab opened before it reloads the page, as
+Inertia does for a new version of the assets.

@@ -1,0 +1,17 @@
+// Worker config, used by the Cloudflare Vite plugin (dev / build / preview) and by `wrangler deploy`.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "fondu-site",
+  // app/server.ts answers what no static file does (the pages are static: routes/_middleware.ts)
+  "main": "./app/server.ts",
+  "compatibility_date": "2026-10-01",
+  // fondu.dev only: no *.workers.dev or preview URLs
+  "routes": [
+    {
+      "pattern": "fondu.dev",
+      "custom_domain": true,
+    },
+  ],
+  "workers_dev": false,
+  "preview_urls": false,
+}

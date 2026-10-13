@@ -1,0 +1,49 @@
+A page can be an `.mdx` file: Markdown, with JSX and imported React components. It suits docs and articles; this site's
+docs are MDX pages.
+
+## Setup
+
+Add [`@mdx-js/rollup`](https://mdxjs.com/packages/rollup/) and put it first in `vite.config.ts`:
+
+```sh
+npm install -D @mdx-js/rollup
+```
+
+```ts
+// vite.config.ts
+import mdx from '@mdx-js/rollup'
+
+export default defineConfig({
+  plugins: [{ enforce: 'pre', ...mdx() }, fondu({ target: 'node' })],
+})
+```
+
+## A page
+
+```mdx
+{/* app/pages/guide/intro.mdx */}
+import { Counter } from '#/components/counter.tsx'
+
+# Introduction
+
+Some **Markdown**, and a component: <Counter />
+```
+
+A route renders it like any page, by name:
+
+```ts
+// app/routes/guide/intro.ts
+export const loader = defineHandler((c) => render(c, 'guide/intro'))
+```
+
+Its props are in `props`: `{props.title}` in the Markdown.
+
+## Layouts and components
+
+The page renders inside the layout `createInertiaApp()` gives it, as any page does. To change what the Markdown
+becomes (a link that is an Inertia `<Link>`, a styled table), use MDX's
+[`providerImportSource`](https://mdxjs.com/packages/mdx/#processoroptions) with `@mdx-js/react`'s `MDXProvider` in
+that layout.
+
+Remark and rehype plugins go in `mdx()`'s options: this site uses `remark-gfm` for tables, `rehype-slug` for heading
+ids and `@shikijs/rehype` to highlight code at build time.

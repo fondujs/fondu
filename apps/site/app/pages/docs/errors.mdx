@@ -1,0 +1,34 @@
+## The error page
+
+An unknown URL, a `throw new HTTPException(403)` or an error in a handler: a page request gets `app/pages/error.tsx`
+with the status, inside the layout, with the shared props. API clients get plain text, or the `HTTPException`'s own
+response.
+
+```tsx
+// app/pages/error.tsx
+export default function ErrorPage({ status }: { status: number }) {
+  return <h1>{status === 404 ? 'Page not found' : 'Something went wrong'}</h1>
+}
+```
+
+Another page: `createApp({ errorPage: 'errors/show' })`. None, plain text for everyone: `errorPage: false`.
+
+## In development
+
+A 500 is a report of the error instead: the message, and the stack with your files first. During a visit, Inertia
+shows it in its dialog. And `render()` of a page that doesn't exist says which file to create.
+
+## Your own handling
+
+`createApp()` returns a Hono app: its `notFound()` and `onError()` replace Fondu's.
+
+```ts
+const app = createApp()
+
+app.onError((error, c) => {
+  report(error)
+  return c.text('Something went wrong', 500)
+})
+
+export default app
+```

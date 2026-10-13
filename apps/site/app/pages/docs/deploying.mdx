@@ -1,0 +1,40 @@
+## Node
+
+```sh
+npm run build    # vite build --mode client && vite build
+npm start        # NODE_ENV=production node dist/index.js
+```
+
+The build writes the server to `dist/index.js` and the browser's files to `dist/client`; the dependencies stay in
+`node_modules`, so deploy them with it. `NODE_ENV=production` makes React use its production build. `PORT` sets the
+port (3000 by default). On SIGTERM or SIGINT the server stops taking requests and waits for the running ones, up to
+10 seconds.
+
+## Bun
+
+The same build, with `fondu({ target: 'bun' })`; then `NODE_ENV=production bun dist/index.js`. Bun serves the app
+itself, on `PORT` too.
+
+## Cloudflare Workers
+
+```sh
+npm run deploy   # vite build && wrangler deploy
+```
+
+`wrangler.jsonc`'s `main` is `./app/server.ts`, the Worker. One `vite build` writes the browser's files and the
+Worker, minified as Workers start faster with less code to parse (`build.minify: false` in the Worker's Vite
+environment keeps it readable). `wrangler deploy` ships both: the files are served by Workers Static Assets.
+
+Bindings (D1, KV, R2…) are declared in `wrangler.jsonc` and read from `c.env` in handlers; `npm run cf-typegen` writes
+their types. With [static pages](/docs/static-pages), the pages chosen are files too.
+
+## Caching
+
+The built assets in `/assets/` have hashed names, so they are served with a year-long `Cache-Control` and
+`immutable`: by the Node and Bun server, and on Cloudflare through a generated `_headers` (unless `public/_headers`
+exists). Pages are not cached: `Cache-Control: private, no-cache`.
+
+## A new version
+
+Each build has a version. A visit from a tab opened before a deploy gets a full page load instead of the page, so
+the browser runs the new assets: Inertia's [asset versioning](https://inertiajs.com/asset-versioning), done for you.

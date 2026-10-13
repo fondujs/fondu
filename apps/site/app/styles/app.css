@@ -1,0 +1,277 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/inter';
+@import '@fontsource-variable/geist-mono';
+
+/* coss ui's `dark:`: the dark theme chosen, or the system's while none is (<html class="system">). And its
+   `not-dark:`, which Tailwind can't derive from a variant of two rules. */
+@custom-variant dark {
+  &:is(.dark *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:is(.system *) {
+      @slot;
+    }
+  }
+}
+@custom-variant not-dark {
+  &:is(.light *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: light) {
+    &:is(.system *) {
+      @slot;
+    }
+  }
+}
+
+/* coss ui's tokens (neutral), each light-dark(): the theme is the color-scheme, the system's or the one chosen.
+   One more color, molten-cheese gold (--brand), for the logo, the progress bar, where you are and links. */
+:root {
+  color-scheme: light dark;
+  --background: light-dark(var(--color-white), color-mix(in srgb, var(--color-neutral-950) 95%, var(--color-white)));
+  --foreground: light-dark(var(--color-neutral-800), var(--color-neutral-100));
+  --card: light-dark(var(--color-white), color-mix(in srgb, var(--background) 98%, var(--color-white)));
+  --card-foreground: var(--foreground);
+  --popover: var(--card);
+  --popover-foreground: var(--foreground);
+  --primary: light-dark(var(--color-neutral-800), var(--color-neutral-100));
+  --primary-foreground: light-dark(var(--color-neutral-50), var(--color-neutral-800));
+  --secondary: light-dark(--alpha(var(--color-black) / 4%), --alpha(var(--color-white) / 4%));
+  --secondary-foreground: var(--foreground);
+  --muted: var(--secondary);
+  --muted-foreground: light-dark(
+    color-mix(in srgb, var(--color-neutral-500) 90%, var(--color-black)),
+    color-mix(in srgb, var(--color-neutral-500) 90%, var(--color-white))
+  );
+  --accent: var(--secondary);
+  --accent-foreground: var(--foreground);
+  --destructive: light-dark(var(--color-red-500), color-mix(in srgb, var(--color-red-500) 90%, var(--color-white)));
+  --destructive-foreground: light-dark(var(--color-red-700), var(--color-red-400));
+  --info: var(--color-blue-500);
+  --info-foreground: light-dark(var(--color-blue-700), var(--color-blue-400));
+  --success: var(--color-emerald-500);
+  --success-foreground: light-dark(var(--color-emerald-700), var(--color-emerald-400));
+  --warning: var(--color-amber-500);
+  --warning-foreground: light-dark(var(--color-amber-700), var(--color-amber-400));
+  --border: light-dark(--alpha(var(--color-black) / 8%), --alpha(var(--color-white) / 6%));
+  --input: light-dark(--alpha(var(--color-black) / 10%), --alpha(var(--color-white) / 8%));
+  --ring: light-dark(var(--color-neutral-400), var(--color-neutral-500));
+  --brand: light-dark(oklch(76% 0.16 78), oklch(80% 0.16 85));
+  --brand-foreground: light-dark(oklch(55% 0.13 70), var(--brand)); /* text: 4.9:1 on white */
+  --radius: 0.625rem;
+}
+:root.light {
+  color-scheme: light;
+}
+:root.dark {
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-sans);
+  --font-mono: 'Geist Mono Variable', ui-monospace, Menlo, Consolas, monospace;
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+  --animate-skeleton: skeleton 2s -1s infinite linear;
+  --animate-toast-success-odd: toast-success-odd 0.32s cubic-bezier(0.5, 1, 0.89, 1);
+  --animate-toast-success-even: toast-success-even 0.32s cubic-bezier(0.5, 1, 0.89, 1);
+  --animate-toast-error-odd: toast-error-odd 0.28s cubic-bezier(0.5, 1, 0.89, 1);
+  --animate-toast-error-even: toast-error-even 0.28s cubic-bezier(0.5, 1, 0.89, 1);
+  @keyframes skeleton {
+    to {
+      background-position: -200% 0;
+    }
+  }
+  @keyframes toast-success-odd {
+    0% {
+      scale: 1;
+    }
+    30% {
+      scale: 1.025;
+    }
+    60% {
+      scale: 0.99;
+    }
+    100% {
+      scale: 1;
+    }
+  }
+  @keyframes toast-error-odd {
+    0% {
+      translate: 0 0;
+    }
+    25% {
+      translate: -3px 0;
+    }
+    50% {
+      translate: 3px 0;
+    }
+    75% {
+      translate: -3px 0;
+    }
+    100% {
+      translate: 0 0;
+    }
+  }
+  @keyframes toast-success-even {
+    0% {
+      scale: 1;
+    }
+    30% {
+      scale: 1.025;
+    }
+    60% {
+      scale: 0.99;
+    }
+    100% {
+      scale: 1;
+    }
+  }
+  @keyframes toast-error-even {
+    0% {
+      translate: 0 0;
+    }
+    25% {
+      translate: -3px 0;
+    }
+    50% {
+      translate: 3px 0;
+    }
+    75% {
+      translate: -3px 0;
+    }
+    100% {
+      translate: 0 0;
+    }
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background font-sans text-sm/relaxed text-foreground antialiased;
+  }
+  /* Base UI's popups (menus, dialogs, toasts) stack above the page */
+  #app {
+    isolation: isolate;
+  }
+  h1 {
+    @apply mb-2 font-heading text-2xl font-semibold tracking-tight;
+  }
+  /* a link in a sentence: one without classes of its own */
+  a:not([class]) {
+    @apply text-brand-foreground underline decoration-brand-foreground/40 underline-offset-4 hover:decoration-brand-foreground;
+  }
+  code {
+    @apply rounded-sm bg-muted px-1 py-px font-mono text-[0.85em];
+  }
+}
+
+/* A page's opening paragraph, under its <h1> */
+@utility lede {
+  @apply mb-8 text-[15px]/relaxed text-muted-foreground;
+}
+
+/* The docs' Markdown (layouts/docs.tsx) */
+@utility prose {
+  @apply text-[15px]/7;
+  & :where(h2) {
+    @apply mt-12 mb-3 scroll-mt-20 font-heading text-xl font-semibold tracking-tight;
+  }
+  & :where(h3) {
+    @apply mt-8 mb-2 scroll-mt-20 font-heading text-base font-semibold;
+  }
+  & :where(p, ul, ol, table, pre, blockquote) {
+    @apply my-4;
+  }
+  & :where(ul) {
+    @apply list-disc pl-5 marker:text-muted-foreground;
+  }
+  & :where(ol) {
+    @apply list-decimal pl-5 marker:text-muted-foreground;
+  }
+  & :where(li) {
+    @apply my-1 pl-1;
+  }
+  & :where(strong) {
+    @apply font-semibold;
+  }
+  & :where(blockquote) {
+    @apply border-l-2 border-brand pl-4 text-muted-foreground;
+  }
+  & :where(table) {
+    @apply block w-full overflow-x-auto text-sm;
+  }
+  & :where(th) {
+    @apply border-b px-3 py-2 text-left font-medium first:pl-0;
+  }
+  & :where(td) {
+    @apply border-b px-3 py-2 align-top first:pl-0;
+  }
+  & :where(hr) {
+    @apply my-10;
+  }
+}
+
+/* a heading of the docs links to itself: a # in the margin on hover */
+.heading-anchor {
+  @apply relative;
+  &:hover::before {
+    content: '#';
+    @apply absolute -left-5 text-muted-foreground;
+  }
+}
+
+/* Code highlighted at build time (Shiki, vite.config.ts): both themes' colors, the one of the color-scheme shown.
+   A layer below the utilities, which can change it. */
+@layer components {
+  pre.shiki {
+    @apply overflow-x-auto rounded-xl border bg-muted px-4 py-3.5 font-mono text-[13.5px]/6;
+    & code {
+      @apply bg-transparent p-0 text-[inherit];
+    }
+    & span {
+      color: light-dark(var(--shiki-light), var(--shiki-dark));
+    }
+    /* ```ts /name/: the name highlighted, in the brand's gold */
+    & .highlighted-word {
+      @apply rounded-sm bg-brand/16 px-0.5 ring-1 ring-brand/40;
+    }
+  }
+}

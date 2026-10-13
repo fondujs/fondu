@@ -1,0 +1,5 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": { "noEmit": true, "allowImportingTsExtensions": true, "types": ["vite/client", "mdx"] },
+  "include": ["app", "vite.config.ts", "llms.ts"]
+}

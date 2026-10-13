@@ -1,0 +1,80 @@
+## The files
+
+```
+package.json         fondu, hono, @inertiajs/react, react, react-dom (Node: also @hono/node-server)
+vite.config.ts       plugins: [fondu({ target: 'node' })]
+app/
+  server.ts          export default createApp()
+  app.tsx            createInertiaApp({ pages: './pages', … }): the browser and the server render
+  routes/            server code only: the file path is the URL
+    _middleware.ts     runs for its directory and below
+    index.ts           /
+    users/[id].ts      /users/:id
+    api/health.ts      /api/health
+  pages/             React pages, rendered by name: 'users/show' is pages/users/show.tsx
+    error.tsx          the error page (404, 403, 500…)
+  fondu.gen.d.ts     the generated types (commit it)
+```
+
+## `vite.config.ts`
+
+`fondu()` is the Vite plugin. It takes the target, `node`, `bun` or `cloudflare`:
+
+```ts
+import fondu from 'fondu/vite'
+import { defineConfig } from 'vite'
+
+export default defineConfig({
+  plugins: [fondu({ target: 'node' })],
+})
+```
+
+On Cloudflare, the Cloudflare plugin comes first and runs the Worker in workerd, in development too:
+
+```ts
+plugins: [cloudflare({ viteEnvironment: { name: 'ssr' } }), fondu({ target: 'cloudflare' })]
+```
+
+## `app/server.ts`
+
+The server: `createApp()` returns a Hono app made of `app/routes/`, with CSRF protection, security headers (a Content
+Security Policy included), one URL per page (`/users/` redirects to `/users`) and error pages built in.
+
+```ts
+import { createApp } from 'fondu'
+
+export default createApp()
+```
+
+Its options: `document` (the HTML around pages), `errorPage`, `trailingSlash: 'append'`, `csrf` and `secureHeaders`
+(Hono's options, or `false`). The [API](/docs/api#createapp) lists them.
+
+## `app/app.tsx`
+
+The browser's entry, and the server render's: Inertia's `createInertiaApp()`. Fondu's Vite plugin finds the pages in
+`./pages` and wraps the same call for the server.
+
+```tsx
+import { createInertiaApp } from '@inertiajs/react'
+
+import Layout from './layout'
+
+createInertiaApp({
+  pages: './pages',
+  title: (title) => (title ? `${title} · My app` : 'My app'),
+  layout: () => Layout,
+})
+```
+
+## Server code
+
+`app/routes/`, `app/server.ts` and files named `*.server.ts` are server code. Browser code (pages, components) must not
+import them, as they may hold secrets or reach a database: the build stops if one does, naming the import. Shared code
+(a schema, a type) goes in any other file.
+
+`package.json` maps `#/*` to `./app/*`, so `import { db } from '#/lib/db.server.ts'` works from anywhere in `app/`.
+
+## `app/fondu.gen.d.ts`
+
+The dev server and the build write the types of your pages and routes here: they make `render()` and `href()` typed.
+Commit it, so the types are there before the first build (in CI, say); don't edit it.

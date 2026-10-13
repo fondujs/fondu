@@ -1,0 +1,100 @@
+## A form
+
+Inertia's `<Form>` sends the form to an action without a full reload. Fondu's part is on the server: the action
+validates the input and answers.
+
+```tsx
+// app/pages/contacts/new.tsx
+import { Form } from '@inertiajs/react'
+import { href } from 'fondu/client'
+
+export default function NewContact() {
+  return (
+    <Form action={href('/contacts')} method="post">
+      {({ errors, processing }) => (
+        <>
+          <input name="email" />
+          {errors.email && <p>{errors.email}</p>}
+          <button disabled={processing}>Add</button>
+        </>
+      )}
+    </Form>
+  )
+}
+```
+
+```ts
+// app/routes/contacts/index.ts
+import { back, defineHandler, flash } from 'fondu'
+
+import { contactSchema } from '#/schemas/contact.ts'
+
+export const action = defineHandler.withValidator({ body: contactSchema })(async (c, { body }) => {
+  await addContact(body)
+  flash(c, { message: 'Contact added' })
+  return back(c)
+})
+```
+
+## Invalid input
+
+When the body or the query doesn't fit its schema, the handler doesn't run:
+
+- an Inertia visit or a plain HTML form gets a redirect back to the page it came from, and that page gets the errors
+  in its `errors` prop, one message per field (`{ email: 'Invalid email' }`). `<Form>` and `useForm()` show them.
+- a form with an error bag (`errorBag="signup"`) gets them under its name, so two forms on a page keep theirs apart.
+- an API client gets 422 and `{ errors }`.
+
+Params that don't fit are a 404: the URL names nothing.
+
+A check the schema can't make, such as an address already taken, throws `ValidationError` from the handler, with the
+same result:
+
+```ts
+import { ValidationError } from 'fondu'
+
+if (await emailTaken(body.email)) throw new ValidationError({ email: 'This address is taken' })
+```
+
+## The same schema in the browser
+
+The schema is plain code: a page can import it (from any file that is not [server code](/docs/project-structure#server-code))
+and check before sending:
+
+```tsx
+const form = useForm({ name: '', email: '' })
+
+const submit = (e: FormEvent) => {
+  e.preventDefault()
+  const result = contactSchema.safeParse(form.data)
+  if (!result.success) {
+    const fields = z.flattenError(result.error).fieldErrors
+    return form.setError({ name: fields.name?.[0] ?? '', email: fields.email?.[0] ?? '' })
+  }
+  form.post(href('/contacts'))
+}
+```
+
+## Precognition
+
+With [Precognition](https://inertiajs.com/forms#precognition), the server checks each field as the user leaves it,
+with the action's own schema: `<Form>`'s `validate('email')`, or `useForm().withPrecognition()`. Fondu answers those
+requests itself, from the validator: 204 when the fields are valid, 422 with their errors otherwise. The action runs
+only when the form is sent.
+
+```tsx
+<Form action={href('/contacts')} method="post">
+  {({ errors, validate }) => <input name="email" onBlur={() => validate('email')} />}
+</Form>
+```
+
+## Files and nested fields
+
+The body is one object whether it comes as JSON or as form fields. Form fields named like `user[name]` or `tags[]`
+become nested objects and arrays, files are `File` objects, and empty file inputs are left out, so `useForm()` with a
+file and a plain form read the same way.
+
+## CSRF
+
+`createApp()` turns on Hono's CSRF protection: a request that changes something (a POST, a form) must come from the
+app's own origin. Inertia's requests and the app's forms do; nothing else is needed.
