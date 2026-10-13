@@ -1,8 +1,8 @@
-import { Head, Link, useHttp, usePage } from '@inertiajs/react'
+import { Head, useHttp, usePage } from '@inertiajs/react'
 import { href } from 'fondu/client'
 import { useState } from 'react'
 
-import { DemoCard, Json, SubmitButton, TextField } from '#/components/demo.tsx'
+import { DemoCard, Json, SignInFirst, SubmitButton, TextField } from '#/components/demo.tsx'
 import { Button } from '#/components/ui/button.tsx'
 
 type Contact = { id: number; name: string; email: string }
@@ -24,13 +24,12 @@ export default function Http() {
       <p className="lede">
         Not every request is a page visit. <code>useHttp</code> calls JSON endpoints with the same form helpers:
         processing state, the response, and validation errors from a <code>422 {'{ errors }'}</code>.
-        {signedIn ? null : (
-          <>
-            {' '}
-            The API is for signed-in users: <Link href={href('/login')}>sign in</Link> or watch the 401.
-          </>
-        )}
       </p>
+      {signedIn ? null : (
+        <div className="mb-4">
+          <SignInFirst>to use the API, or watch it answer 401.</SignInFirst>
+        </div>
+      )}
       <div className="grid gap-4 sm:grid-cols-2">
         <DemoCard title="GET /api/contacts">
           <Button

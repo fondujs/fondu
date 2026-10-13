@@ -1,4 +1,4 @@
-import { Form, Head, usePage } from '@inertiajs/react'
+import { Form, Head, Link, usePage } from '@inertiajs/react'
 import { href } from 'fondu/client'
 
 import { SubmitButton } from '#/components/demo.tsx'
@@ -15,6 +15,9 @@ export default function Dashboard({ accounts }: Props) {
   return (
     <>
       <Head title="Admin" />
+      <p className="mb-2 text-sm">
+        <Link href={href('/')}>← Back to the demos</Link>
+      </p>
       <h1>Accounts</h1>
       <p className="lede">
         Only admins get here (<code>routes/admin/_middleware.ts</code>: <code>requireAdmin</code>,{' '}

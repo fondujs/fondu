@@ -26,7 +26,7 @@
 }
 
 /* coss ui's tokens (neutral), each light-dark(): the theme is the color-scheme, the system's or the one chosen.
-   One more color, molten-cheese gold (--brand), for the logo, the progress bar and where you are. */
+   One more color, molten-cheese gold (--brand), for the logo, the progress bar, where you are and links. */
 :root {
   color-scheme: light dark;
   --background: light-dark(var(--color-white), color-mix(in srgb, var(--color-neutral-950) 95%, var(--color-white)));
@@ -58,6 +58,7 @@
   --input: light-dark(--alpha(var(--color-black) / 10%), --alpha(var(--color-white) / 8%));
   --ring: light-dark(var(--color-neutral-400), var(--color-neutral-500));
   --brand: light-dark(oklch(76% 0.16 78), oklch(80% 0.16 85));
+  --brand-foreground: light-dark(oklch(55% 0.13 70), var(--brand)); /* text: 4.9:1 on white */
   --radius: 0.625rem;
 }
 :root.light {
@@ -94,6 +95,7 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
   --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
   --font-heading: var(--font-sans);
   --font-mono: 'Geist Mono Variable', ui-monospace, Menlo, Consolas, monospace;
@@ -194,7 +196,7 @@
   }
   /* a link in a sentence: one without classes of its own */
   a:not([class]) {
-    @apply underline underline-offset-4;
+    @apply text-brand-foreground underline decoration-brand-foreground/40 underline-offset-4 hover:decoration-brand-foreground;
   }
   code {
     @apply rounded-sm bg-muted px-1 py-px font-mono text-[0.85em];
@@ -203,7 +205,7 @@
 
 /* A page's opening paragraph, under its <h1> */
 @utility lede {
-  @apply mb-8 max-w-[62ch] text-[15px]/relaxed text-muted-foreground;
+  @apply mb-8 text-[15px]/relaxed text-muted-foreground;
 }
 
 /* Only for visits that opt in with <Link viewTransition> */

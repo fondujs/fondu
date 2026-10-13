@@ -426,9 +426,30 @@ ok(
   'plans' in (lastJson('/once?fresh')?.body.props ?? {}) && (await testid('plans')) !== plans,
 )
 
-// ---- forms and validation
+// ---- forms and validation: guests see the contacts; adding, changing, deleting need an account
 await nav('/contacts')
 await h1('Forms & validation')
+{
+  const guestPost = await fetch(BASE + '/contacts', {
+    method: 'POST',
+    redirect: 'manual',
+    headers: { 'Content-Type': 'application/json', Origin: ORIGIN },
+    body: JSON.stringify({ name: 'Guest', email: `guest-${Date.now()}@x.org` }),
+  })
+  ok(
+    'contacts: a guest gets the list and a way to sign in, not the forms; its POST is sent to sign in',
+    (await page.$('[data-testid=sign-in-first]')) !== null &&
+      (await page.$('[data-testid=add-contact]')) === null &&
+      (await page.$('[data-testid=contacts] button')) === null &&
+      guestPost.status === 303 &&
+      (guestPost.headers.get('location') ?? '').includes('/login?next='),
+    `${guestPost.status} ${guestPost.headers.get('location')}`,
+  )
+}
+await page.setExtraHTTPHeaders({ 'CF-Connecting-IP': '203.0.113.30' }) // its own address: Better Auth's rate limit
+await signIn()
+await page.setExtraHTTPHeaders({})
+await page.goto(BASE + '/contacts', { waitUntil: 'networkidle0' })
 await page.click('[data-testid=add-contact] button')
 await page.waitForSelector('[data-testid=err-email]')
 const formErrors = [await testid('err-name'), await testid('err-email')]
@@ -501,7 +522,7 @@ ok(
     `${asked} ${rows} -> ${during}`,
   )
 }
-const api = await fetchAs(BASE + '/api/contacts', {
+const api = await fetch(BASE + '/api/contacts', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json', Origin: ORIGIN },
   body: JSON.stringify({ name: '', email: '' }),
@@ -526,7 +547,7 @@ await page.click('[data-testid=email] button')
 await page.waitForSelector('[data-testid=err-email]')
 await until(() => lastBody()?.body.props.errors?.email)
 {
-  const bagged = await fetch(BASE + '/contacts/1?email', {
+  const bagged = await fetchAs(BASE + '/contacts/1?email', {
     method: 'POST',
     redirect: 'manual',
     headers: {
@@ -629,6 +650,7 @@ ok(
   await loading
   await early.close()
 }
+await signOut()
 
 // ---- redirects
 await page.goto(BASE + '/redirects', { waitUntil: 'networkidle0' })
@@ -975,7 +997,33 @@ await page.waitForFunction(() => document.querySelector('[data-testid=user]')?.a
   )
   await waitText('Role changed to user')
   ok("an admin action (Better Auth's setRole), there and back", true)
-  await page.click('header a[href="/"]')
+  // signed out from here, Back: the admin page is not shown again (encrypted in history, cleared)
+  await page.click('[data-testid=user]')
+  await (await page.waitForSelector('[data-testid=sign-out]')).click()
+  await page.waitForSelector('[data-testid=sign-in]')
+  await page.evaluate(() => {
+    window.__headings = []
+    const t0 = performance.now()
+    const tick = () => {
+      window.__headings.push(document.querySelector('h1')?.textContent)
+      if (performance.now() - t0 < 2000) requestAnimationFrame(tick)
+    }
+    tick()
+  })
+  await page.goBack()
+  await page.waitForFunction(() => location.pathname === '/login', { timeout: 8000 }).catch(() => {})
+  await sleep(400)
+  const seen = await page.evaluate(() => window.__headings ?? [])
+  ok(
+    'signed out on /admin: Back never shows it (history cleared; asked again: the sign-in page)',
+    !seen.includes('Accounts') && (await path()).startsWith('/login'),
+    JSON.stringify([...new Set(seen)]),
+  )
+  await page.setExtraHTTPHeaders({ 'CF-Connecting-IP': '203.0.113.21' })
+  await signIn()
+  await page.setExtraHTTPHeaders({})
+  await page.goto(BASE + '/admin/dashboard', { waitUntil: 'networkidle0' })
+  await page.click('main a[href="/"]')
   await page.waitForSelector('aside')
 }
 

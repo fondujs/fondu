@@ -8,10 +8,24 @@ const themes = { system: [Monitor, 'System'], light: [Sun, 'Light'], dark: [Moon
 type Theme = keyof typeof themes
 
 /**
- * System, light or dark, as the items of a menu: a cookie the server reads to write `<html class>`
- * (app/server.ts), so the first paint has it; here the class changes at once.
+ * System, light or dark: a cookie the server reads to write `<html class>` (app/server.ts), so the first paint has
+ * it; here the class changes at once.
  */
-export function ThemeItems() {
+export function ThemeMenu() {
+  return (
+    <Menu>
+      <MenuTrigger render={<Button variant="ghost" size="icon" aria-label="Theme" data-testid="theme" />}>
+        <Sun className="dark:hidden" />
+        <Moon className="not-dark:hidden" />
+      </MenuTrigger>
+      <MenuPopup align="end">
+        <Themes />
+      </MenuPopup>
+    </Menu>
+  )
+}
+
+function Themes() {
   const [theme, setTheme] = useState(() => document.documentElement.className as Theme) // a menu opens in the browser
   const choose = (value: Theme) => {
     document.cookie = `theme=${value}; path=/; max-age=${value === 'system' ? 0 : 31536000}; samesite=lax`
@@ -28,20 +42,5 @@ export function ThemeItems() {
         </MenuRadioItem>
       ))}
     </MenuRadioGroup>
-  )
-}
-
-/** The theme menu on its own (signed in, it is in the account menu) */
-export function ThemeMenu() {
-  return (
-    <Menu>
-      <MenuTrigger render={<Button variant="ghost" size="icon" aria-label="Theme" data-testid="theme" />}>
-        <Sun className="dark:hidden" />
-        <Moon className="not-dark:hidden" />
-      </MenuTrigger>
-      <MenuPopup align="end">
-        <ThemeItems />
-      </MenuPopup>
-    </Menu>
   )
 }
