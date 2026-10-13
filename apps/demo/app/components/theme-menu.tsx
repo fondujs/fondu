@@ -35,7 +35,7 @@ function Themes() {
   return (
     <MenuRadioGroup value={theme} onValueChange={choose}>
       {Object.entries(themes).map(([value, [Icon, label]]) => (
-        <MenuRadioItem key={value} value={value}>
+        <MenuRadioItem key={value} value={value} closeOnClick>
           <span className="flex items-center gap-2">
             <Icon className="opacity-70" /> {label}
           </span>
