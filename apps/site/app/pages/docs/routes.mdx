@@ -1,0 +1,107 @@
+## Files and URLs
+
+Every `.ts` file in `app/routes/` is a route, except `_middleware.ts` files and tests. Its path is its URL:
+
+| File                     | URL                                         |
+| ------------------------ | ------------------------------------------- |
+| `index.ts`               | `/`                                         |
+| `about.ts`               | `/about`                                    |
+| `users/index.ts`         | `/users`                                    |
+| `users/[id].ts`          | `/users/:id`                                |
+| `files/[...path].ts`     | `/files/*`: one or more segments, in `path` |
+| `(marketing)/pricing.ts` | `/pricing`: a `(group)` adds no segment     |
+
+## Loader and actions
+
+A route for pages exports what answers each request:
+
+```ts
+// app/routes/users/[id].ts
+import { back, defineHandler, render } from 'fondu'
+
+export const loader = defineHandler(async (c) =>
+  // GET /users/7
+  render(c, 'users/show', { user: await getUser(c.req.param('id')) }),
+)
+
+export const action = defineHandler(async (c) => {
+  // POST /users/7
+  return back(c)
+})
+
+export const actions = {
+  // POST /users/7?rename
+  rename: defineHandler(async (c) => back(c)),
+  // POST /users/7?delete
+  delete: defineHandler(async (c) => c.redirect('/users', 303)),
+}
+```
+
+- `loader` answers GET, `action` POST.
+- `actions.name` answers `POST ?name`, so one page can have several forms, each with its own action. A plain HTML
+  form can pick one too: `<form method="post" action="/users/7?rename">`.
+- After an action, answer with a redirect: `back(c)` to the page the request came from, or `c.redirect(url, 303)`.
+  Inertia then loads that page.
+
+`defineHandler(...middleware, handler)` is Hono's `createHandlers`: `c` is Hono's [Context](https://hono.dev/docs/api/context),
+so `c.req.param()`, `c.req.query()`, `c.json()` and the rest are there.
+
+## HTTP routes
+
+A route for API clients exports handlers named after the methods: `GET`, `POST`, `PUT`, `PATCH`, `DELETE`,
+`OPTIONS`.
+
+```ts
+// app/routes/api/health.ts
+import { defineHandler } from 'fondu'
+
+export const GET = defineHandler((c) => c.json({ ok: true }))
+```
+
+## Validated input
+
+`defineHandler.withValidator({ body, query, params })` checks the input with any
+[Standard Schema](https://standardschema.dev) (Zod, Valibot, ArkType…) and hands the handler the parsed values:
+
+```ts
+import * as z from 'zod/mini'
+
+const params = z.object({ id: z.coerce.number() })
+const rename = z.object({ name: z.string().check(z.minLength(1)) })
+
+export const actions = {
+  rename: defineHandler.withValidator({ params, body: rename })(requireUser, async (c, { params, body }) => {
+    await renameUser(params.id, body.name)
+    return back(c)
+  }),
+}
+```
+
+The middleware comes first (up to three; more with `every()` from `hono/combine`), so a guard runs before the body is
+read. Invalid input goes back to the page with the errors: [Forms and validation](/docs/forms) has the details.
+
+## Middleware
+
+A `_middleware.ts` file runs for every route in its directory and below, outermost first. Its default export is a
+Hono middleware:
+
+```ts
+// app/routes/admin/_middleware.ts
+import { defineMiddleware } from 'fondu'
+import { HTTPException } from 'hono/http-exception'
+
+export default defineMiddleware(async (c, next) => {
+  if (c.get('user')?.role !== 'admin') throw new HTTPException(403)
+  await next()
+})
+```
+
+`app/routes/_middleware.ts` runs for every request, unknown URLs included: the place to read the session and
+[share](/docs/pages#shared-props) what every page needs.
+
+A middleware for some handlers only goes in `defineHandler()`, before the handler: `defineHandler(requireUser, (c) => …)`.
+
+## Errors
+
+Throw Hono's `HTTPException` with a status, or return `c.notFound()`: pages get the [error page](/docs/errors) with
+that status, API clients the exception's response (plain text by default).

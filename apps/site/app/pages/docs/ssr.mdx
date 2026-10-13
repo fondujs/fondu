@@ -1,0 +1,38 @@
+## How it works
+
+A document request (a first visit, a reload, a link opened in a new tab) is rendered on the server, in the same
+process as the routes: the HTML of the page, its `<Head>` tags, and the page data for Inertia. The browser shows it at
+once, then React hydrates it. The visits after that are rendered in the browser.
+
+There is no separate render server to run, on any target: on Cloudflare the render is part of the Worker.
+
+## Turning it off
+
+For the whole app, in `vite.config.ts`: no server render is built.
+
+```ts
+fondu({ target: 'node', ssr: false })
+```
+
+For some routes, with `withoutSsr()`: their pages are rendered in the browser only. In a `_middleware.ts`, for a
+directory:
+
+```ts
+// app/routes/admin/_middleware.ts
+import { withoutSsr } from 'fondu'
+
+export default withoutSsr()
+```
+
+Or in one handler: `defineHandler(withoutSsr(), (c) => render(c, 'admin/dashboard'))`.
+
+## Browser-only parts
+
+A component that needs the browser (`window`, a chart library) can stay on a server-rendered page inside Inertia's
+`<WhenMounted>`, which renders it after hydration only.
+
+## When the server render fails
+
+If a page throws while rendering on the server, Fondu logs the error and sends the page to render in the browser
+instead, so the visitor still gets it. Fix it all the same: the page loses what the server render gives it, a fast
+first paint and HTML for search engines.

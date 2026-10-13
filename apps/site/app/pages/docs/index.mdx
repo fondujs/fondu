@@ -1,0 +1,46 @@
+Fondu is a small meta-framework for full-stack React apps, built on [Hono](https://hono.dev),
+[Vite](https://vite.dev) and [Inertia](https://inertiajs.com). The same app runs on Node, Bun and Cloudflare Workers.
+
+## Routes and pages
+
+An app has two kinds of files. **Routes** in `app/routes/` are Hono handlers that run on the server; the file path is
+the URL. **Pages** in `app/pages/` are React components. A route renders a page by name, with its props:
+
+```ts
+// app/routes/users/[id].ts: GET /users/7
+export const loader = defineHandler.withValidator({ params })(async (c, { params }) =>
+  render(c, 'users/show', { user: await getUser(params.id) }),
+)
+```
+
+```tsx
+// app/pages/users/show.tsx: the component's props are the page's props
+export default function Show({ user }: { user: User }) {
+  return <h1>{user.name}</h1>
+}
+```
+
+The first request gets the page rendered on the server. From then on, Inertia takes over in the browser: a link or a
+form makes a request to the same route, which answers with the next page's name and props as JSON, and React swaps the
+page without a full reload. There is no API to write for your pages and no client-side router to keep in sync with the
+server: the routes are the only router.
+
+## Who does what
+
+Fondu writes as little of its own as it can.
+
+| Part                                                                                                | Done by                                                                                 |
+| --------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Visits, history, prefetching, forms, `<Head>`, deferred and merged props, infinite scroll           | `@inertiajs/react`                                                                      |
+| HTTP, middleware, CSRF protection, security headers                                                 | Hono and its middleware                                                                 |
+| Dev server and production build                                                                     | Vite, with `@hono/vite-dev-server` and `@hono/vite-build`, or `@cloudflare/vite-plugin` |
+| Finding the page component, the entry of the server render                                          | `@inertiajs/vite`                                                                       |
+| Inertia's server protocol, `routes/`, typed pages and URLs, the document, error pages, static pages | Fondu                                                                                   |
+
+So most of what you write is Hono's API on the server and Inertia's in the browser, and their docs apply as they are.
+The pages here cover what Fondu adds.
+
+## Next
+
+- [Quick start](/docs/quick-start): create an app and run it.
+- [The demo](https://demo.fondu.dev) shows every Inertia feature, one page each, on Cloudflare Workers.

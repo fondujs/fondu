@@ -1,0 +1,94 @@
+## `fondu`
+
+The server's API, for `app/server.ts`, routes and middleware.
+
+### `createApp()`
+
+`createApp(options?)` returns the Hono app made of `app/routes/`.
+
+| Option          |                                                                                               |
+| --------------- | --------------------------------------------------------------------------------------------- |
+| `document`      | the HTML around pages: `({ head, body, c }) => string`, for `<html>` attributes, fonts, icons |
+| `errorPage`     | the page for errors, `'error'` by default; `false`: plain text                                |
+| `trailingSlash` | `'trim'` (default: `/users/` redirects to `/users`) or `'append'`                             |
+| `csrf`          | `hono/csrf`'s options, or `false`                                                             |
+| `secureHeaders` | `hono/secure-headers`' options, or `false`                                                    |
+
+The Content Security Policy by default: `default-src 'self'`; scripts of the site or with the request's nonce (the
+document's scripts have it); inline styles (React's style attributes); `data:` images and fonts;
+`object-src 'none'`; `base-uri 'self'`. A directive of yours replaces that one only:
+
+```ts
+createApp({
+  secureHeaders: { contentSecurityPolicy: { fontSrc: ["'self'", 'https://fonts.gstatic.com'] } },
+})
+```
+
+`contentSecurityPolicy: false`: no policy.
+
+### Handlers
+
+| Export                                                 |                                                                         |
+| ------------------------------------------------------ | ----------------------------------------------------------------------- |
+| `defineHandler(...middleware, handler)`                | a route's handler: Hono's `createHandlers`                              |
+| `defineHandler.withValidator({ body, query, params })` | the same, with input checked by Standard Schemas: `(c, input) => …`     |
+| `defineMiddleware(fn)`                                 | a middleware: Hono's `createMiddleware`                                 |
+| `withoutSsr()`                                         | a middleware: these pages render in the browser only                    |
+| `ValidationError`                                      | `throw new ValidationError({ field: 'message' })`: back with the errors |
+
+### Responses
+
+| Export                              |                                                                                        |
+| ----------------------------------- | -------------------------------------------------------------------------------------- |
+| `render(c, page, props?, options?)` | a page; options: `status`, `encryptHistory`, `clearHistory`, `preserveFragment`        |
+| `share(c, props)`                   | props every page of this request gets                                                  |
+| `flash(c, data)`                    | data for the next page (`usePage().flash`)                                             |
+| `back(c, fallback?)`                | a redirect to the page the request came from                                           |
+| `location(c, url)`                  | a full page load of `url`                                                              |
+| `clearHistory(c)`                   | clears the encrypted history on the next page                                          |
+| `isInertia(c)`, `wantsPage(c)`      | whether the request is an Inertia visit; whether it wants a page (or is an API client) |
+
+### Props
+
+| Export                             |                                                       |
+| ---------------------------------- | ----------------------------------------------------- |
+| `optional(fn)`                     | only when a partial reload asks for it                |
+| `always(value)`                    | on every partial reload                               |
+| `defer(fn, { group?, rescue? })`   | after the page renders                                |
+| `merge(value)`, `prepend(value)`   | appended to, or prepended to, the list the page holds |
+| `deepMerge(value, { matchOn? })`   | merged into the object the page holds                 |
+| `once(fn, { key?, ttl?, fresh? })` | when the browser doesn't hold it already              |
+| `scroll(fn, { pageName? })`        | a page of a list, for `<InfiniteScroll>`              |
+
+[Pages and props](/docs/pages#kinds-of-props) shows them in use.
+
+### Route exports
+
+| Export                                             |                                                                                   |
+| -------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `loader`                                           | GET                                                                               |
+| `action`                                           | POST                                                                              |
+| `actions = { name }`                               | POST `?name`                                                                      |
+| `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS` | HTTP handlers                                                                     |
+| `prerender`                                        | `true`, `false` or a function listing params: a [static page](/docs/static-pages) |
+| `default` (in `_middleware.ts`)                    | the directory's middleware                                                        |
+
+## `fondu/client`
+
+For the browser.
+
+| Export                |                                                                |
+| --------------------- | -------------------------------------------------------------- |
+| `href(path, params?)` | a URL of `app/routes/`, typed: `href('/users/:id', { id: 7 })` |
+
+## `fondu/vite`
+
+The Vite plugin: `fondu(options)`.
+
+| Option      |                                                                                   |
+| ----------- | --------------------------------------------------------------------------------- |
+| `target`    | `'node'`, `'bun'` or `'cloudflare'`                                               |
+| `port`      | the production port on Node and Bun, 3000 by default (`PORT` overrides it)        |
+| `ssr`       | `false`: pages render in the browser only                                         |
+| `prerender` | `true`: write the chosen pages as [static files](/docs/static-pages) (Cloudflare) |
+| `react`     | options for `@vitejs/plugin-react`                                                |

@@ -199,12 +199,13 @@ during a visit). `render()` of a page that doesn't exist says which file to crea
 packages/fondu          the package (≈1,100 lines)
 packages/create-fondu   `bun create fondu`
 apps/demo               every Inertia feature, one page each — Workers, D1, Better Auth, coss ui
+apps/site               fondu.dev: the docs, MDX and static pages on Workers
 ```
 
 ```bash
 bun install            # also builds packages/fondu (the examples use the built package, like a real app)
 bun run test           # the protocol, on a small app with app.request()
-bun run typecheck      # the package and the demo (with apps/demo/e2e/types.ts)
+bun run typecheck      # the package, the demo (with apps/demo/e2e/types.ts) and the site
 bun run check          # format (oxfmt), lint (oxlint), typecheck
 bun run dev            # rebuild packages/fondu on change
 ```

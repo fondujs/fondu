@@ -1,0 +1,90 @@
+## Pages
+
+A page is a React component, the default export of a file in `app/pages/`. Its name is its path:
+`'users/show'` is `app/pages/users/show.tsx`. The component's props are the page's props:
+
+```tsx
+// app/pages/users/show.tsx
+import { Head } from '@inertiajs/react'
+
+export default function Show({ user }: { user: User }) {
+  return (
+    <>
+      <Head title={user.name} />
+      <h1>{user.name}</h1>
+    </>
+  )
+}
+```
+
+A page can also be [MDX](/docs/mdx). Layouts, `<Head>`, `<Link>`, forms and the rest are Inertia's: see
+[its docs](https://inertiajs.com/pages).
+
+## `render()`
+
+A route renders a page by name, with its props:
+
+```ts
+render(c, 'users/show', { user })
+render(c, 'users/show', { user }, { status: 201 })
+```
+
+It takes only pages that exist, with the props their component takes: a missing prop, one of the wrong type or a page
+name with a typo is a type error. A prop can be a function, called only when the prop is sent:
+
+```ts
+render(c, 'users/index', { users: () => db.users.all() })
+```
+
+The options: `status`, `encryptHistory` and `clearHistory` (Inertia's
+[history encryption](https://inertiajs.com/history-encryption)), `preserveFragment`.
+
+## Kinds of props
+
+Wrap a prop to change when it is sent. Each is an Inertia feature, and the page uses it with Inertia's API:
+
+| Prop                               | Sent                                                                                           |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `optional(fn)`                     | only when a partial reload asks for it                                                         |
+| `always(value)`                    | on partial reloads too, asked for or not                                                       |
+| `defer(fn, { group?, rescue? })`   | after the page renders, one request per group; `rescue`: a failure is listed in `rescuedProps` |
+| `merge(value)`, `prepend(value)`   | added to the end, or the start, of the list the page holds                                     |
+| `deepMerge(value, { matchOn? })`   | merged into the object the page holds                                                          |
+| `once(fn, { key?, ttl?, fresh? })` | only when the browser doesn't hold it already                                                  |
+| `scroll(fn, { pageName? })`        | a page of a list for `<InfiniteScroll>`: `{ data, currentPage, previousPage, nextPage }`       |
+
+```ts
+import { defer, merge, render } from 'fondu'
+
+render(c, 'dashboard', {
+  user,
+  stats: defer(() => slowStats()), // the page shows a placeholder, then the stats
+  activity: merge(await activityPage(page)), // "Load more" adds to the list
+})
+```
+
+## Shared props
+
+Props every page gets, such as the signed-in user, are shared from a middleware with `share()`:
+
+```ts
+// app/routes/_middleware.ts
+import { defineMiddleware, share } from 'fondu'
+
+export default defineMiddleware(async (c, next) => {
+  const user = await currentUser(c)
+  share(c, { auth: { user: user && { name: user.name } } })
+  await next()
+})
+```
+
+The page reads them with `usePage().props`. [Types](/docs/types) shows how to type them.
+
+## After an action
+
+- `back(c)`: a redirect to the page the request came from.
+- `flash(c, { message: 'Saved' })`: data for the next page only, in `usePage().flash`.
+- `location(c, url)`: a full page load of `url`, for a page outside the app.
+- `clearHistory(c)`: the history Inertia encrypted is cleared on the next page (after signing out).
+
+A redirect to a URL with a `#fragment` keeps the fragment.

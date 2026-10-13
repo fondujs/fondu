@@ -1,0 +1,12 @@
+```ts /items/
+import { back, defineHandler, render } from 'fondu'
+
+// GET /todos
+export const loader = defineHandler(async (c) => render(c, 'todos', { items: await db.todos.all() }))
+
+// POST /todos, from the form
+export const action = defineHandler.withValidator({ body: todo })(async (c, { body }) => {
+  await db.todos.add(body)
+  return back(c)
+})
+```
