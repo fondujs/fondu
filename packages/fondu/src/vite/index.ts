@@ -87,6 +87,31 @@ function scanMdx(config: () => ResolvedConfig): Plugin {
   }
 }
 
+/**
+ * The Worker never mounts or hydrates a page, but @inertiajs/react imports `react-dom/client` (createRoot,
+ * hydrateRoot) at its top: the whole of React's browser renderer in the Worker, evaluated at every start. There, it
+ * is a module that says so if called (about a third of the Worker, and of its start in dev)
+ */
+const REACT_DOM_CLIENT = '\0fondu:react-dom-client'
+function serverReactDomClient(): Plugin {
+  return {
+    name: 'fondu:server-react-dom-client',
+    enforce: 'pre',
+    applyToEnvironment: (env) => env.config.consumer === 'server',
+    resolveId: { filter: { id: /^react-dom\/client$/ }, handler: () => REACT_DOM_CLIENT },
+    load: {
+      filter: { id: /^\0fondu:react-dom-client$/ },
+      handler: () =>
+        [
+          `const browserOnly = (name) => () => { throw new Error('fondu: react-dom/client ' + name + '() runs in the browser, not in the server') }`,
+          `export const createRoot = browserOnly('createRoot')`,
+          `export const hydrateRoot = browserOnly('hydrateRoot')`,
+          `export const version = ''`,
+        ].join('\n'),
+    },
+  }
+}
+
 export default function fondu(options: FonduOptions): PluginOption[] {
   const node = options.target !== 'cloudflare'
   return [
@@ -96,7 +121,7 @@ export default function fondu(options: FonduOptions): PluginOption[] {
     core(options),
     layouts(),
     typegen(),
-    ...(node ? runtimePlugins(options) : []),
+    ...(node ? runtimePlugins(options) : [serverReactDomClient()]),
   ]
 }
 
@@ -249,6 +274,8 @@ function core(options: FonduOptions): Plugin {
           include: [...HONO, ...(options.ssr === false ? [] : ['react-dom/server'])],
           entries: [SERVER.slice(2), 'app/routes/**/*.ts', ENTRY, ...pages],
           ...mdx,
+          // the pre-bundled @inertiajs/react too
+          rolldownOptions: { plugins: [...mdx.rolldownOptions.plugins, serverReactDomClient()] },
         },
         ...(env.build?.minify === undefined && { build: { minify: true } }),
       }
