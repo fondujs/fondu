@@ -25,9 +25,9 @@
       }
     },
     {
-      "files": ["apps/site/app/landing/**"],
+      "files": ["**/*.md", "**/*.mdx"],
       "options": {
-        "printWidth": 72
+        "embeddedLanguageFormatting": "off"
       }
     }
   ],
