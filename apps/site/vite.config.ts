@@ -46,6 +46,8 @@ export default defineConfig({
               themes: { light: 'github-light', dark: 'github-dark' },
               defaultColor: false,
               defaultLanguage: 'text',
+              langs: [],
+              lazy: true,
               transformers: [transformerMetaWordHighlight(), title],
             },
           ],
