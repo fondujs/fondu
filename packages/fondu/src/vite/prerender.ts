@@ -1,11 +1,15 @@
+import { spawn } from 'node:child_process'
 import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
+import { createServer } from 'node:net'
 import { dirname, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
 import type { Logger } from 'vite'
 
-import { PAGE_DATA, pageDataPath } from '../paths.js'
+import { PAGE_DATA, staticFiles } from '../paths.js'
+
+export { staticFiles }
 
 /** the response headers a static document keeps: the security headers (hono/secure-headers' and the like) */
 const SECURITY_HEADERS =
@@ -26,46 +30,34 @@ export function staticPolicy(policy: string): string {
     .join('; ')
 }
 
-/** the files of a page: `/docs/intro` → `docs/intro.html` and `_fondu/pages/docs/intro.json` (paths decoded) */
-export function staticFiles(path: string): { html: string; json: string } {
-  const html = decodeURIComponent(path.endsWith('/') ? path + 'index.html' : path + '.html').slice(1)
-  return { html, json: decodeURIComponent(pageDataPath(path)).slice(1) }
-}
-
 /** the `_headers` rules: the documents' security headers, and the page objects' X-Inertia (Inertia requires it) */
 export function headerRules(headers: Record<string, string>): string {
   const lines = Object.entries(headers).map(([name, value]) => `  ${name}: ${value}`)
   return `\n/*\n${lines.join('\n')}\n${PAGE_DATA}/*\n  X-Inertia: true\n`
 }
 
+/** the built server, running for the prerender: fetch a path of it, stop it */
+interface Server {
+  fetch(path: string, headers?: Record<string, string>): Promise<Response>
+  dispose(): Promise<void>
+}
+
 /**
- * After `vite build` (Cloudflare): the built Worker, started by wrangler with `FONDU_PRERENDER` set, lists the
- * pages to prerender (`/__fondu/prerender`); each is asked for as a document and as a visit, and both are written
- * to the client build, which Workers Static Assets serve before the Worker.
+ * After the build: the built server (the Worker in wrangler, or `node` / `bun dist/index.js`), started with
+ * `FONDU_PRERENDER` set, lists the pages to prerender (`/__fondu/prerender`); each is asked for as a document and as
+ * a visit, and both are written to the client build. Cloudflare serves them before the Worker, with the security
+ * headers written to `_headers`; Node and Bun before the routes, behind the app's own headers.
  */
-export async function prerender(root: string, workerConfig: string, clientDir: string, logger: Logger) {
-  const fail = (lines: string[]) => {
+export async function prerender(start: () => Promise<Server>, clientDir: string, logger: Logger, headersFile: boolean) {
+  const fail = (lines: string[]): never => {
     for (const line of lines) logger.error(`fondu: ${line}`)
     throw new Error(`fondu: prerendering failed (${lines.length === 1 ? lines[0] : `${lines.length} problems, above`})`)
   }
-  let wrangler: Wrangler
+  const server = await start().catch((error: Error) => fail([error.message]))
   try {
-    const entry = createRequire(resolve(root, 'package.json')).resolve('wrangler')
-    wrangler = (await import(pathToFileURL(entry).href)) as Wrangler
-  } catch {
-    return fail(['wrangler is not installed: `npm install -D wrangler` (or bun / pnpm / yarn)'])
-  }
-  const worker = await wrangler.unstable_startWorker({
-    config: workerConfig,
-    bindings: { FONDU_PRERENDER: { type: 'plain_text', value: '1' } },
-    dev: { server: { port: 0 }, inspector: false, logLevel: 'error' },
-  })
-  try {
-    await worker.ready
-    const get = (path: string, headers: Record<string, string> = {}) =>
-      worker.fetch(new URL(path, 'http://localhost').href, { headers, redirect: 'manual' })
+    const get = server.fetch
     const listing = await get('/__fondu/prerender')
-    if (!listing.ok) return fail([`the Worker did not list the pages (${listing.status})`])
+    if (!listing.ok) return fail([`the server did not list the pages (${listing.status})`])
     const { version, paths, problems } = (await listing.json()) as {
       version: string | null
       paths: string[]
@@ -98,7 +90,7 @@ export async function prerender(root: string, workerConfig: string, clientDir: s
           .filter(([name]) => SECURITY_HEADERS.test(name))
           .map(([name, value]) => [name, /^content-security-policy/i.test(name) ? staticPolicy(value) : value]),
       )
-      if (security && JSON.stringify(headers) !== JSON.stringify(security)) {
+      if (headersFile && security && JSON.stringify(headers) !== JSON.stringify(security)) {
         errors.push(`${path}: its security headers differ from ${paths[0]}'s; one set is written for all`)
         continue
       }
@@ -109,11 +101,78 @@ export async function prerender(root: string, workerConfig: string, clientDir: s
       logger.info(`fondu: prerendered ${path}`)
     }
     if (errors.length) return fail(errors)
-    appendFileSync(join(clientDir, '_headers'), headerRules(security ?? {}))
+    if (headersFile) appendFileSync(join(clientDir, '_headers'), headerRules(security ?? {}))
   } finally {
-    await worker.dispose()
+    await server.dispose()
   }
 }
+
+/** Cloudflare: the built Worker, in the app's own wrangler (fondu does not depend on it) */
+export const worker = (root: string, workerConfig: string) => async (): Promise<Server> => {
+  let wrangler: Wrangler
+  try {
+    const entry = createRequire(resolve(root, 'package.json')).resolve('wrangler')
+    wrangler = (await import(pathToFileURL(entry).href)) as Wrangler
+  } catch {
+    throw new Error('wrangler is not installed: `npm install -D wrangler` (or bun / pnpm / yarn)')
+  }
+  const started = await wrangler.unstable_startWorker({
+    config: workerConfig,
+    bindings: { FONDU_PRERENDER: { type: 'plain_text', value: '1' } },
+    dev: { server: { port: 0 }, inspector: false, logLevel: 'error' },
+  })
+  await started.ready
+  return {
+    fetch: (path, headers = {}) =>
+      started.fetch(new URL(path, 'http://localhost').href, { headers, redirect: 'manual' }),
+    dispose: () => started.dispose(),
+  }
+}
+
+/** Node / Bun: `node dist/index.js` (or `bun`), on a free port, until it answers */
+export const nodeServer = (root: string, runtime: 'node' | 'bun') => async (): Promise<Server> => {
+  const port = await freePort()
+  const child = spawn(runtime, ['dist/index.js'], {
+    cwd: root,
+    env: { ...process.env, PORT: String(port), FONDU_PRERENDER: '1', NODE_ENV: 'production' },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  })
+  let output = ''
+  child.stdout.on('data', (d: Buffer) => (output += d))
+  child.stderr.on('data', (d: Buffer) => (output += d))
+  const base = `http://127.0.0.1:${port}`
+  const server: Server = {
+    fetch: (path, headers = {}) => fetch(base + path, { headers, redirect: 'manual' }),
+    dispose: async () => {
+      if (child.exitCode !== null) return
+      const exited = new Promise((r) => child.once('exit', r))
+      child.kill()
+      const force = setTimeout(() => child.kill('SIGKILL'), 3000)
+      await exited
+      clearTimeout(force)
+    },
+  }
+  for (let tries = 0; ; tries++) {
+    if (child.exitCode !== null || tries === 200)
+      throw new Error(`the server (${runtime} dist/index.js) did not start:\n${output.trim()}`)
+    try {
+      await fetch(base + '/__fondu/prerender')
+      return server
+    } catch {
+      await new Promise((r) => setTimeout(r, 50))
+    }
+  }
+}
+
+const freePort = () =>
+  new Promise<number>((resolve, reject) => {
+    const s = createServer()
+    s.on('error', reject)
+    s.listen(0, '127.0.0.1', () => {
+      const { port } = s.address() as { port: number }
+      s.close(() => resolve(port))
+    })
+  })
 
 /** what is used of wrangler's API (the app's own wrangler: fondu does not depend on it) */
 interface Wrangler {

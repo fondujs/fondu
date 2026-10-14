@@ -9,6 +9,7 @@ declare module 'fondu' {
       "docs/errors": typeof import("./pages/docs/errors.mdx")
       "docs/forms": typeof import("./pages/docs/forms.mdx")
       "docs/index": typeof import("./pages/docs/index.mdx")
+      "docs/layouts": typeof import("./pages/docs/layouts.mdx")
       "docs/mdx": typeof import("./pages/docs/mdx.mdx")
       "docs/pages": typeof import("./pages/docs/pages.mdx")
       "docs/project-structure": typeof import("./pages/docs/project-structure.mdx")

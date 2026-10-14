@@ -11,7 +11,7 @@ import type { Plugin, PluginOption, ResolvedConfig } from 'vite'
 
 import { isPageFile } from '../paths.js'
 import { layouts } from './layouts.js'
-import { prerender } from './prerender.js'
+import { nodeServer, prerender, worker } from './prerender.js'
 import { typegen } from './typegen.js'
 
 /**
@@ -30,8 +30,8 @@ export interface FonduOptions {
   ssr?: boolean
   react?: ReactOptions
   /**
-   * Cloudflare: routes with `export const prerender` (or under a `_middleware.ts` with it) are written as static
-   * files at build time, and visits read them; the Worker answers the other pages
+   * Routes with `export const prerender` (or under a `_middleware.ts` with it) are written as static files at build
+   * time, and visits read them; the server (the Worker) answers the other pages
    */
   prerender?: boolean
 }
@@ -89,8 +89,6 @@ function scanMdx(config: () => ResolvedConfig): Plugin {
 
 export default function fondu(options: FonduOptions): PluginOption[] {
   const node = options.target !== 'cloudflare'
-  if (options.prerender && node)
-    throw new Error('fondu: `prerender` is for the Cloudflare target only, so far (github.com/fondujs/fondu/issues/6)')
   return [
     react(options.react),
     // `ssr: {}`: the server transform without an entry, so without @inertiajs/vite's dev SSR endpoint (Laravel's model)
@@ -142,6 +140,14 @@ async function buildPlugin(options: FonduOptions): Promise<Plugin> {
           `const clientRoot = fileURLToPath(new URL('./client', import.meta.url))`,
           `${app}.use('/assets/*', async (c, next) => { await next(); if (c.res.ok) c.header('Cache-Control', 'public, max-age=31536000, immutable') })`,
           ...paths.map((p) => `${app}.use(${JSON.stringify(p)}, serveStatic({ root: clientRoot }))`),
+          // prerender: how the app reads the prerendered pages (fondu's server/prerender.ts), in the client build
+          ...(options.prerender
+            ? [
+                `import { readFile } from 'node:fs/promises'`,
+                `import { join as joinPath, sep } from 'node:path'`,
+                `globalThis[Symbol.for('fondu.staticFiles')] = (file) => { const to = joinPath(clientRoot, file); return to.startsWith(clientRoot + sep) ? readFile(to).catch(() => null) : Promise.resolve(null) }`,
+              ]
+            : []),
         ].join('\n')
       },
     ],
@@ -184,11 +190,13 @@ function runtimePlugins(options: FonduOptions): PluginOption[] {
 function core(options: FonduOptions): Plugin {
   let config: ResolvedConfig
   let isBuild = false
+  let serverBuild = false // Node / Bun: `vite build`, after `vite build --mode client`
   return {
     name: 'fondu',
     enforce: 'pre',
     config(_user, env) {
       isBuild = env.command === 'build'
+      serverBuild = isBuild && options.target !== 'cloudflare' && env.mode !== 'client'
       const client = { manifest: true, rollupOptions: { input: ENTRY } }
       if (options.target === 'cloudflare') {
         return {
@@ -204,9 +212,11 @@ function core(options: FonduOptions): Plugin {
               for (const env of Object.values(builder.environments)) {
                 if (env.name === 'client') continue
                 await builder.build(env)
-                const worker = resolve(config.root, env.config.build.outDir, 'wrangler.json')
-                if (options.prerender && existsSync(worker))
-                  await prerender(config.root, worker, resolve(config.root, client.config.build.outDir), config.logger)
+                const wrangler = resolve(config.root, env.config.build.outDir, 'wrangler.json')
+                if (options.prerender && existsSync(wrangler)) {
+                  const clientDir = resolve(config.root, client.config.build.outDir)
+                  await prerender(worker(config.root, wrangler), clientDir, config.logger, true)
+                }
               }
             },
           },
@@ -245,6 +255,13 @@ function core(options: FonduOptions): Plugin {
     },
     configResolved(c) {
       config = c
+    },
+    // Node / Bun: the server built, its pages to prerender written next to the client build's files
+    async closeBundle() {
+      if (!options.prerender || !serverBuild || options.target === 'cloudflare') return
+      serverBuild = false // once
+      const clientDir = resolve(config.root, 'dist/client')
+      await prerender(nodeServer(config.root, options.target), clientDir, config.logger, false)
     },
     // dev: server code changed (a module of the server only: routes/, *.server.ts…): reload the page; a page component:
     // React Fast Refresh (the client's HMR)

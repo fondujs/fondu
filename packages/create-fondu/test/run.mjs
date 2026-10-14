@@ -48,6 +48,19 @@ for (const target of Object.keys(production).filter((t) => !process.argv[2] || t
     )
   })
 
+  // Node / Bun: the home page prerendered (Cloudflare's static pages are checked by fondu.dev's build)
+  const prerendered = target !== 'cloudflare'
+  if (prerendered) {
+    const config = join(app, 'vite.config.ts')
+    writeFileSync(
+      config,
+      readFileSync(config, 'utf8').replace(`target: '${target}' }`, `target: '${target}', prerender: true }`),
+    )
+    writeFileSync(
+      join(app, 'app/routes/index.ts'),
+      readFileSync(join(app, 'app/routes/index.ts'), 'utf8') + 'export const prerender = true\n',
+    )
+  }
   sh('bun', ['run', 'build'], app)
   if (target === 'cloudflare')
     check(
@@ -72,6 +85,12 @@ for (const target of Object.keys(production).filter((t) => !process.argv[2] || t
       `${target} ${script}: a Content Security Policy`,
       /script-src 'self' 'nonce-/.test(home.headers.get('content-security-policy') ?? ''),
     )
+    if (prerendered)
+      check(
+        `${target} ${script}: the home page from its prerendered file, with the security headers`,
+        html === readFileSync(join(app, 'dist/client/index.html'), 'utf8') &&
+          home.headers.has('content-security-policy'),
+      )
     check(`${target} ${script}: says where it listens`, output().includes(says), output())
   })
 }

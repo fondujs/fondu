@@ -72,3 +72,9 @@ export function pathOfPageData(pathname: string): string | null {
   const m = pathname.match(/^\/_fondu\/pages(\/.+)\.json$/)
   return m ? m[1]!.replace(/\/index$/, '/') : null
 }
+
+/** the files of a prerendered page: `/docs/intro` → `docs/intro.html` and `_fondu/pages/docs/intro.json` (decoded) */
+export function staticFiles(path: string): { html: string; json: string } {
+  const html = decodeURIComponent(path.endsWith('/') ? path + 'index.html' : path + '.html').slice(1)
+  return { html, json: decodeURIComponent(pageDataPath(path)).slice(1) }
+}
