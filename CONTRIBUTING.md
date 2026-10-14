@@ -15,6 +15,9 @@ bun run test           # the protocol, on a small app with app.request()
 bun run check          # format (oxfmt), lint (oxlint), typecheck
 ```
 
+In VS Code, the recommended extensions (`.vscode/extensions.json`: oxc, Tailwind CSS, MDX) format and fix each file as it
+is saved, as the commit hook does.
+
 `bun run --filter create-fondu test` creates an app for each target (Bun, Cloudflare Workers, Node) with `packages/fondu` as
 built here, and runs it in development and production.
 
