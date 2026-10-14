@@ -35,6 +35,17 @@ export interface FonduOptions {
 }
 
 const ENTRY = 'app/app.tsx'
+/** what fondu's server code imports from Hono (test/hono.test.ts keeps the list complete) */
+export const HONO = [
+  'hono',
+  'hono/combine',
+  'hono/cookie',
+  'hono/csrf',
+  'hono/factory',
+  'hono/http-exception',
+  'hono/secure-headers',
+  'hono/trailing-slash',
+]
 const SERVER = './app/server.ts'
 const DEV_CSS = '/@fondu/dev.css'
 const V = { assets: 'virtual:fondu/assets', ssr: 'virtual:fondu/ssr' }
@@ -216,12 +227,13 @@ function core(options: FonduOptions): Plugin {
       if (name === 'client') return { optimizeDeps: { entries: [ENTRY, ...pages], ...mdx } }
       if (options.target !== 'cloudflare') return
       // the Worker: fondu is not pre-bundled (its routes import it back: a bundle would hand them a half-loaded
-      // module); react-dom/server is imported by @inertiajs/vite's generated render, which the scan does not see.
+      // module), so the scan does not see what it imports (HONO); nor react-dom/server, imported by @inertiajs/vite's
+      // generated render. Found late, they would restart the Worker in the middle of requests.
       // The build is minified, as Workers start faster with less code to parse
       return {
         optimizeDeps: {
           exclude: ['fondu'],
-          include: options.ssr === false ? [] : ['react-dom/server'],
+          include: [...HONO, ...(options.ssr === false ? [] : ['react-dom/server'])],
           entries: [SERVER.slice(2), 'app/routes/**/*.ts', ENTRY, ...pages],
           ...mdx,
         },
