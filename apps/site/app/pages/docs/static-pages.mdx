@@ -1,12 +1,10 @@
-On Cloudflare Workers, Fondu can write pages as static files at build time: static site generation (SSG). Workers
-Static Assets serve them without running the Worker, and Inertia's visits keep working. This site is built that way.
+Fondu can write pages as static files at build time: static site generation (SSG). They are served without rendering
+them again, and Inertia's visits keep working. On Node, Bun and Cloudflare Workers; this site is built that way.
 
 ```ts
 // vite.config.ts
-fondu({ target: 'cloudflare', prerender: true })
+fondu({ target: 'node', prerender: true }) // or 'bun', 'cloudflare'
 ```
-
-Static pages on Node and Bun are planned.
 
 ## Choosing the pages
 
@@ -28,13 +26,19 @@ export const prerender = () => posts.map((post) => ({ slug: post.slug }))
 
 ## How it works
 
-Each page is written twice:
+The build starts the server it built (`node` or `bun dist/index.js`, or the Worker in wrangler), asks it for the pages
+to prerender, and writes each twice in the client build:
 
 - as a document, `docs/intro.html`, for a first visit;
 - as its page object, `_fondu/pages/docs/intro.json`, for Inertia's visits: Fondu's client reads it instead of asking
   the Worker.
 
-The Worker still answers every other URL, a page that isn't static or one that doesn't exist. In development, it
+Then:
+
+- On Cloudflare, Workers Static Assets serve the files without running the Worker.
+- On Node and Bun, the server answers a static page from its file before the routes, with the app's security headers.
+
+The server still answers every other URL, a page that isn't static or one that doesn't exist. In development, it
 answers all of them.
 
 ## What a static page can be
@@ -43,14 +47,21 @@ A static page is the same for everyone. It is rendered once, for a visitor with 
 props included. So the build stops, naming the route, when a page:
 
 - answers with a status other than 200, such as a redirect;
-- takes POSTs at its URL (an `action`): Cloudflare answers those with 405 for a static file;
+- takes POSTs at its URL (an `action`): Cloudflare answers those with 405 for a static file, so Fondu refuses them
+  on every target;
 - uses deferred props or infinite scroll, which need the Worker.
 
 ## Headers
 
-The pages' security headers, the Content Security Policy included, are written to `_headers`, which Cloudflare applies
-to static files. The policy drops its nonce, as a static file can't have one: the document's scripts are the site's
-own files.
+On Node and Bun, a static page gets the headers of any page of the app, the Content Security Policy with a fresh nonce
+included.
+
+On Cloudflare, the pages' security headers are written to `_headers`, which Workers Static Assets apply to static
+files. The policy drops its nonce there, as a file served to everyone can't have one: the document's scripts are the
+site's own files.
+
+Either way, an inline script you add to the document can't count on the nonce on a static page: allow it by its hash
+([The document](/docs/document#scripts-in-the-document)).
 
 ## A new deploy
 

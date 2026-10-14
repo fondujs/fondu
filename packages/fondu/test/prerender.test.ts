@@ -91,4 +91,28 @@ describe('the app', () => {
     expect(res.status).toBe(409)
     expect(res.headers.get('x-inertia-location')).toBe('http://localhost/')
   })
+  test('Node / Bun: a prerendered page from its file, before the routes, with the security headers', async () => {
+    const files: Record<string, string> = {
+      'index.html': '<html>static home</html>',
+      '_fondu/pages/index.json': '{"component":"home"}',
+    }
+    const key = Symbol.for('fondu.staticFiles')
+    const g = globalThis as unknown as Record<symbol, unknown>
+    g[key] = async (file: string) => (file in files ? new TextEncoder().encode(files[file]) : null)
+    try {
+      const doc = await app.request('/', { headers: { Accept: 'text/html' } })
+      expect(await doc.text()).toBe('<html>static home</html>')
+      expect(doc.headers.get('content-security-policy')).toContain("script-src 'self' 'nonce-")
+      const data = await app.request('/_fondu/pages/index.json', { headers: { 'X-Inertia': 'true' } })
+      expect(data.headers.get('x-inertia')).toBe('true')
+      expect(await data.text()).toBe('{"component":"home"}')
+      // a visit to the page itself, or a page with no file: the routes
+      const visit = await app.request('/', { headers: { 'X-Inertia': 'true', 'X-Inertia-Version': 'v1' } })
+      expect(((await visit.json()) as { component: string }).component).toBe('home')
+      expect(await (await app.request('/items', { headers: { Accept: 'text/html' } })).text()).toContain('data-page')
+      expect((await app.request('/%2e%2e/secret', { headers: { Accept: 'text/html' } })).status).toBe(404)
+    } finally {
+      delete g[key]
+    }
+  })
 })
