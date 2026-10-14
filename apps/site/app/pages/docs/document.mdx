@@ -1,0 +1,86 @@
+Every page a browser loads first is an HTML document around the page: `<html>`, `<head>`, `<body>`. Fondu writes a
+minimal one; `createApp({ document })` replaces it with yours.
+
+## The default
+
+```html
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- head: the page's <Head> tags, then the styles and scripts -->
+  </head>
+  <body>
+    <!-- body: the page data and the rendered page -->
+  </body>
+</html>
+```
+
+## Your own
+
+`document` is a function of the parts Fondu renders, returning the HTML:
+
+```ts
+// app/server.ts
+import { createApp } from 'fondu'
+
+export default createApp({
+  document: ({ head, body, c }) =>
+    `<!doctype html><html lang="en" class="${theme(c)}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="icon" href="/favicon.svg" type="image/svg+xml">${head}</head><body>${body}</body></html>`,
+})
+```
+
+- `head`: the tags of the page's `<Head>` (title, meta), then its styles and scripts. Put it last in `<head>`.
+- `body`: the page data (`<script data-page>`) and the rendered page (`<div id="app">`). Put it alone in `<body>`.
+- `c`: the request's Hono context: a cookie, a header, the user. Above, `theme(c)` reads the theme a visitor chose,
+  so the first paint has it.
+
+The page's own tags come from Inertia's `<Head>`, in the page or the layout; the document is for what every page
+shares: `<html>` attributes, the charset and viewport, icons, fonts.
+
+## Fonts
+
+Fonts served by the app itself need nothing more: the Content Security Policy allows the site's own files. With
+[Fontsource](https://fontsource.org), a font is a package and an import in the CSS, and Vite serves the files:
+
+```css
+/* app/styles/app.css */
+@import '@fontsource-variable/inter';
+```
+
+A font from Google Fonts comes from two other origins: the stylesheet from `fonts.googleapis.com`, the font files from
+`fonts.gstatic.com`. Link the stylesheet in the document, and allow both in the policy:
+
+```ts
+// app/server.ts
+export default createApp({
+  document: ({ head, body }) =>
+    `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap">${head}</head><body>${body}</body></html>`,
+  secureHeaders: {
+    contentSecurityPolicy: {
+      styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+      fontSrc: ["'self'", 'data:', 'https://fonts.gstatic.com'],
+    },
+  },
+})
+```
+
+A directive given replaces Fondu's one, so keep what it had: `'self'` and `'unsafe-inline'` for styles (React's
+style attributes), `'self'` and `data:` for fonts.
+
+## Scripts in the document
+
+The policy runs the document's scripts only with the request's nonce, which Fondu gives to its own. A script of yours
+in the document takes it from the context:
+
+```ts
+document: ({ head, body, c }) => {
+  const nonce = c.get('secureHeadersNonce')
+  return `<!doctype html><html lang="en"><head><script nonce="${nonce}">…</script>${head}</head><body>${body}</body></html>`
+}
+```
+
+A [static page](/docs/static-pages) has no nonce: the same file is served to everyone. Allow an inline script there by
+its hash instead, `'sha256-…'` in `scriptSrc`, as this site does for the script that sets the theme before the first
+paint.

@@ -6,13 +6,13 @@ The server's API, for `app/server.ts`, routes and middleware.
 
 `createApp(options?)` returns the Hono app made of `app/routes/`.
 
-| Option          |                                                                                               |
-| --------------- | --------------------------------------------------------------------------------------------- |
-| `document`      | the HTML around pages: `({ head, body, c }) => string`, for `<html>` attributes, fonts, icons |
-| `errorPage`     | the page for errors, `'error'` by default; `false`: plain text                                |
-| `trailingSlash` | `'trim'` (default: `/users/` redirects to `/users`) or `'append'`                             |
-| `csrf`          | `hono/csrf`'s options, or `false`                                                             |
-| `secureHeaders` | `hono/secure-headers`' options, or `false`                                                    |
+| Option          |                                                                                        |
+| --------------- | -------------------------------------------------------------------------------------- |
+| `document`      | the HTML around pages: `({ head, body, c }) => string`: [The document](/docs/document) |
+| `errorPage`     | the page for errors, `'error'` by default; `false`: plain text                         |
+| `trailingSlash` | `'trim'` (default: `/users/` redirects to `/users`) or `'append'`                      |
+| `csrf`          | `hono/csrf`'s options, or `false`                                                      |
+| `secureHeaders` | `hono/secure-headers`' options, or `false`                                             |
 
 The Content Security Policy by default: `default-src 'self'`; scripts of the site or with the request's nonce (the
 document's scripts have it); inline styles (React's style attributes); `data:` images and fonts;
