@@ -738,13 +738,15 @@ ok(
   /^encrypted: \d+ bytes$/.test(await testid('stored')),
   await testid('stored'),
 )
-await page.click('[data-testid=clear]')
-await waitText('History cleared')
-await until(() => lastJson('/history')?.body.clearHistory)
-ok(
-  'clearHistory(c): the next page clears the history (clearHistory: true)',
-  lastJson('/history')?.body.clearHistory === true,
+// the page object after the redirect, read from its own response (the response listener above may miss its body)
+const cleared = page.waitForResponse(
+  (r) => r.url() === BASE + '/history' && r.status() === 200 && r.request().headers()['x-inertia'] !== undefined,
+  { timeout: 8000 },
 )
+await page.click('[data-testid=clear]')
+const clearedPage = await cleared.then((r) => r.json()).catch(() => null)
+await waitText('History cleared')
+ok('clearHistory(c): the next page clears the history (clearHistory: true)', clearedPage?.clearHistory === true)
 
 // ---- server-side rendering
 {
