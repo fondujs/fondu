@@ -41,5 +41,5 @@ user row with its password hash.
 ## Environment variables and secrets
 
 - On Cloudflare: bindings and secrets in `c.env`, in handlers.
-- On Node and Bun: `process.env`, in server code.
+- On Bun and Node: `process.env`, in server code.
 - `import.meta.env.VITE_*` is written into the browser's bundle by Vite: only for values that are public anyway.

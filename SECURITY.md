@@ -5,7 +5,7 @@
 Please report it privately: [open a security advisory](https://github.com/fondujs/fondu/security/advisories/new)
 (GitHub's private vulnerability reporting). Don't open a public issue, pull request or discussion about it.
 
-Say what is affected (a version of `fondu`, a target: Node, Bun or Cloudflare Workers), how to reproduce it, and what
+Say what is affected (a version of `fondu`, a target: Bun, Cloudflare Workers or Node), how to reproduce it, and what
 an attacker could do with it. You'll get an answer within a week; a fix is released as a new version, with an advisory
 crediting you if you like.
 

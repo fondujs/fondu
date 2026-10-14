@@ -1,12 +1,13 @@
 # Fondu
 
-**A small meta-framework for full-stack React apps.** It stands on the shoulders of giants: built on Hono, Vite and
-Inertia.
+**Server routes. React pages. No API in between.**
+
+Fondu is a small meta-framework for full-stack React apps, built on Hono, Vite and Inertia. It runs on Bun, Cloudflare
+Workers and Node.
 
 Routes are Hono handlers in `app/routes/`; pages are React components in `app/pages/`. A route renders a page with its
 props, and Inertia does the rest in the browser: visits without full reloads, forms with validation, deferred and
-merged props, all without an API to write or a client-side router to keep in sync. The same app runs on **Node, Bun and
-Cloudflare Workers**.
+merged props, all without an API to write or a client-side router to keep in sync.
 
 Fondu writes as little of its own as it can: the server side of Inertia's protocol, file routes, typed pages and
 URLs, the document and error pages. Everything else is Hono's, Vite's and Inertia's.
@@ -19,7 +20,7 @@ cd my-app
 bun dev
 ```
 
-It asks where the app runs (Node, Bun or Cloudflare Workers; or `--target node|bun|cloudflare`) and writes a small
+It asks where the app runs (Bun, Cloudflare Workers or Node; or `--target bun|cloudflare|node`) and writes a small
 app: a route, its page, the error page, Tailwind CSS, editor snippets and an `AGENTS.md` for coding agents.
 
 [demo.fondu.dev](https://demo.fondu.dev) ([apps/demo](https://github.com/fondujs/fondu/tree/main/apps/demo)) shows every Inertia feature, one page each, on

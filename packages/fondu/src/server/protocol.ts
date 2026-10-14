@@ -11,7 +11,7 @@ import { isInertia, sameOrigin } from './http.js'
 import { kindOf, propSpec, resolve, type Paginated } from './props.js'
 
 /**
- * The server side of the Inertia v3 protocol (https://inertiajs.com/docs/v3/core-concepts/the-protocol).
+ * The server side of Inertia's protocol (https://inertiajs.com/docs/v3/core-concepts/the-protocol).
  * The client is `@inertiajs/react`, unchanged.
  */
 

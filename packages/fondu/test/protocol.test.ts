@@ -1,5 +1,5 @@
 import { createApp } from 'fondu'
-// The Inertia v3 protocol and the app conventions, on test/app/ with `app.request()`.
+// Inertia's protocol and the app conventions, on test/app/ with `app.request()`.
 import { afterEach, describe, expect, test, vi } from 'vitest'
 
 const app = createApp()

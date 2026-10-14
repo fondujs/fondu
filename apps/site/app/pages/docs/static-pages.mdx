@@ -1,5 +1,5 @@
 Fondu can write pages as static files at build time: static site generation (SSG). They are served without rendering
-them again, and Inertia's visits keep working. On Node, Bun and Cloudflare Workers; this site is built that way.
+them again, and Inertia's visits keep working. On Bun, Cloudflare Workers and Node; this site is built that way.
 
 ```ts
 // vite.config.ts
@@ -36,7 +36,7 @@ to prerender, and writes each twice in the client build:
 Then:
 
 - On Cloudflare, Workers Static Assets serve the files without running the Worker.
-- On Node and Bun, the server answers a static page from its file before the routes, with the app's security headers.
+- On Bun and Node, the server answers a static page from its file before the routes, with the app's security headers.
 
 The server still answers every other URL, a page that isn't static or one that doesn't exist. In development, it
 answers all of them.
@@ -53,7 +53,7 @@ props included. So the build stops, naming the route, when a page:
 
 ## Headers
 
-On Node and Bun, a static page gets the headers of any page of the app, the Content Security Policy with a fresh nonce
+On Bun and Node, a static page gets the headers of any page of the app, the Content Security Policy with a fresh nonce
 included.
 
 On Cloudflare, the pages' security headers are written to `_headers`, which Workers Static Assets apply to static
