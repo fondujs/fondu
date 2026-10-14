@@ -39,6 +39,21 @@ render(c, 'users/index', { users: () => db.users.all() })
 The options: `status`, `encryptHistory` and `clearHistory` (Inertia's
 [history encryption](https://inertiajs.com/history-encryption)), `preserveFragment`.
 
+## Private pages
+
+A page with private data should be encrypted in the browser's history, so Back after signing out can't show it again.
+For a whole directory, `encryptHistory()` in its `_middleware.ts` does it for every page below:
+
+```ts
+// app/routes/account/_middleware.ts
+import { encryptHistory } from 'fondu'
+
+export default [requireUser, encryptHistory()]
+```
+
+A route can still opt out with `render(c, page, props, { encryptHistory: false })`. Signing out calls `clearHistory(c)`,
+so the key of the encrypted pages is gone.
+
 ## Kinds of props
 
 Wrap a prop to change when it is sent. Each is an Inertia feature, and the page uses it with Inertia's API:

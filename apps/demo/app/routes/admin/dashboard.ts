@@ -5,13 +5,9 @@ import { auth } from '#/lib/auth.server.ts'
 
 export const loader = defineHandler(async (c) => {
   const { users } = await auth.api.listUsers({ query: { limit: 100, sortBy: 'createdAt' }, headers: c.req.raw.headers })
-  // private like /account: encrypted in the browser history, unreadable once signed out (clearHistory)
-  return render(
-    c,
-    'admin/dashboard',
-    { accounts: users.map((u) => ({ id: u.id, name: u.name, email: u.email, role: u.role ?? 'user' })) },
-    { encryptHistory: true },
-  )
+  return render(c, 'admin/dashboard', {
+    accounts: users.map((u) => ({ id: u.id, name: u.name, email: u.email, role: u.role ?? 'user' })),
+  })
 })
 
 export const actions = {

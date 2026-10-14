@@ -49,8 +49,21 @@ type OwnProps<N> = Omit<ComponentProps<N>, FromShared<ComponentProps<N>> | Clash
 type PropsInput<P> = { [K in keyof P]: P[K] | (() => P[K] | Promise<P[K]>) }
 type RequiredKeys<T> = { [K in keyof T]-?: object extends Pick<T, K> ? never : K }[keyof T]
 
+const encrypted = new WeakSet<Context>()
+
+/**
+ * The pages of these requests are encrypted in the browser's history (Laravel's `EncryptHistory` middleware), so Back
+ * after signing out can't show them: in `routes/account/_middleware.ts`, `export default encryptHistory()`. A route
+ * can still opt out: `render(c, page, props, { encryptHistory: false })`.
+ */
+export const encryptHistory = (): MiddlewareHandler => async (c, next) => {
+  encrypted.add(c)
+  await next()
+}
+
 export interface RenderOptions {
   status?: number
+  /** the page's state is encrypted in the browser's history; default: `encryptHistory()` above the route, or not */
   encryptHistory?: boolean
   clearHistory?: boolean
   preserveFragment?: boolean
@@ -198,7 +211,7 @@ export async function render<N extends PageName>(
   if (Object.keys(onceProps).length) page.onceProps = onceProps
   const sharedKeys = Object.keys(sharedProps)
   if (sharedKeys.length) page.sharedProps = sharedKeys
-  if (options.encryptHistory) page.encryptHistory = true
+  if (options.encryptHistory ?? encrypted.has(c)) page.encryptHistory = true
   if (options.clearHistory || carried.clearHistory) page.clearHistory = true
   if (options.preserveFragment) page.preserveFragment = true
 
