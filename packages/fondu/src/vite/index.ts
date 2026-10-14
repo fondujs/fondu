@@ -10,6 +10,7 @@ import react, { type Options as ReactOptions } from '@vitejs/plugin-react'
 import type { Plugin, PluginOption, ResolvedConfig } from 'vite'
 
 import { isPageFile } from '../paths.js'
+import { hmr, PAGE_EXPORTS, PROPS_EVENT } from './hmr.js'
 import { layouts } from './layouts.js'
 import { nodeServer, prerender, worker } from './prerender.js'
 import { typegen } from './typegen.js'
@@ -90,11 +91,13 @@ function scanMdx(config: () => ResolvedConfig): Plugin {
 export default function fondu(options: FonduOptions): PluginOption[] {
   const node = options.target !== 'cloudflare'
   return [
-    react(options.react),
+    // .mdx too: MDX pages and components get Fast Refresh (as MDX's own docs set it up)
+    react({ include: /\.(?:[jt]sx?|mdx)$/, ...options.react }),
     // `ssr: {}`: the server transform without an entry, so without @inertiajs/vite's dev SSR endpoint (Laravel's model)
     inertia({ ssr: options.ssr === false ? false : {}, frameworks: inertiaInProcess }),
     core(options),
     layouts(),
+    hmr(),
     typegen(),
     ...(node ? runtimePlugins(options) : []),
   ]
@@ -263,16 +266,6 @@ function core(options: FonduOptions): Plugin {
       const clientDir = resolve(config.root, 'dist/client')
       await prerender(nodeServer(config.root, options.target), clientDir, config.logger, false)
     },
-    // dev: server code changed (a module of the server only: routes/, *.server.ts…): reload the page; a page component:
-    // React Fast Refresh (the client's HMR)
-    handleHotUpdate({ server, file }) {
-      const modules = (env: string) => [...(server.environments[env]?.moduleGraph.getModulesByFile(file) ?? [])]
-      // the browser's code (not a file a stylesheet only watches, as Tailwind's sources), or no server's: leave it
-      if (modules('client').some((m) => m.type === 'js')) return
-      if (!Object.keys(server.environments).some((env) => env !== 'client' && modules(env).length)) return
-      server.hot.send({ type: 'full-reload' })
-      return []
-    },
     // dev: the CSS the client entry imports, as a stylesheet in the document, so a server-rendered page is styled
     // at first paint (Vite would add it only once the JS runs); removed once the entry has run
     configureServer(server) {
@@ -320,11 +313,20 @@ function core(options: FonduOptions): Plugin {
     resolveId(id) {
       if (id === V.assets || id === V.ssr) return resolved(id)
     },
-    // prerender: the client entry reads page objects from the prerendered files (fondu/client's `prerendered`)
+    // the client entry: with prerender, page objects read from the prerendered files (fondu/client's `prerendered`);
+    // in dev, the page's props asked for again when what its route depends on changed (hmr.ts)
     transform(code, id) {
-      if (!options.prerender || this.environment.config.consumer !== 'client' || id !== resolve(config.root, ENTRY))
-        return
-      return { code: `import { prerendered } from 'fondu/client';prerendered();${code}`, map: null }
+      if (this.environment.config.consumer !== 'client' || id !== resolve(config.root, ENTRY)) return
+      const before = [
+        ...(options.prerender ? [`import { prerendered } from 'fondu/client';prerendered();`] : []),
+        ...(isBuild
+          ? []
+          : [
+              `import { router as __fondu_router } from '@inertiajs/react';`,
+              `import.meta.hot?.on(${JSON.stringify(PROPS_EVENT)}, () => __fondu_router.reload());`,
+            ]),
+      ]
+      if (before.length) return { code: before.join('') + code, map: null }
     },
     load(id) {
       if (id === resolved(V.ssr))
@@ -352,7 +354,7 @@ const isServerOnly = (id: string) =>
 const nonceAttr = `\${nonce ? \` nonce="\${nonce}"\` : ''}`
 
 function devAssets(base: string): string {
-  const preamble = `import RefreshRuntime from "${base}@react-refresh";RefreshRuntime.injectIntoGlobalHook(window);window.$RefreshReg$=()=>{};window.$RefreshSig$=()=>(type)=>type;window.__vite_plugin_react_preamble_installed__=true`
+  const preamble = `import RefreshRuntime from "${base}@react-refresh";RefreshRuntime.injectIntoGlobalHook(window);window.$RefreshReg$=()=>{};window.$RefreshSig$=()=>(type)=>type;window.__vite_plugin_react_preamble_installed__=true;window.__getReactRefreshIgnoredExports=({id})=>window.${PAGE_EXPORTS}?.[id]??[]`
   return `export const version = null
 export const pages = null
 export function assetTags(_component, nonce) {
