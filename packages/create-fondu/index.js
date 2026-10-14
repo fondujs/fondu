@@ -8,9 +8,9 @@ import { parseArgs } from 'node:util'
 import * as p from '@clack/prompts'
 
 const TARGETS = {
-  node: { label: 'Node', hint: '@hono/node-server' },
   bun: { label: 'Bun', hint: 'Bun.serve' },
   cloudflare: { label: 'Cloudflare Workers', hint: 'Vite + workerd, wrangler deploy' },
+  node: { label: 'Node', hint: '@hono/node-server' },
 }
 const SCRIPTS = {
   dev: 'the dev server (Vite), with server rendering',
@@ -91,7 +91,14 @@ const readme = readFileSync(join(root, 'README.md'), 'utf8')
 writeFileSync(join(root, 'README.md'), readme)
 if (target === 'cloudflare') {
   const wrangler = join(root, 'wrangler.jsonc')
-  writeFileSync(wrangler, readFileSync(wrangler, 'utf8').replace('"name": "fondu-app"', `"name": "${name}"`))
+  // a Worker's name: lowercase letters, digits and dashes (no dots or underscores, which a package name may have)
+  const worker =
+    name
+      .replace(/[^a-z0-9-]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 63)
+      .replace(/-+$/, '') || 'fondu-app'
+  writeFileSync(wrangler, readFileSync(wrangler, 'utf8').replace('"name": "fondu-app"', `"name": "${worker}"`))
 }
 
 const install = values['no-install']

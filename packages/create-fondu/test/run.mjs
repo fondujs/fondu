@@ -24,7 +24,7 @@ const check = (name, ok, detail = '') => {
 }
 
 for (const target of Object.keys(production).filter((t) => !process.argv[2] || t === process.argv[2])) {
-  const app = join(work, `app-${target}`)
+  const app = join(work, `my_app.${target}-2.0`) // a name with characters a Worker's name may not have
   sh('node', [join(here, 'index.js'), app, '--target', target, '--no-install'], work)
   const pkg = JSON.parse(readFileSync(join(app, 'package.json'), 'utf8'))
   pkg.dependencies.fondu = `file:${tarball}`
