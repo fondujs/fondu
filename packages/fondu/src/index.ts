@@ -1,5 +1,5 @@
 export { defineHandler, defineMiddleware } from './server/handler.js'
-export { render, share, type RenderOptions } from './server/protocol.js'
+export { render, share, encryptHistory, type RenderOptions } from './server/protocol.js'
 export { back, location, isInertia, wantsPage } from './server/http.js'
 export {
   optional,

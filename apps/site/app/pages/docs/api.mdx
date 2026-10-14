@@ -34,6 +34,7 @@ createApp({
 | `defineHandler.withValidator({ body, query, params })` | the same, with input checked by Standard Schemas: `(c, input) => …`     |
 | `defineMiddleware(fn)`                                 | a middleware: Hono's `createMiddleware`                                 |
 | `withoutSsr()`                                         | a middleware: these pages render in the browser only                    |
+| `encryptHistory()`                                     | a middleware: these pages are encrypted in the browser's history        |
 | `ValidationError`                                      | `throw new ValidationError({ field: 'message' })`: back with the errors |
 
 ### Responses

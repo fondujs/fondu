@@ -294,3 +294,12 @@ describe('the document', () => {
     expect((await app.request('/', { headers: html })).status).toBe(500)
   })
 })
+
+test('encryptHistory(): the pages of a directory encrypted in history; a route can opt out', async () => {
+  const app = createApp()
+  const visit = async (path: string) =>
+    (await (await app.request(path, { headers: inertia() })).json()) as Record<string, unknown>
+  expect((await visit('/private')).encryptHistory).toBe(true)
+  expect((await visit('/private/open')).encryptHistory).toBeUndefined()
+  expect((await visit('/')).encryptHistory).toBeUndefined()
+})
