@@ -84,8 +84,20 @@ another type is an error, as it would hide the shared one from the layout.
 
 ## What crosses as JSON
 
-Props travel to the browser as JSON. Type a page's props as the page receives them: a `Date` arrives as a string, a
-`Map` as `{}`, and `undefined` fields are left out. Send `createdAt.toISOString()` for a prop typed `string`.
+Props travel to the browser as JSON, so a page's prop types are what it receives: a `Date` arrives as a string, a
+`Map` or a `Set` as `{}`, and `undefined` fields are left out. `render()` checks both sides of that:
+
+```tsx
+// app/pages/posts/show.tsx
+export default function Show({ post }: { post: { title: string; publishedAt: string } }) { … }
+```
+
+```ts
+render(c, 'posts/show', { post: { title, publishedAt: new Date() } }) // fine: JSON makes the Date a string
+```
+
+A page that types a prop as `Date`, `Map`, `Set` or a function is an error at `render()`, as the page would get
+something else. Anything with a `toJSON()` passes for what that returns.
 
 ## Setup
 
