@@ -125,11 +125,11 @@
   "layout": {
     "scope": "typescriptreact",
     "prefix": "/layout",
-    "description": "A layout (createInertiaApp's `layout`, or Page.layout)",
+    "description": "A layout: pages/<directory>/_layout.tsx wraps the pages below it",
     "body": [
       "import type { ReactNode } from 'react'",
       "",
-      "export default function ${TM_FILENAME_BASE/[^a-zA-Z0-9]*([a-zA-Z0-9])([a-zA-Z0-9]*)/${1:/capitalize}${2}/g}Layout({ children }: { children: ReactNode }) {",
+      "export default function Layout({ children }: { children: ReactNode }) {",
       "  return <main>{children}</main>$0",
       "}",
     ],

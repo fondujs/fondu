@@ -73,6 +73,14 @@ createApp({
 | `prerender`                                        | `true`, `false` or a function listing params: a [static page](/docs/static-pages) |
 | `default` (in `_middleware.ts`)                    | the directory's middleware                                                        |
 
+### Page files
+
+| File in `app/pages/`   |                                                                     |
+| ---------------------- | ------------------------------------------------------------------- |
+| `name.tsx`, `name.mdx` | the page `name` (`users/show.tsx`: `'users/show'`)                  |
+| `_layout.tsx`          | the [layout](/docs/layouts) of the pages in its directory and below |
+| `_name.tsx`            | not a page: a file starting with `_`                                |
+
 ## `fondu/client`
 
 For the browser.

@@ -3,6 +3,7 @@ import type { Page, SharedPageProps } from '@inertiajs/core'
 import type { Context, MiddlewareHandler } from 'hono'
 import { pages, version } from 'virtual:fondu/assets'
 
+import { isPageFile } from '../paths.js'
 import type { Pages } from '../types.js'
 import { renderDocument } from './document.js'
 import { flashCookie, takeCarried } from './flash.js'
@@ -65,7 +66,9 @@ type RequiredArgs<N> = [props: PropsInput<OwnProps<N>>, options?: RenderOptions]
 // development: the files in app/pages/ (Vite keeps the list current); a build: the pages in the client manifest
 const devPages = import.meta.env.DEV ? import.meta.glob('/app/pages/**/*.{tsx,jsx,mdx}') : {}
 export const hasPage = (name: string) =>
-  pages ? pages.includes(name) : ['tsx', 'jsx', 'mdx'].some((ext) => `/app/pages/${name}.${ext}` in devPages)
+  pages
+    ? pages.includes(name)
+    : isPageFile(`${name}.tsx`) && ['tsx', 'jsx', 'mdx'].some((ext) => `/app/pages/${name}.${ext}` in devPages)
 
 const headerSet = (c: Context, name: string) => {
   const value = c.req.header(name)

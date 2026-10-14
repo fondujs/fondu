@@ -10,7 +10,7 @@ app/
   app.tsx         the Inertia app (browser and server render)
   routes/         server code; the file path is the URL (index.ts: /, users/[id].ts: /users/:id)
   pages/          React pages, rendered by name: render(c, 'index') is pages/index.tsx; named after its route where it can be
-  layout.tsx      around every page
+    _layout.tsx   around every page (a directory's _layout.tsx: around its pages)
   styles/app.css  Tailwind CSS
 ```
 

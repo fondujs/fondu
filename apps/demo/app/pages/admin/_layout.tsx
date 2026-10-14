@@ -6,7 +6,7 @@ import { AccountMenu } from '#/components/account-menu.tsx'
 import { Logo } from '#/components/logo.tsx'
 import { Toasts } from '#/components/toasts.tsx'
 
-// The admin pages' layout (app.tsx picks it for pages named admin/…): a top bar instead of the demo sidebar
+// The admin pages' layout (pages/admin/_layout.tsx, in place of app.tsx's AppLayout): a top bar instead of the demo sidebar
 export default function AdminLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-dvh">

@@ -16,6 +16,9 @@ router and no API layer for pages: a route's loader renders a page with props, a
   component's props are the page's props; `render()` checks them. `pages/error.tsx` gets `{ status }`. Name a page
   after its route where it can be (`routes/index.ts` renders `index`); a dynamic route's page gets a name such as
   `users/show`.
+- Layouts: `app/pages/_layout.tsx` wraps every page; a directory's `_layout.tsx` wraps its pages, inside the outer
+  ones. A layout's default export takes `{ children }` and stays mounted while pages change. Files in `app/pages/`
+  starting with `_` are not pages.
 - Editor snippets (VS Code): `.vscode/fondu.code-snippets`, `/route`, `/loader`, `/action`, `/page`…
 - Links and forms: Inertia's `<Link>`, `<Form>`, `useForm`, `router` (from `@inertiajs/react`). URLs:
   `href('/users/:id', { id })` from `fondu/client`, typed after `app/routes/`.
