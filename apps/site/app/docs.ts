@@ -44,7 +44,7 @@ export const sections: Array<{ title: string; docs: Doc[] }> = [
       {
         slug: 'static-pages',
         title: 'Static pages',
-        description: 'Pages written as files at build time (Cloudflare).',
+        description: 'Pages written as files at build time (SSG), on Cloudflare.',
       },
       { slug: 'mdx', title: 'MDX pages', description: 'Pages written in Markdown, with React components.' },
       { slug: 'errors', title: 'Errors', description: 'Error pages, and what API clients get.' },

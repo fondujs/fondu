@@ -42,7 +42,7 @@ export function MarkdownActions({ url }: { url: string }) {
   }
   const [Icon, label] = states[state]
   return (
-    <div className="mb-8 flex items-center gap-3 border-b pb-6 text-sm text-muted-foreground" data-pagefind-ignore>
+    <div className="mt-4 mb-8 flex items-center gap-3 border-b pb-6 text-sm text-muted-foreground" data-pagefind-ignore>
       <button
         type="button"
         onClick={copy}

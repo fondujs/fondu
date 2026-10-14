@@ -1,9 +1,10 @@
-import { Head, Link } from '@inertiajs/react'
+import { Link } from '@inertiajs/react'
 import { Bot, Check, Copy } from 'lucide-react'
 import { useState } from 'react'
 
 import { CodeTabs, Pre } from '#/components/code.tsx'
 import { External } from '#/components/external.tsx'
+import { Meta } from '#/components/meta.tsx'
 import { Button } from '#/components/ui/button.tsx'
 import Code from '#/landing/code.mdx'
 import { PROMPT } from '#/prompt.ts'
@@ -32,12 +33,7 @@ const parts: Array<[name: string, url: string, does: string]> = [
 export default function Home() {
   return (
     <>
-      <Head title="">
-        <meta
-          name="description"
-          content="Fondu is a small meta-framework for full-stack React apps, built on Hono, Vite and Inertia. It runs on Node, Bun and Cloudflare Workers."
-        />
-      </Head>
+      <Meta description="Fondu is a small meta-framework for full-stack React apps, built on Hono, Vite and Inertia. It runs on Node, Bun and Cloudflare Workers." />
 
       <section className="mx-auto grid max-w-7xl grid-cols-[minmax(0,1fr)] items-center gap-12 px-4 pt-14 pb-20 sm:px-6 sm:pt-20 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
         <div className="min-w-0">
@@ -54,12 +50,18 @@ export default function Home() {
             <Button size="lg" render={<Link href="/docs" />}>
               Read the docs
             </Button>
+            <CopyPrompt />
+          </div>
+          <div className="mt-3">
             <CopyCommand />
           </div>
-          <CopyPrompt />
         </div>
         {/* the one thing to see: a route and the page it renders, the props they share highlighted */}
-        <div aria-label="A route and its page" role="group" className="min-w-0">
+        <div
+          aria-label="A route and its page"
+          role="group"
+          className="min-w-0 [&_pre]:h-[27rem] [&_pre]:overflow-y-auto"
+        >
           <Code components={{ pre: Pre, CodeTabs }} />
         </div>
       </section>
@@ -139,14 +141,9 @@ function CopyPrompt() {
     setTimeout(() => setCopied(false), 1500)
   }
   return (
-    <div className="mt-6 flex max-w-xl items-center gap-3">
-      <Button variant="outline" size="sm" onClick={copy} aria-describedby="prompt" className="shrink-0">
-        {copied ? <Check className="text-brand-foreground" /> : <Bot />}
-        {copied ? 'Copied' : 'Copy prompt'}
-      </Button>
-      <p id="prompt" className="truncate font-mono text-xs text-muted-foreground" title={PROMPT}>
-        “{PROMPT}”
-      </p>
-    </div>
+    <Button variant="outline" size="lg" onClick={copy} title="Sets Fondu up with your coding agent">
+      {copied ? <Check className="text-brand-foreground" /> : <Bot />}
+      {copied ? 'Copied' : 'Copy prompt'}
+    </Button>
   )
 }

@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 
 import type { Plugin } from 'vite'
 
-import { docs, markdownUrl, type Doc } from './app/docs.ts'
+import { docs, docUrl, markdownUrl, type Doc } from './app/docs.ts'
 
 const SITE = 'https://fondu.dev'
 const SUMMARY =
@@ -39,11 +39,19 @@ const files = (): Record<string, string> => ({
     ].join('\n\n') + '\n',
   'llms-full.txt': [`# Fondu\n\n> ${SUMMARY}\n`, ...docs.map(pageMarkdown)].join('\n'),
   ...Object.fromEntries(docs.map((d) => [markdownUrl(d).slice(1), pageMarkdown(d)])),
+  // for search engines: every page, and where the list is
+  'sitemap.xml': `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${[
+    '/',
+    ...docs.map(docUrl),
+  ]
+    .map((path) => `  <url><loc>${SITE}${path}</loc></url>`)
+    .join('\n')}\n</urlset>\n`,
+  'robots.txt': `User-agent: *\nAllow: /\n\nSitemap: ${SITE}/sitemap.xml\n`,
 })
 
 /**
  * Every page of the docs as Markdown (/docs/routes.md), llms.txt (https://llmstxt.org) and llms-full.txt, every
- * page in one file: written with the client build, and served by the dev server
+ * page in one file; sitemap.xml and robots.txt: written with the client build, and served by the dev server
  */
 export function markdown(): Plugin {
   return {
@@ -52,7 +60,12 @@ export function markdown(): Plugin {
       server.middlewares.use((req, res, next) => {
         const file = files()[(req.url ?? '').split('?')[0]!.slice(1)]
         if (file === undefined) return next()
-        res.setHeader('Content-Type', `${req.url!.endsWith('.md') ? 'text/markdown' : 'text/plain'}; charset=utf-8`)
+        const type = req.url!.endsWith('.md')
+          ? 'text/markdown'
+          : req.url!.endsWith('.xml')
+            ? 'application/xml'
+            : 'text/plain'
+        res.setHeader('Content-Type', `${type}; charset=utf-8`)
         res.end(file)
       })
     },

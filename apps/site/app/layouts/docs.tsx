@@ -1,11 +1,12 @@
-import { Head, Link, usePage } from '@inertiajs/react'
+import { Link, usePage } from '@inertiajs/react'
 import { MDXProvider } from '@mdx-js/react'
 import { ChevronDown, ChevronLeft, ChevronRight, Menu } from 'lucide-react'
-import { useState, type ComponentProps, type ReactNode } from 'react'
+import { useEffect, useState, type ComponentProps, type ReactNode } from 'react'
 
 import { CodeTabs, Pre } from '#/components/code.tsx'
 import { External } from '#/components/external.tsx'
 import { MarkdownActions } from '#/components/markdown-actions.tsx'
+import { Meta } from '#/components/meta.tsx'
 import { Drawer, DrawerHeader, DrawerPanel, DrawerPopup, DrawerTitle } from '#/components/ui/drawer.tsx'
 import { Menu as Dropdown, MenuItem, MenuPopup, MenuTrigger } from '#/components/ui/menu.tsx'
 import { docOf, docs, docUrl, markdownUrl, sections, type Doc, type TocItem } from '#/docs.ts'
@@ -44,6 +45,7 @@ export default function DocsLayout({ children }: { children: ReactNode }) {
   const doc = docOf(component)!
   const i = docs.indexOf(doc)
   const [prev, next] = [docs[i - 1], docs[i + 1]]
+  const current = useCurrentHeading(props.toc)
   return (
     <>
       <div className="sticky top-0 z-30 flex h-12 items-center justify-between gap-2 border-b bg-background/88 px-4 backdrop-blur-md sm:px-6 lg:hidden">
@@ -55,7 +57,7 @@ export default function DocsLayout({ children }: { children: ReactNode }) {
           >
             <Menu className="size-4 shrink-0" /> <span className="truncate">{doc.title}</span>
           </button>
-          <DrawerPopup showCloseButton>
+          <DrawerPopup showCloseButton className="w-72 max-w-[80%]">
             <DrawerHeader>
               <DrawerTitle>Docs</DrawerTitle>
             </DrawerHeader>
@@ -90,12 +92,9 @@ export default function DocsLayout({ children }: { children: ReactNode }) {
         </aside>
 
         <div className="min-w-0 py-8" data-pagefind-body>
-          <Head title={doc.slug ? doc.title : 'Docs'}>
-            <meta name="description" content={doc.description} />
-          </Head>
+          <Meta title={doc.slug ? doc.title : 'Docs'} description={doc.description} />
           <article className="prose">
             <h1>{doc.title}</h1>
-            <p className="lede mb-5!">{doc.description}</p>
             <MarkdownActions url={markdownUrl(doc)} />
             <MDXProvider components={components}>{children}</MDXProvider>
           </article>
@@ -133,7 +132,11 @@ export default function DocsLayout({ children }: { children: ReactNode }) {
               <ul className="grid gap-1.5">
                 {props.toc.map((item) => (
                   <li key={item.id} className={item.depth === 3 ? 'pl-3' : undefined}>
-                    <a href={`#${item.id}`} className="text-muted-foreground transition-colors hover:text-foreground">
+                    <a
+                      href={`#${item.id}`}
+                      aria-current={item.id === current ? 'location' : undefined}
+                      className="text-muted-foreground transition-colors hover:text-foreground aria-[current=location]:text-foreground"
+                    >
                       {item.title}
                     </a>
                   </li>
@@ -145,6 +148,30 @@ export default function DocsLayout({ children }: { children: ReactNode }) {
       </div>
     </>
   )
+}
+
+/** the heading the reader is at: the last one above the top of the window (below the header) */
+function useCurrentHeading(toc: TocItem[]) {
+  const [current, setCurrent] = useState<string>()
+  useEffect(() => {
+    let frame = 0
+    const update = () => {
+      frame = 0
+      // at the end of the page, the headings it cannot scroll to the top count as reached
+      const end = innerHeight + scrollY >= document.documentElement.scrollHeight - 2
+      const line = end ? innerHeight : 96
+      const above = toc.filter((item) => (document.getElementById(item.id)?.getBoundingClientRect().top ?? line) < line)
+      setCurrent(above.at(-1)?.id)
+    }
+    const onScroll = () => (frame ||= requestAnimationFrame(update))
+    update()
+    addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      removeEventListener('scroll', onScroll)
+      cancelAnimationFrame(frame)
+    }
+  }, [toc])
+  return current
 }
 
 function Sidebar({ doc, onPick }: { doc: Doc; onPick?: () => void }) {
