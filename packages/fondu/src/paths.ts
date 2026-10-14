@@ -25,6 +25,17 @@ export function isRouteFile(file: string): boolean {
   )
 }
 
+/** a path inside `pages/` that is a page: a .tsx, .jsx or .mdx file whose name doesn't start with `_` (`_layout.tsx`) */
+export function isPageFile(file: string): boolean {
+  return /\.(?:[jt]sx|mdx)$/.test(file) && !file.split('/').at(-1)!.startsWith('_')
+}
+
+/** the directories of `pages/` whose `_layout.tsx` wraps a page, outermost first: `docs/intro.mdx` → `['', 'docs']` */
+export function layoutsOf(file: string): string[] {
+  const dirs = file.split('/').slice(0, -1)
+  return ['', ...dirs.map((_, i) => dirs.slice(0, i + 1).join('/'))]
+}
+
 /** the `_middleware.ts` files that apply to a route file, outermost first */
 export function middlewareFor(file: string, middleware: readonly string[]): string[] {
   const dirs = file.split('/').slice(0, -1)

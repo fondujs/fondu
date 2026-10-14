@@ -8,7 +8,7 @@ import { ThemeMenu } from '#/components/theme-menu.tsx'
 
 export const GITHUB = 'https://github.com/fondujs/fondu'
 
-// Every page: the header (at the top on large screens; on small ones, the docs keep their own bar there), the page,
+// pages/_layout.tsx, around every page: the header (at the top on large screens; on small ones, the docs keep their own bar there), the page,
 // the footer
 export default function SiteLayout({ children }: { children: ReactNode }) {
   const { url } = usePage()

@@ -29,6 +29,7 @@ export const sections: Array<{ title: string; docs: Doc[] }> = [
     docs: [
       { slug: 'routes', title: 'Routes', description: 'Files in app/routes/: loaders, actions and middleware.' },
       { slug: 'pages', title: 'Pages and props', description: 'React pages, and the kinds of props a route sends.' },
+      { slug: 'layouts', title: 'Layouts', description: 'What stays around the pages, by directory.' },
       { slug: 'forms', title: 'Forms and validation', description: 'One schema for the server and the browser.' },
       {
         slug: 'server-and-client',

@@ -11,6 +11,7 @@ my-app/
 │  │  ├─ users/[id].ts     # /users/:id
 │  │  └─ api/health.ts     # /api/health
 │  ├─ pages/               # React pages, by name: 'users/show' is pages/users/show.tsx
+│  │  ├─ _layout.tsx       # around every page (a directory's _layout.tsx: around its pages)
 │  │  └─ error.tsx         # the error page (404, 403, 500…)
 │  └─ fondu.gen.d.ts       # the generated types (commit it)
 ├─ package.json           # fondu, hono, @inertiajs/react, react, react-dom
@@ -58,12 +59,9 @@ The browser's entry, and the server render's: Inertia's `createInertiaApp()`. Fo
 ```tsx
 import { createInertiaApp } from '@inertiajs/react'
 
-import Layout from './layout'
-
 createInertiaApp({
   pages: './pages',
   title: (title) => (title ? `${title} · My app` : 'My app'),
-  layout: () => Layout,
 })
 ```
 

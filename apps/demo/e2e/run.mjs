@@ -979,7 +979,7 @@ await page.waitForFunction(() => document.querySelector('[data-testid=user]')?.a
   )
   await page.goto(BASE + '/admin/dashboard', { waitUntil: 'networkidle0' })
   ok(
-    '/admin: its own layout (chosen by the page name), the accounts',
+    '/admin: its own layout (pages/admin/_layout.tsx), the accounts',
     (await page.$('[data-testid=admin-home]')) !== null &&
       (await page.$('aside')) === null &&
       (await text()).includes('demo@fondu.dev'),

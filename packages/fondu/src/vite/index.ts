@@ -9,6 +9,8 @@ import inertia from '@inertiajs/vite'
 import react, { type Options as ReactOptions } from '@vitejs/plugin-react'
 import type { Plugin, PluginOption, ResolvedConfig } from 'vite'
 
+import { isPageFile } from '../paths.js'
+import { layouts } from './layouts.js'
 import { prerender } from './prerender.js'
 import { typegen } from './typegen.js'
 
@@ -94,6 +96,7 @@ export default function fondu(options: FonduOptions): PluginOption[] {
     // `ssr: {}`: the server transform without an entry, so without @inertiajs/vite's dev SSR endpoint (Laravel's model)
     inertia({ ssr: options.ssr === false ? false : {}, frameworks: inertiaInProcess }),
     core(options),
+    layouts(),
     typegen(),
     ...(node ? runtimePlugins(options) : []),
   ]
@@ -377,7 +380,7 @@ function productionAssets(config: ResolvedConfig, options: FonduOptions): string
   const pages: Record<string, { css: string[]; js: string[] }> = {}
   for (const key of Object.keys(manifest)) {
     const m = key.match(/^app\/pages\/(.+)\.(?:[jt]sx|mdx)$/)
-    if (m) pages[m[1]!] = tags(key)
+    if (m && isPageFile(key)) pages[m[1]!] = tags(key)
   }
   const version = createHash('sha256').update(text).digest('hex').slice(0, 16)
   return `const base = ${JSON.stringify(config.base)}
