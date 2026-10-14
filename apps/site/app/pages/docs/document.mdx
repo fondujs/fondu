@@ -1,5 +1,6 @@
 Every page a browser loads first is an HTML document around the page: `<html>`, `<head>`, `<body>`. Fondu writes a
-minimal one; `createApp({ document })` replaces it with yours.
+minimal one; `createApp({ document })` replaces it with yours. Layouts (`_layout.tsx`) are the React around a page; the
+document is the HTML around React.
 
 ## The default
 
@@ -19,22 +20,44 @@ minimal one; `createApp({ document })` replaces it with yours.
 
 ## Your own
 
-`document` is a function of the parts Fondu renders, returning the HTML:
+`document` is a function of the parts Fondu renders, returning the document as JSX. A component in its own file reads
+best:
+
+```tsx
+// app/document.tsx
+import type { DocumentParts } from 'fondu'
+
+export default function Document({ head, body, c }: DocumentParts) {
+  return (
+    <html lang="en" className={theme(c)}>
+      <head>
+        <meta charSet="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+        {head}
+      </head>
+      <body>{body}</body>
+    </html>
+  )
+}
+```
 
 ```ts
 // app/server.ts
 import { createApp } from 'fondu'
 
-export default createApp({
-  document: ({ head, body, c }) =>
-    `<!doctype html><html lang="en" class="${theme(c)}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="icon" href="/favicon.svg" type="image/svg+xml">${head}</head><body>${body}</body></html>`,
-})
+import Document from '#/document.tsx'
+
+export default createApp({ document: Document })
 ```
 
 - `head`: the tags of the page's `<Head>` (title, meta), then its styles and scripts. Put it last in `<head>`.
 - `body`: the page data (`<script data-page>`) and the rendered page (`<div id="app">`). Put it alone in `<body>`.
 - `c`: the request's Hono context: a cookie, a header, the user. Above, `theme(c)` reads the theme a visitor chose,
   so the first paint has it.
+
+The document is rendered without the whitespace you indent it with. It may return a string instead of JSX: put
+`${head}` and `${body}` in it.
 
 The page's own tags come from Inertia's `<Head>`, in the page or the layout; the document is for what every page
 shares: `<html>` attributes, the charset and viewport, icons, fonts.
@@ -52,11 +75,17 @@ Fonts served by the app itself need nothing more: the Content Security Policy al
 A font from Google Fonts comes from two other origins: the stylesheet from `fonts.googleapis.com`, the font files from
 `fonts.gstatic.com`. Link the stylesheet in the document, and allow both in the policy:
 
+```tsx
+// app/document.tsx, in <head>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" />
+```
+
 ```ts
 // app/server.ts
 export default createApp({
-  document: ({ head, body }) =>
-    `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap">${head}</head><body>${body}</body></html>`,
+  document: Document,
   secureHeaders: {
     contentSecurityPolicy: {
       styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
@@ -71,16 +100,15 @@ style attributes), `'self'` and `data:` for fonts.
 
 ## Scripts in the document
 
-The policy runs the document's scripts only with the request's nonce, which Fondu gives to its own. A script of yours
-in the document takes it from the context:
+The policy runs scripts of the site's own files, or with the request's nonce. Fondu gives the nonce to the document's
+inline scripts, so one runs as it is, before the page paints:
 
-```ts
-document: ({ head, body, c }) => {
-  const nonce = c.get('secureHeadersNonce')
-  return `<!doctype html><html lang="en"><head><script nonce="${nonce}">…</script>${head}</head><body>${body}</body></html>`
-}
+```tsx
+// sets the theme a visitor chose (a cookie) before the first paint
+const THEME = "document.documentElement.className=/(?:^|; )theme=(light|dark)/.exec(document.cookie)?.[1]??'system'"
+
+<script dangerouslySetInnerHTML={{ __html: THEME }} />
 ```
 
-A [static page](/docs/static-pages) has no nonce: the same file is served to everyone. Allow an inline script there by
-its hash instead, `'sha256-…'` in `scriptSrc`, as this site does for the script that sets the theme before the first
-paint.
+On a [static page](/docs/static-pages) too, where there is no nonce: the scripts that had it are allowed by their
+hashes. A script from another origin (`<script src="https://…">`) needs that origin in `scriptSrc`.

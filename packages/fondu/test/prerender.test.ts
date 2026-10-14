@@ -1,10 +1,12 @@
+import { createHash } from 'node:crypto'
+
 import { createApp } from 'fondu'
 // fondu({ prerender: true }): the files, the paths, the page objects of the pages without a file.
 import { describe, expect, test } from 'vitest'
 
 import { pageDataPath, pathOfPageData } from '../src/paths.js'
 import { prerenderPaths, type PrerenderRoute } from '../src/server/prerender.js'
-import { headerRules, staticFiles, staticPolicy } from '../src/vite/prerender.js'
+import { headerRules, nonceScriptHashes, staticFiles, staticPolicy } from '../src/vite/prerender.js'
 
 const route = (file: string, pattern: string, settings: PrerenderRoute['settings'], more = {}): PrerenderRoute => ({
   file,
@@ -34,6 +36,16 @@ describe('headers', () => {
       "default-src 'self'; script-src 'self'; object-src 'none'",
     )
     expect(staticPolicy("script-src 'nonce-abc'")).toBe("script-src 'self'")
+  })
+  test('the scripts that had the nonce: allowed by their hashes instead', () => {
+    const html =
+      '<head><script nonce="abc">a()</script><script nonce="abc" type="module" src="/x.js"></script><script>b()</script></head>'
+    const hashes = nonceScriptHashes(html)
+    expect(hashes).toEqual([`'sha256-${createHash('sha256').update('a()').digest('base64')}'`])
+    expect(staticPolicy("script-src 'self' 'nonce-abc'; style-src 'self'", hashes)).toBe(
+      `script-src 'self' ${hashes[0]}; style-src 'self'`,
+    )
+    expect(staticPolicy("script-src 'self' 'unsafe-inline'", hashes)).toBe("script-src 'self' 'unsafe-inline'")
   })
   test('one rule for the documents, X-Inertia for the page objects', () => {
     expect(headerRules({ 'referrer-policy': 'same-origin' })).toBe(

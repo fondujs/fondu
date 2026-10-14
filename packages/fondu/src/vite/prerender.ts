@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { createServer } from 'node:net'
@@ -15,14 +16,27 @@ export { staticFiles }
 const SECURITY_HEADERS =
   /^(content-security-policy(-report-only)?|strict-transport-security|referrer-policy|permissions-policy|x-content-type-options|x-frame-options|x-xss-protection|x-dns-prefetch-control|x-download-options|x-permitted-cross-domain-policies|origin-agent-cluster|cross-origin-(opener|embedder|resource)-policy)$/i
 
-/** a Content Security Policy for a static document: no nonce (one for every visitor is none), `'self'` scripts */
-export function staticPolicy(policy: string): string {
+/** the hashes of a document's inline scripts that have the nonce (the document's own, as Fondu gave it) */
+export function nonceScriptHashes(html: string): string[] {
+  const hashes = new Set<string>()
+  for (const [, attrs, code] of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi))
+    if (/\snonce=/i.test(attrs!) && !/\ssrc=/i.test(attrs!))
+      hashes.add(`'sha256-${createHash('sha256').update(code!).digest('base64')}'`)
+  return [...hashes]
+}
+
+/**
+ * A Content Security Policy for a static document: no nonce (one for every visitor is none); the scripts that had it
+ * allowed by their hashes instead, and `'self'` scripts
+ */
+export function staticPolicy(policy: string, hashes: string[] = []): string {
   return policy
     .split(';')
     .map((directive) => {
       const [name, ...sources] = directive.trim().split(/\s+/)
       if (!name) return ''
       const kept = sources.filter((s) => !s.startsWith("'nonce-"))
+      if (kept.length < sources.length && /^script-src(-elem)?$/i.test(name)) kept.push(...hashes)
       if (/^script-src(-elem)?$/i.test(name) && kept.length === 0) kept.push("'self'")
       return [name, ...kept].join(' ')
     })
@@ -85,10 +99,12 @@ export async function prerender(start: () => Promise<Server>, clientDir: string,
         errors.push(`${path}: ${later.join(', ')} ask the server again; not for a prerendered page`)
         continue
       }
+      const html = await doc.text()
+      const hashes = nonceScriptHashes(html)
       const headers = Object.fromEntries(
         [...doc.headers]
           .filter(([name]) => SECURITY_HEADERS.test(name))
-          .map(([name, value]) => [name, /^content-security-policy/i.test(name) ? staticPolicy(value) : value]),
+          .map(([name, value]) => [name, /^content-security-policy/i.test(name) ? staticPolicy(value, hashes) : value]),
       )
       if (headersFile && security && JSON.stringify(headers) !== JSON.stringify(security)) {
         errors.push(`${path}: its security headers differ from ${paths[0]}'s; one set is written for all`)
@@ -96,7 +112,7 @@ export async function prerender(start: () => Promise<Server>, clientDir: string,
       }
       security = headers
       const files = staticFiles(path)
-      write(clientDir, files.html, await doc.text())
+      write(clientDir, files.html, html)
       write(clientDir, files.json, JSON.stringify(page))
       logger.info(`fondu: prerendered ${path}`)
     }

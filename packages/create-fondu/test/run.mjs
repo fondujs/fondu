@@ -87,15 +87,22 @@ for (const target of Object.keys(production).filter((t) => !process.argv[2] || t
     )
     if (prerendered)
       check(
-        `${target} ${script}: the home page from its prerendered file, with the security headers`,
-        html === readFileSync(join(app, 'dist/client/index.html'), 'utf8') &&
-          home.headers.has('content-security-policy'),
+        `${target} ${script}: the home page from its prerendered file, with the security headers (its nonce)`,
+        unNonced(html) === unNonced(readFileSync(join(app, 'dist/client/index.html'), 'utf8')) &&
+          [...html.matchAll(/ nonce="([^"]+)"/g)].every(([, n]) =>
+            home.headers.get('content-security-policy')?.includes(`'nonce-${n}'`),
+          ),
       )
     check(`${target} ${script}: says where it listens`, output().includes(says), output())
   })
 }
 rmSync(work, { recursive: true, force: true })
 process.exit(failed ? 1 : 0)
+
+/** a document without its nonces: a static page gets the response's */
+function unNonced(html) {
+  return html.replace(/ nonce="[^"]*"/g, '')
+}
 
 /** `bun run <script>` in the app until `test` is done, with what it printed */
 async function run(app, script, port, test) {

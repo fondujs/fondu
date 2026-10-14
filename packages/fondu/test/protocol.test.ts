@@ -1,4 +1,5 @@
 import { createApp } from 'fondu'
+import { createElement as h } from 'react'
 // Inertia's protocol and the app conventions, on test/app/ with `app.request()`.
 import { afterEach, describe, expect, test, vi } from 'vitest'
 
@@ -254,8 +255,42 @@ describe('errors', () => {
 })
 
 test('each app keeps its own document', async () => {
-  const a = createApp({ document: ({ body }) => `<main id="a">${body}</main>` })
-  const b = createApp({ document: ({ body }) => `<main id="b">${body}</main>` })
+  const a = createApp({ document: ({ head, body }) => `<main id="a">${head}${body}</main>` })
+  const b = createApp({ document: ({ head, body }) => `<main id="b">${head}${body}</main>` })
   expect(await (await a.request('/')).text()).toMatch(/^<main id="a">/)
   expect(await (await b.request('/')).text()).toMatch(/^<main id="b">/)
+})
+
+describe('the document', () => {
+  const THEME = "document.documentElement.className='dark'"
+  test('JSX: rendered, the page where head and body are, its inline scripts with the nonce', async () => {
+    const app = createApp({
+      document: ({ head, body }) =>
+        h(
+          'html',
+          { lang: 'fr' },
+          h('head', null, h('script', { dangerouslySetInnerHTML: { __html: THEME } }), head),
+          h('body', null, body),
+        ),
+    })
+    const res = await app.request('/', { headers: html })
+    const text = await res.text()
+    const nonce = /'nonce-([\w+/=]+)'/.exec(res.headers.get('content-security-policy')!)![1]
+    expect(text).toMatch(/^<!doctype html><html lang="fr"><head>/)
+    expect(text).toContain(`<script nonce="${nonce}">${THEME}</script>`)
+    expect(text).toMatch(/<\/head><body><script data-page="app"/)
+    expect(text).not.toMatch(/fondu-(head|body)-/)
+  })
+  test('a string: as before; a script of its own with a src or a nonce is left as it is', async () => {
+    const app = createApp({
+      document: ({ head, body }) =>
+        `<!doctype html><html><head><script src="/x.js"></script><script nonce="mine">1</script>${head}</head><body>${body}</body></html>`,
+    })
+    const text = await (await app.request('/', { headers: html })).text()
+    expect(text).toContain('<script src="/x.js"></script><script nonce="mine">1</script>')
+  })
+  test('head and body, each once', async () => {
+    const app = createApp({ document: ({ body }) => `<html><body>${body}</body></html>` })
+    expect((await app.request('/', { headers: html })).status).toBe(500)
+  })
 })
