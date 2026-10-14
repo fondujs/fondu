@@ -1048,20 +1048,22 @@ await page.waitForFunction(() => document.querySelector('[data-testid=user]')?.a
   await sp.close()
 }
 
-// ---- small screens: the menu folds into a button
+// ---- small screens: the menu is a drawer from the left
 {
   const mp = await browser.newPage()
   await mp.setViewport({ width: 390, height: 760 })
   await mp.goto(BASE + '/props', { waitUntil: 'networkidle0' })
   await mp.waitForFunction(() => document.querySelector('[data-testid=render-mode]')?.textContent === 'SSR: hydrated')
-  const shown = () => mp.$eval('#menu', (n) => getComputedStyle(n).display !== 'none')
+  const shown = () => mp.evaluate(() => Boolean(document.querySelector('#menu')?.checkVisibility()))
   const closed = await shown()
   await mp.click('[data-testid=menu]')
+  await mp.waitForSelector('#menu a[href="/partial"]', { visible: true }).catch(() => {})
   const opened = await shown()
   await mp.evaluate(() => document.querySelector('#menu a[href="/partial"]').click())
   await h1('Partial reloads', mp)
+  await mp.waitForFunction(() => !document.querySelector('#menu')?.checkVisibility(), { timeout: 3000 }).catch(() => {})
   ok(
-    'mobile: the menu opens from its button and closes after a visit',
+    'mobile: the menu opens in a drawer from its button and closes after a visit',
     !closed && opened && !(await shown()),
     JSON.stringify([closed, opened]),
   )

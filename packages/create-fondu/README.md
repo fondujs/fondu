@@ -4,9 +4,9 @@ Create a [Fondu](https://fondu.dev) app: full-stack React on Hono, Vite and Iner
 Cloudflare Workers or Node.
 
 ```bash
-bun create fondu my-app
+bun create fondu@latest my-app
 npm create fondu@latest my-app
-pnpm create fondu my-app
+pnpm create fondu@latest my-app
 ```
 
 Options: `--target bun|cloudflare|node`, `--no-install`.
