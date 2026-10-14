@@ -11,7 +11,8 @@ const virtual: Plugin = {
   load(id) {
     if (id === '\0virtual:fondu/assets')
       return `export const version = 'v1'; export const pages = null; export const prerender = true; export const assetTags = () => ''`
-    if (id === '\0virtual:fondu/ssr') return 'export const renderPage = null'
+    if (id === '\0virtual:fondu/ssr')
+      return "export const renderPage = null; export { renderToStaticMarkup as renderMarkup } from 'react-dom/server'"
   },
 }
 

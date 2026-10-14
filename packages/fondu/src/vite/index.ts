@@ -356,10 +356,11 @@ function core(options: FonduOptions): Plugin {
       if (before.length) return { code: before.join('') + code, map: null }
     },
     load(id) {
+      // and React's static markup for a JSX document (react-dom/server: the server render's, or loaded for it)
       if (id === resolved(V.ssr))
         return options.ssr === false
-          ? 'export const renderPage = null'
-          : `export { default as renderPage } from '/${ENTRY}'`
+          ? `export const renderPage = null\nexport const renderMarkup = async (el) => (await import('react-dom/server')).renderToStaticMarkup(el)`
+          : `export { default as renderPage } from '/${ENTRY}'\nexport { renderToStaticMarkup as renderMarkup } from 'react-dom/server'`
       if (id === resolved(V.assets))
         return (
           (isBuild ? productionAssets(config, options) : devAssets(config.base)) +

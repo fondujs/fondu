@@ -1,5 +1,3 @@
-import { createHash } from 'node:crypto'
-
 import { cloudflare } from '@cloudflare/vite-plugin'
 import mdx from '@mdx-js/rollup'
 import rehypeShiki from '@shikijs/rehype'
@@ -13,7 +11,6 @@ import remarkGfm from 'remark-gfm'
 import type { ShikiTransformer } from 'shiki'
 import { defineConfig } from 'vite'
 
-import { THEME_SCRIPT } from './app/theme.ts'
 import { markdown } from './markdown.ts'
 
 // fondu.dev: the docs are MDX pages (app/pages/docs/), highlighted at build time (Shiki, both themes: app.css picks
@@ -29,7 +26,6 @@ const title: ShikiTransformer = {
 }
 
 export default defineConfig({
-  define: { __THEME_SCRIPT_HASH__: JSON.stringify(createHash('sha256').update(THEME_SCRIPT).digest('base64')) },
   plugins: [
     {
       enforce: 'pre',

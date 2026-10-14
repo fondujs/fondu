@@ -1,10 +1,14 @@
 import type { Page } from '@inertiajs/core'
 /// <reference path="../virtual.d.ts" />
 import type { Context, MiddlewareHandler } from 'hono'
+import type { ReactElement } from 'react'
 import { assetTags } from 'virtual:fondu/assets'
-import { renderPage } from 'virtual:fondu/ssr'
+import { renderMarkup, renderPage } from 'virtual:fondu/ssr'
 
-/** The HTML document around a page. */
+/**
+ * The HTML document around a page: `{head}` and `{body}` (in JSX, or `${head}` in a string) are where the page goes.
+ * An inline `<script>` of the document gets the request's nonce, so the Content Security Policy runs it.
+ */
 export interface DocumentParts {
   /** the page's `<Head>` tags (server render), then the client's styles and scripts */
   head: string
@@ -12,7 +16,8 @@ export interface DocumentParts {
   body: string
   c: Context
 }
-export type DocumentTemplate = (parts: DocumentParts) => string
+/** the document as JSX (`<html>…</html>`), or as an HTML string */
+export type DocumentTemplate = (parts: DocumentParts) => ReactElement | string
 
 const defaultTemplate: DocumentTemplate = ({ head, body }) =>
   `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${head}</head><body>${body}</body></html>`
@@ -36,6 +41,20 @@ export const withoutSsr = (): MiddlewareHandler => async (c, next) => {
 const pageScript = (page: Page) =>
   `<script data-page="app" type="application/json">${JSON.stringify(page).replace(/\//g, '\\/').replace(/</g, '\\u003c')}</script>`
 
+// where the page goes, in the document a template returns: replaced before the page is in, so a page's content is
+// never read as one
+const HEAD = 'fondu:document-head'
+const BODY = 'fondu:document-body'
+
+/** the document's own markup: JSX rendered (no whitespace between tags), its inline scripts given the nonce */
+async function shell(template: DocumentTemplate, c: Context, nonce: string | undefined): Promise<string> {
+  const out = template({ head: HEAD, body: BODY, c })
+  let html = out
+  if (typeof out !== 'string') html = `<!doctype html>${await renderMarkup(out)}`
+  if (!nonce) return html as string
+  return (html as string).replace(/<script\b(?![^>]*\s(?:src|nonce)=)/gi, `<script nonce="${nonce}"`)
+}
+
 export async function renderDocument(c: Context, page: Page): Promise<string> {
   const nonce = (c.get as (key: string) => unknown)('secureHeadersNonce') as string | undefined
   let ssr: { head: string[]; body: string } | null = null
@@ -49,5 +68,9 @@ export async function renderDocument(c: Context, page: Page): Promise<string> {
   // nothing in the page's content can come before it
   const body = ssr?.body ?? `${pageScript(page)}<div id="app"></div>`
   const template = settings.get(c)?.document ?? defaultTemplate
-  return template({ head: (ssr?.head.join('') ?? '') + assetTags(page.component, nonce), body, c })
+  const html = await shell(template, c, nonce)
+  const [before, between, after, ...more] = html.split(new RegExp(`${HEAD}|${BODY}`))
+  if (after === undefined || more.length || html.indexOf(HEAD) > html.indexOf(BODY))
+    throw new Error('fondu: the document must have `head` once, in <head>, and `body` once, in <body>')
+  return before + (ssr?.head.join('') ?? '') + assetTags(page.component, nonce) + between + body + after
 }

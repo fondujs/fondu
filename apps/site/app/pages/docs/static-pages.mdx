@@ -54,14 +54,11 @@ props included. So the build stops, naming the route, when a page:
 ## Headers
 
 On Bun and Node, a static page gets the headers of any page of the app, the Content Security Policy with a fresh nonce
-included.
+included, and its scripts that had the build's nonce get this one.
 
 On Cloudflare, the pages' security headers are written to `_headers`, which Workers Static Assets apply to static
-files. The policy drops its nonce there, as a file served to everyone can't have one: the document's scripts are the
-site's own files.
-
-Either way, an inline script you add to the document can't count on the nonce on a static page: allow it by its hash
-([The document](/docs/document#scripts-in-the-document)).
+files. The policy drops its nonce there, as a file served to everyone can't have one: the scripts that had it are
+allowed by their hashes instead, so an inline script of [the document](/docs/document) runs on a static page too.
 
 ## A new deploy
 
