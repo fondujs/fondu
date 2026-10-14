@@ -38,4 +38,16 @@ updated when the API does.
 
 ## Releases
 
-Maintainers release with `bun run release`; CI stages the version on npm and a maintainer approves it.
+Maintainers release with `bun run release` from the repository's root: fondu and create-fondu get the same version
+(create-fondu's apps depend on `^` its own version). CI stages both on npm and a maintainer approves them (npmjs.com
+→ Staged Packages, or `npm stage approve <id>`, with 2FA).
+
+Before a release, read what npm will show and what new apps get, as it can only change with the next version:
+
+- `README.md`: fondu's npm page (CI copies it into `packages/fondu`); its links absolute, as npm resolves relative
+  ones inside the package
+- `packages/create-fondu/README.md`: create-fondu's npm page
+- `packages/create-fondu/template/`: the new app's `README.md` and `AGENTS.md`
+- the docs (`apps/site`), for what the release changes
+
+After it: deploy fondu.dev and the demo, and create an app on each target with the published create-fondu.

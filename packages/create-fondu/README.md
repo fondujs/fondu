@@ -1,7 +1,7 @@
 # create-fondu
 
-Create a [Fondu](https://github.com/fondujs/fondu) app: full-stack React on Hono, Vite and Inertia, with Tailwind CSS,
-for Node, Bun or Cloudflare Workers.
+Create a [Fondu](https://fondu.dev) app: full-stack React on Hono, Vite and Inertia, with Tailwind CSS, for Bun,
+Cloudflare Workers or Node.
 
 ```bash
 bun create fondu my-app
@@ -9,4 +9,6 @@ npm create fondu@latest my-app
 pnpm create fondu my-app
 ```
 
-Options: `--target node|bun|cloudflare`, `--no-install`.
+Options: `--target bun|cloudflare|node`, `--no-install`.
+
+Then the [quick start](https://fondu.dev/docs/quick-start), and the [docs](https://fondu.dev/docs).

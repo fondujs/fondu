@@ -22,19 +22,19 @@ bun dev
 It asks where the app runs (Node, Bun or Cloudflare Workers; or `--target node|bun|cloudflare`) and writes a small
 app: a route, its page, the error page, Tailwind CSS, editor snippets and an `AGENTS.md` for coding agents.
 
-[demo.fondu.dev](https://demo.fondu.dev) ([apps/demo](apps/demo)) shows every Inertia feature, one page each, on
+[demo.fondu.dev](https://demo.fondu.dev) ([apps/demo](https://github.com/fondujs/fondu/tree/main/apps/demo)) shows every Inertia feature, one page each, on
 Cloudflare Workers with D1 and Better Auth.
 
 ## Docs
 
-**[fondu.dev](https://fondu.dev/docs)**: routes, pages and props, forms and validation, type safety, server-side
-rendering, static pages, MDX pages, deploying, and the API. Every page is also Markdown for coding agents
+**[fondu.dev](https://fondu.dev/docs)**: routes, pages and props, layouts, forms and validation, type safety,
+server-side rendering, static pages, MDX pages, deploying, and the API. Every page is also Markdown for coding agents
 ([llms.txt](https://fondu.dev/llms.txt)).
 
 ## Contributing
 
 ```
-packages/fondu          the package (≈1,100 lines)
+packages/fondu          the package
 packages/create-fondu   `bun create fondu`
 apps/demo               every Inertia feature, one page each — Workers, D1, Better Auth, coss ui
 apps/site               fondu.dev: the docs, MDX and static pages on Workers
@@ -49,13 +49,14 @@ bun run dev            # rebuild packages/fondu on change
 ```
 
 Commits follow [Conventional Commits](https://www.conventionalcommits.org) (lefthook runs commitlint, and formats and
-lints what is staged). A release: `bun run release` picks the version, tags it and pushes; CI publishes the tag to npm
-(trusted publishing, with provenance) and writes the GitHub Release from the commits.
+lints what is staged). A release: `bun run release` picks the version, tags it and pushes; CI stages it on npm (trusted
+publishing, with provenance), a maintainer approves it, and CI writes the GitHub Release from the commits.
 
 `apps/demo`: `cp .dev.vars.example .dev.vars`, then `bun run dev` (in workerd), `bun run preview`, `bun run deploy`.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the details, and [SECURITY.md](SECURITY.md) to report a vulnerability.
+See [CONTRIBUTING.md](https://github.com/fondujs/fondu/blob/main/CONTRIBUTING.md) for the details, and [SECURITY.md](https://github.com/fondujs/fondu/blob/main/SECURITY.md) to report a
+vulnerability.
 
 ## License
 
-Distributed under the MIT License. See [LICENSE](LICENSE) for more information.
+Distributed under the MIT License. See [LICENSE](https://github.com/fondujs/fondu/blob/main/LICENSE) for more information.
