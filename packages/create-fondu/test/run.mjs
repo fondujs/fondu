@@ -49,6 +49,11 @@ for (const target of Object.keys(production).filter((t) => !process.argv[2] || t
   })
 
   sh('bun', ['run', 'build'], app)
+  if (target === 'cloudflare')
+    check(
+      'cloudflare build: the client manifest is not deployed',
+      readFileSync(join(app, 'dist/client/.assetsignore'), 'utf8').split('\n').includes('.vite'),
+    )
   sh('bun', ['run', 'typecheck'], app) // after the build: it writes app/fondu.gen.d.ts
   const { script, port, says } = production[target]
   await run(app, script, port, async (base, output) => {
