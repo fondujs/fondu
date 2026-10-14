@@ -31,6 +31,7 @@ export const sections: Array<{ title: string; docs: Doc[] }> = [
       { slug: 'pages', title: 'Pages and props', description: 'React pages, and the kinds of props a route sends.' },
       { slug: 'layouts', title: 'Layouts', description: 'What stays around the pages, by directory.' },
       { slug: 'forms', title: 'Forms and validation', description: 'One schema for the server and the browser.' },
+      { slug: 'errors', title: 'Errors', description: 'Error pages, and what API clients get.' },
       {
         slug: 'server-and-client',
         title: 'Server and client code',
@@ -41,6 +42,11 @@ export const sections: Array<{ title: string; docs: Doc[] }> = [
         title: 'Type safety',
         description: 'Pages, props, URLs and input, checked from server to browser.',
       },
+    ],
+  },
+  {
+    title: 'Rendering',
+    docs: [
       { slug: 'ssr', title: 'Server-side rendering', description: 'Pages rendered on the server, then hydrated.' },
       {
         slug: 'static-pages',
@@ -48,7 +54,6 @@ export const sections: Array<{ title: string; docs: Doc[] }> = [
         description: 'Pages written as files at build time (SSG).',
       },
       { slug: 'mdx', title: 'MDX pages', description: 'Pages written in Markdown, with React components.' },
-      { slug: 'errors', title: 'Errors', description: 'Error pages, and what API clients get.' },
       { slug: 'document', title: 'The document', description: 'The HTML around pages: attributes, icons, fonts.' },
     ],
   },

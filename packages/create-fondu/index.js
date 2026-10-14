@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// `bun create fondu [dir] [--target node|bun|cloudflare] [--no-install]` (or npm / pnpm / yarn create fondu)
+// `bun create fondu [dir] [--target bun|cloudflare|node] [--no-install]` (or npm / pnpm / yarn create fondu)
 import { spawnSync } from 'node:child_process'
 import { cpSync, existsSync, readdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { basename, join, relative, resolve } from 'node:path'

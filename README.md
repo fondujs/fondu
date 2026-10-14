@@ -15,7 +15,7 @@ URLs, the document and error pages. Everything else is Hono's, Vite's and Inerti
 ## Quick start
 
 ```bash
-bun create fondu my-app      # or: npm create fondu@latest my-app · pnpm create fondu my-app
+bun create fondu@latest my-app   # or: npm create fondu@latest my-app · pnpm create fondu@latest my-app
 cd my-app
 bun dev
 ```

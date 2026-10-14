@@ -56,10 +56,12 @@ Its props are in `props`: `{props.title}` in the Markdown.
 
 ## Layouts and components
 
-The page renders inside the layout `createInertiaApp()` gives it, as any page does. To change what the Markdown
-becomes (a link that is an Inertia `<Link>`, a styled table), use MDX's
+The page renders inside the `_layout.tsx` files above it, as any page does ([Layouts](/docs/layouts)). To change what
+the Markdown becomes (a link that is an Inertia `<Link>`, a styled table), use MDX's
 [`providerImportSource`](https://mdxjs.com/packages/mdx/#processoroptions) with `@mdx-js/react`'s `MDXProvider` in
 that layout.
+
+In development, an edit to an MDX page updates it in place (React Fast Refresh), as for a `.tsx` page.
 
 Remark and rehype plugins go in `mdx()`'s options: this site uses `remark-gfm` for tables, `rehype-slug` for heading
 ids and `@shikijs/rehype` to highlight code at build time.

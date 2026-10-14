@@ -103,14 +103,14 @@ export function CodeTabs({ group, children }: { group?: string; children: ReactN
     <Tabs.Root
       value={value}
       onValueChange={(v: string) => (group ? choose(v) : setOwn(v))}
-      className="code-tabs my-4 overflow-hidden rounded-xl border bg-muted"
+      className="code-tabs my-4 overflow-hidden rounded-xl border"
     >
-      <Tabs.List className="flex gap-1 overflow-x-auto border-b px-2 py-1.5">
+      <Tabs.List className="flex gap-1 overflow-x-auto border-b px-2 py-1">
         {titles.map((title) => (
           <Tabs.Tab
             key={title}
             value={title}
-            className="rounded-md px-2.5 py-1 font-mono text-[13px] whitespace-nowrap text-muted-foreground transition-colors outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring data-active:bg-background data-active:text-foreground data-active:shadow-xs/5"
+            className="h-6 rounded-md px-2 font-mono text-[13px]/6 whitespace-nowrap text-muted-foreground transition-colors outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring data-active:bg-secondary data-active:text-secondary-foreground"
           >
             {title}
           </Tabs.Tab>

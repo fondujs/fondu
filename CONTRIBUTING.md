@@ -50,7 +50,8 @@ One wording everywhere: the READMEs, both `package.json` descriptions, the GitHu
 
 ## Releases
 
-Maintainers release with `bun run release` from the repository's root: fondu and create-fondu get the same version
+Maintainers release with `bun run release` from the repository's root, on an up-to-date `main` (`git pull` first:
+a release made on an old `main` is refused when it is pushed): fondu and create-fondu get the same version
 (create-fondu's apps depend on `^` its own version). CI stages both on npm and a maintainer approves them (npmjs.com
 → Staged Packages, or `npm stage approve <id>`, with 2FA).
 
