@@ -47,6 +47,50 @@ type ClashError = 'fondu: this page prop has the name of a shared prop (share())
 type OwnProps<N> = Omit<ComponentProps<N>, FromShared<ComponentProps<N>> | Clashing<ComponentProps<N>> | 'errors'> &
   Partial<Pick<ComponentProps<N>, FromShared<ComponentProps<N>>>> & { [K in Clashing<ComponentProps<N>>]: ClashError }
 type PropsInput<P> = { [K in keyof P]: P[K] | (() => P[K] | Promise<P[K]>) }
+
+// ---- props as JSON delivers them: a page's prop types are what it receives; `render` takes what becomes that
+
+type Json = string | number | boolean | null
+/** types JSON doesn't deliver as they are: a Date arrives as a string, a Map or a Set as {}, a function not at all */
+type NotJson =
+  | Date
+  | Map<unknown, unknown>
+  | Set<unknown>
+  | WeakMap<object, unknown>
+  | WeakSet<object>
+  | RegExp
+  | bigint
+  | symbol
+  | ((...args: never[]) => unknown)
+type IsAny<T> = 0 extends 1 & T ? true : false
+/** each member of T arrives as itself (depth-limited, for recursive types) */
+type JsonMember<T, D extends unknown[]> = T extends Json | undefined
+  ? true
+  : T extends NotJson
+    ? false
+    : D['length'] extends 6
+      ? true
+      : T extends readonly (infer E)[]
+        ? Arrives<E, [...D, 0]>
+        : T extends object
+          ? Arrives<T[keyof T], [...D, 0]>
+          : true
+type Arrives<T, D extends unknown[] = []> =
+  IsAny<T> extends true ? true : unknown extends T ? true : [JsonMember<T, D>] extends [true] ? true : false
+/** what a route may pass for a page prop of type T: T, or anything JSON turns into it (a Date for a string: toJSON) */
+type JsonInput<T> =
+  IsAny<T> extends true
+    ? T
+    : T extends Json | undefined
+      ? T | { toJSON(): T }
+      : T extends readonly (infer E)[]
+        ? readonly JsonInput<E>[] | { toJSON(): T }
+        : T extends object
+          ? { [K in keyof T]: JsonInput<T[K]> } | { toJSON(): T }
+          : T
+type NotJsonError = 'fondu: the page receives this prop as JSON (a Date as a string, a Map as {}): type it as such'
+/** a page's props as `render` takes them: what becomes each as JSON, or an error for a type JSON can't deliver */
+export type Delivered<P> = { [K in keyof P]: Arrives<P[K]> extends true ? JsonInput<P[K]> : NotJsonError }
 type RequiredKeys<T> = { [K in keyof T]-?: object extends Pick<T, K> ? never : K }[keyof T]
 
 const encrypted = new WeakSet<Context>()
@@ -73,8 +117,8 @@ type RenderArgs<N> = [RequiredKeys<OwnProps<N>>] extends [never]
   : string extends keyof OwnProps<N>
     ? OptionalArgs<N>
     : RequiredArgs<N>
-type OptionalArgs<N> = [props?: PropsInput<OwnProps<N>>, options?: RenderOptions]
-type RequiredArgs<N> = [props: PropsInput<OwnProps<N>>, options?: RenderOptions]
+type OptionalArgs<N> = [props?: PropsInput<Delivered<OwnProps<N>>>, options?: RenderOptions]
+type RequiredArgs<N> = [props: PropsInput<Delivered<OwnProps<N>>>, options?: RenderOptions]
 
 // development: the files in app/pages/ (Vite keeps the list current); a build: the pages in the client manifest
 const devPages = import.meta.env.DEV ? import.meta.glob('/app/pages/**/*.{tsx,jsx,mdx}') : {}
@@ -111,7 +155,7 @@ function pageUrl(c: Context): string {
 export async function render<N extends PageName>(
   c: Context,
   component: N,
-  ...[props = {} as PropsInput<OwnProps<N>>, options = {}]: RenderArgs<N>
+  ...[props = {} as PropsInput<Delivered<OwnProps<N>>>, options = {}]: RenderArgs<N>
 ): Promise<Response> {
   if (!hasPage(component))
     throw new Error(`fondu: there is no page "${component}": create app/pages/${component}.tsx (or .mdx)`)
