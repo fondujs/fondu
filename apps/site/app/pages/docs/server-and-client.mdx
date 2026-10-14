@@ -1,0 +1,45 @@
+Every file in `app/` runs on the server, in the browser, or in both. Where a file runs decides what it can do, and
+whether it ends up in the JavaScript your visitors download.
+
+## Where each file runs
+
+| Files                                         | Runs                                                  | In the browser's bundle |
+| --------------------------------------------- | ----------------------------------------------------- | ----------------------- |
+| `app/routes/`, `app/server.ts`, `*.server.ts` | on the server only                                    | never                   |
+| `app/app.tsx`, `app/pages/`, their components | on the server (the first render), then in the browser | yes                     |
+| anything else they import (a schema, a type)  | wherever it is imported                               | if a page imports it    |
+
+The browser's bundle is everything `app/app.tsx` and the pages import, directly or not. Each page is a chunk of its
+own, loaded when it is visited.
+
+## Server code
+
+`app/routes/`, `app/server.ts` and files named `*.server.ts` are server code: they read the database, the secrets, the
+session. If a page or a component imports one, even through another file, the build stops and names the import:
+
+```
+fondu: /app/lib/db.server.ts is server code (routes/, server.ts, *.server.ts) and cannot be imported by browser code
+```
+
+Name a module `*.server.ts` when it must never reach the browser, and import it from routes and other server files.
+
+## Code for both
+
+Pages and their components run twice: on the server for the first render, then in the browser. So they must not touch
+`window` or `document` while rendering (do it in an effect, or inside Inertia's `<WhenMounted>`), and they can't reach
+the server's resources: what they need comes as props.
+
+A module with no secrets, such as a validation schema, can be shared: a route validates with it, a page checks the
+same rules before sending.
+
+## Props are public
+
+Props are the only way data goes from a route to a page, and they are written into the HTML and the JSON of the page:
+anyone who can see the page can read them. Send what the page shows, not whole records: `{ name: user.name }`, not a
+user row with its password hash.
+
+## Environment variables and secrets
+
+- On Cloudflare: bindings and secrets in `c.env`, in handlers.
+- On Node and Bun: `process.env`, in server code.
+- `import.meta.env.VITE_*` is written into the browser's bundle by Vite: only for values that are public anyway.

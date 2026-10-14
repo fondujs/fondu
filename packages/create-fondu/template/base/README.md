@@ -15,5 +15,5 @@ app/
 ```
 
 `loader` is GET, `action` POST, `actions.name` POST `?name`; plain HTTP routes export `GET`, `POST`… Everything else
-(props, validation, errors, server rendering): the [Fondu README](https://github.com/fondujs/fondu#readme), and the
+(props, validation, errors, server rendering): the [Fondu docs](https://fondu.dev/docs), and the
 [Inertia docs](https://inertiajs.com) for the browser side.

@@ -1,20 +1,63 @@
+## Automatic installation
+
+Copy this prompt and paste it into your coding agent. It will guide you through setting up a Fondu app, in a new
+project or an existing one, and answer your questions along the way.
+
+```text wrap
+Read https://fondu.dev/docs/quick-start.md, then help me create a Fondu app (or add Fondu to this project). Ask me where it will run (Node, Bun or Cloudflare Workers), set it up as the guide says, and explain each file you create.
+```
+
 ## Create an app
 
-```sh
+<CodeTabs group="pm">
+
+```sh title="npm"
 npm create fondu@latest my-app
-# or: bun create fondu my-app · pnpm create fondu my-app
 ```
+
+```sh title="pnpm"
+pnpm create fondu my-app
+```
+
+```sh title="yarn"
+yarn create fondu my-app
+```
+
+```sh title="bun"
+bun create fondu my-app
+```
+
+</CodeTabs>
 
 It asks where the app runs: Node, Bun or Cloudflare Workers (or pass `--target node`, `--target bun` or
 `--target cloudflare`). Then it writes a small app: one route, its page, the error page, Tailwind CSS, editor snippets
-and an `AGENTS.md` for coding agents.
+and an `AGENTS.md` for coding agents, and installs the dependencies with the package manager you ran it with.
 
 ## Run it
 
-```sh
+<CodeTabs group="pm">
+
+```sh title="npm"
 cd my-app
 npm run dev
 ```
+
+```sh title="pnpm"
+cd my-app
+pnpm dev
+```
+
+```sh title="yarn"
+cd my-app
+yarn dev
+```
+
+```sh title="bun"
+cd my-app
+bun dev
+```
+
+</CodeTabs>
 
 The app is at `http://localhost:5173`. Edit `app/pages/index.tsx` and the page updates in place; edit
 `app/routes/index.ts` and the page reloads with the new props.
@@ -51,19 +94,41 @@ export default function About({ team }: { team: string[] }) {
 ```
 
 `render(c, 'about', …)` is checked against the page: a page that doesn't exist, a missing prop or one of the wrong type
-is a type error. Link to it with Inertia's `<Link>` and a typed URL:
+is a type error. Link to it with Inertia's `<Link>` and a URL from `href()`, typed after your routes:
 
 ```tsx
 import { Link } from '@inertiajs/react'
 import { href } from 'fondu/client'
 
-;<Link href={href('/about')}>About</Link>
+export const AboutLink = () => <Link href={href('/about')}>About</Link>
 ```
 
 ## Build
 
-```sh
+<CodeTabs group="pm">
+
+```sh title="npm"
 npm run build
 ```
 
-Then `npm start` on Node or Bun, or `npm run deploy` on Cloudflare. [Deploying](/docs/deploying) has the details.
+```sh title="pnpm"
+pnpm build
+```
+
+```sh title="yarn"
+yarn build
+```
+
+```sh title="bun"
+bun run build
+```
+
+</CodeTabs>
+
+Then `start` on Node or Bun, or `deploy` on Cloudflare: [Deploying](/docs/deploying) has the details.
+
+## Next
+
+- [Project structure](/docs/project-structure): the files of the app you just created.
+- [Routes](/docs/routes) and [Pages and props](/docs/pages): the two kinds of files you will write most.
+- Every page of these docs is also Markdown: add `.md` to its URL. [llms.txt](/llms.txt) lists them all.

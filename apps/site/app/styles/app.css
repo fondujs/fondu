@@ -217,7 +217,7 @@
   & :where(h3) {
     @apply mt-8 mb-2 scroll-mt-20 font-heading text-base font-semibold;
   }
-  & :where(p, ul, ol, table, pre, blockquote) {
+  & :where(p, ul, ol, table, blockquote) {
     @apply my-4;
   }
   & :where(ul) {
@@ -268,6 +268,13 @@
     }
     & span {
       color: light-dark(var(--shiki-light), var(--shiki-dark));
+    }
+    /* ```text wrap: long lines wrapped, not scrolled (a prompt) */
+    &[data-wrap] {
+      @apply whitespace-pre-wrap;
+    }
+    .code-tabs & {
+      @apply rounded-none border-0;
     }
     /* ```ts /name/: the name highlighted, in the brand's gold */
     & .highlighted-word {

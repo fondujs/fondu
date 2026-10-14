@@ -1,0 +1,93 @@
+Fondu checks the seams between the server and the browser at compile time: what a route sends to a page, the URLs
+your pages link to, the input your handlers read. Rename a prop, move a route or change a schema, and TypeScript points
+at every place that no longer fits, before anything runs.
+
+## Where the types come from
+
+There is nothing to declare twice. Each type has one source, and the rest follows from it:
+
+| Source                                | Checks                                                                    |
+| ------------------------------------- | ------------------------------------------------------------------------- |
+| a page component's props              | `render(c, 'page', props)`: the page exists, every prop is there and fits |
+| the files in `app/routes/`            | `href('/users/:id', { id })`: the URL exists, its params, its actions     |
+| a handler's schemas (`withValidator`) | the `body`, `query` and `params` the handler receives                     |
+| declarations next to your middleware  | `share()`, `flash()`, `usePage()`, `c.get()`                              |
+
+The dev server and the build write the first two into `app/fondu.gen.d.ts` as your files change; commit it.
+
+## Page props
+
+The component is the source: its parameter's type is what `render()` takes for that page.
+
+```tsx
+// app/pages/users/show.tsx
+export default function Show({ user, canEdit }: { user: User; canEdit: boolean }) { … }
+```
+
+```ts
+// app/routes/users/[id].ts
+render(c, 'users/show', { user }) // error: canEdit is missing
+render(c, 'users/sho', { user, canEdit }) // error: no such page
+render(c, 'users/show', { user, canEdit: () => isOwner(c, user) }) // a function returning the prop's type: fine
+```
+
+The kinds of props keep the type of their value: `defer(() => stats())` fits a prop typed like `stats()`'s result.
+
+## URLs
+
+`href()` from `fondu/client` takes the URL patterns of `app/routes/`, and a route's actions as `?name`:
+
+```tsx
+href('/users/:id', { id: 7 }) // '/users/7'
+href('/users/:id?rename', { id: 7 }) // '/users/7?rename': actions.rename
+href('/users/:id') // error: the param is missing
+href('/user/:id', { id: 7 }) // error: no such route
+```
+
+## Handler input
+
+`defineHandler.withValidator()` types the handler's input from its schemas, as they parse it: with
+`z.coerce.number()`, `params.id` is a `number`.
+
+```ts
+const params = z.object({ id: z.coerce.number() })
+
+export const loader = defineHandler.withValidator({ params })(async (c, { params }) => {
+  params.id // number
+})
+```
+
+Any [Standard Schema](https://standardschema.dev) library works. Export the schema from a file that isn't server code
+and the page can check the same rules before sending: [Forms and validation](/docs/forms).
+
+## Shared props, flash data and context values
+
+What a middleware sets is typed where it is set, by declaring Hono's and Inertia's own interfaces:
+
+```ts
+// app/routes/_middleware.ts
+declare module 'hono' {
+  interface ContextVariableMap {
+    user: User | null // c.set('user', …), c.get('user')
+  }
+}
+declare module '@inertiajs/core' {
+  interface InertiaConfig {
+    sharedPageProps: { auth: { user: { name: string } | null } } // share(), usePage().props
+    flashDataType: { message?: string } // flash(), usePage().flash
+  }
+}
+```
+
+`share()` and `flash()` then take only those, and `usePage()` returns them. A page prop named like a shared prop but of
+another type is an error, as it would hide the shared one from the layout.
+
+## What crosses as JSON
+
+Props travel to the browser as JSON. Type a page's props as the page receives them: a `Date` arrives as a string, a
+`Map` as `{}`, and `undefined` fields are left out. Send `createdAt.toISOString()` for a prop typed `string`.
+
+## Setup
+
+None beyond `tsconfig.json`: a new app has it. Keep `app/fondu.gen.d.ts` committed, so a fresh clone or CI has the
+types before the first build.

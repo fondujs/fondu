@@ -2,7 +2,7 @@
   "name": "fondu",
   "version": "0.1.3",
   "description": "A small meta-framework for full-stack React apps, built on Hono, Vite and Inertia. Node, Bun and Cloudflare Workers.",
-  "homepage": "https://github.com/fondujs/fondu#readme",
+  "homepage": "https://fondu.dev",
   "bugs": "https://github.com/fondujs/fondu/issues",
   "license": "MIT",
   "repository": {

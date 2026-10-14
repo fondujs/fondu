@@ -3,6 +3,7 @@ declare module 'fondu' {
   interface Register {
     pages: {
       "docs/api": typeof import("./pages/docs/api.mdx")
+      "docs/demo": typeof import("./pages/docs/demo.mdx")
       "docs/deploying": typeof import("./pages/docs/deploying.mdx")
       "docs/errors": typeof import("./pages/docs/errors.mdx")
       "docs/forms": typeof import("./pages/docs/forms.mdx")
@@ -12,9 +13,10 @@ declare module 'fondu' {
       "docs/project-structure": typeof import("./pages/docs/project-structure.mdx")
       "docs/quick-start": typeof import("./pages/docs/quick-start.mdx")
       "docs/routes": typeof import("./pages/docs/routes.mdx")
+      "docs/server-and-client": typeof import("./pages/docs/server-and-client.mdx")
       "docs/ssr": typeof import("./pages/docs/ssr.mdx")
       "docs/static-pages": typeof import("./pages/docs/static-pages.mdx")
-      "docs/types": typeof import("./pages/docs/types.mdx")
+      "docs/type-safety": typeof import("./pages/docs/type-safety.mdx")
       "error": typeof import("./pages/error")
       "index": typeof import("./pages/index")
     }

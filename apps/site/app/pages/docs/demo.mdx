@@ -1,0 +1,36 @@
+[demo.fondu.dev](https://demo.fondu.dev) is a Fondu app that shows every Inertia feature, one page each, with the
+code that makes it work. Its source is [apps/demo](https://github.com/fondujs/fondu/tree/main/apps/demo) in the
+Fondu repository.
+
+## What it shows
+
+- **Inertia's features**: props, partial reloads, deferred props, merging props, infinite scroll, once props, forms
+  with validation and Precognition, redirects, asset versioning, history encryption, server-side rendering.
+- **Fondu's**: routes and actions, HTTP routes for API clients, navigation, the error pages, an account, and an admin
+  area that renders in the browser only.
+
+Each page says what it demonstrates and which API it uses, so the demo doubles as a set of working examples.
+
+## What it is built with
+
+- Cloudflare Workers, with a D1 database through Drizzle ORM
+- Better Auth for accounts: sign-in, sessions, an admin role
+- coss ui (Base UI and Tailwind CSS) for the interface
+
+The data goes back to its first state every six hours.
+
+## Sign in
+
+Two accounts are there to try: `demo@fondu.dev` / `fondu-demo`, and the admin `admin@fondu.dev` / `fondu-admin`.
+
+## Run it yourself
+
+```sh
+git clone https://github.com/fondujs/fondu
+cd fondu && bun install
+cd apps/demo
+cp .dev.vars.example .dev.vars
+bun run dev
+```
+
+It runs in workerd with a local D1 database. Its end-to-end tests (`bun run e2e`) drive every page in a browser.
