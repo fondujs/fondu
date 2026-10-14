@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { existsSync, readdirSync, readFileSync } from 'node:fs'
+import { appendFileSync, existsSync, readdirSync, readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { dirname, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -184,6 +184,9 @@ function core(options: FonduOptions): Plugin {
             async buildApp(builder) {
               const client = builder.environments.client!
               await builder.build(client)
+              // the client manifest is for the build (asset tags, the version): not a static asset to deploy
+              const ignore = resolve(config.root, client.config.build.outDir, '.assetsignore')
+              if (existsSync(ignore)) appendFileSync(ignore, '.vite\n')
               for (const env of Object.values(builder.environments)) {
                 if (env.name === 'client') continue
                 await builder.build(env)
