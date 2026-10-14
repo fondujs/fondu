@@ -1374,6 +1374,27 @@ await page.waitForFunction(() => document.querySelector('[data-testid=user]')?.a
   await hp.close()
 }
 
+// ---- dev only: an edit to a route's code updates the page's props in place, without reloading it
+if ((await fetch(BASE + '/@vite/client').catch(() => null))?.ok) {
+  const { readFileSync, writeFileSync } = await import('node:fs')
+  const file = new URL('../app/routes/props.ts', import.meta.url)
+  const source = readFileSync(file, 'utf8')
+  const hp = await browser.newPage()
+  try {
+    await hp.goto(BASE + '/props', { waitUntil: 'networkidle0' })
+    await hp.evaluate(() => (window.__kept = true))
+    writeFileSync(file, source.replace("text: 'Hello from Hono'", "text: 'Hello again from Hono'"))
+    await waitText('Hello again from Hono', hp).catch(() => {})
+    ok(
+      'dev: a route edited, its page gets the new props without a reload',
+      (await text(hp)).includes('Hello again from Hono') && (await hp.evaluate(() => window.__kept === true)),
+    )
+  } finally {
+    writeFileSync(file, source)
+    await hp.close()
+  }
+}
+
 ok('no console errors or warnings (incl. hydration)', problems.length === 0, problems.slice(0, 3).join(' | '))
 if (problems.length) console.log(problems.join('\n'))
 // ---- the demo's reset (the cron of wrangler.jsonc), run by hand: the seed again, the changes above gone
