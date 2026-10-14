@@ -15,6 +15,20 @@
           "stylesheet": "./apps/demo/app/styles/app.css"
         }
       }
+    },
+    {
+      "files": ["apps/site/**"],
+      "options": {
+        "sortTailwindcss": {
+          "stylesheet": "./apps/site/app/styles/app.css"
+        }
+      }
+    },
+    {
+      "files": ["apps/site/app/landing/**"],
+      "options": {
+        "printWidth": 72
+      }
     }
   ],
   "ignorePatterns": ["**/worker-configuration.d.ts", "**/fondu.gen.d.ts", "**/migrations/**", "bun.lock"]

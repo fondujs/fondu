@@ -9,13 +9,13 @@ const messages: Record<number, [title: string, text: string]> = {
 export default function ErrorPage({ status }: { status: number }) {
   const [title, text] = messages[status] ?? messages[500]!
   return (
-    <main className="mx-auto max-w-2xl px-4 py-24 sm:px-6">
+    <div className="mx-auto max-w-2xl px-4 py-24 sm:px-6">
       <Head title={title} />
       <p className="mb-2 font-mono text-sm text-muted-foreground">{status}</p>
       <h1>{title}</h1>
       <p className="lede">
         {text} <Link href="/docs">Read the docs</Link> or go to the <Link href="/">home page</Link>.
       </p>
-    </main>
+    </div>
   )
 }

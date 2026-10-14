@@ -28,6 +28,27 @@ environment keeps it readable). `wrangler deploy` ships both: the files are serv
 Bindings (D1, KV, R2…) are declared in `wrangler.jsonc` and read from `c.env` in handlers; `npm run cf-typegen` writes
 their types. With [static pages](/docs/static-pages), the pages chosen are files too.
 
+## The Content Security Policy
+
+Fondu's policy allows only the site's own scripts. A script that a host adds to every page is blocked until the policy
+allows it, such as Cloudflare Web Analytics when the zone turns it on:
+
+```ts
+// app/server.ts
+import { NONCE } from 'hono/secure-headers'
+
+createApp({
+  secureHeaders: {
+    contentSecurityPolicy: {
+      scriptSrc: ["'self'", NONCE, 'https://static.cloudflareinsights.com'],
+      connectSrc: ["'self'", 'https://cloudflareinsights.com'],
+    },
+  },
+})
+```
+
+A directive given replaces Fondu's one, so keep `'self'` and the nonce in `scriptSrc`.
+
 ## Caching
 
 The built assets in `/assets/` have hashed names, so they are served with a year-long `Cache-Control` and

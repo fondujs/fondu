@@ -1,19 +1,20 @@
 ## The files
 
 ```
-package.json         fondu, hono, @inertiajs/react, react, react-dom (Node: also @hono/node-server)
-vite.config.ts       plugins: [fondu({ target: 'node' })]
-app/
-  server.ts          export default createApp()
-  app.tsx            createInertiaApp({ pages: './pages', … }): the browser and the server render
-  routes/            server code only: the file path is the URL
-    _middleware.ts     runs for its directory and below
-    index.ts           /
-    users/[id].ts      /users/:id
-    api/health.ts      /api/health
-  pages/             React pages, rendered by name: 'users/show' is pages/users/show.tsx
-    error.tsx          the error page (404, 403, 500…)
-  fondu.gen.d.ts     the generated types (commit it)
+my-app/
+├─ app/
+│  ├─ server.ts            # the server: export default createApp()
+│  ├─ app.tsx              # createInertiaApp(): the browser and the server render
+│  ├─ routes/              # server code only: the file path is the URL
+│  │  ├─ _middleware.ts    # runs for its directory and below
+│  │  ├─ index.ts          # /
+│  │  ├─ users/[id].ts     # /users/:id
+│  │  └─ api/health.ts     # /api/health
+│  ├─ pages/               # React pages, by name: 'users/show' is pages/users/show.tsx
+│  │  └─ error.tsx         # the error page (404, 403, 500…)
+│  └─ fondu.gen.d.ts       # the generated types (commit it)
+├─ package.json           # fondu, hono, @inertiajs/react, react, react-dom
+└─ vite.config.ts         # plugins: [fondu({ target: 'node' })]
 ```
 
 ## `vite.config.ts`
@@ -68,9 +69,8 @@ createInertiaApp({
 
 ## Server code
 
-`app/routes/`, `app/server.ts` and files named `*.server.ts` are server code. Browser code (pages, components) must not
-import them, as they may hold secrets or reach a database: the build stops if one does, naming the import. Shared code
-(a schema, a type) goes in any other file.
+`app/routes/`, `app/server.ts` and files named `*.server.ts` are server code: browser code must not import them, and
+the build stops if it does. [Server and client code](/docs/server-and-client) explains where each file runs.
 
 `package.json` maps `#/*` to `./app/*`, so `import { db } from '#/lib/db.server.ts'` works from anywhere in `app/`.
 
@@ -78,3 +78,8 @@ import them, as they may hold secrets or reach a database: the build stops if on
 
 The dev server and the build write the types of your pages and routes here: they make `render()` and `href()` typed.
 Commit it, so the types are there before the first build (in CI, say); don't edit it.
+
+## Editor snippets
+
+A new app has `.vscode/fondu.code-snippets`: type `/route`, `/api`, `/loader`, `/action`, `/actions`, `/validated`,
+`/get` … `/delete` or `/middleware` in a route file, `/page`, `/layout` or `/form` in a page. Edit them freely.

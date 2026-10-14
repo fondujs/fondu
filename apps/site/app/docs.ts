@@ -21,6 +21,7 @@ export const sections: Array<{ title: string; docs: Doc[] }> = [
         title: 'Project structure',
         description: 'The files of an app, and what each is for.',
       },
+      { slug: 'demo', title: 'Demo application', description: 'Every Inertia feature in a Fondu app, one page each.' },
     ],
   },
   {
@@ -29,7 +30,16 @@ export const sections: Array<{ title: string; docs: Doc[] }> = [
       { slug: 'routes', title: 'Routes', description: 'Files in app/routes/: loaders, actions and middleware.' },
       { slug: 'pages', title: 'Pages and props', description: 'React pages, and the kinds of props a route sends.' },
       { slug: 'forms', title: 'Forms and validation', description: 'One schema for the server and the browser.' },
-      { slug: 'types', title: 'Types', description: 'Typed pages, props, shared data and URLs.' },
+      {
+        slug: 'server-and-client',
+        title: 'Server and client code',
+        description: 'Where each file runs, and what reaches the browser.',
+      },
+      {
+        slug: 'type-safety',
+        title: 'Type safety',
+        description: 'Pages, props, URLs and input, checked from server to browser.',
+      },
       { slug: 'ssr', title: 'Server-side rendering', description: 'Pages rendered on the server, then hydrated.' },
       {
         slug: 'static-pages',
@@ -52,6 +62,9 @@ export const sections: Array<{ title: string; docs: Doc[] }> = [
 export const docs: Doc[] = sections.flatMap((s) => s.docs)
 
 export const docUrl = (doc: Doc) => (doc.slug ? `/docs/${doc.slug}` : '/docs')
+
+/** the page as Markdown (vite: markdown.ts): /docs/routes.md, /docs.md */
+export const markdownUrl = (doc: Doc) => `${docUrl(doc)}.md`
 
 /** the doc of a page name ('docs/routes', 'docs/index') */
 export const docOf = (component: string) => {

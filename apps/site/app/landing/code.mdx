@@ -1,0 +1,43 @@
+{/* The landing page's example: a route and its page (pages/index.tsx) */}
+
+<CodeTabs>
+
+```ts title="app/routes/todos.ts" /items/
+import { back, defineHandler, render } from 'fondu'
+
+// GET /todos
+export const loader = defineHandler(async (c) =>
+  render(c, 'todos', { items: await db.todos.all() }),
+)
+
+// POST /todos, from the form
+export const action = defineHandler.withValidator({ body: todo })(
+  async (c, { body }) => {
+    await db.todos.add(body)
+    return back(c)
+  },
+)
+```
+
+```tsx title="app/pages/todos.tsx" /items/
+import { Form } from '@inertiajs/react'
+import { href } from 'fondu/client'
+
+export default function Todos({ items }: { items: Todo[] }) {
+  return (
+    <>
+      <ul>
+        {items.map((t) => (
+          <li key={t.id}>{t.text}</li>
+        ))}
+      </ul>
+      <Form action={href('/todos')} method="post" resetOnSuccess>
+        <input name="text" />
+        <button>Add</button>
+      </Form>
+    </>
+  )
+}
+```
+
+</CodeTabs>
