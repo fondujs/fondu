@@ -4,7 +4,7 @@ Copy this prompt and paste it into your coding agent. It will guide you through 
 project or an existing one, and answer your questions along the way.
 
 ```text wrap
-Read https://fondu.dev/docs/quick-start.md, then help me create a Fondu app (or add Fondu to this project). Ask me where it will run (Node, Bun or Cloudflare Workers), set it up as the guide says, and explain each file you create.
+Read https://fondu.dev/docs/quick-start.md, then help me create a Fondu app (or add Fondu to this project). Ask me where it will run (Bun, Cloudflare Workers or Node), set it up as the guide says, and explain each file you create.
 ```
 
 ## Create an app
@@ -29,8 +29,8 @@ bun create fondu my-app
 
 </CodeTabs>
 
-It asks where the app runs: Node, Bun or Cloudflare Workers (or pass `--target node`, `--target bun` or
-`--target cloudflare`). Then it writes a small app: one route, its page, the error page, Tailwind CSS, editor snippets
+It asks where the app runs: Bun, Cloudflare Workers or Node (or pass `--target bun`, `--target cloudflare` or
+`--target node`). Then it writes a small app: one route, its page, the error page, Tailwind CSS, editor snippets
 and an `AGENTS.md` for coding agents, and installs the dependencies with the package manager you ran it with.
 
 ## Run it
@@ -125,7 +125,7 @@ bun run build
 
 </CodeTabs>
 
-Then `start` on Node or Bun, or `deploy` on Cloudflare: [Deploying](/docs/deploying) has the details.
+Then `start` on Bun or Node, or `deploy` on Cloudflare: [Deploying](/docs/deploying) has the details.
 
 ## Next
 

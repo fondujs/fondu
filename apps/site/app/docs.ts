@@ -55,7 +55,7 @@ export const sections: Array<{ title: string; docs: Doc[] }> = [
   {
     title: 'Going further',
     docs: [
-      { slug: 'deploying', title: 'Deploying', description: 'Node, Bun and Cloudflare Workers in production.' },
+      { slug: 'deploying', title: 'Deploying', description: 'Bun, Cloudflare Workers and Node in production.' },
       { slug: 'api', title: 'API', description: 'Everything fondu, fondu/client and fondu/vite export.' },
     ],
   },

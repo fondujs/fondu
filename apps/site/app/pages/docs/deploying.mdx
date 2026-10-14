@@ -52,7 +52,7 @@ A directive given replaces Fondu's one, so keep `'self'` and the nonce in `scrip
 ## Caching
 
 The built assets in `/assets/` have hashed names, so they are served with a year-long `Cache-Control` and
-`immutable`: by the Node and Bun server, and on Cloudflare through a generated `_headers` (unless `public/_headers`
+`immutable`: by the Bun and Node server, and on Cloudflare through a generated `_headers` (unless `public/_headers`
 exists). Pages are not cached: `Cache-Control: private, no-cache`.
 
 ## A new version

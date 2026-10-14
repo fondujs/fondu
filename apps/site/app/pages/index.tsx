@@ -33,7 +33,7 @@ const parts: Array<[name: string, url: string, does: string]> = [
 export default function Home() {
   return (
     <>
-      <Meta description="Fondu is a small meta-framework for full-stack React apps, built on Hono, Vite and Inertia. It runs on Node, Bun and Cloudflare Workers." />
+      <Meta description="Fondu is a small meta-framework for full-stack React apps, built on Hono, Vite and Inertia. It runs on Bun, Cloudflare Workers and Node." />
 
       <section className="mx-auto grid max-w-7xl grid-cols-[minmax(0,1fr)] items-center gap-12 px-4 pt-14 pb-20 sm:px-6 sm:pt-20 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
         <div className="min-w-0">
@@ -44,7 +44,7 @@ export default function Home() {
           </h1>
           <p className="mt-6 max-w-xl text-lg/relaxed text-muted-foreground">
             Each route is a Hono handler that renders a React page with its props. Inertia swaps the pages in the
-            browser, so there is no client router and no API to write. Deploy to Node, Bun or Cloudflare Workers.
+            browser, so there is no client router and no API to write. Deploy to Bun, Cloudflare Workers or Node.
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <Button size="lg" render={<Link href="/docs" />}>

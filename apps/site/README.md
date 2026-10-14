@@ -4,7 +4,7 @@ Fondu's website and docs, built with Fondu on Cloudflare Workers: https://fondu.
 
 - The docs are MDX pages in `app/pages/docs/`, in the order of `app/docs.ts` (the sidebar, the titles, `llms.txt`).
 - Every page is static (`app/routes/_middleware.ts`); `bun run build` then indexes them for the search (Pagefind).
-- Code is highlighted at build time (Shiki), `llms.txt` and `llms-full.txt` are written from the MDX (`llms.ts`).
+- Code is highlighted at build time (Shiki), `llms.txt` and `llms-full.txt` are written from the MDX (`markdown.ts`).
 
 ## Run it
 

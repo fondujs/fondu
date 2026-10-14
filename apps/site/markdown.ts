@@ -6,7 +6,7 @@ import { docs, docUrl, markdownUrl, type Doc } from './app/docs.ts'
 
 const SITE = 'https://fondu.dev'
 const SUMMARY =
-  'A small meta-framework for full-stack React apps, built on Hono, Vite and Inertia. It runs on Node, Bun and Cloudflare Workers.'
+  'A small meta-framework for full-stack React apps, built on Hono, Vite and Inertia. It runs on Bun, Cloudflare Workers and Node.'
 
 /**
  * A page as Markdown: its title and description, then the MDX source less its import / export lines and its

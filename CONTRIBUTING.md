@@ -1,7 +1,7 @@
 # Contributing
 
-Fondu is built on Hono, Inertia and Vite, and tries to write as little of its own as it can: a change that lets
-the platform (Hono, Inertia, Vite, the runtime) do the work is preferred to one that adds code. For anything larger
+Fondu is built on Hono, Vite and Inertia, and tries to write as little of its own as it can: a change that lets
+the platform (Hono, Vite, Inertia, the runtime) do the work is preferred to one that adds code. For anything larger
 than a fix, open an issue first to agree on the approach.
 
 ## Setup
@@ -15,7 +15,7 @@ bun run test           # the protocol, on a small app with app.request()
 bun run check          # format (oxfmt), lint (oxlint), typecheck
 ```
 
-`bun run --filter create-fondu test` creates an app for each target (Node, Bun, Cloudflare) with `packages/fondu` as
+`bun run --filter create-fondu test` creates an app for each target (Bun, Cloudflare Workers, Node) with `packages/fondu` as
 built here, and runs it in development and production.
 
 `apps/demo` is the end-to-end test of every feature. Start it (`bun run dev`, or `bun run preview`), then run its
@@ -35,6 +35,18 @@ Commit messages follow [Conventional Commits](https://www.conventionalcommits.or
 
 A pull request: one change, with a test (`packages/fondu/test`) or an e2e check when behavior changes, and the README
 updated when the API does.
+
+## Describing Fondu
+
+One wording everywhere: the READMEs, both `package.json` descriptions, the GitHub description, fondu.dev and
+`llms.txt`.
+
+- The tagline: Server routes. React pages. No API in between.
+- What Fondu is: A small meta-framework for full-stack React apps, built on Hono, Vite and Inertia. It runs on Bun,
+  Cloudflare Workers and Node.
+- What an app is: a Fondu app: full-stack React on Hono, Vite and Inertia.
+- Hono, Vite and Inertia, in that order; the targets in alphabetical order (Bun, Cloudflare Workers, Node); Inertia
+  without a version (the template's `AGENTS.md` names "its v3 API", for coding agents).
 
 ## Releases
 
