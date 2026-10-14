@@ -43,6 +43,7 @@ function result(page: Page): Result {
 function Results({ onPick }: { onPick: () => void }) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<Result[]>([])
+  const [searched, setSearched] = useState('') // the query the results are for: none found means it was searched
   const [state, setState] = useState<'ready' | 'unavailable'>('ready')
   const [active, setActive] = useState(0)
   const list = useRef<HTMLUListElement>(null)
@@ -55,6 +56,7 @@ function Results({ onPick }: { onPick: () => void }) {
       const data = await Promise.all(search.results.slice(0, 8).map((r) => r.data()))
       if (!current) return
       setResults(data.map(result))
+      setSearched(query)
       setActive(0)
     })
     return () => {
@@ -97,7 +99,7 @@ function Results({ onPick }: { onPick: () => void }) {
       </div>
       {state === 'unavailable' ? (
         <p className="border-t p-6 text-center text-muted-foreground">The search index is written by the build.</p>
-      ) : query && !results.length ? (
+      ) : query && query === searched && !results.length ? (
         <p className="border-t p-6 text-center text-muted-foreground">Nothing found for “{query}”.</p>
       ) : results.length ? (
         <ul ref={list} id="search-results" role="listbox" className="max-h-[60vh] overflow-y-auto border-t p-2">

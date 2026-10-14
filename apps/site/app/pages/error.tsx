@@ -1,4 +1,6 @@
-import { Head, Link } from '@inertiajs/react'
+import { Link } from '@inertiajs/react'
+
+import { Meta } from '#/components/meta.tsx'
 
 const messages: Record<number, [title: string, text: string]> = {
   404: ['Page not found', 'There is nothing at this address.'],
@@ -10,7 +12,7 @@ export default function ErrorPage({ status }: { status: number }) {
   const [title, text] = messages[status] ?? messages[500]!
   return (
     <div className="mx-auto max-w-2xl px-4 py-24 sm:px-6">
-      <Head title={title} />
+      <Meta title={title} noindex />
       <p className="mb-2 font-mono text-sm text-muted-foreground">{status}</p>
       <h1>{title}</h1>
       <p className="lede">

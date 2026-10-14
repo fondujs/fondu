@@ -18,19 +18,3 @@ Each page says what it demonstrates and which API it uses, so the demo doubles a
 - coss ui (Base UI and Tailwind CSS) for the interface
 
 The data goes back to its first state every six hours.
-
-## Sign in
-
-Two accounts are there to try: `demo@fondu.dev` / `fondu-demo`, and the admin `admin@fondu.dev` / `fondu-admin`.
-
-## Run it yourself
-
-```sh
-git clone https://github.com/fondujs/fondu
-cd fondu && bun install
-cd apps/demo
-cp .dev.vars.example .dev.vars
-bun run dev
-```
-
-It runs in workerd with a local D1 database. Its end-to-end tests (`bun run e2e`) drive every page in a browser.
