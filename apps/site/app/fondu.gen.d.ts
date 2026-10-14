@@ -5,6 +5,7 @@ declare module 'fondu' {
       "docs/api": typeof import("./pages/docs/api.mdx")
       "docs/demo": typeof import("./pages/docs/demo.mdx")
       "docs/deploying": typeof import("./pages/docs/deploying.mdx")
+      "docs/document": typeof import("./pages/docs/document.mdx")
       "docs/errors": typeof import("./pages/docs/errors.mdx")
       "docs/forms": typeof import("./pages/docs/forms.mdx")
       "docs/index": typeof import("./pages/docs/index.mdx")

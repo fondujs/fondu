@@ -48,6 +48,7 @@ export const sections: Array<{ title: string; docs: Doc[] }> = [
       },
       { slug: 'mdx', title: 'MDX pages', description: 'Pages written in Markdown, with React components.' },
       { slug: 'errors', title: 'Errors', description: 'Error pages, and what API clients get.' },
+      { slug: 'document', title: 'The document', description: 'The HTML around pages: attributes, icons, fonts.' },
     ],
   },
   {
