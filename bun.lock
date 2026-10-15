@@ -86,7 +86,7 @@
     },
     "packages/create-fondu": {
       "name": "create-fondu",
-      "version": "0.4.0",
+      "version": "0.5.0",
       "bin": {
         "create-fondu": "index.js",
       },
@@ -96,7 +96,7 @@
     },
     "packages/fondu": {
       "name": "fondu",
-      "version": "0.4.0",
+      "version": "0.5.0",
       "dependencies": {
         "@hono/vite-build": "^1.11.1",
         "@hono/vite-dev-server": "^0.26.1",
@@ -116,6 +116,7 @@
         "zod": "4.6.7",
       },
       "peerDependencies": {
+        "@inertiajs/core": "^3.9.0",
         "@inertiajs/react": "^3.9.0",
         "hono": "^4.13.0",
         "react": "^19.0.0",
