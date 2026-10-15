@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto'
 import { appendFileSync, existsSync, readdirSync, readFileSync } from 'node:fs'
+import type { IncomingMessage, ServerResponse } from 'node:http'
 import { createRequire } from 'node:module'
 import { dirname, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -123,6 +124,7 @@ export default function fondu(options: FonduOptions): PluginOption[] {
     core(options),
     layouts(),
     hmr(),
+    loadFailure(),
     typegen(),
     ...(node ? runtimePlugins(options) : [serverReactDomClient()]),
   ]
@@ -213,6 +215,39 @@ function runtimePlugins(options: FonduOptions): PluginOption[] {
     }),
     buildPlugin(options),
   ]
+}
+
+/**
+ * Dev: the app that fails to load (a route that throws as it is imported) is Vite's error page, which an Inertia
+ * visit can't show: its dialog's frame keeps the page's Content Security Policy, which stops the page's script. The
+ * visit loads the URL as a whole page instead (Inertia's 409), where Vite's overlay shows the error; the next change
+ * reloads it.
+ */
+function loadFailure(): Plugin {
+  let failed = false
+  return {
+    name: 'fondu:load-failure',
+    apply: 'serve',
+    configureServer(server) {
+      // after the dev server (the Cloudflare plugin's too), before Vite's error page
+      return () =>
+        server.middlewares.use(
+          (error: unknown, req: IncomingMessage, res: ServerResponse, next: (e: unknown) => void) => {
+            const visit = Boolean(req.headers['x-inertia'])
+            // a page failed (not a module of the browser's): the next change reloads it
+            if (visit || req.headers.accept?.includes('text/html')) failed = true
+            if (!visit) return next(error)
+            res.writeHead(409, { 'X-Inertia-Location': (req as { originalUrl?: string }).originalUrl ?? req.url })
+            res.end()
+          },
+        )
+    },
+    hotUpdate() {
+      if (this.environment.name !== 'client' || !failed) return
+      failed = false
+      this.environment.hot.send({ type: 'full-reload' })
+    },
+  }
 }
 
 function core(options: FonduOptions): Plugin {

@@ -1395,6 +1395,33 @@ if ((await fetch(BASE + '/@vite/client').catch(() => null))?.ok) {
     writeFileSync(file, source)
     await hp.close()
   }
+  // a route that throws as it is imported: the app doesn't load. Vite's overlay shows it, as a whole page (its error
+  // page in Inertia's dialog would be blank); fixed, the page is back
+  const broken = await browser.newPage()
+  try {
+    await broken.goto(BASE + '/props', { waitUntil: 'networkidle0' })
+    writeFileSync(file, `throw new Error('a route that fails to load')\n${source}`)
+    await broken.waitForFunction(() => document.querySelector('vite-error-overlay'), { timeout: 10000 }).catch(() => {})
+    await sleep(500)
+    ok(
+      "dev: an app that fails to load, Vite's overlay as a whole page (no blank Inertia dialog)",
+      await broken.evaluate(
+        () =>
+          !document.querySelector('#inertia-error-dialog') &&
+          document.querySelector('vite-error-overlay')?.shadowRoot?.textContent?.includes('a route that fails to load'),
+      ),
+    )
+    writeFileSync(file, source)
+    await waitText('Hello from Hono', broken).catch(() => {})
+    ok(
+      'dev: the route fixed, the page is back',
+      (await text(broken)).includes('Hello from Hono') &&
+        (await broken.evaluate(() => !document.querySelector('vite-error-overlay'))),
+    )
+  } finally {
+    writeFileSync(file, source)
+    await broken.close()
+  }
 }
 
 ok('no console errors or warnings (incl. hydration)', problems.length === 0, problems.slice(0, 3).join(' | '))
