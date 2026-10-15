@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // `bun create fondu [dir] [--target bun|cloudflare|node] [--no-install]` (or npm / pnpm / yarn create fondu)
 import { spawnSync } from 'node:child_process'
-import { cpSync, existsSync, readdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
+import { cpSync, existsSync, readdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs'
 import { basename, join, relative, resolve } from 'node:path'
 import { parseArgs } from 'node:util'
 
@@ -40,8 +40,8 @@ p.intro(`create-fondu ${own.version}`)
 
 const dir = positionals[0] ?? done(await p.text({ message: 'Where?', placeholder: 'my-app', defaultValue: 'my-app' }))
 const root = resolve(dir)
-if (existsSync(root) && readdirSync(root).length > 0) {
-  p.cancel(`${dir} is not empty`)
+if (existsSync(root) && (!statSync(root).isDirectory() || readdirSync(root).length > 0)) {
+  p.cancel(`${dir} is not an empty directory`)
   process.exit(1)
 }
 
