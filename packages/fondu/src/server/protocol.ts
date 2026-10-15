@@ -164,7 +164,8 @@ export async function render<N extends PageName>(
   const except = partial ? headerSet(c, 'x-inertia-partial-except') : null
   const reset = headerSet(c, 'x-inertia-reset') ?? new Set<string>()
   const heldOnce = headerSet(c, 'x-inertia-except-once-props') ?? new Set<string>()
-  const carried = takeCarried(c, !partial && !isPrefetch(c))
+  // shown by the next page, a partial reload too (a form with `only`), as Laravel's session does; not a prefetch
+  const carried = takeCarried(c, !isPrefetch(c))
   const sharedProps = shared.get(c) ?? {}
   const all: Record<string, unknown> = { ...sharedProps, ...(props as Record<string, unknown>) }
 
