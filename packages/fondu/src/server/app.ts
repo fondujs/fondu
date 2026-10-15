@@ -120,7 +120,7 @@ export function createApp(options: CreateAppOptions = {}): Hono {
   })
 
   const modules = import.meta.glob<RouteModule & { default?: Handlers }>(
-    ['/app/routes/**/*.ts', '!/app/routes/**/*.d.ts'],
+    ['/app/routes/**/*.ts', '!/app/routes/**/*.d.ts', '!/app/routes/**/*.{test,spec}.ts'], // test files aren't the app's
     { eager: true },
   )
   const files = Object.keys(modules).map((k) => k.slice(ROOT.length))

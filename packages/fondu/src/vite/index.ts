@@ -402,7 +402,7 @@ function core(options: FonduOptions): Plugin {
           `\nexport const prerender = ${Boolean(options.prerender)}`
         )
       // the server-only guard: browser code must never import server code
-      if (this.environment.config.consumer === 'client' && isServerOnly(id)) {
+      if (this.environment.config.consumer === 'client' && isServerOnly(id, config.root)) {
         this.error(
           `fondu: ${id.replace(config.root, '')} is server code (routes/, server.ts, *.server.ts) and cannot be imported by browser code`,
         )
@@ -411,8 +411,13 @@ function core(options: FonduOptions): Plugin {
   }
 }
 
-const isServerOnly = (id: string) =>
-  /\.server\.[cm]?[jt]sx?(\?.*)?$/.test(id) || /\/app\/(routes\/|server\.ts)/.test(id)
+/** `*.server.ts`, or the app's `routes/` and `server.ts` (the root's: a path above it or in a package may have them) */
+const isServerOnly = (id: string, root: string) => {
+  const file = id.split('?')[0]!
+  return (
+    /\.server\.[cm]?[jt]sx?$/.test(file) || file.startsWith(`${root}/app/routes/`) || file === `${root}/app/server.ts`
+  )
+}
 
 const nonceAttr = `\${nonce ? \` nonce="\${nonce}"\` : ''}`
 
