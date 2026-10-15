@@ -142,7 +142,7 @@
       "<Form action={href('${1:/path}')} method=\"post\">",
       "  {({ errors, processing }) => (",
       "    <>",
-      "      <input name=\"${2:name}\" />",
+      "      <input name=\"${2:name}\" aria-invalid={!!errors.${2:name}} />",
       "      {errors.${2:name} && <p>{errors.${2:name}}</p>}",
       "      <button disabled={processing}>${3:Save}</button>$0",
       "    </>",
