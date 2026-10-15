@@ -79,7 +79,8 @@ declare module '@inertiajs/core' {
 }
 ```
 
-`share()` and `flash()` then take only those, and `usePage()` returns them. A page prop named like a shared prop but of
+`share()` and `flash()` then take only those, and `usePage()` returns them. `@inertiajs/core` is a dependency of the
+app for this (a new app has it): with pnpm, a package the app doesn't list can't be declared into. A page prop named like a shared prop but of
 another type is an error, as it would hide the shared one from the layout.
 
 ## What crosses as JSON

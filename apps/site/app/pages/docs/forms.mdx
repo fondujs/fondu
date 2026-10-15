@@ -88,6 +88,46 @@ only when the form is sent.
 </Form>
 ```
 
+## Focus on the first error
+
+A form that comes back with errors leaves the focus on its button. Move it to the first field to fix, so a keyboard
+or screen reader user lands there: mark each invalid field with `aria-invalid`, and its message with
+`aria-describedby`. Then a submit button can do it for any `<Form>` it is in:
+
+```tsx
+// app/components/submit-button.tsx
+import { useFormContext } from '@inertiajs/react'
+import { useEffect, useRef, type ComponentProps } from 'react'
+
+export function SubmitButton(props: ComponentProps<'button'>) {
+  const form = useFormContext()!
+  const ref = useRef<HTMLButtonElement>(null)
+  const sent = useRef(false) // clicked: Enter in a field clicks it too
+  useEffect(() => {
+    if (!sent.current || form.processing) return
+    sent.current = false
+    if (form.hasErrors) ref.current?.form?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus()
+  }, [form.processing, form.errors])
+  return <button ref={ref} disabled={form.processing} onClick={() => (sent.current = true)} {...props} />
+}
+```
+
+```tsx
+<Form action={href('/contacts')} method="post">
+  {({ errors }) => (
+    <>
+      <input name="email" aria-invalid={!!errors.email} aria-describedby="email-error" />
+      {errors.email && <p id="email-error">{errors.email}</p>}
+      <SubmitButton>Add</SubmitButton>
+    </>
+  )}
+</Form>
+```
+
+The focus moves after a submit only: Precognition's errors come as the user leaves a field, and leave the focus where
+it is. With `useForm()`, which has no form context, the button takes the form's `processing` and `errors` instead, as
+in the [demo's forms](https://github.com/fondujs/fondu/blob/main/apps/demo/app/components/demo.tsx).
+
 ## Files and nested fields
 
 The body is one object whether it comes as JSON or as form fields. Form fields named like `user[name]` or `tags[]`

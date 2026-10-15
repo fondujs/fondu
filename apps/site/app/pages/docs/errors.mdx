@@ -11,12 +11,16 @@ export default function ErrorPage({ status }: { status: number }) {
 }
 ```
 
-Another page: `createApp({ errorPage: 'errors/show' })`. None, plain text for everyone: `errorPage: false`.
+Another page: `createApp({ errorPage: 'errors/show' })`. None, plain text for everyone: `errorPage: false`. Without
+`app/pages/error.tsx`, the same plain text.
 
 ## In development
 
 A 500 is a report of the error instead: the message, and the stack with your files first. During a visit, Inertia
 shows it in its dialog. And `render()` of a page that doesn't exist says which file to create.
+
+An error before any handler runs, in a route that throws as it is imported, is Vite's: its overlay shows it, as a
+whole page, and the next edit reloads the page.
 
 ## Your own handling
 

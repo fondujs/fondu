@@ -40,6 +40,11 @@ The dev server updates what an edit changes, without reloading the page where it
 - A route, or code a route imports: the page asks for its props again (Inertia's `router.reload()`), its state and
   scroll kept. A route that now renders another page shows it.
 - `app/server.ts`, or code only it imports: the page reloads, as the document around it changed.
+- An app that fails to load (a route that throws as it is imported): Vite's overlay shows the error, as a whole page;
+  the next edit reloads it.
+
+The dev server doesn't watch `node_modules`: after updating a dependency, Fondu included, restart it, or it keeps
+running the version it loaded.
 
 ## Props are public
 
