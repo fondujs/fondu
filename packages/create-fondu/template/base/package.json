@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@inertiajs/core": "^3.9.1",
     "@inertiajs/react": "^3.9.1",
     "fondu": "FONDU_VERSION",
     "hono": "^4.13.13",
