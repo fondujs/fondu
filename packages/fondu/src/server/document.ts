@@ -7,7 +7,8 @@ import { renderMarkup, renderPage } from 'virtual:fondu/ssr'
 
 /**
  * The HTML document around a page: `{head}` and `{body}` (in JSX, or `${head}` in a string) are where the page goes.
- * An inline `<script>` of the document gets the request's nonce, so the Content Security Policy runs it.
+ * An inline `<script>` of a JSX document gets the request's nonce, so the Content Security Policy runs it; a string's
+ * writes it: `<script nonce="${nonce}">`.
  */
 export interface DocumentParts {
   /** the page's `<Head>` tags (server render), then the client's styles and scripts */
@@ -15,6 +16,8 @@ export interface DocumentParts {
   /** the page data (`<script data-page>`) and the rendered page (`<div id="app">`) */
   body: string
   c: Context
+  /** the request's Content Security Policy nonce (`''` without one) */
+  nonce: string
 }
 /** the document as JSX (`<html>…</html>`), or as an HTML string */
 export type DocumentTemplate = (parts: DocumentParts) => ReactElement | string
@@ -46,13 +49,16 @@ const pageScript = (page: Page) =>
 const HEAD = 'fondu:document-head'
 const BODY = 'fondu:document-body'
 
-/** the document's own markup: JSX rendered (no whitespace between tags), its inline scripts given the nonce */
+/**
+ * The document's own markup. JSX: rendered (no whitespace between tags), its inline scripts given the nonce. A string
+ * is taken as it is: what it interpolates isn't escaped, so a nonce added there would run whatever got in.
+ */
 async function shell(template: DocumentTemplate, c: Context, nonce: string | undefined): Promise<string> {
-  const out = template({ head: HEAD, body: BODY, c })
-  let html = out
-  if (typeof out !== 'string') html = `<!doctype html>${await renderMarkup(out)}`
-  if (!nonce) return html as string
-  return (html as string).replace(/<script\b(?![^>]*\s(?:src|nonce)=)/gi, `<script nonce="${nonce}"`)
+  const out = template({ head: HEAD, body: BODY, c, nonce: nonce ?? '' })
+  if (typeof out === 'string') return out
+  const html = `<!doctype html>${await renderMarkup(out)}`
+  if (!nonce) return html
+  return html.replace(/<script\b(?![^>]*\s(?:src|nonce)=)/gi, `<script nonce="${nonce}"`)
 }
 
 export async function renderDocument(c: Context, page: Page): Promise<string> {

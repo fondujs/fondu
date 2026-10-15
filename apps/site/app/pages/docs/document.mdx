@@ -55,6 +55,7 @@ export default createApp({ document: Document })
 - `body`: the page data (`<script data-page>`) and the rendered page (`<div id="app">`). Put it alone in `<body>`.
 - `c`: the request's Hono context: a cookie, a header, the user. Above, `theme(c)` reads the theme a visitor chose,
   so the first paint has it.
+- `nonce`: the request's Content Security Policy nonce, for a string document's scripts (below).
 
 The document is rendered without the whitespace you indent it with. It may return a string instead of JSX: put
 `${head}` and `${body}` in it.
@@ -100,14 +101,22 @@ style attributes), `'self'` and `data:` for fonts.
 
 ## Scripts in the document
 
-The policy runs scripts of the site's own files, or with the request's nonce. Fondu gives the nonce to the document's
-inline scripts, so one runs as it is, before the page paints:
+The policy runs scripts of the site's own files, or with the request's nonce. Fondu gives the nonce to the inline
+scripts of a JSX document, so one runs as it is, before the page paints:
 
 ```tsx
 // sets the theme a visitor chose (a cookie) before the first paint
 const THEME = "document.documentElement.className=/(?:^|; )theme=(light|dark)/.exec(document.cookie)?.[1]??'system'"
 
 <script dangerouslySetInnerHTML={{ __html: THEME }} />
+```
+
+That trusts the document's markup: never put what a request brings in a script, or in `dangerouslySetInnerHTML`. A
+string document is not escaped at all, so Fondu leaves its scripts as they are; a script of its own writes the nonce:
+
+```ts
+document: ({ head, body, nonce }) =>
+  `<!doctype html><html><head><script nonce="${nonce}">${THEME}</script>${head}</head><body>${body}</body></html>`
 ```
 
 On a [static page](/docs/static-pages) too, where there is no nonce: the scripts that had it are allowed by their
