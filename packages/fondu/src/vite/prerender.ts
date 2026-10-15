@@ -16,13 +16,23 @@ export { staticFiles }
 const SECURITY_HEADERS =
   /^(content-security-policy(-report-only)?|strict-transport-security|referrer-policy|permissions-policy|x-content-type-options|x-frame-options|x-xss-protection|x-dns-prefetch-control|x-download-options|x-permitted-cross-domain-policies|origin-agent-cluster|cross-origin-(opener|embedder|resource)-policy)$/i
 
-/** the hashes of a document's inline scripts that have the nonce (the document's own, as Fondu gave it) */
-export function nonceScriptHashes(html: string): string[] {
+/**
+ * A static document's own tags: those with the build's nonce (its Content Security Policy's). The nonce of a static
+ * document is replaced (Cloudflare: its inline scripts by their hashes; Node / Bun: by each response's nonce), which
+ * only these may get: a `nonce` the document has otherwise (in a page's markup) is dropped. Then the hashes of these
+ * inline scripts.
+ */
+export function ownScripts(html: string, policy: string | undefined): { html: string; hashes: string[] } {
+  const nonce = policy?.match(/'nonce-([^']+)'/)?.[1]
+  if (!nonce) return { html, hashes: [] }
+  const own = html.replace(/(<(?:script|link)\b[^>]*?)\snonce="([^"]*)"/gi, (tag, before: string, value: string) =>
+    value === nonce ? tag : before,
+  )
   const hashes = new Set<string>()
-  for (const [, attrs, code] of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi))
-    if (/\snonce=/i.test(attrs!) && !/\ssrc=/i.test(attrs!))
+  for (const [, attrs, code] of own.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi))
+    if (attrs!.includes(` nonce="${nonce}"`) && !/\ssrc=/i.test(attrs!))
       hashes.add(`'sha256-${createHash('sha256').update(code!).digest('base64')}'`)
-  return [...hashes]
+  return { html: own, hashes: [...hashes] }
 }
 
 /**
@@ -99,8 +109,7 @@ export async function prerender(start: () => Promise<Server>, clientDir: string,
         errors.push(`${path}: ${later.join(', ')} ask the server again; not for a prerendered page`)
         continue
       }
-      const html = await doc.text()
-      const hashes = nonceScriptHashes(html)
+      const { html, hashes } = ownScripts(await doc.text(), doc.headers.get('content-security-policy') ?? undefined)
       const headers = Object.fromEntries(
         [...doc.headers]
           .filter(([name]) => SECURITY_HEADERS.test(name))
