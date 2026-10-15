@@ -44,30 +44,41 @@ export function validationErrorResponse(c: Context, error: ValidationError): Res
   return back(c)
 }
 
+/** how deep form field names nest (`a[b][c]`: 3) */
+const DEPTH = 32
+
 /**
  * A request body as one object: JSON, or form fields with PHP-style names, as Inertia's `useForm` sends files
  * (`notify[0]`, `user[name]`) and as plain forms write them (`notify[]`); files are `File`s, empty file inputs
- * are left out. Names that would change the object itself (`__proto__`…) are ignored.
+ * are left out. Names that would change the object itself (`__proto__`…) are ignored. A body that can't be one
+ * object (JSON that doesn't parse, `a=1&a[b]=2`, names nested deeper than 32) is a 400.
  */
 export async function readBody(c: Context): Promise<unknown> {
+  const malformed = (why: string) => new HTTPException(400, { message: `Malformed request body: ${why}` })
   const type = c.req.header('content-type') ?? ''
-  if (type.includes('application/json')) return c.req.json()
+  if (type.includes('application/json')) return c.req.json().catch(() => Promise.reject(malformed('invalid JSON')))
   if (!type.includes('multipart/form-data') && !type.includes('application/x-www-form-urlencoded')) return {}
   const form = await c.req.formData()
-  const body: Record<string, unknown> = {}
+  const body: Record<string, unknown> = Object.create(null)
   for (const [key, value] of form.entries()) {
     if (typeof value !== 'string' && value.size === 0 && value.name === '') continue
     const path = key.replace(/\]/g, '').split('[')
+    if (path.length > DEPTH) throw malformed(`a field name nests deeper than ${DEPTH}`)
     if (path.some((p) => p === '__proto__' || p === 'constructor' || p === 'prototype')) continue
-    let target: Record<string, unknown> = body
+    let target = body
     path.forEach((segment, i) => {
-      const last = i === path.length - 1
       const name = segment === '' ? String(Object.keys(target).length) : segment // `a[]`: the next index
-      if (last) {
-        if (name in target && path.length === 1) target[name] = [target[name], value].flat() // `a=1&a=2`
+      const has = Object.hasOwn(target, name)
+      if (i === path.length - 1) {
+        if (has && typeof target[name] === 'object' && !(target[name] instanceof File) && !Array.isArray(target[name]))
+          throw malformed(`\`${key}\` is both a value and an object`)
+        if (has && path.length === 1) target[name] = [target[name], value].flat() // `a=1&a=2`
         else target[name] = value
       } else {
-        target = (target[name] ??= {}) as Record<string, unknown>
+        if (!has) target[name] = Object.create(null)
+        else if (typeof target[name] !== 'object' || target[name] instanceof File || Array.isArray(target[name]))
+          throw malformed(`\`${key}\` is both a value and an object`)
+        target = target[name] as Record<string, unknown>
       }
     })
   }

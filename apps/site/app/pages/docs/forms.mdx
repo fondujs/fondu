@@ -92,7 +92,18 @@ only when the form is sent.
 
 The body is one object whether it comes as JSON or as form fields. Form fields named like `user[name]` or `tags[]`
 become nested objects and arrays, files are `File` objects, and empty file inputs are left out, so `useForm()` with a
-file and a plain form read the same way.
+file and a plain form read the same way. A body that can't be one object is a 400: JSON that doesn't parse, a name
+that is both a value and an object (`a` and `a[b]`), names nested deeper than 32.
+
+The body is read whole, in memory, files too. Bun and Node take a body of any size; cap it with Hono's `bodyLimit`,
+for every route or for those that take files:
+
+```ts
+// app/routes/_middleware.ts
+import { bodyLimit } from 'hono/body-limit'
+
+export default bodyLimit({ maxSize: 10 * 1024 * 1024 }) // 10 MB, then 413
+```
 
 ## CSRF
 

@@ -61,8 +61,24 @@ describe('form bodies', () => {
     expect(body).toEqual({ name: 'Ada' })
     expect(({} as Record<string, unknown>).x).toBeUndefined()
   })
+  test('names of what objects inherit are fields like others', async () => {
+    const body = await read('toString=1&hasOwnProperty%5Bx%5D=2', 'application/x-www-form-urlencoded')
+    expect(body).toEqual({ toString: '1', hasOwnProperty: { x: '2' } })
+    expect((Object.prototype.hasOwnProperty as unknown as Record<string, unknown>).x).toBeUndefined()
+  })
   test('JSON as it is', async () => {
     expect(await read('{"a":[1]}', 'application/json')).toEqual({ a: [1] })
+  })
+  test('a body that cannot be one object: 400', async () => {
+    const status = async (body: string, type = 'application/x-www-form-urlencoded') => {
+      const app = new Hono().post('/', async (c) => c.json(await readBody(c as never)))
+      return (await app.request('/', { method: 'POST', body, headers: { 'Content-Type': type } })).status
+    }
+    expect(await status('a=1&a%5Bb%5D=2')).toBe(400)
+    expect(await status('a%5Bb%5D=2&a=1')).toBe(400)
+    expect(await status(`a${'%5Bb%5D'.repeat(40)}=1`)).toBe(400)
+    expect(await status(`a${'%5Bb%5D'.repeat(20)}=1`)).toBe(200)
+    expect(await status('{"a":', 'application/json')).toBe(400)
   })
 })
 
