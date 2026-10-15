@@ -6,7 +6,7 @@ import { describe, expect, test } from 'vitest'
 
 import { pageDataPath, pathOfPageData } from '../src/paths.js'
 import { prerenderPaths, type PrerenderRoute } from '../src/server/prerender.js'
-import { headerRules, nonceScriptHashes, staticFiles, staticPolicy } from '../src/vite/prerender.js'
+import { headerRules, ownScripts, staticFiles, staticPolicy } from '../src/vite/prerender.js'
 
 const route = (file: string, pattern: string, settings: PrerenderRoute['settings'], more = {}): PrerenderRoute => ({
   file,
@@ -40,12 +40,20 @@ describe('headers', () => {
   test('the scripts that had the nonce: allowed by their hashes instead', () => {
     const html =
       '<head><script nonce="abc">a()</script><script nonce="abc" type="module" src="/x.js"></script><script>b()</script></head>'
-    const hashes = nonceScriptHashes(html)
+    const { hashes } = ownScripts(html, "script-src 'self' 'nonce-abc'")
     expect(hashes).toEqual([`'sha256-${createHash('sha256').update('a()').digest('base64')}'`])
     expect(staticPolicy("script-src 'self' 'nonce-abc'; style-src 'self'", hashes)).toBe(
       `script-src 'self' ${hashes[0]}; style-src 'self'`,
     )
     expect(staticPolicy("script-src 'self' 'unsafe-inline'", hashes)).toBe("script-src 'self' 'unsafe-inline'")
+  })
+  test("only the build's nonce is the document's: another one is dropped, its script not hashed", () => {
+    const html =
+      '<script nonce="abc">a()</script><div><script nonce="guess">evil()</script><link nonce="x" href="/y"></div>'
+    const own = ownScripts(html, "script-src 'self' 'nonce-abc'")
+    expect(own.html).toBe('<script nonce="abc">a()</script><div><script>evil()</script><link href="/y"></div>')
+    expect(own.hashes).toEqual([`'sha256-${createHash('sha256').update('a()').digest('base64')}'`])
+    expect(ownScripts(html, "script-src 'self'")).toEqual({ html, hashes: [] }) // no nonce: nothing is replaced
   })
   test('one rule for the documents, X-Inertia for the page objects', () => {
     expect(headerRules({ 'referrer-policy': 'same-origin' })).toBe(

@@ -78,7 +78,8 @@ export function prerenderRoutes(app: Hono, routes: () => PrerenderRoute[], versi
     if (!body) return next()
     c.header('Cache-Control', 'private, no-cache')
     if (data) c.header('X-Inertia', 'true')
-    // the document's scripts had the build's nonce: this response's, as the security headers give it a new one
+    // the document's own tags have the build's nonce (the build dropped any other): this response's instead, as the
+    // security headers give it a new one
     const nonce = (c.get as (key: string) => unknown)('secureHeadersNonce') as string | undefined
     if (!data && nonce) {
       const html = new TextDecoder().decode(body).replace(/(<(?:script|link)\b[^>]*\snonce=")[^"]*"/gi, `$1${nonce}"`)
