@@ -1,23 +1,25 @@
 # `bun run release` pushes a tag v*; this stages fondu and create-fondu (one version for both) on npm (trusted
 # publishing: no token, with provenance) and writes the GitHub Release from the commits since the last tag. Each
 # package goes live once a maintainer approves it with 2FA: npmjs.com → Staged Packages, or `npm stage approve <id>`.
+# Each job has only the permissions it needs; the tools are pinned.
 name: Release
 
 on:
   push:
     tags: ['v*']
 
-permissions:
-  contents: write
-  id-token: write
+permissions: {}
 
 jobs:
-  release:
+  publish:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # trusted publishing
     steps:
       - uses: actions/checkout@v7
         with:
-          fetch-depth: 0
+          persist-credentials: false
       - uses: oven-sh/setup-bun@v2
       - uses: actions/setup-node@v7
         with:
@@ -26,11 +28,23 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run test
       - run: cp README.md packages/fondu/
-      - run: npm install -g npm@latest # `npm stage` needs npm 11.15 or later
+      - run: npm install -g npm@12.2.0 # `npm stage` needs npm 11.15 or later
       - run: npm stage publish
         working-directory: packages/fondu
       - run: npm stage publish
         working-directory: packages/create-fondu
-      - run: bunx changelogithub
+
+  release-notes:
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # the GitHub Release
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+      - run: bunx changelogithub@15.0.5
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
