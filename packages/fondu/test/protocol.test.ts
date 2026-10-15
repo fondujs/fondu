@@ -186,6 +186,30 @@ describe('withValidator', () => {
     const next = await page(await app.request('/', { headers: { ...inertia(), Cookie: cookie } }))
     expect(next.flash).toEqual({ message: 'added Ada' })
   })
+  test('a partial reload after the redirect (a form with `only`) gets the errors and the flash, once', async () => {
+    const cookie = (res: Response) => res.headers.get('set-cookie')!.split(';')[0]!
+    const invalid = cookie(await post({ name: 'x' }, inertia()))
+    const next = await app.request('/', { headers: { ...partial('items'), Cookie: invalid } })
+    expect((await page(next)).props.errors).toEqual({ name: 'Too short' })
+    expect(next.headers.get('set-cookie')).toMatch(/fondu-flash=; Max-Age=0/)
+    const valid = cookie(await post({ name: 'Ada' }, inertia()))
+    expect((await page(await app.request('/', { headers: { ...partial('items'), Cookie: valid } }))).flash).toEqual({
+      message: 'added Ada',
+    })
+    const bag = cookie(await post({ name: 'x' }, inertia({ 'X-Inertia-Error-Bag': 'create' })))
+    expect(
+      (await page(await app.request('/', { headers: { ...partial('items'), Cookie: bag } }))).props.errors,
+    ).toEqual({
+      create: { name: 'Too short' },
+    })
+  })
+  test('a prefetch leaves them for the visit', async () => {
+    const cookie = (await post({ name: 'x' }, inertia())).headers.get('set-cookie')!.split(';')[0]!
+    const prefetch = await app.request('/', { headers: { ...inertia({ Purpose: 'prefetch' }), Cookie: cookie } })
+    expect([(await page(prefetch)).props.errors, prefetch.headers.get('set-cookie')]).toEqual([{}, null])
+    const visit = await page(await app.request('/', { headers: { ...inertia(), Cookie: cookie } }))
+    expect(visit.props.errors).toEqual({ name: 'Too short' })
+  })
   test('an API client: 422 { errors }', async () => {
     const res = await app.request('/api/data', {
       method: 'POST',

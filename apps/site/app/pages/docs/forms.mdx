@@ -45,6 +45,9 @@ When the body or the query doesn't fit its schema, the handler doesn't run:
 - a form with an error bag (`errorBag="signup"`) gets them under its name, so two forms on a page keep theirs apart.
 - an API client gets 422 and `{ errors }`.
 
+The page after the redirect gets the errors and the flash data even as a partial reload, as a form sent with
+`only: ['comments']` is: they are always sent, so `only` doesn't list them.
+
 Params that don't fit are a 404: the URL names nothing.
 
 A check the schema can't make, such as an address already taken, throws `ValidationError` from the handler, with the
