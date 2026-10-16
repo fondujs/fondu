@@ -97,6 +97,11 @@ export const sections: Array<{ title: string; docs: Doc[] }> = [
     title: 'Going further',
     docs: [
       {
+        slug: 'i18n',
+        title: 'Internationalization',
+        description: 'Pages in several languages, a URL each, with Paraglide or i18next.',
+      },
+      {
         slug: 'deploying',
         title: 'Deploying',
         description: 'Bun, Cloudflare Workers and Node in production.',
