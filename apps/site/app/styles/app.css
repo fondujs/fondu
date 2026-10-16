@@ -207,8 +207,9 @@
   a:not([class]) {
     @apply text-brand-foreground underline decoration-brand-foreground/40 underline-offset-4 hover:decoration-brand-foreground;
   }
+  /* a long one breaks rather than widen the page on a phone */
   code {
-    @apply rounded-sm bg-muted px-1 py-px font-mono text-[0.85em];
+    @apply rounded-sm bg-muted px-1 py-px font-mono text-[0.85em] wrap-break-word;
   }
 }
 

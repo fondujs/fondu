@@ -36,9 +36,10 @@ export default function SiteLayout({ children }: { children: ReactNode }) {
             >
               Demo
             </External>
+            {/* the narrowest phones: in the footer only */}
             <External
               href={GITHUB}
-              className="rounded-md px-2 py-1.5 transition-colors hover:text-foreground"
+              className="rounded-md px-2 py-1.5 transition-colors hover:text-foreground max-[359px]:hidden"
             >
               GitHub
             </External>
