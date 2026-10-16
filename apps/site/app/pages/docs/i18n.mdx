@@ -1,0 +1,191 @@
+Fondu has no translations of its own: a page's URL says its language, with an
+[optional segment](/docs/routes#optional-segments), and a library has the messages. This page uses
+[Paraglide JS](https://paraglidejs.com): messages compiled to typed functions, the same in the browser and on the
+server, no provider. [i18next](#i18next) works too. The [demo](https://demo.fondu.dev/i18n) has a page in three
+languages.
+
+## URLs
+
+The base language has no prefix, the others have one:
+
+| File                         | URLs                               |
+| ---------------------------- | ---------------------------------- |
+| `routes/[[locale]]/index.ts` | `/`, `/de`, `/fr`                  |
+| `routes/[[locale]]/about.ts` | `/about`, `/de/about`, `/fr/about` |
+| `routes/admin/index.ts`      | `/admin`: the base language only   |
+
+`params` lists the prefixes, so `/xx/about` is a 404 and a route such as `[slug].ts` keeps the other URLs:
+
+```ts
+// app/routes/[[locale]]/_middleware.ts
+import { baseLocale, locales } from '#/paraglide/runtime.js'
+
+export const params = { locale: locales.filter((locale) => locale !== baseLocale) }
+```
+
+`/en/about` is a 404 too: the base language's URL has no prefix.
+
+## Paraglide
+
+`npx @inlang/paraglide-js@latest init --outdir ./app/paraglide` sets it up: the messages in `messages/`, the project
+in `project.inlang/`, the Vite plugin, and `allowJs` in tsconfig.json (the messages compile to JavaScript). The
+plugin's options:
+
+```ts
+// vite.config.ts
+paraglideVitePlugin({
+  project: './project.inlang',
+  outdir: './app/paraglide',
+  strategy: ['url', 'baseLocale'], // the URL decides the language
+  trailingSlash: 'never', // /de, as Fondu's URLs; 'always' with createApp({ trailingSlash: 'append' })
+}),
+```
+
+Its middleware sets the language of each request, for the messages and `getLocale()` on the server:
+
+```ts
+// app/routes/_middleware.ts
+import { defineMiddleware } from 'fondu'
+
+import { paraglideMiddleware } from '#/paraglide/server.js'
+
+export default defineMiddleware((c, next) => {
+  // the path as the routes read it (percent-decoded): Paraglide sees the same language. No body: Paraglide reads
+  // the URL and the headers only, and an upload isn't held twice
+  const url = new URL(c.req.url)
+  url.pathname = c.req.path
+  return paraglideMiddleware(new Request(url, { headers: c.req.raw.headers }), async () => {
+    await next()
+    return c.res
+  })
+})
+```
+
+In `routes/_middleware.ts`, it runs for every request, so the 404 page is in the URL's language too. It keeps the
+language in AsyncLocalStorage: Node and Bun have it, and Cloudflare Workers with Node.js compatibility, on from
+compatibility date 2026-08-04 (before: `"compatibility_flags": ["nodejs_compat"]` in wrangler.jsonc).
+
+## Messages
+
+Each language has a file, `messages/de.json` for German: `{ "greeting": "Hallo, {name}!" }`. `m.greeting({ name })`
+is the same function in a page and on the server: the URL's language in the browser, the request's on the server.
+
+```tsx
+import { m } from '#/paraglide/messages.js'
+
+export default function Welcome({ name }: { name: string }) {
+  return <h1>{m.greeting({ name })}</h1>
+}
+```
+
+```ts
+// an action
+flash(c, { message: m.saved() })
+
+// a validation message: a function, called as the body is checked (a message called as the module loads would be
+// in the base language)
+const name = z.string().check(z.minLength(1, { error: () => m.name_required() }))
+```
+
+Where no request says the language (a scheduled task, an email sent later, a callback URL without the prefix), pass
+it: `m.welcome({ name }, { locale })`.
+
+## Links
+
+`href()` in the current language, typed as `href()`:
+
+```ts
+// app/lib/i18n.ts
+import { href } from 'fondu/client'
+
+import { localizeHref } from '#/paraglide/runtime.js'
+
+/** `localizedHref('/about')` is `/de/about` on a German page */
+export const localizedHref: typeof href = (path, ...params) => localizeHref(href(path, ...params))
+```
+
+For links, form actions and redirects: `<Link href={localizedHref('/about')}>`,
+`<Form action={localizedHref('/contacts?create')}>`, `c.redirect(localizedHref('/contacts'), 303)`. An action's URL
+has the language, so its flash and its errors are in it; `back(c)` returns to the page's own URL.
+
+## Switching
+
+`setLocale('de')` loads the page in the other language: `/about` becomes `/de/about`. The document says the
+language:
+
+```tsx
+// app/document.tsx
+<html lang={getLocale()}>
+```
+
+## Search engines
+
+Each page lists its URL in every language, itself included, as full URLs: what
+[Google reads](https://developers.google.com/search/docs/specialty/international/localized-versions).
+
+```ts
+// app/routes/[[locale]]/about.ts, in the loader
+const url = (locale: Locale) => new URL(localizeHref('/about', { locale }), c.req.url).href
+const alternates = { ...Object.fromEntries(locales.map((l) => [l, url(l)])), 'x-default': url(baseLocale) }
+```
+
+```tsx
+// app/pages/about.tsx
+<Head>
+  {Object.entries(alternates).map(([lang, href]) => (
+    <link key={lang} head-key={`alternate-${lang}`} rel="alternate" hrefLang={lang} href={href} />
+  ))}
+</Head>
+```
+
+[Static pages](/docs/static-pages): `export const prerender = () => params.locale.map((locale) => ({ locale }))` next
+to `params` writes each page in each language; the base language's comes with them.
+
+## A first visit in the browser's language
+
+The URL decides, so a visitor opening `/` reads the base language and picks theirs. To open the home page in the
+browser's language once, until a language is picked:
+
+```ts
+// app/routes/_middleware.ts, before Paraglide's middleware; strategy: ['url', 'cookie', 'baseLocale'] in
+// vite.config.ts, so setLocale() keeps the choice in a cookie (the URL still decides the language)
+if (c.req.path === '/' && c.req.header('sec-fetch-dest') === 'document') {
+  const locale = toLocale(getCookie(c, cookieName)) ?? extractLocaleFromHeader(c.req.raw)
+  if (locale && locale !== baseLocale) {
+    c.header('Vary', 'Accept-Language, Cookie')
+    return c.redirect(localizeHref('/' + new URL(c.req.url).search, { locale }), 302)
+  }
+}
+```
+
+The home page only, so a shared link opens as it was sent; a page load only, not Inertia's visits; and the language
+from the cookie or the header is one of the app's (`toLocale`, `extractLocaleFromHeader`) before it is used. Add the
+`Vary` header to the home page's own response too, for caches, and don't prerender it: a static file is served before
+any middleware. `getCookie` is `hono/cookie`'s; the rest is `#/paraglide/runtime.js`.
+
+## Type checking
+
+The compiled messages aren't committed (Paraglide ignores them), so a type check without a dev server or a build
+first compiles them:
+
+```json
+{
+  "scripts": {
+    "typecheck": "paraglide-js compile --project ./project.inlang --outdir ./app/paraglide && tsc --noEmit"
+  }
+}
+```
+
+## i18next
+
+With [i18next](https://www.i18next.com) and react-i18next, messages are looked up by key at runtime, through a
+provider, with no AsyncLocalStorage:
+
+- **The language**: `c.req.param('locale') ?? 'en'` in `routes/[[locale]]/_middleware.ts`, with the same `params`.
+- **On the server**: an instance per request, `i18next.cloneInstance({ lng })`, its `t` in `c.set()` for actions.
+- **The messages**: shared with the pages, once per language:
+  ``share(c, { locale, messages: once(() => resources[locale], { key: `messages-${locale}` }) })``.
+- **In the browser**: `app/pages/_layout.tsx` makes an instance of the shared messages, once per language, and
+  wraps the page in `<I18nextProvider>`: `i18next.createInstance()`, then
+  `init({ lng, resources, initAsync: false, interpolation: { escapeValue: false } })` (React escapes the values
+  already).

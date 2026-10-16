@@ -8,6 +8,7 @@ declare module 'fondu' {
       "docs/document": typeof import("./pages/docs/document.mdx")
       "docs/errors": typeof import("./pages/docs/errors.mdx")
       "docs/forms": typeof import("./pages/docs/forms.mdx")
+      "docs/i18n": typeof import("./pages/docs/i18n.mdx")
       "docs/index": typeof import("./pages/docs/index.mdx")
       "docs/layouts": typeof import("./pages/docs/layouts.mdx")
       "docs/mdx": typeof import("./pages/docs/mdx.mdx")
