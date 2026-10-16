@@ -30,6 +30,7 @@ router and no API layer for pages: a route's loader renders a page with props, a
 - After updating a dependency, restart the dev server: it doesn't watch `node_modules`.
 - Code style: as the existing files: TypeScript, ES modules, no semicolons, single quotes; `server.ts`, pages,
   layouts and `_middleware.ts` export default, the rest named exports.
+{{environment}}
 {{checks}}
 - Styles: Tailwind CSS v4 in `app/styles/app.css`.
 

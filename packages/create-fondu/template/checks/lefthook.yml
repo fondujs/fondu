@@ -1,4 +1,5 @@
-# git hooks: the staged files formatted and linted, the commit message checked (Conventional Commits)
+# git hooks: the staged files formatted and linted, the commit message checked
+# (Conventional Commits)
 pre-commit:
   parallel: true
   commands:

@@ -5,4 +5,7 @@
   "main": "./app/server.ts",
   "compatibility_date": "2026-10-01",
   "observability": { "enabled": true },
+  // The Worker's variables, read with `import { env } from 'cloudflare:workers'`, as
+  // app/routes/index.ts does (types: `cf-typegen`). Secrets: .dev.vars, `wrangler secret put`.
+  "vars": { "GREETING": "Hello from Cloudflare" },
 }

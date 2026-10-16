@@ -32,10 +32,12 @@ for (const target of Object.keys(production).filter(
 )) {
   const app = join(work, `my_app.${target}-2.0`) // a name with characters a Worker's name may not have
   sh('node', [join(here, 'index.js'), app, '--target', target, '--no-install'], work)
+  const agents = readFileSync(join(app, 'AGENTS.md'), 'utf8')
   check(
-    `${target}: no code checks unless asked`,
-    !readFileSync(join(app, 'AGENTS.md'), 'utf8').includes('checks}}'),
+    `${target}: AGENTS.md filled in, no code checks unless asked`,
+    !agents.includes('{{') && !agents.includes('Code checks'),
   )
+  const greeting = target === 'cloudflare' ? 'Hello from Cloudflare' : 'Hello from Hono' // a Worker variable
   const pkg = JSON.parse(readFileSync(join(app, 'package.json'), 'utf8'))
   pkg.dependencies.fondu = `file:${tarball}`
   writeFileSync(join(app, 'package.json'), JSON.stringify(pkg, null, 2))
@@ -48,7 +50,7 @@ for (const target of Object.keys(production).filter(
     await crawl(base, html)
     check(
       `${target} dev: home server-rendered`,
-      html.includes('data-server-rendered') && html.includes('Hello from Hono'),
+      html.includes('data-server-rendered') && html.includes(greeting),
       output(),
     )
     check(
@@ -80,6 +82,8 @@ for (const target of Object.keys(production).filter(
       'cloudflare build: the client manifest is not deployed',
       readFileSync(join(app, 'dist/client/.assetsignore'), 'utf8').split('\n').includes('.vite'),
     )
+  // Cloudflare: the Worker's types first (create-fondu writes them after its own install)
+  if (target === 'cloudflare') sh('bun', ['run', 'cf-typegen'], app)
   sh('bun', ['run', 'typecheck'], app) // after the build: it writes app/fondu.gen.d.ts
   const { script, port, says } = production[target]
   await run(app, script, port, async (base, output) => {
@@ -88,9 +92,7 @@ for (const target of Object.keys(production).filter(
     const missing = await page(base + '/nope')
     check(
       `${target} ${script}: home server-rendered`,
-      home.status === 200 &&
-        html.includes('data-server-rendered') &&
-        html.includes('Hello from Hono'),
+      home.status === 200 && html.includes('data-server-rendered') && html.includes(greeting),
     )
     check(
       `${target} ${script}: an unknown URL, the error page with 404`,

@@ -155,17 +155,24 @@ const readme = readFileSync(join(root, 'README.md'), 'utf8')
 writeFileSync(join(root, 'README.md'), readme)
 const hooks = `${EXEC[pm] ?? 'npx'} lefthook install` // in a git repository only
 const agents = join(root, 'AGENTS.md')
+const environment =
+  target === 'cloudflare'
+    ? `- Variables, secrets and bindings: \`import { env } from 'cloudflare:workers'\` in server code (\`c.env\` is
+  untyped); declared in wrangler.jsonc (secrets: .dev.vars), typed by \`${run('cf-typegen')}\` after a change.\n`
+    : `- Environment variables: \`process.env\`, in server code only.\n`
 writeFileSync(
   agents,
-  readFileSync(agents, 'utf8').replace(
-    '{{checks}}\n',
-    checks
-      ? `- Code checks: \`${run('check')}\` formats (oxfmt), lints (oxlint) and typechecks: run it before finishing;
-  the formatting is oxfmt's (\`.oxfmtrc.json\`), not by hand. Git hooks (lefthook, set up by the install in a git
-  repository, or \`${hooks}\`) format and lint each commit, and check its message: Conventional Commits
+  readFileSync(agents, 'utf8')
+    .replace('{{environment}}\n', environment)
+    .replace(
+      '{{checks}}\n',
+      checks
+        ? `- Code checks: \`${run('check')}\` formats (oxfmt), lints (oxlint) and typechecks: run it before finishing;
+  the formatting is oxfmt's (\`.oxfmtrc.json\`), not by hand. Git hooks (lefthook; in a git repository,
+  \`${hooks}\` sets them up) format and lint each commit, and check its message: Conventional Commits
   (\`feat: …\`, \`fix: …\`).\n`
-      : '',
-  ),
+        : '',
+    ),
 )
 if (checks) {
   const file = join(root, 'lefthook.yml')
@@ -215,14 +222,24 @@ const repo = inRepo || (initGit && git(['rev-parse', '--git-dir']).status === 0)
 const install = values['no-install']
   ? false
   : !asking || done(await p.confirm({ message: `Install the dependencies with ${pm}?` }))
+// after the install: the git hooks (lefthook's own install script is one pnpm skips), and the
+// Worker's types (worker-configuration.d.ts: \`env\` from cloudflare:workers, the runtime's APIs)
+const exec = (command) =>
+  spawnSync(command, { cwd: root, stdio: 'ignore', shell: true }).status === 0
+const hooksCommand = checks && initGit && repo ? hooks : null
+const typesCommand = target === 'cloudflare' ? run('cf-typegen') : null
+let installed = false
 if (install) {
   const result = spawnSync(pm, ['install'], {
     cwd: root,
     stdio: 'inherit',
     shell: process.platform === 'win32',
   })
-  if (result.status !== 0) p.log.warn(`${pm} install failed: run it in ${dir}`)
+  installed = result.status === 0
+  if (!installed) p.log.warn(`${pm} install failed: run it in ${dir}`)
 }
+const hooksDone = installed && hooksCommand !== null && exec(hooksCommand)
+const typesDone = installed && typesCommand !== null && exec(typesCommand)
 
 const cd = relative(process.cwd(), root) || '.'
 const note = (text) => styleText('dim', `   # ${text}`)
@@ -230,8 +247,10 @@ p.outro(
   [
     'Next:',
     cd === '.' ? null : `  cd ${cd}`,
-    install ? null : `  ${pm} install`,
+    installed ? null : `  ${pm} install`,
+    hooksCommand && !hooksDone ? `  ${hooksCommand}${note('sets up the git hooks')}` : null,
     checks && !repo ? `  git init && ${hooks}${note('sets up the git hooks')}` : null,
+    typesCommand && !typesDone ? `  ${typesCommand}${note('types for the Worker')}` : null,
     checks && inRepo
       ? note("the git hooks run from the repository's root: lefthook.yml goes there")
       : null,

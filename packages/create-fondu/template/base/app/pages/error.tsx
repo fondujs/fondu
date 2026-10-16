@@ -7,7 +7,8 @@ const titles: Record<number, string> = {
   500: 'Something went wrong',
 }
 
-// 404, 500…: rendered by Fondu with the status (in development, a 500 shows the error report instead)
+// 404, 500…: rendered by Fondu with the status (in development, a 500 shows the error report
+// instead)
 export default function ErrorPage({ status }: { status: number }) {
   const title = titles[status] ?? 'Error'
   return (
