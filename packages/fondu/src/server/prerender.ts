@@ -108,7 +108,7 @@ export function prerenderRoutes(app: Hono, routes: () => PrerenderRoute[], versi
     return app.fetch(new Request(url, { headers }), c.env, ctx)
   })
   app.get('/__fondu/prerender', async (c) => {
-    // set for the build only: a Worker binding, or the environment of `node` / `bun dist/index.js`
+    // set for the build only: a Worker binding, or the environment of `node` / `bun dist/server/index.js`
     const env =
       (c.env as Record<string, unknown> | undefined)?.FONDU_PRERENDER ??
       globalThis.process?.env?.FONDU_PRERENDER
