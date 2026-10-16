@@ -116,7 +116,7 @@ if (!process.argv[2] || process.argv[2] === 'node') {
   const app = join(work, 'checked')
   sh(
     'node',
-    [join(here, 'index.js'), app, '--target', 'node', '--checks', '--git', '--no-install'],
+    [join(here, 'index.js'), app, '--target', 'node', '--checks', '--yes', '--no-install'],
     work,
   )
   const pkg = JSON.parse(readFileSync(join(app, 'package.json'), 'utf8'))
@@ -128,18 +128,23 @@ if (!process.argv[2] || process.argv[2] === 'node') {
     stdio: 'ignore',
     env: { ...process.env, LEFTHOOK: '1' },
   })
-  const passes = (...args) => {
+  const passes = (cmd, ...args) => {
     try {
-      sh('bunx', args, app)
+      sh(cmd, args, app)
       return true
     } catch {
       return false
     }
   }
-  check('checks: the new app is formatted (oxfmt --check)', passes('oxfmt', '--check'))
-  check('checks: the new app is linted (oxlint)', passes('oxlint'))
+  check('checks: the new app is formatted (oxfmt --check)', passes('bunx', 'oxfmt', '--check'))
+  check('checks: the new app is linted (oxlint)', passes('bunx', 'oxlint'))
+  check('checks: and typechecked (the check script)', passes('bun', 'run', 'check'))
   check(
-    'checks: --git, the hooks set up by the install',
+    'checks: no Worker types to ignore outside Cloudflare',
+    !readFileSync(join(app, '.oxlintrc.json'), 'utf8').includes('worker-configuration'),
+  )
+  check(
+    'checks: --yes makes a git repository, and the install sets up the hooks',
     ['pre-commit', 'commit-msg'].every((hook) => existsSync(join(app, '.git/hooks', hook))),
   )
   const agents = readFileSync(join(app, 'AGENTS.md'), 'utf8')

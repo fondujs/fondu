@@ -7,7 +7,13 @@
   "rules": {
     "typescript/no-explicit-any": "error",
     "react/react-in-jsx-scope": "off",
-    "no-unused-vars": ["error", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }]
+    "no-unused-vars": [
+      "error",
+      {
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_"
+      }
+    ]
   },
-  "ignorePatterns": ["**/dist/**", "**/fondu.gen.d.ts", "**/worker-configuration.d.ts"]
+  "ignorePatterns": ["**/dist/**", "**/fondu.gen.d.ts"]
 }
