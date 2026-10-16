@@ -7,7 +7,7 @@ import { isPageFile } from '../paths.js'
 import type { Pages } from '../types.js'
 import { renderDocument } from './document.js'
 import { flashCookie, takeCarried } from './flash.js'
-import { isInertia, sameOrigin } from './http.js'
+import { back, isInertia, sameOrigin } from './http.js'
 import { kindOf, propSpec, resolve, type Paginated } from './props.js'
 
 /**
@@ -195,12 +195,18 @@ export async function render<N extends PageName>(
       ;(deferred[(spec as { group: string }).group] ??= []).push(key)
       continue
     }
+    // only when named (Inertia's docs: `only`), not with `except`, though inertia-laravel's code sends it then
     if (kind === 'optional' && !only?.has(key)) continue
     if (kind === 'once') {
       const once = spec as { key?: string; ttl?: number; fresh?: boolean }
       const name = once.key ?? key
-      onceProps[name] = { prop: key, expiresAt: once.ttl ? Date.now() + once.ttl * 1000 : null }
-      if (heldOnce.has(name) && !only?.has(key) && !once.fresh) continue
+      const listed = { prop: key, expiresAt: once.ttl ? Date.now() + once.ttl * 1000 : null }
+      // held by the client: not sent again on a visit (a partial reload sends what it asks for), still listed
+      if (!partial && heldOnce.has(name) && !once.fresh) {
+        onceProps[name] = listed
+        continue
+      }
+      if (sent) onceProps[name] = listed
     }
     if (!sent) continue
     if (kind === 'merge' && !reset.has(key)) {
@@ -260,7 +266,6 @@ export async function render<N extends PageName>(
   if (options.clearHistory || carried.clearHistory) page.clearHistory = true
   if (options.preserveFragment) page.preserveFragment = true
 
-  c.header('Vary', 'X-Inertia', { append: true })
   // a page is this visitor's: not stored by shared caches, revalidated by the browser (unless the route said otherwise)
   if (!c.res.headers.has('Cache-Control')) c.header('Cache-Control', 'private, no-cache')
   if (isInertia(c)) {
@@ -275,12 +280,20 @@ export async function render<N extends PageName>(
 const versionCheck: MiddlewareHandler = async (c, next) => {
   // an Inertia visit made by a client built from other assets: reload the page as a document
   if (version && c.req.method === 'GET' && isInertia(c) && c.req.header('x-inertia-version') !== version) {
-    return c.body(null, 409, { 'X-Inertia-Location': c.req.url, 'X-Inertia-Version': version })
+    return c.body(null, 409, { 'X-Inertia-Location': c.req.url, 'X-Inertia-Version': version, Vary: 'X-Inertia' })
   }
   await next()
-  if (!isInertia(c) || c.res.status < 300 || c.res.status > 399) return
+  // a URL answers a visit and a document differently: caches keep them apart
+  c.header('Vary', 'X-Inertia', { append: true })
+  if (!isInertia(c)) return
+  // an empty answer to a visit (an action that returns nothing to show): back to the page, as inertia-laravel does
+  if (c.res.status === 200 && !c.res.headers.has('x-inertia') && (await c.res.clone().text()) === '') {
+    c.res = back(c)
+    return
+  }
+  if (c.res.status < 300 || c.res.status > 399) return
   const to = c.res.headers.get('location') ?? ''
-  if (to.includes('#')) {
+  if (to.includes('#') && !isPrefetch(c)) {
     // the browser's fetch would follow the redirect and drop the #fragment: the client visits it itself
     const headers = new Headers(c.res.headers)
     headers.delete('location')
