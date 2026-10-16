@@ -1,6 +1,5 @@
 {
   "$schema": "./node_modules/oxfmt/configuration_schema.json",
-  "printWidth": 120,
   "semi": false,
   "singleQuote": true,
   "sortImports": true,
@@ -8,5 +7,5 @@
   "sortTailwindcss": {
     "stylesheet": "./app/styles/app.css"
   },
-  "ignorePatterns": ["**/fondu.gen.d.ts", "**/worker-configuration.d.ts"]
+  "ignorePatterns": ["**/fondu.gen.d.ts"]
 }

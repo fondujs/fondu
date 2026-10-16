@@ -34,7 +34,11 @@ It asks where the app runs: Bun, Cloudflare Workers or Node (or pass `--target b
 check commit messages (lefthook and commitlint), and VS Code settings that format on save; and whether to make a git
 repository (`--git`), unless the folder is in one. Then it writes a small app: one route, its page, the error page,
 Tailwind CSS, editor snippets and an `AGENTS.md` for coding agents, and installs the dependencies with the package
-manager you ran it with.
+manager you ran it with. `--yes` takes the defaults for what the options don't say, without asking:
+
+```sh
+bun create fondu@latest my-app --target cloudflare --checks --yes
+```
 
 ## Run it
 

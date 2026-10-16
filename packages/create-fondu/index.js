@@ -1,6 +1,5 @@
 #!/usr/bin/env node
-// `bun create fondu [dir] [--target bun|cloudflare|node] [--checks] [--git] [--no-install]` (or npm / pnpm / yarn);
-// `--no-checks`, `--no-git` answer no without asking
+// `bun create fondu [dir] [options]` (or npm / pnpm / yarn create fondu): `--help` lists the options
 import { spawnSync } from 'node:child_process'
 import {
   cpSync,
@@ -12,7 +11,7 @@ import {
   writeFileSync,
 } from 'node:fs'
 import { basename, join, relative, resolve } from 'node:path'
-import { parseArgs } from 'node:util'
+import { parseArgs, styleText } from 'node:util'
 
 import * as p from '@clack/prompts'
 
@@ -31,7 +30,20 @@ const SCRIPTS = {
   typecheck: 'tsc',
   fmt: 'format (oxfmt)',
   lint: 'lint (oxlint)',
+  check: 'format, lint and typecheck: before a commit',
 }
+const HELP = `Create a Fondu app: full-stack React on Hono, Vite and Inertia.
+
+  create-fondu [dir] [options]
+
+  --target bun|cloudflare|node   where the app runs (asked otherwise)
+  --checks, --no-checks          code checks: oxfmt, oxlint, git hooks (lefthook, commitlint)
+  --git, --no-git                a git repository (unless the folder is in one)
+  --no-install                   don't install the dependencies
+  -y, --yes                      the defaults for what isn't given: my-app, no checks, git, install
+  -h, --help                     this
+
+https://fondu.dev/docs/quick-start`
 const EXEC = { bun: 'bunx', pnpm: 'pnpm exec', yarn: 'yarn', npm: 'npx' }
 
 const template = new URL('./template/', import.meta.url)
@@ -45,8 +57,16 @@ const { values, positionals } = parseArgs({
     git: { type: 'boolean' },
     'no-git': { type: 'boolean' },
     'no-install': { type: 'boolean' },
+    yes: { type: 'boolean', short: 'y' },
+    help: { type: 'boolean', short: 'h' },
   },
 })
+if (values.help) {
+  console.log(HELP)
+  process.exit(0)
+}
+// --yes, or no terminal to ask in: a question not answered by an option takes its default
+const asking = !values.yes && process.stdin.isTTY
 const done = (value) => {
   if (p.isCancel(value)) {
     p.cancel('Cancelled')
@@ -59,7 +79,9 @@ p.intro(`create-fondu ${own.version}`)
 
 const dir =
   positionals[0] ??
-  done(await p.text({ message: 'Where?', placeholder: 'my-app', defaultValue: 'my-app' }))
+  (values.yes
+    ? 'my-app'
+    : done(await p.text({ message: 'Where?', placeholder: 'my-app', defaultValue: 'my-app' })))
 const root = resolve(dir)
 if (existsSync(root) && (!statSync(root).isDirectory() || readdirSync(root).length > 0)) {
   p.cancel(`${dir} is not an empty directory`)
@@ -80,7 +102,7 @@ target ??= done(
 
 const checks = values.checks
   ? true
-  : values['no-checks'] || !process.stdin.isTTY
+  : values['no-checks'] || !asking
     ? false
     : done(
         await p.confirm({
@@ -137,15 +159,26 @@ writeFileSync(
   readFileSync(agents, 'utf8').replace(
     '{{checks}}\n',
     checks
-      ? `- Code checks: \`${run('fmt')}\` formats (oxfmt), \`${run('lint')}\` lints (oxlint); run both before finishing.
-  Git hooks (lefthook, set up by the install in a git repository, or \`${hooks}\`) do it for each commit, and
-  check its message: Conventional Commits (\`feat: …\`, \`fix: …\`).\n`
+      ? `- Code checks: \`${run('check')}\` formats (oxfmt), lints (oxlint) and typechecks: run it before finishing;
+  the formatting is oxfmt's (\`.oxfmtrc.json\`), not by hand. Git hooks (lefthook, set up by the install in a git
+  repository, or \`${hooks}\`) format and lint each commit, and check its message: Conventional Commits
+  (\`feat: …\`, \`fix: …\`).\n`
       : '',
   ),
 )
 if (checks) {
   const file = join(root, 'lefthook.yml')
   writeFileSync(file, readFileSync(file, 'utf8').replaceAll('__EXEC__', EXEC[pm] ?? 'npx'))
+  // the Worker's generated types: not the app's code
+  if (target === 'cloudflare')
+    for (const config of ['.oxfmtrc.json', '.oxlintrc.json']) {
+      const path = join(root, config)
+      const gen = '"**/fondu.gen.d.ts"'
+      writeFileSync(
+        path,
+        readFileSync(path, 'utf8').replace(gen, `${gen}, "**/worker-configuration.d.ts"`),
+      )
+    }
 }
 if (target === 'cloudflare') {
   const wrangler = join(root, 'wrangler.jsonc')
@@ -170,8 +203,8 @@ const gitThere = inRepo || !git(['--version']).error
 const initGit =
   !inRepo &&
   gitThere &&
-  (values.git
-    ? true
+  (values.git || values.yes
+    ? !values['no-git']
     : values['no-git'] || !process.stdin.isTTY
       ? false
       : done(await p.confirm({ message: 'Initialize a git repository?' })))
@@ -180,8 +213,7 @@ const repo = inRepo || (initGit && git(['rev-parse', '--git-dir']).status === 0)
 
 const install = values['no-install']
   ? false
-  : !process.stdin.isTTY ||
-    done(await p.confirm({ message: `Install the dependencies with ${pm}?` }))
+  : !asking || done(await p.confirm({ message: `Install the dependencies with ${pm}?` }))
 if (install) {
   const result = spawnSync(pm, ['install'], {
     cwd: root,
@@ -192,12 +224,16 @@ if (install) {
 }
 
 const cd = relative(process.cwd(), root) || '.'
+const note = (text) => styleText('dim', `   # ${text}`)
 p.outro(
   [
     'Next:',
     cd === '.' ? null : `  cd ${cd}`,
     install ? null : `  ${pm} install`,
-    checks && !repo ? `  git init && ${hooks}   # the git hooks` : null,
+    checks && !repo ? `  git init && ${hooks}${note('sets up the git hooks')}` : null,
+    checks && inRepo
+      ? note("the git hooks run from the repository's root: lefthook.yml goes there")
+      : null,
     `  ${run('dev')}`,
   ]
     .filter(Boolean)
