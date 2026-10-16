@@ -1,18 +1,37 @@
 /**
- * `routes/` file → URL pattern (Hono syntax). Shared by the runtime (`createApp`) and the type generator.
+ * `routes/` file → its URL patterns (Hono syntax). Shared by the runtime (`createApp`) and the type generator.
  *
  * - `index.ts` is its directory: `routes/users/index.ts` → `/users`
  * - `[id]` → `:id`, `[...path]` → `:path{.+}` (one or more segments)
+ * - `[[lang]]`, an optional segment: two patterns, without it and with it (`/about`, `/:lang/about`), as Hono takes
+ *   an optional param only at the end of a path. One per route.
  * - `(group)` directories group files without a URL segment
  * - `_middleware.ts` applies to its directory
  */
-export function routePattern(file: string): string {
+export function routePatterns(file: string): string[] {
   const segments = file
     .replace(/\.ts$/, '')
     .split('/')
     .filter((s) => s !== '' && s !== 'index' && !/^\(.+\)$/.test(s))
-    .map((s) => s.replace(/^\[\.\.\.(\w+)\]$/, ':$1{.+}').replace(/^\[(\w+)\]$/, ':$1'))
-  return '/' + segments.join('/')
+  const optional = segments.filter((s) => /^\[\[(?:\.\.\.)?\w+\]\]$/.test(s))
+  if (optional.some((s) => s.startsWith('[[...')))
+    throw new Error(
+      `fondu: routes/${file}: an optional catch-all isn't a route; index.ts and [...path].ts are`,
+    )
+  if (optional.length > 1)
+    throw new Error(`fondu: routes/${file} has ${optional.length} optional segments; one at most`)
+  const pattern = (withOptional: boolean) =>
+    '/' +
+    segments
+      .filter((s) => withOptional || !optional.includes(s))
+      .map((s) =>
+        s
+          .replace(/^\[\[(\w+)\]\]$/, ':$1')
+          .replace(/^\[\.\.\.(\w+)\]$/, ':$1{.+}')
+          .replace(/^\[(\w+)\]$/, ':$1'),
+      )
+      .join('/')
+  return optional.length ? [pattern(false), pattern(true)] : [pattern(true)]
 }
 
 /** a path inside `routes/` that is a route file: every `.ts` file but `_middleware.ts`, tests and declarations */

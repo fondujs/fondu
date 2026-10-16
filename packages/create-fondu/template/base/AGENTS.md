@@ -4,9 +4,10 @@ This is a Fondu app: React pages with Inertia (its v3 API), a Hono server, built
 router and no API layer for pages: a route's loader renders a page with props, and Inertia does the rest.
 
 - `app/routes/`: server code only. The file path is the URL: `index.ts` is `/`, `users/[id].ts` is `/users/:id`,
-  `api/[...rest].ts` a catch-all, `(group)/` adds no segment. A file exports `loader` (GET), `action` (POST),
-  `actions = { name }` (POST `?name`), or plain HTTP handlers `GET`, `POST`, `PUT`, `PATCH`, `DELETE`.
-  `_middleware.ts` (default export) runs for its directory and below.
+  `api/[...rest].ts` a catch-all, `[[lang]]/about.ts` both `/about` and `/:lang/about` (an optional segment;
+  `export const params = { lang: ['de'] }` lists a param's values), `(group)/` adds no segment. One file per URL.
+  A file exports `loader` (GET), `action` (POST), `actions = { name }` (POST `?name`), or plain HTTP handlers
+  `GET`, `POST`, `PUT`, `PATCH`, `DELETE`. `_middleware.ts` (default export) runs for its directory and below.
 - Handlers: `defineHandler(...middleware, (c) => …)` (Hono's `createHandlers`; `c` is Hono's Context).
   Validated input: `defineHandler.withValidator({ body, query, params })(...middleware, (c, { body }) => …)` with any
   Standard Schema (zod…); invalid input goes back to the page with `errors` (Inertia) or 422 for API clients.

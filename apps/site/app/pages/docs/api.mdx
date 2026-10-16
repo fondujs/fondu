@@ -68,14 +68,15 @@ They combine by wrapping: `once(defer(fn))`, `once(optional(fn))`, `once(merge(f
 
 ### Route exports
 
-| Export                                             |                                                                                   |
-| -------------------------------------------------- | --------------------------------------------------------------------------------- |
-| `loader`                                           | GET                                                                               |
-| `action`                                           | POST                                                                              |
-| `actions = { name }`                               | POST `?name`                                                                      |
-| `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS` | HTTP handlers                                                                     |
-| `prerender`                                        | `true`, `false` or a function listing params: a [static page](/docs/static-pages) |
-| `default` (in `_middleware.ts`)                    | the directory's middleware                                                        |
+| Export                                             |                                                                                          |
+| -------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `loader`                                           | GET                                                                                      |
+| `action`                                           | POST                                                                                     |
+| `actions = { name }`                               | POST `?name`                                                                             |
+| `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS` | HTTP handlers                                                                            |
+| `prerender`                                        | `true`, `false` or a function listing params: a [static page](/docs/static-pages)        |
+| `params`                                           | `{ name: ['value', …] }`: the [values a param takes](/docs/routes#the-values-of-a-param) |
+| `default` (in `_middleware.ts`)                    | the directory's middleware                                                               |
 
 ### Page files
 

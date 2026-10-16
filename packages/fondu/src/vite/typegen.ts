@@ -3,7 +3,7 @@ import { join, relative, sep } from 'node:path'
 
 import type { Plugin } from 'vite'
 
-import { isPageFile, isRouteFile, routePattern } from '../paths.js'
+import { isPageFile, isRouteFile, routePatterns } from '../paths.js'
 
 const OUT = 'app/fondu.gen.d.ts'
 
@@ -33,12 +33,21 @@ declare module 'fondu' {
 ${pages.map((f) => line(f.replace(/\.(?:[jt]sx|mdx)$/, ''), `./pages/${f.replace(/\.[jt]sx$/, '')}`)).join('\n')}
     }
     routes: {
-${routes.map((f) => line(routePattern(f), `./routes/${f.replace(/\.ts$/, '')}`)).join('\n')}
+${routes.flatMap((f) => patternsOf(f).map((p) => line(p, `./routes/${f.replace(/\.ts$/, '')}`))).join('\n')}
     }
   }
 }
 export {}
 `
+}
+
+/** a route file's URL patterns; none for one createApp() refuses (it says why) */
+function patternsOf(file: string): string[] {
+  try {
+    return routePatterns(file)
+  } catch {
+    return []
+  }
 }
 
 export function writeTypes(root: string) {

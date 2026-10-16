@@ -6,27 +6,12 @@ import { NONCE, secureHeaders } from 'hono/secure-headers'
 import { appendTrailingSlash, trimTrailingSlash } from 'hono/trailing-slash'
 import { prerender, version } from 'virtual:fondu/assets'
 
-import { isRouteFile, middlewareFor, routePattern } from '../paths.js'
 import { settings, type DocumentTemplate } from './document.js'
 import { errorResponse } from './errors.js'
-import { prerenderRoutes, type Prerender, type PrerenderRoute } from './prerender.js'
+import { prerenderRoutes, type PrerenderRoute } from './prerender.js'
 import { protocol } from './protocol.js'
+import { routeTable, type Handlers, type RouteModule } from './routes.js'
 import { ValidationError, validationErrorResponse } from './validate.js'
-
-type Handlers = Handler | MiddlewareHandler | ReadonlyArray<Handler | MiddlewareHandler>
-interface RouteModule {
-  /** `fondu({ prerender: true })`: written as static files at build time (also in a `_middleware.ts`) */
-  prerender?: Prerender
-  loader?: Handlers
-  action?: Handlers
-  actions?: Record<string, Handlers>
-  GET?: Handlers
-  POST?: Handlers
-  PUT?: Handlers
-  PATCH?: Handlers
-  DELETE?: Handlers
-  OPTIONS?: Handlers
-}
 
 export interface CreateAppOptions {
   /** the HTML document around pages (default: a minimal one) */
@@ -119,36 +104,27 @@ export function createApp(options: CreateAppOptions = {}): Hono {
     return errorResponse(c, error instanceof HTTPException ? error.status : 500, error)
   })
 
-  const modules = import.meta.glob<RouteModule & { default?: Handlers }>(
-    ['/app/routes/**/*.ts', '!/app/routes/**/*.d.ts', '!/app/routes/**/*.{test,spec}.ts'], // test files aren't the app's
-    { eager: true },
+  const modules = Object.fromEntries(
+    Object.entries(
+      import.meta.glob<RouteModule>(
+        ['/app/routes/**/*.ts', '!/app/routes/**/*.d.ts', '!/app/routes/**/*.{test,spec}.ts'], // test files aren't the app's
+        { eager: true },
+      ),
+    ).map(([path, mod]) => [path.slice(ROOT.length), mod]),
   )
-  const files = Object.keys(modules).map((k) => k.slice(ROOT.length))
-  // a _middleware.ts may only set what applies to its directory (`prerender`), without a default export
-  const rootMiddleware = modules[ROOT + '_middleware.ts']?.default
+  // a _middleware.ts may only set what applies to its directory (`prerender`, `params`), without a default export
+  const rootMiddleware = modules['_middleware.ts']?.default
   if (rootMiddleware) app.use(...chain(rootMiddleware))
-  const middlewareFiles = files.filter((f) => f.endsWith('/_middleware.ts'))
-  const routes = files
-    .filter(isRouteFile)
-    // static before dynamic before catch-all, segment by segment
-    .map((file) => ({
-      file,
-      pattern: withSlash(routePattern(file), append),
-      mod: modules[ROOT + file]!,
-    }))
-    .sort((a, b) => rank(a.pattern).localeCompare(rank(b.pattern)))
 
-  for (const { file, pattern, mod } of routes) {
-    const mws = middlewareFor(file, middlewareFiles).flatMap((f) =>
-      chain(modules[ROOT + f]!.default ?? []),
-    )
+  for (const { file, pattern, path, middleware } of routeTable(modules, append)) {
+    const mod = modules[file]!
+    const mws = middleware.flatMap((f) => chain(modules[f]!.default ?? []))
     prerendered.push({
       file,
-      pattern,
-      settings: [
-        file,
-        ...middlewareFor(file, [...middlewareFiles, '_middleware.ts']).reverse(),
-      ].map((f) => modules[ROOT + f]?.prerender),
+      pattern: path,
+      settings: [file, ...[...middleware].reverse(), '_middleware.ts'].map(
+        (f) => modules[f]?.prerender,
+      ),
       get: Boolean(mod.loader ?? mod.GET),
       others: [
         ...(mod.action || mod.actions || mod.POST ? ['POST'] : []),
@@ -195,13 +171,3 @@ export function createApp(options: CreateAppOptions = {}): Hono {
   }
   return app
 }
-
-const withSlash = (pattern: string, append: boolean) =>
-  append && pattern !== '/' && !pattern.endsWith('}') ? pattern + '/' : pattern
-
-/** sort key: static segments first, then `:param`, then catch-alls */
-const rank = (pattern: string) =>
-  pattern
-    .split('/')
-    .map((s) => (s.includes('{') ? '2' : s.startsWith(':') ? '1' : '0') + s)
-    .join('/')
