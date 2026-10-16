@@ -1137,6 +1137,28 @@ await page.waitForFunction(
     await page.goBack()
     await h1('Errors')
   }
+  // the same page after a form (a POST): Inertia's dialog, in production too, and the form as it was
+  await page.type('[data-testid=proxy-message]', 'kept')
+  await page.click('[data-testid=action-proxy]')
+  await page
+    .waitForSelector('dialog#inertia-error-dialog iframe', { timeout: 8000 })
+    .catch(() => {})
+  const afterForm = await page
+    .$eval('dialog#inertia-error-dialog iframe', (f) => f.srcdoc)
+    .catch(() => '')
+  await page.keyboard.press('Escape')
+  await page.waitForFunction(() => !document.querySelector('dialog#inertia-error-dialog[open]'), {
+    timeout: 3000,
+  })
+  const form = await page.evaluate(() => [
+    location.pathname,
+    document.querySelector('[data-testid=proxy-message]')?.value,
+  ])
+  ok(
+    "an answer that isn't a page, after a form: in Inertia's dialog, the form kept",
+    afterForm.includes('Bad gateway') && JSON.stringify(form) === '["/errors","kept"]',
+    JSON.stringify(form),
+  )
 }
 
 // ---- admin: a guard, a layout of its own, no server render

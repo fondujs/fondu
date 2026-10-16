@@ -1,7 +1,7 @@
 import { Form, Head, Link } from '@inertiajs/react'
 import { href } from 'fondu/client'
 
-import { DemoCard } from '#/components/demo.tsx'
+import { DemoCard, TextField } from '#/components/demo.tsx'
 import { Button } from '#/components/ui/button.tsx'
 
 const cases: Array<[url: string, label: string, what: string]> = [
@@ -26,7 +26,8 @@ export default function Errors() {
         <code>pages/error.tsx</code> with the status. A 500 in development is a report of the error
         (during a visit, Inertia shows it in its dialog); in production it is the same error page
         with status 500. API clients get plain text. An answer that isn't a page, such as a proxy's
-        502, loads as a document in production; in development Inertia shows it in its dialog.
+        502, loads as a document in production; in development Inertia shows it in its dialog. After
+        a form it stays in the dialog, in production too, so what was typed is kept.
       </p>
       <div className="grid gap-4 sm:grid-cols-2">
         <DemoCard title="During a visit" tag="<Link>">
@@ -44,6 +45,19 @@ export default function Errors() {
             <Button type="submit" variant="outline" data-testid="action-fail">
               An action that throws
             </Button>
+          </Form>
+          <Form
+            action={href('/errors/:kind', { kind: 'proxy' })}
+            method="post"
+            className="mt-4 grid gap-2"
+          >
+            <TextField label="A message" name="message" data-testid="proxy-message" />
+            <div>
+              <Button type="submit" variant="outline" data-testid="action-proxy">
+                Send it, a proxy answers
+              </Button>{' '}
+              <Status>502</Status>
+            </div>
           </Form>
         </DemoCard>
         <DemoCard title="As a document load" tag="<a>">
