@@ -11,7 +11,8 @@ export default function Signup() {
       <Head title="Create an account" />
       <h1>Create an account</h1>
       <p className="lede">
-        Accounts, sessions and passwords are Better Auth's; this page posts to an action that calls it.
+        Accounts, sessions and passwords are Better Auth's; this page posts to an action that calls
+        it.
       </p>
       <Alert variant="warning" className="mb-6" data-testid="signup-off">
         <TriangleAlertIcon />

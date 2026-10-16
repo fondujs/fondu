@@ -18,7 +18,10 @@ export function Avatar({ className, ...props }: AvatarPrimitive.Root.Props): Rea
   )
 }
 
-export function AvatarImage({ className, ...props }: AvatarPrimitive.Image.Props): React.ReactElement {
+export function AvatarImage({
+  className,
+  ...props
+}: AvatarPrimitive.Image.Props): React.ReactElement {
   return (
     <AvatarPrimitive.Image
       className={cn(
@@ -31,10 +34,16 @@ export function AvatarImage({ className, ...props }: AvatarPrimitive.Image.Props
   )
 }
 
-export function AvatarFallback({ className, ...props }: AvatarPrimitive.Fallback.Props): React.ReactElement {
+export function AvatarFallback({
+  className,
+  ...props
+}: AvatarPrimitive.Fallback.Props): React.ReactElement {
   return (
     <AvatarPrimitive.Fallback
-      className={cn('absolute inset-0 flex size-full items-center justify-center rounded-full bg-muted', className)}
+      className={cn(
+        'absolute inset-0 flex size-full items-center justify-center rounded-full bg-muted',
+        className,
+      )}
       data-slot="avatar-fallback"
       {...props}
     />

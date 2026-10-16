@@ -37,8 +37,15 @@ export function DemoCard({
   )
 }
 
-export const Json = ({ value, className, ...rest }: { value: unknown } & HTMLAttributes<HTMLPreElement>) => (
-  <pre className={cn('overflow-x-auto rounded-lg bg-muted p-3 font-mono text-xs/relaxed', className)} {...rest}>
+export const Json = ({
+  value,
+  className,
+  ...rest
+}: { value: unknown } & HTMLAttributes<HTMLPreElement>) => (
+  <pre
+    className={cn('overflow-x-auto rounded-lg bg-muted p-3 font-mono text-xs/relaxed', className)}
+    {...rest}
+  >
     {JSON.stringify(value, null, 2)}
   </pre>
 )
@@ -53,7 +60,8 @@ export const Loading = () => (
 
 // How this document was rendered: the server snapshot is used while hydrating (so the markup matches), then the
 // browser's: whether the first page came server-rendered (`data-server-rendered`) and React hydrated it.
-const ssrAtLoad = typeof document !== 'undefined' && document.querySelector('[data-server-rendered]') !== null
+const ssrAtLoad =
+  typeof document !== 'undefined' && document.querySelector('[data-server-rendered]') !== null
 const noop = () => () => {}
 export function RenderBadge() {
   const mode = useSyncExternalStore(
@@ -62,7 +70,10 @@ export function RenderBadge() {
     () => 'SSR',
   )
   return (
-    <Badge variant={mode === 'Rendered in the browser' ? 'secondary' : 'success'} data-testid="render-mode">
+    <Badge
+      variant={mode === 'Rendered in the browser' ? 'secondary' : 'success'}
+      data-testid="render-mode"
+    >
       {mode}
     </Badge>
   )
@@ -108,9 +119,18 @@ export function SubmitButton({
   useEffect(() => {
     if (!sent.current || processing) return // live validation's errors move nothing
     sent.current = false
-    if (Object.keys(errors).length) ref.current?.form?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus()
+    if (Object.keys(errors).length)
+      ref.current?.form?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus()
   }, [processing, errors])
-  return <Button ref={ref} type="submit" loading={processing} onClick={() => (sent.current = true)} {...props} />
+  return (
+    <Button
+      ref={ref}
+      type="submit"
+      loading={processing}
+      onClick={() => (sent.current = true)}
+      {...props}
+    />
+  )
 }
 
 /** For guests, in place of forms whose actions need an account (requireUser): the way in, and back here */

@@ -5,7 +5,8 @@ import type React from 'react'
 
 import { cn } from '#/lib/utils.ts'
 
-export const TooltipCreateHandle: typeof TooltipPrimitive.createHandle = TooltipPrimitive.createHandle
+export const TooltipCreateHandle: typeof TooltipPrimitive.createHandle =
+  TooltipPrimitive.createHandle
 
 export const TooltipProvider: typeof TooltipPrimitive.Provider = TooltipPrimitive.Provider
 

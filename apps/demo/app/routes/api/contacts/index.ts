@@ -12,7 +12,10 @@ export const GET = defineHandler(requireApiUser, async (c) => {
   return c.json({ contacts: await db.select().from(contacts).orderBy(desc(contacts.id)) })
 })
 
-export const POST = defineHandler.withValidator({ body: newContactSchema })(requireApiUser, async (c, { body }) => {
-  const [contact] = await db.insert(contacts).values(body).returning()
-  return c.json({ contact }, 201)
-})
+export const POST = defineHandler.withValidator({ body: newContactSchema })(
+  requireApiUser,
+  async (c, { body }) => {
+    const [contact] = await db.insert(contacts).values(body).returning()
+    return c.json({ contact }, 201)
+  },
+)

@@ -16,7 +16,10 @@ export default function SiteLayout({ children }: { children: ReactNode }) {
     <div className="flex min-h-dvh flex-col">
       <header className="z-40 border-b bg-background/88 backdrop-blur-md lg:sticky lg:top-0">
         <div className="mx-auto flex h-14 max-w-7xl items-center gap-1 px-4 sm:gap-2 sm:px-6">
-          <Link href="/" className="mr-3 flex items-center gap-2 font-heading text-[15px] font-semibold">
+          <Link
+            href="/"
+            className="mr-3 flex items-center gap-2 font-heading text-[15px] font-semibold"
+          >
             <Logo className="size-6" /> Fondu
           </Link>
           <nav aria-label="Site" className="flex items-center text-muted-foreground">
@@ -33,7 +36,10 @@ export default function SiteLayout({ children }: { children: ReactNode }) {
             >
               Demo
             </External>
-            <External href={GITHUB} className="rounded-md px-2 py-1.5 transition-colors hover:text-foreground">
+            <External
+              href={GITHUB}
+              className="rounded-md px-2 py-1.5 transition-colors hover:text-foreground"
+            >
               GitHub
             </External>
           </nav>

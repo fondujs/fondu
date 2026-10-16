@@ -9,7 +9,9 @@ import type { Routes } from './types.js'
  * The method is Inertia's: `<Link href={href('/logout')} method="post" as="button">`, `<Form action=… method="post">`.
  */
 type Keys = keyof Routes & string
-type Actions = { [P in Keys]: Routes[P] extends { actions: infer A } ? `${P}?${keyof A & string}` : never }[Keys]
+type Actions = {
+  [P in Keys]: Routes[P] extends { actions: infer A } ? `${P}?${keyof A & string}` : never
+}[Keys]
 export type Href = [Keys] extends [never] ? string : Keys | Actions
 
 type ParamNames<P extends string> = P extends `${string}:${infer Name}{${string}}${infer Rest}`
@@ -21,7 +23,9 @@ type ParamNames<P extends string> = P extends `${string}:${infer Name}{${string}
       : P extends `${string}:${infer Name}`
         ? Name
         : never
-type Args<P extends string> = [ParamNames<P>] extends [never] ? [] : [params: { [K in ParamNames<P>]: string | number }]
+type Args<P extends string> = [ParamNames<P>] extends [never]
+  ? []
+  : [params: { [K in ParamNames<P>]: string | number }]
 
 export function href<P extends Href>(path: P, ...[params]: Args<P>): string {
   return fillPattern(path, params)
@@ -37,13 +41,18 @@ export function prerendered() {
   const version = loaded ? (JSON.parse(loaded) as { version?: string | null }).version : null
   http.onRequest((config) => {
     const url = new URL(config.url, location.href)
-    if (config.method !== 'get' || !config.headers?.['X-Inertia'] || url.origin !== location.origin) return config
+    if (config.method !== 'get' || !config.headers?.['X-Inertia'] || url.origin !== location.origin)
+      return config
     return { ...config, url: pageDataPath(url.pathname) + url.search }
   })
   http.onResponse((response) => {
     if (!version || response.status !== 200 || !response.headers['x-inertia']) return response
     const page = JSON.parse(response.data) as { url: string; version?: string | null }
     if (!page.version || page.version === version) return response
-    return { status: 409, data: '', headers: { 'x-inertia-location': page.url, 'x-inertia-version': page.version } }
+    return {
+      status: 409,
+      data: '',
+      headers: { 'x-inertia-location': page.url, 'x-inertia-version': page.version },
+    }
   })
 }

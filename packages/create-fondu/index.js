@@ -2,7 +2,15 @@
 // `bun create fondu [dir] [--target bun|cloudflare|node] [--checks] [--git] [--no-install]` (or npm / pnpm / yarn);
 // `--no-checks`, `--no-git` answer no without asking
 import { spawnSync } from 'node:child_process'
-import { cpSync, existsSync, readdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs'
+import {
+  cpSync,
+  existsSync,
+  readdirSync,
+  readFileSync,
+  renameSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs'
 import { basename, join, relative, resolve } from 'node:path'
 import { parseArgs } from 'node:util'
 
@@ -49,7 +57,9 @@ const done = (value) => {
 
 p.intro(`create-fondu ${own.version}`)
 
-const dir = positionals[0] ?? done(await p.text({ message: 'Where?', placeholder: 'my-app', defaultValue: 'my-app' }))
+const dir =
+  positionals[0] ??
+  done(await p.text({ message: 'Where?', placeholder: 'my-app', defaultValue: 'my-app' }))
 const root = resolve(dir)
 if (existsSync(root) && (!statSync(root).isDirectory() || readdirSync(root).length > 0)) {
   p.cancel(`${dir} is not an empty directory`)
@@ -93,7 +103,8 @@ cpSync(new URL('base/', template), root, { recursive: true })
 const layers = [target, ...(checks ? ['checks'] : [])]
 for (const layer of layers)
   for (const file of readdirSync(new URL(`${layer}/`, template))) {
-    if (file !== 'package.json') cpSync(new URL(`${layer}/${file}`, template), join(root, file), { recursive: true })
+    if (file !== 'package.json')
+      cpSync(new URL(`${layer}/${file}`, template), join(root, file), { recursive: true })
   }
 renameSync(join(root, '_gitignore'), join(root, '.gitignore')) // npm leaves .gitignore out of packages
 
@@ -101,8 +112,10 @@ const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
 pkg.name = name
 for (const layer of layers) {
   const extra = JSON.parse(readFileSync(new URL(`${layer}/package.json`, template), 'utf8'))
-  pkg.scripts = layer === 'checks' ? { ...pkg.scripts, ...extra.scripts } : { ...extra.scripts, ...pkg.scripts }
-  for (const key of ['dependencies', 'devDependencies']) pkg[key] = sortKeys({ ...pkg[key], ...extra[key] })
+  pkg.scripts =
+    layer === 'checks' ? { ...pkg.scripts, ...extra.scripts } : { ...extra.scripts, ...pkg.scripts }
+  for (const key of ['dependencies', 'devDependencies'])
+    pkg[key] = sortKeys({ ...pkg[key], ...extra[key] })
 }
 pkg.dependencies.fondu = `^${own.version}`
 writeFileSync(join(root, 'package.json'), JSON.stringify(pkg, null, 2) + '\n')
@@ -143,7 +156,10 @@ if (target === 'cloudflare') {
       .replace(/^-+|-+$/g, '')
       .slice(0, 63)
       .replace(/-+$/, '') || 'fondu-app'
-  writeFileSync(wrangler, readFileSync(wrangler, 'utf8').replace('"name": "fondu-app"', `"name": "${worker}"`))
+  writeFileSync(
+    wrangler,
+    readFileSync(wrangler, 'utf8').replace('"name": "fondu-app"', `"name": "${worker}"`),
+  )
 }
 
 // a git repository: asked for unless the app is in one already (or git isn't there); made before the install, so
@@ -164,9 +180,14 @@ const repo = inRepo || (initGit && git(['rev-parse', '--git-dir']).status === 0)
 
 const install = values['no-install']
   ? false
-  : !process.stdin.isTTY || done(await p.confirm({ message: `Install the dependencies with ${pm}?` }))
+  : !process.stdin.isTTY ||
+    done(await p.confirm({ message: `Install the dependencies with ${pm}?` }))
 if (install) {
-  const result = spawnSync(pm, ['install'], { cwd: root, stdio: 'inherit', shell: process.platform === 'win32' })
+  const result = spawnSync(pm, ['install'], {
+    cwd: root,
+    stdio: 'inherit',
+    shell: process.platform === 'win32',
+  })
   if (result.status !== 0) p.log.warn(`${pm} install failed: run it in ${dir}`)
 }
 

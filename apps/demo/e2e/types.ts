@@ -52,11 +52,12 @@ const name: string | undefined = c.get('user')?.name
 void name
 
 // ---- withValidator: the handler's input is the schemas' output
-defineHandler.withValidator({ params: z.object({ id: z.coerce.number() }), body: z.object({ name: z.string() }) })(
-  (ctx, { params, body }) => {
-    const id: number = params.id
-    // @ts-expect-error not in the schema
-    void body.email
-    return ctx.json({ id, name: body.name, urls })
-  },
-)
+defineHandler.withValidator({
+  params: z.object({ id: z.coerce.number() }),
+  body: z.object({ name: z.string() }),
+})((ctx, { params, body }) => {
+  const id: number = params.id
+  // @ts-expect-error not in the schema
+  void body.email
+  return ctx.json({ id, name: body.name, urls })
+})

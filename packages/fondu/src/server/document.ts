@@ -26,7 +26,10 @@ const defaultTemplate: DocumentTemplate = ({ head, body }) =>
   `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${head}</head><body>${body}</body></html>`
 
 /** the options of the app (`createApp`) a request belongs to */
-export const settings = new WeakMap<Context, { document?: DocumentTemplate; errorPage: string | false }>()
+export const settings = new WeakMap<
+  Context,
+  { document?: DocumentTemplate; errorPage: string | false }
+>()
 
 const browserOnly = new WeakSet<Context>()
 
@@ -53,7 +56,11 @@ const BODY = 'fondu:document-body'
  * The document's own markup. JSX: rendered (no whitespace between tags), its inline scripts given the nonce. A string
  * is taken as it is: what it interpolates isn't escaped, so a nonce added there would run whatever got in.
  */
-async function shell(template: DocumentTemplate, c: Context, nonce: string | undefined): Promise<string> {
+async function shell(
+  template: DocumentTemplate,
+  c: Context,
+  nonce: string | undefined,
+): Promise<string> {
   const out = template({ head: HEAD, body: BODY, c, nonce: nonce ?? '' })
   if (typeof out === 'string') return out
   const html = `<!doctype html>${await renderMarkup(out)}`
@@ -68,7 +75,10 @@ export async function renderDocument(c: Context, page: Page): Promise<string> {
     if (renderPage && !browserOnly.has(c)) ssr = await renderPage(page)
   } catch (error) {
     // like Laravel: a page that fails to render on the server is still sent, and rendered in the browser
-    console.error(`[fondu] server render of "${page.component}" failed, sending it to render in the browser:`, error)
+    console.error(
+      `[fondu] server render of "${page.component}" failed, sending it to render in the browser:`,
+      error,
+    )
   }
   // the page data first, as Inertia writes it: its client reads the first `script[data-page]` in the document, so
   // nothing in the page's content can come before it
@@ -77,6 +87,10 @@ export async function renderDocument(c: Context, page: Page): Promise<string> {
   const html = await shell(template, c, nonce)
   const [before, between, after, ...more] = html.split(new RegExp(`${HEAD}|${BODY}`))
   if (after === undefined || more.length || html.indexOf(HEAD) > html.indexOf(BODY))
-    throw new Error('fondu: the document must have `head` once, in <head>, and `body` once, in <body>')
-  return before + (ssr?.head.join('') ?? '') + assetTags(page.component, nonce) + between + body + after
+    throw new Error(
+      'fondu: the document must have `head` once, in <head>, and `body` once, in <body>',
+    )
+  return (
+    before + (ssr?.head.join('') ?? '') + assetTags(page.component, nonce) + between + body + after
+  )
 }

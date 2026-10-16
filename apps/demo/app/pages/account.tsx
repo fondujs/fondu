@@ -14,8 +14,8 @@ export default function Account({ account }: Props) {
       <Head title="Account" />
       <h1>Account</h1>
       <p className="lede">
-        A protected page (<code>requireUser</code>): guests are sent to sign in first. The form works without
-        JavaScript.
+        A protected page (<code>requireUser</code>): guests are sent to sign in first. The form
+        works without JavaScript.
       </p>
       <div className="grid gap-4 md:grid-cols-[1fr_16rem]">
         <DemoCard title="Profile">

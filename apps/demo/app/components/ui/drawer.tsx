@@ -16,7 +16,9 @@ import { cn } from '#/lib/utils.ts'
 
 type DrawerPosition = 'right' | 'left' | 'top' | 'bottom'
 
-const DrawerContext: React.Context<{ position: DrawerPosition }> = createContext<{ position: DrawerPosition }>({
+const DrawerContext: React.Context<{ position: DrawerPosition }> = createContext<{
+  position: DrawerPosition
+}>({
   position: 'bottom',
 })
 
@@ -79,7 +81,10 @@ export function DrawerSwipeArea({
   )
 }
 
-export function DrawerBackdrop({ className, ...props }: DrawerPrimitive.Backdrop.Props): React.ReactElement {
+export function DrawerBackdrop({
+  className,
+  ...props
+}: DrawerPrimitive.Backdrop.Props): React.ReactElement {
   return (
     <DrawerPrimitive.Backdrop
       className={cn(
@@ -106,7 +111,8 @@ export function DrawerViewport({
       className={cn(
         'fixed inset-0 z-50 [--bleed:--spacing(12)] [--inset:0px]',
         'touch-none',
-        position === 'bottom' && 'grid grid-rows-[1fr_auto] pt-[max(--spacing(2),env(safe-area-inset-top,0px))]',
+        position === 'bottom' &&
+          'grid grid-rows-[1fr_auto] pt-[max(--spacing(2),env(safe-area-inset-top,0px))]',
         position === 'top' && 'grid grid-rows-[auto_1fr] pb-12',
         position === 'left' && 'flex justify-start',
         position === 'right' && 'flex justify-end',
@@ -252,7 +258,8 @@ export function DrawerFooter({
     className: cn(
       'flex flex-col-reverse gap-2 px-6 pb-(--safe-area-inset-bottom,0px) sm:flex-row sm:justify-end',
       !allowSelection && 'cursor-default',
-      variant === 'default' && 'border-t bg-muted/72 pt-4 pb-[calc(env(safe-area-inset-bottom,0px)+--spacing(4))]',
+      variant === 'default' &&
+        'border-t bg-muted/72 pt-4 pb-[calc(env(safe-area-inset-bottom,0px)+--spacing(4))]',
       variant === 'bare' &&
         'in-[[data-slot=drawer-popup]:has([data-slot=drawer-panel])]:pt-3 pt-4 pb-[calc(env(safe-area-inset-bottom,0px)+--spacing(6))]',
       className,
@@ -267,7 +274,10 @@ export function DrawerFooter({
   })
 }
 
-export function DrawerTitle({ className, ...props }: DrawerPrimitive.Title.Props): React.ReactElement {
+export function DrawerTitle({
+  className,
+  ...props
+}: DrawerPrimitive.Title.Props): React.ReactElement {
   return (
     <DrawerPrimitive.Title
       className={cn('font-bold font-heading text-xl leading-none', className)}
@@ -277,7 +287,10 @@ export function DrawerTitle({ className, ...props }: DrawerPrimitive.Title.Props
   )
 }
 
-export function DrawerDescription({ className, ...props }: DrawerPrimitive.Description.Props): React.ReactElement {
+export function DrawerDescription({
+  className,
+  ...props
+}: DrawerPrimitive.Description.Props): React.ReactElement {
   return (
     <DrawerPrimitive.Description
       className={cn('text-muted-foreground text-sm', className)}
@@ -364,7 +377,11 @@ export function DrawerBar({
 
 export const DrawerContent: typeof DrawerPrimitive.Content = DrawerPrimitive.Content
 
-export function DrawerMenu({ className, render, ...props }: useRender.ComponentProps<'nav'>): React.ReactElement {
+export function DrawerMenu({
+  className,
+  render,
+  ...props
+}: useRender.ComponentProps<'nav'>): React.ReactElement {
   const defaultProps = {
     className: cn('-m-2 flex flex-col', className),
     'data-slot': 'drawer-menu',
@@ -421,7 +438,11 @@ export function DrawerMenuSeparator({
   })
 }
 
-export function DrawerMenuGroup({ className, render, ...props }: useRender.ComponentProps<'div'>): React.ReactElement {
+export function DrawerMenuGroup({
+  className,
+  render,
+  ...props
+}: useRender.ComponentProps<'div'>): React.ReactElement {
   const defaultProps = {
     className: cn('flex flex-col', className),
     'data-slot': 'drawer-menu-group',
@@ -490,7 +511,9 @@ export function DrawerMenuCheckboxItem({
       checked={checked}
       className={cn(
         "grid min-h-9 w-full cursor-default select-none items-center gap-2 rounded-sm px-2 py-1 text-base text-foreground outline-none hover:bg-accent hover:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-64 sm:min-h-8 sm:text-sm [&_svg:not([class*='opacity-'])]:opacity-80 [&_svg:not([class*='size-'])]:size-4.5 sm:[&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:-mx-0.5 [&_svg]:shrink-0",
-        variant === 'switch' ? 'grid-cols-[minmax(0,1fr)_auto] gap-4 pe-1.5' : 'grid-cols-[1rem_minmax(0,1fr)] pe-4',
+        variant === 'switch'
+          ? 'grid-cols-[minmax(0,1fr)_auto] gap-4 pe-1.5'
+          : 'grid-cols-[1rem_minmax(0,1fr)] pe-4',
         className,
       )}
       data-slot="drawer-menu-checkbox-item"
@@ -534,9 +557,16 @@ export function DrawerMenuCheckboxItem({
   )
 }
 
-export function DrawerMenuRadioGroup({ className, ...props }: RadioGroupPrimitive.Props): React.ReactElement {
+export function DrawerMenuRadioGroup({
+  className,
+  ...props
+}: RadioGroupPrimitive.Props): React.ReactElement {
   return (
-    <RadioGroupPrimitive className={cn('flex flex-col', className)} data-slot="drawer-menu-radio-group" {...props} />
+    <RadioGroupPrimitive
+      className={cn('flex flex-col', className)}
+      data-slot="drawer-menu-radio-group"
+      {...props}
+    />
   )
 }
 

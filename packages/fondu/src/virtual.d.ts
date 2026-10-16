@@ -11,7 +11,9 @@ declare module 'virtual:fondu/assets' {
 }
 declare module 'virtual:fondu/ssr' {
   /** the app's `createInertiaApp(...)` rendering a page on the server (null: `fondu({ ssr: false })`) */
-  export const renderPage: ((page: import('@inertiajs/core').Page) => Promise<{ head: string[]; body: string }>) | null
+  export const renderPage:
+    | ((page: import('@inertiajs/core').Page) => Promise<{ head: string[]; body: string }>)
+    | null
   /** React's static markup of a JSX document (`react-dom/server`'s `renderToStaticMarkup`) */
   export function renderMarkup(element: import('react').ReactElement): string | Promise<string>
 }

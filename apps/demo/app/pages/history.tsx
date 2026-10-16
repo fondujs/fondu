@@ -21,9 +21,9 @@ export default function History({ secret }: { secret: string }) {
       <Head title="History encryption" />
       <h1>History encryption</h1>
       <p className="lede">
-        Rendered with <code>encryptHistory: true</code>: Inertia encrypts this page's state in the browser history, so
-        after signing out nobody can press Back to see it. <code>clearHistory(c)</code> discards the key, making every
-        encrypted entry unreadable.
+        Rendered with <code>encryptHistory: true</code>: Inertia encrypts this page's state in the
+        browser history, so after signing out nobody can press Back to see it.{' '}
+        <code>clearHistory(c)</code> discards the key, making every encrypted entry unreadable.
       </p>
       <div className="grid gap-4 sm:grid-cols-2">
         <DemoCard title="A sensitive prop">

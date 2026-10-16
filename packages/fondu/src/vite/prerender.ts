@@ -22,11 +22,15 @@ const SECURITY_HEADERS =
  * only these may get: a `nonce` the document has otherwise (in a page's markup) is dropped. Then the hashes of these
  * inline scripts.
  */
-export function ownScripts(html: string, policy: string | undefined): { html: string; hashes: string[] } {
+export function ownScripts(
+  html: string,
+  policy: string | undefined,
+): { html: string; hashes: string[] } {
   const nonce = policy?.match(/'nonce-([^']+)'/)?.[1]
   if (!nonce) return { html, hashes: [] }
-  const own = html.replace(/(<(?:script|link)\b[^>]*?)\snonce="([^"]*)"/gi, (tag, before: string, value: string) =>
-    value === nonce ? tag : before,
+  const own = html.replace(
+    /(<(?:script|link)\b[^>]*?)\snonce="([^"]*)"/gi,
+    (tag, before: string, value: string) => (value === nonce ? tag : before),
   )
   const hashes = new Set<string>()
   for (const [, attrs, code] of own.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi))
@@ -72,10 +76,17 @@ interface Server {
  * a visit, and both are written to the client build. Cloudflare serves them before the Worker, with the security
  * headers written to `_headers`; Node and Bun before the routes, behind the app's own headers.
  */
-export async function prerender(start: () => Promise<Server>, clientDir: string, logger: Logger, headersFile: boolean) {
+export async function prerender(
+  start: () => Promise<Server>,
+  clientDir: string,
+  logger: Logger,
+  headersFile: boolean,
+) {
   const fail = (lines: string[]): never => {
     for (const line of lines) logger.error(`fondu: ${line}`)
-    throw new Error(`fondu: prerendering failed (${lines.length === 1 ? lines[0] : `${lines.length} problems, above`})`)
+    throw new Error(
+      `fondu: prerendering failed (${lines.length === 1 ? lines[0] : `${lines.length} problems, above`})`,
+    )
   }
   const server = await start().catch((error: Error) => fail([error.message]))
   try {
@@ -97,10 +108,15 @@ export async function prerender(start: () => Promise<Server>, clientDir: string,
     const errors: string[] = []
     for (const path of paths) {
       const doc = await get(path, { Accept: 'text/html' })
-      const visit = await get(path, { 'X-Inertia': 'true', ...(version && { 'X-Inertia-Version': version }) })
+      const visit = await get(path, {
+        'X-Inertia': 'true',
+        ...(version && { 'X-Inertia-Version': version }),
+      })
       if (doc.status !== 200 || visit.status !== 200) {
         const to = doc.headers.get('location')
-        errors.push(`${path}: ${doc.status}${to ? ` → ${to}` : ''} (a prerendered page must answer 200 to anyone)`)
+        errors.push(
+          `${path}: ${doc.status}${to ? ` → ${to}` : ''} (a prerendered page must answer 200 to anyone)`,
+        )
         continue
       }
       const page = (await visit.json()) as Record<string, unknown>
@@ -109,14 +125,22 @@ export async function prerender(start: () => Promise<Server>, clientDir: string,
         errors.push(`${path}: ${later.join(', ')} ask the server again; not for a prerendered page`)
         continue
       }
-      const { html, hashes } = ownScripts(await doc.text(), doc.headers.get('content-security-policy') ?? undefined)
+      const { html, hashes } = ownScripts(
+        await doc.text(),
+        doc.headers.get('content-security-policy') ?? undefined,
+      )
       const headers = Object.fromEntries(
         [...doc.headers]
           .filter(([name]) => SECURITY_HEADERS.test(name))
-          .map(([name, value]) => [name, /^content-security-policy/i.test(name) ? staticPolicy(value, hashes) : value]),
+          .map(([name, value]) => [
+            name,
+            /^content-security-policy/i.test(name) ? staticPolicy(value, hashes) : value,
+          ]),
       )
       if (headersFile && security && JSON.stringify(headers) !== JSON.stringify(security)) {
-        errors.push(`${path}: its security headers differ from ${paths[0]}'s; one set is written for all`)
+        errors.push(
+          `${path}: its security headers differ from ${paths[0]}'s; one set is written for all`,
+        )
         continue
       }
       security = headers

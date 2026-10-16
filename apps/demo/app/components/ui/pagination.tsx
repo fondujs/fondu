@@ -8,7 +8,10 @@ import type * as React from 'react'
 import { type Button, buttonVariants } from '#/components/ui/button.tsx'
 import { cn } from '#/lib/utils.ts'
 
-export function Pagination({ className, ...props }: React.ComponentProps<'nav'>): React.ReactElement {
+export function Pagination({
+  className,
+  ...props
+}: React.ComponentProps<'nav'>): React.ReactElement {
   return (
     <nav
       aria-label="pagination"
@@ -19,8 +22,17 @@ export function Pagination({ className, ...props }: React.ComponentProps<'nav'>)
   )
 }
 
-export function PaginationContent({ className, ...props }: React.ComponentProps<'ul'>): React.ReactElement {
-  return <ul className={cn('flex flex-row items-center gap-1', className)} data-slot="pagination-content" {...props} />
+export function PaginationContent({
+  className,
+  ...props
+}: React.ComponentProps<'ul'>): React.ReactElement {
+  return (
+    <ul
+      className={cn('flex flex-row items-center gap-1', className)}
+      data-slot="pagination-content"
+      {...props}
+    />
+  )
 }
 
 export function PaginationItem({ ...props }: React.ComponentProps<'li'>): React.ReactElement {
@@ -95,7 +107,10 @@ export function PaginationNext({
   )
 }
 
-export function PaginationEllipsis({ className, ...props }: React.ComponentProps<'span'>): React.ReactElement {
+export function PaginationEllipsis({
+  className,
+  ...props
+}: React.ComponentProps<'span'>): React.ReactElement {
   return (
     <span
       aria-hidden

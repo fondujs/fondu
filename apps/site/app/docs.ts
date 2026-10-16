@@ -14,23 +14,47 @@ export const sections: Array<{ title: string; docs: Doc[] }> = [
   {
     title: 'Getting started',
     docs: [
-      { slug: '', title: 'Introduction', description: 'What Fondu is, and what each part of it does.' },
+      {
+        slug: '',
+        title: 'Introduction',
+        description: 'What Fondu is, and what each part of it does.',
+      },
       { slug: 'quick-start', title: 'Quick start', description: 'Create an app and run it.' },
       {
         slug: 'project-structure',
         title: 'Project structure',
         description: 'The files of an app, and what each is for.',
       },
-      { slug: 'demo', title: 'Demo application', description: 'Every Inertia feature in a Fondu app, one page each.' },
+      {
+        slug: 'demo',
+        title: 'Demo application',
+        description: 'Every Inertia feature in a Fondu app, one page each.',
+      },
     ],
   },
   {
     title: 'Guides',
     docs: [
-      { slug: 'routes', title: 'Routes', description: 'Files in app/routes/: loaders, actions and middleware.' },
-      { slug: 'pages', title: 'Pages and props', description: 'React pages, and the kinds of props a route sends.' },
-      { slug: 'layouts', title: 'Layouts', description: 'What stays around the pages, by directory.' },
-      { slug: 'forms', title: 'Forms and validation', description: 'One schema for the server and the browser.' },
+      {
+        slug: 'routes',
+        title: 'Routes',
+        description: 'Files in app/routes/: loaders, actions and middleware.',
+      },
+      {
+        slug: 'pages',
+        title: 'Pages and props',
+        description: 'React pages, and the kinds of props a route sends.',
+      },
+      {
+        slug: 'layouts',
+        title: 'Layouts',
+        description: 'What stays around the pages, by directory.',
+      },
+      {
+        slug: 'forms',
+        title: 'Forms and validation',
+        description: 'One schema for the server and the browser.',
+      },
       { slug: 'errors', title: 'Errors', description: 'Error pages, and what API clients get.' },
       {
         slug: 'server-and-client',
@@ -47,21 +71,41 @@ export const sections: Array<{ title: string; docs: Doc[] }> = [
   {
     title: 'Rendering',
     docs: [
-      { slug: 'ssr', title: 'Server-side rendering', description: 'Pages rendered on the server, then hydrated.' },
+      {
+        slug: 'ssr',
+        title: 'Server-side rendering',
+        description: 'Pages rendered on the server, then hydrated.',
+      },
       {
         slug: 'static-pages',
         title: 'Static pages',
         description: 'Pages written as files at build time (SSG).',
       },
-      { slug: 'mdx', title: 'MDX pages', description: 'Pages written in Markdown, with React components.' },
-      { slug: 'document', title: 'The document', description: 'The HTML around pages: attributes, icons, fonts.' },
+      {
+        slug: 'mdx',
+        title: 'MDX pages',
+        description: 'Pages written in Markdown, with React components.',
+      },
+      {
+        slug: 'document',
+        title: 'The document',
+        description: 'The HTML around pages: attributes, icons, fonts.',
+      },
     ],
   },
   {
     title: 'Going further',
     docs: [
-      { slug: 'deploying', title: 'Deploying', description: 'Bun, Cloudflare Workers and Node in production.' },
-      { slug: 'api', title: 'API', description: 'Everything fondu, fondu/client and fondu/vite export.' },
+      {
+        slug: 'deploying',
+        title: 'Deploying',
+        description: 'Bun, Cloudflare Workers and Node in production.',
+      },
+      {
+        slug: 'api',
+        title: 'API',
+        description: 'Everything fondu, fondu/client and fondu/vite export.',
+      },
     ],
   },
 ]

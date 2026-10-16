@@ -12,7 +12,9 @@ export async function emailFree(email: string, except?: number) {
   const [taken] = await db
     .select({ id: contacts.id })
     .from(contacts)
-    .where(and(eq(contacts.email, email), except === undefined ? undefined : ne(contacts.id, except)))
+    .where(
+      and(eq(contacts.email, email), except === undefined ? undefined : ne(contacts.id, except)),
+    )
     .limit(1)
   return !taken
 }

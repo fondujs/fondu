@@ -13,7 +13,16 @@ interface Props {
   computedAt: string
 }
 
-export default function PropsDemo({ text, number, float, boolean, nothing, list, profile, computedAt }: Props) {
+export default function PropsDemo({
+  text,
+  number,
+  float,
+  boolean,
+  nothing,
+  list,
+  profile,
+  computedAt,
+}: Props) {
   const { auth } = usePage().props
   const rows: Array<[string, string]> = [
     ['string', text],
@@ -29,8 +38,8 @@ export default function PropsDemo({ text, number, float, boolean, nothing, list,
       <h1>Props</h1>
       <p className="lede">
         Anything JSON can carry is a prop. The page component's parameters are the props' types, and{' '}
-        <code>render()</code> checks the loader against them. A function prop is called only when it's included in the
-        response.
+        <code>render()</code> checks the loader against them. A function prop is called only when
+        it's included in the response.
       </p>
       <div className="grid gap-4 sm:grid-cols-2">
         <DemoCard title="Scalars & lists">
@@ -57,7 +66,8 @@ export default function PropsDemo({ text, number, float, boolean, nothing, list,
         </DemoCard>
         <DemoCard title="Shared props" tag="share()">
           <p className="mb-3 text-muted-foreground">
-            Set for every page by <code>routes/_middleware.ts</code>, typed by Inertia's <code>InertiaConfig</code>.
+            Set for every page by <code>routes/_middleware.ts</code>, typed by Inertia's{' '}
+            <code>InertiaConfig</code>.
           </p>
           <Json value={{ auth }} />
         </DemoCard>

@@ -8,7 +8,13 @@ import { RenderBadge } from '#/components/demo.tsx'
 import { Logo } from '#/components/logo.tsx'
 import { Toasts } from '#/components/toasts.tsx'
 import { Button } from '#/components/ui/button.tsx'
-import { Drawer, DrawerHeader, DrawerPanel, DrawerPopup, DrawerTitle } from '#/components/ui/drawer.tsx'
+import {
+  Drawer,
+  DrawerHeader,
+  DrawerPanel,
+  DrawerPopup,
+  DrawerTitle,
+} from '#/components/ui/drawer.tsx'
 
 const sections: Array<[group: string, links: Array<[url: string, label: string]>]> = [
   [
@@ -47,13 +53,20 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const { url, component } = usePage()
   const [open, setOpen] = useState(false)
   const path = url.split(/[?#]/)[0]!
-  const active = (to: string) => (to === '/' ? path === '/' : path === to || path.startsWith(to + '/'))
+  const active = (to: string) =>
+    to === '/' ? path === '/' : path === to || path.startsWith(to + '/')
   return (
     <div className="min-h-dvh md:grid md:grid-cols-[14rem_1fr]">
       <div className="flex h-14 items-center justify-between border-b px-3 md:hidden">
         <Home />
         <Drawer position="left" open={open} onOpenChange={setOpen}>
-          <Button variant="ghost" size="icon" aria-label="Menu" onClick={() => setOpen(true)} data-testid="menu">
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Menu"
+            onClick={() => setOpen(true)}
+            data-testid="menu"
+          >
             <Menu />
           </Button>
           <DrawerPopup showCloseButton className="w-72 max-w-[80%]">
@@ -74,7 +87,10 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       </aside>
       <div className="min-w-0">
         <header className="flex h-14 items-center gap-2 border-b px-5">
-          <span className="truncate font-mono text-xs text-muted-foreground" data-testid="component">
+          <span
+            className="truncate font-mono text-xs text-muted-foreground"
+            data-testid="component"
+          >
             /{component}
           </span>
           <RenderBadge />
@@ -96,7 +112,15 @@ const Home = () => (
 )
 
 /** The demos, by group; where you are: a bar of the brand's gold */
-function Nav({ id, active, onPick }: { id?: string; active: (to: string) => boolean; onPick?: () => void }) {
+function Nav({
+  id,
+  active,
+  onPick,
+}: {
+  id?: string
+  active: (to: string) => boolean
+  onPick?: () => void
+}) {
   return (
     <nav id={id} aria-label="Demos" className="grid gap-5">
       {sections.map(([group, links]) => (

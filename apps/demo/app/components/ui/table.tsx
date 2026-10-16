@@ -13,7 +13,12 @@ export type TableProps = React.ComponentProps<'table'> & {
   render?: useRender.ComponentProps<'div'>['render']
 }
 
-export function Table({ className, variant = 'default', render, ...props }: TableProps): React.ReactElement {
+export function Table({
+  className,
+  variant = 'default',
+  render,
+  ...props
+}: TableProps): React.ReactElement {
   const defaultProps = {
     children: (
       <table
@@ -37,11 +42,17 @@ export function Table({ className, variant = 'default', render, ...props }: Tabl
   })
 }
 
-export function TableHeader({ className, ...props }: React.ComponentProps<'thead'>): React.ReactElement {
+export function TableHeader({
+  className,
+  ...props
+}: React.ComponentProps<'thead'>): React.ReactElement {
   return <thead className={cn('[&_tr]:border-b', className)} data-slot="table-header" {...props} />
 }
 
-export function TableBody({ className, ...props }: React.ComponentProps<'tbody'>): React.ReactElement {
+export function TableBody({
+  className,
+  ...props
+}: React.ComponentProps<'tbody'>): React.ReactElement {
   return (
     <tbody
       className={cn(
@@ -54,7 +65,10 @@ export function TableBody({ className, ...props }: React.ComponentProps<'tbody'>
   )
 }
 
-export function TableFooter({ className, ...props }: React.ComponentProps<'tfoot'>): React.ReactElement {
+export function TableFooter({
+  className,
+  ...props
+}: React.ComponentProps<'tfoot'>): React.ReactElement {
   return (
     <tfoot
       className={cn(
@@ -106,7 +120,10 @@ export function TableCell({ className, ...props }: React.ComponentProps<'td'>): 
   )
 }
 
-export function TableCaption({ className, ...props }: React.ComponentProps<'caption'>): React.ReactElement {
+export function TableCaption({
+  className,
+  ...props
+}: React.ComponentProps<'caption'>): React.ReactElement {
   return (
     <caption
       className={cn('in-data-[variant=card]:my-4 mt-4 text-muted-foreground text-sm', className)}

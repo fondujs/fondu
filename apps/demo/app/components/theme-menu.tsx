@@ -2,7 +2,13 @@ import { Monitor, Moon, Sun } from 'lucide-react'
 import { useState } from 'react'
 
 import { Button } from '#/components/ui/button.tsx'
-import { Menu, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuTrigger } from '#/components/ui/menu.tsx'
+import {
+  Menu,
+  MenuPopup,
+  MenuRadioGroup,
+  MenuRadioItem,
+  MenuTrigger,
+} from '#/components/ui/menu.tsx'
 
 const themes = { system: [Monitor, 'System'], light: [Sun, 'Light'], dark: [Moon, 'Dark'] } as const
 type Theme = keyof typeof themes
@@ -14,7 +20,9 @@ type Theme = keyof typeof themes
 export function ThemeMenu() {
   return (
     <Menu>
-      <MenuTrigger render={<Button variant="ghost" size="icon" aria-label="Theme" data-testid="theme" />}>
+      <MenuTrigger
+        render={<Button variant="ghost" size="icon" aria-label="Theme" data-testid="theme" />}
+      >
         <Sun className="dark:hidden" />
         <Moon className="not-dark:hidden" />
       </MenuTrigger>

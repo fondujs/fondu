@@ -19,8 +19,9 @@ export default function Infinite({ total, people }: Props) {
         <code>
           scroll(() =&gt; ({'{'} data, currentPage, previousPage, nextPage {'}'}))
         </code>{' '}
-        sends the pagination metadata in <code>scrollProps</code>, and <code>&lt;InfiniteScroll&gt;</code> loads more
-        pages as you scroll, appending to <code>people.data</code>. Watch the URL's <code>?page=</code> update.
+        sends the pagination metadata in <code>scrollProps</code>, and{' '}
+        <code>&lt;InfiniteScroll&gt;</code> loads more pages as you scroll, appending to{' '}
+        <code>people.data</code>. Watch the URL's <code>?page=</code> update.
       </p>
       <Card>
         <InfiniteScroll

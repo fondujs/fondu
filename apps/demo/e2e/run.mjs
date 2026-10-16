@@ -29,7 +29,10 @@ const problems = []
 const watchProblems = (p) => {
   p.on('console', (m) => {
     // the browser's own log line for the intentional 401 / 404 / 409 / 422 / 500 responses below
-    if (['error', 'warning'].includes(m.type()) && !/favicon|status of (401|403|404|409|422|500)\b/.test(m.text()))
+    if (
+      ['error', 'warning'].includes(m.type()) &&
+      !/favicon|status of (401|403|404|409|422|500)\b/.test(m.text())
+    )
       problems.push(`[${m.type()}] ${m.text().slice(0, 240)}`)
   })
   p.on('pageerror', (e) => problems.push(`[pageerror] ${String(e).slice(0, 240)}`))
@@ -86,8 +89,10 @@ const waitText = (t, p = page, timeout = 8000) =>
 const path = (p = page) => p.evaluate(() => location.pathname + location.search)
 const h1 = (t, p = page) =>
   p.waitForFunction((t) => document.querySelector('h1')?.textContent === t, { timeout: 8000 }, t)
-const testid = (id, p = page) => p.$eval(`[data-testid=${id}]`, (e) => e.textContent).catch(() => null)
-const nav = (href, p = page) => p.evaluate((h) => document.querySelector(`aside a[href="${h}"]`).click(), href)
+const testid = (id, p = page) =>
+  p.$eval(`[data-testid=${id}]`, (e) => e.textContent).catch(() => null)
+const nav = (href, p = page) =>
+  p.evaluate((h) => document.querySelector(`aside a[href="${h}"]`).click(), href)
 const setValue = async (sel, v, p = page) => {
   await p.click(sel, { count: 3 }) // select what is there: typing replaces it, as a person would
   await p.keyboard.press('Backspace')
@@ -98,7 +103,10 @@ const signIn = async (p = page) => {
   if (!(await p.$('input[name=password]'))) return
   await p.type('input[name=email]', 'demo@fondu.dev')
   await p.type('input[name=password]', 'fondu-demo')
-  await Promise.all([p.waitForFunction(() => location.pathname === '/account'), p.click('main form button')])
+  await Promise.all([
+    p.waitForFunction(() => location.pathname === '/account'),
+    p.click('main form button'),
+  ])
 }
 const signOut = async (p = page) => {
   await p.goto(BASE + '/', { waitUntil: 'networkidle0' })
@@ -114,14 +122,16 @@ const inertia = (extra = {}) => ({
   ...(assetVersion && { 'X-Inertia-Version': assetVersion }),
   ...extra,
 })
-const cookieHeader = async () => (await page.cookies(BASE)).map((c) => `${c.name}=${c.value}`).join('; ')
+const cookieHeader = async () =>
+  (await page.cookies(BASE)).map((c) => `${c.name}=${c.value}`).join('; ')
 const fetchAs = async (url, init = {}) =>
   fetch(url, { ...init, headers: { ...init.headers, cookie: await cookieHeader() } })
 const until = async (cond, ms = 3000) => {
   for (let t = 0; t < ms && !cond(); t += 50) await sleep(50)
 }
 const lastBody = () => pageJson.filter((p) => p.body).at(-1)
-const lastJson = (url) => pageJson.filter((p) => p.body && (p.url === url || p.url.startsWith(url + '?'))).at(-1)
+const lastJson = (url) =>
+  pageJson.filter((p) => p.body && (p.url === url || p.url.startsWith(url + '?'))).at(-1)
 
 // warm-up (lets dev mode optimise dependencies before measuring)
 for (const p of [
@@ -148,7 +158,9 @@ for (const p of [
 await signIn()
 await page.goto(BASE + '/contacts/1', { waitUntil: 'networkidle0' })
 await sleep(1000)
-assetVersion = await page.evaluate(() => JSON.parse(document.querySelector('script[data-page]').textContent).version)
+assetVersion = await page.evaluate(
+  () => JSON.parse(document.querySelector('script[data-page]').textContent).version,
+)
 await signOut()
 problems.length = 0
 docs.length = 0
@@ -181,7 +193,8 @@ console.log(`\n===== ${LABEL} =====`)
   )
   ok(
     'document: Cache-Control private, no-cache; Vary: X-Inertia',
-    res.headers.get('cache-control') === 'private, no-cache' && /X-Inertia/i.test(res.headers.get('vary') ?? ''),
+    res.headers.get('cache-control') === 'private, no-cache' &&
+      /X-Inertia/i.test(res.headers.get('vary') ?? ''),
   )
   const asset = html.match(/href="(\/assets\/[^"]+\.css)"/)?.[1]
   const assetCache = asset ? ((await fetch(BASE + asset)).headers.get('cache-control') ?? '') : ''
@@ -190,8 +203,14 @@ console.log(`\n===== ${LABEL} =====`)
     asset ? assetCache.includes('immutable') : true,
     `${asset} ${assetCache}`,
   )
-  const [icon, robots] = await Promise.all([fetch(BASE + '/favicon.ico'), fetch(BASE + '/robots.txt')])
-  ok('document: public/ files are served from the site root', icon.status === 200 && robots.status === 200)
+  const [icon, robots] = await Promise.all([
+    fetch(BASE + '/favicon.ico'),
+    fetch(BASE + '/robots.txt'),
+  ])
+  ok(
+    'document: public/ files are served from the site root',
+    icon.status === 200 && robots.status === 200,
+  )
 }
 
 // ---- navigation, prefetch, titles
@@ -214,7 +233,9 @@ ok(
   propsFetches.length === 1 && propsFetches[0].purpose === 'prefetch',
   JSON.stringify(propsFetches.map((f) => f.purpose)),
 )
-await page.waitForFunction(() => document.title === 'Props · Fondu', { timeout: 3000 }).catch(() => {})
+await page
+  .waitForFunction(() => document.title === 'Props · Fondu', { timeout: 3000 })
+  .catch(() => {})
 ok('title after a visit', (await page.title()) === 'Props · Fondu', await page.title())
 ok(
   'props: values, an object, a function called when sent, shared props',
@@ -224,7 +245,10 @@ ok(
     (await text()).includes('"user": null') &&
     (await text()).includes('"auth"'),
 )
-ok('the badge says how the document was rendered: SSR, hydrated', (await testid('render-mode')) === 'SSR: hydrated')
+ok(
+  'the badge says how the document was rendered: SSR, hydrated',
+  (await testid('render-mode')) === 'SSR: hydrated',
+)
 
 // ---- partial reloads
 await nav('/partial')
@@ -235,7 +259,11 @@ const before = {
   count: Number(await testid('request-count')),
 }
 await page.click('[data-testid=only-time]')
-await page.waitForFunction((t) => document.querySelector('[data-testid=time]').textContent !== t, {}, before.time)
+await page.waitForFunction(
+  (t) => document.querySelector('[data-testid=time]').textContent !== t,
+  {},
+  before.time,
+)
 await sleep(200)
 let res = lastJson('/partial')
 ok(
@@ -245,7 +273,10 @@ ok(
     (await testid('random')) === before.random,
   JSON.stringify(res && Object.keys(res.body.props)),
 )
-ok('always: requestCount is sent with every reload', Number(await testid('request-count')) > before.count)
+ok(
+  'always: requestCount is sent with every reload',
+  Number(await testid('request-count')) > before.count,
+)
 await page.click('[data-testid=except-random]')
 await sleep(600)
 res = lastJson('/partial')
@@ -264,7 +295,10 @@ await page.waitForSelector('[data-testid=report]')
 ok('optional: computed when a partial reload asks for it', /128 rows/.test(await testid('report')))
 await page.goto(BASE + '/partial', { waitUntil: 'networkidle0' })
 await page.evaluate(() =>
-  document.querySelector('[data-testid=load-report]').closest('section').nextElementSibling.scrollIntoView(),
+  document
+    .querySelector('[data-testid=load-report]')
+    .closest('section')
+    .nextElementSibling.scrollIntoView(),
 )
 await page.waitForSelector('[data-testid=report-visible]', { timeout: 5000 }).catch(() => {})
 ok(
@@ -278,22 +312,30 @@ for (let i = 0; i < 12; i++) {
   await sleep(250)
 }
 await page.click('[data-testid=poll]')
-ok('usePoll: the time is reloaded every second while polling', times.size >= 2, `${times.size} values in 3s`)
+ok(
+  'usePoll: the time is reloaded every second while polling',
+  times.size >= 2,
+  `${times.size} values in 3s`,
+)
 
 // ---- deferred props
 {
   const html = await (await fetch(BASE + '/deferred')).text()
   ok(
     'deferred: the first HTML has the page and deferredProps, not the values',
-    html.includes('"deferredProps":{"default":["stats","flaky"],"slow":["activity","recommendations"]}') &&
-      !html.includes('1,284'),
+    html.includes(
+      '"deferredProps":{"default":["stats","flaky"],"slow":["activity","recommendations"]}',
+    ) && !html.includes('1,284'),
   )
   await nav('/props')
   await h1('Props')
   fetches.length = 0
   await nav('/deferred')
   await h1('Deferred props')
-  ok('deferred: the page shows before its deferred values', (await page.$('[data-testid=stats]')) === null)
+  ok(
+    'deferred: the page shows before its deferred values',
+    (await page.$('[data-testid=stats]')) === null,
+  )
   await page.waitForSelector('[data-testid=stats]')
   await page.waitForSelector('[data-testid=activity]')
   await page.waitForSelector('[data-testid=recommendations]')
@@ -323,7 +365,9 @@ ok('usePoll: the time is reloaded every second while polling', times.size >= 2, 
 await nav('/merging')
 await h1('Merging props')
 await page.click('[data-testid=more]')
-await page.waitForFunction(() => document.querySelectorAll('[data-testid=messages] li').length === 6)
+await page.waitForFunction(
+  () => document.querySelectorAll('[data-testid=messages] li').length === 6,
+)
 res = lastJson('/merging')
 ok(
   'merge: page 2 is appended; mergeProps and matchPropsOn are announced',
@@ -332,13 +376,18 @@ ok(
     (await path()) === '/merging',
 )
 await page.click('[data-testid=more]')
-await page.waitForFunction(() => document.querySelectorAll('[data-testid=messages] li').length === 9)
+await page.waitForFunction(
+  () => document.querySelectorAll('[data-testid=messages] li').length === 9,
+)
 await page.click('[data-testid=reset]')
-await page.waitForFunction(() => document.querySelectorAll('[data-testid=messages] li').length === 3)
+await page.waitForFunction(
+  () => document.querySelectorAll('[data-testid=messages] li').length === 3,
+)
 await sleep(200)
 ok(
   'merge: X-Inertia-Reset replaces instead (no mergeProps)',
-  lastJson('/merging')?.req['x-inertia-reset'] === 'messages' && !lastJson('/merging')?.body.mergeProps,
+  lastJson('/merging')?.req['x-inertia-reset'] === 'messages' &&
+    !lastJson('/merging')?.body.mergeProps,
 )
 const firstLog = await page.$eval('[data-testid=log] li', (e) => e.textContent)
 await page.click('[data-testid=add-log]')
@@ -348,7 +397,9 @@ ok(
   (await page.$$eval('[data-testid=log] li', (l) => l.map((e) => e.textContent)))[1] === firstLog,
 )
 await page.click('[data-testid=count-archive]')
-await page.waitForFunction(() => document.querySelector('[data-testid=counters]').textContent.includes('archive'))
+await page.waitForFunction(() =>
+  document.querySelector('[data-testid=counters]').textContent.includes('archive'),
+)
 const counters = JSON.parse(await testid('counters'))
 ok(
   'deepMerge: nested keys are merged',
@@ -369,7 +420,9 @@ ok(
   await h1('Infinite scroll')
   await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight))
   await page
-    .waitForFunction(() => document.querySelectorAll('[data-testid=people] li').length >= 30, { timeout: 8000 })
+    .waitForFunction(() => document.querySelectorAll('[data-testid=people] li').length >= 30, {
+      timeout: 8000,
+    })
     .catch(() => {})
   await sleep(300)
   const more = pageJson.filter((p) => p.url.startsWith('/infinite?page=2')).at(-1)
@@ -400,7 +453,9 @@ ok(
 // ---- once props
 await nav('/once')
 await h1('Once props')
-await page.waitForFunction(() => /\d/.test(document.querySelector('[data-testid=permissions]')?.textContent ?? ''))
+await page.waitForFunction(() =>
+  /\d/.test(document.querySelector('[data-testid=permissions]')?.textContent ?? ''),
+)
 const plans = await testid('plans')
 const permissions = await testid('permissions')
 await page.click('[data-testid=second]')
@@ -409,7 +464,8 @@ await sleep(200)
 res = lastJson('/once?page=second')
 ok(
   'once: the client lists what it holds, the server skips it, the page still shows it',
-  (res?.req['x-inertia-except-once-props'] ?? '').split(',').sort().join() === 'permissions,plans,rates' &&
+  (res?.req['x-inertia-except-once-props'] ?? '').split(',').sort().join() ===
+    'permissions,plans,rates' &&
     !('plans' in res.body.props) &&
     (await testid('plans')) === plans,
   JSON.stringify(res && [res.req['x-inertia-except-once-props'], Object.keys(res.body.props)]),
@@ -464,7 +520,9 @@ ok(
   formErrors.every(Boolean) && (await path()) === '/contacts',
   JSON.stringify(formErrors),
 )
-await page.waitForFunction(() => document.activeElement?.name === 'name', { timeout: 2000 }).catch(() => {})
+await page
+  .waitForFunction(() => document.activeElement?.name === 'name', { timeout: 2000 })
+  .catch(() => {})
 ok(
   'an invalid submit: the first field to fix has the focus',
   await page.evaluate(() => document.activeElement?.name === 'name'),
@@ -473,7 +531,9 @@ ok(
 await setValue('[data-testid=add-contact] input[name=name]', 'Grace Hopper')
 const graceEmail = `grace-${Date.now()}@x.org`
 await setValue('[data-testid=add-contact] input[name=email]', graceEmail)
-await page.waitForFunction(() => !document.querySelector('[data-testid=add-contact] button').disabled)
+await page.waitForFunction(
+  () => !document.querySelector('[data-testid=add-contact] button').disabled,
+)
 await page.$eval('[data-testid=add-contact] button', (b) => b.click())
 await waitText('Added Grace Hopper')
 ok(
@@ -487,11 +547,15 @@ ok(
   await setValue('[data-testid=add-contact] input[name=email]', graceEmail.toUpperCase())
   const typing = precognition.length - before
   await page.keyboard.press('Tab')
-  await page.waitForSelector('[data-testid=add-contact] [data-testid=err-email]', { timeout: 6000 }).catch(() => {})
+  await page
+    .waitForSelector('[data-testid=add-contact] [data-testid=err-email]', { timeout: 6000 })
+    .catch(() => {})
   const live = await testid('err-email')
   await setValue('[data-testid=add-contact] input[name=name]', 'Grace Again')
   await page.$eval('[data-testid=add-contact] button', (b) => b.click())
-  await page.waitForFunction(() => document.activeElement?.name === 'email', { timeout: 4000 }).catch(() => {})
+  await page
+    .waitForFunction(() => document.activeElement?.name === 'email', { timeout: 4000 })
+    .catch(() => {})
   ok(
     'an address already in the contacts (any case): refused when the field is left, and on submit',
     typing === 0 &&
@@ -524,7 +588,9 @@ ok(
   await page.setRequestInterception(false)
   ok(
     'delete: confirmed first, then the row is gone before the server answers (optimistic)',
-    asked && during === rows - 1 && (await page.$$('[data-testid=contacts] li')).length === rows - 1,
+    asked &&
+      during === rows - 1 &&
+      (await page.$$('[data-testid=contacts] li')).length === rows - 1,
     `${asked} ${rows} -> ${during}`,
   )
 }
@@ -581,7 +647,10 @@ await page.waitForFunction(
   {},
   original + ' B',
 )
-ok('useForm: renamed in place, no extra history entries', (await page.evaluate(() => history.length)) === histBefore)
+ok(
+  'useForm: renamed in place, no extra history entries',
+  (await page.evaluate(() => history.length)) === histBefore,
+)
 await setValue('[data-testid=rename] input', original)
 await page.click('[data-testid=rename] button')
 await waitText('Renamed')
@@ -605,14 +674,21 @@ ok(
   )
   await nojs.type('[data-testid=add-contact] input[name=name]', 'Q')
   await nojs.type('[data-testid=add-contact] input[name=email]', 'not-an-email')
-  let [n] = await Promise.all([nojs.waitForNavigation(), nojs.click('[data-testid=add-contact] button')])
+  let [n] = await Promise.all([
+    nojs.waitForNavigation(),
+    nojs.click('[data-testid=add-contact] button'),
+  ])
   ok(
     'no JS: an invalid submit -> back to the page with the errors',
-    new URL(n.url()).pathname === '/contacts' && (await testid('err-email', nojs)) === 'Enter a valid email',
+    new URL(n.url()).pathname === '/contacts' &&
+      (await testid('err-email', nojs)) === 'Enter a valid email',
   )
   await nojs.type('[data-testid=add-contact] input[name=name]', 'Nora NoJS')
   await nojs.type('[data-testid=add-contact] input[name=email]', `nora-${Date.now()}@x.org`)
-  ;[n] = await Promise.all([nojs.waitForNavigation(), nojs.click('[data-testid=add-contact] button')])
+  ;[n] = await Promise.all([
+    nojs.waitForNavigation(),
+    nojs.click('[data-testid=add-contact] button'),
+  ])
   ok('no JS: a valid submit -> back, flash', (await text(nojs)).includes('Added Nora NoJS'))
   const rows = (await nojs.$$('[data-testid=contacts] li')).length
   ;[n] = await Promise.all([
@@ -621,7 +697,8 @@ ok(
   ])
   ok(
     'no JS: one of the actions (POST /contacts?delete)',
-    (await nojs.$$('[data-testid=contacts] li')).length === rows - 1 && (await text(nojs)).includes('Contact deleted'),
+    (await nojs.$$('[data-testid=contacts] li')).length === rows - 1 &&
+      (await text(nojs)).includes('Contact deleted'),
   )
   await nojs.close()
   const early = await browser.newPage()
@@ -631,7 +708,9 @@ ok(
       setTimeout(() => r.continue().catch(() => {}), 5000)
     else r.continue().catch(() => {})
   })
-  const loading = early.goto(BASE + '/contacts', { waitUntil: 'load', timeout: 60000 }).catch(() => {})
+  const loading = early
+    .goto(BASE + '/contacts', { waitUntil: 'load', timeout: 60000 })
+    .catch(() => {})
   await early.waitForSelector('[data-testid=add-contact] button')
   await early.$eval('[data-testid=add-contact] input[name=name]', (e) => {
     e.value = 'Early Bird'
@@ -644,7 +723,9 @@ ok(
     early.click('[data-testid=add-contact] button'),
   ])
   const added = await early
-    .waitForFunction(() => document.body?.innerText.includes('Added Early Bird'), { timeout: 10000 })
+    .waitForFunction(() => document.body?.innerText.includes('Added Early Bird'), {
+      timeout: 10000,
+    })
     .then(
       () => true,
       () => false,
@@ -663,12 +744,17 @@ await page.goto(BASE + '/redirects', { waitUntil: 'networkidle0' })
 docs.length = 0
 await page.click('[data-testid=back]')
 await waitText('Redirected back with a flash message')
-ok('back(c): 303 to the page, flash, no document load', (await path()) === '/redirects' && docs.length === 0)
+ok(
+  'back(c): 303 to the page, flash, no document load',
+  (await path()) === '/redirects' && docs.length === 0,
+)
 await page.click('[data-testid=to-props]')
 await h1('Props')
 ok(
   'redirect to another page: an Inertia visit, flash carried',
-  (await path()) === '/props' && (await text()).includes('Redirected from /redirects') && docs.length === 0,
+  (await path()) === '/props' &&
+    (await text()).includes('Redirected from /redirects') &&
+    docs.length === 0,
 )
 await page.goto(BASE + '/redirects', { waitUntil: 'networkidle0' })
 docs.length = 0
@@ -687,7 +773,9 @@ ok(
 )
 await page.evaluate(() => scrollTo(0, 0))
 await page.click('[data-testid=external]')
-await page.waitForFunction(() => location.pathname === '/api/health', { timeout: 5000 }).catch(() => {})
+await page
+  .waitForFunction(() => location.pathname === '/api/health', { timeout: 5000 })
+  .catch(() => {})
 ok(
   'location(c, url): 409 + X-Inertia-Location, the browser loads it as a document',
   (await path()) === '/api/health' && docs.some((d) => d.endsWith('/api/health')),
@@ -706,7 +794,9 @@ await page.waitForSelector('[data-testid=stale-answer]')
 const stale = JSON.parse(await testid('stale-answer'))
 ok(
   'a visit from another build: 409 + X-Inertia-Location (production); dev has no version',
-  assetVersion ? stale.status === 409 && stale['X-Inertia-Location'].endsWith('/versioning') : stale.status === 200,
+  assetVersion
+    ? stale.status === 409 && stale['X-Inertia-Location'].endsWith('/versioning')
+    : stale.status === 200,
   JSON.stringify(stale),
 )
 {
@@ -716,7 +806,11 @@ ok(
     if (r.isInterceptResolutionHandled()) return
     if (once && r.headers()['x-inertia'] && new URL(r.url()).pathname === '/props') {
       once = false
-      return void r.respond({ status: 409, headers: { 'X-Inertia-Location': BASE + '/props' }, body: '' })
+      return void r.respond({
+        status: 409,
+        headers: { 'X-Inertia-Location': BASE + '/props' },
+        body: '',
+      })
     }
     r.continue().catch(() => {})
   }
@@ -746,13 +840,19 @@ ok(
 )
 // the page object after the redirect, read from its own response (the response listener above may miss its body)
 const cleared = page.waitForResponse(
-  (r) => r.url() === BASE + '/history' && r.status() === 200 && r.request().headers()['x-inertia'] !== undefined,
+  (r) =>
+    r.url() === BASE + '/history' &&
+    r.status() === 200 &&
+    r.request().headers()['x-inertia'] !== undefined,
   { timeout: 8000 },
 )
 await page.click('[data-testid=clear]')
 const clearedPage = await cleared.then((r) => r.json()).catch(() => null)
 await waitText('History cleared')
-ok('clearHistory(c): the next page clears the history (clearHistory: true)', clearedPage?.clearHistory === true)
+ok(
+  'clearHistory(c): the next page clears the history (clearHistory: true)',
+  clearedPage?.clearHistory === true,
+)
 
 // ---- server-side rendering
 {
@@ -760,11 +860,13 @@ ok('clearHistory(c): the next page clears the history (clearHistory: true)', cle
   const browserOnly = await (await fetch(BASE + '/ssr/browser')).text()
   ok(
     'SSR: a document is server-rendered',
-    ssr.includes('<div data-server-rendered="true" id="app">') && ssr.includes('Server-side rendering</h1>'),
+    ssr.includes('<div data-server-rendered="true" id="app">') &&
+      ssr.includes('Server-side rendering</h1>'),
   )
   ok(
     'withoutSsr(): this route is rendered in the browser only (the page data, an empty #app)',
-    browserOnly.includes('</script><div id="app"></div></body>') && browserOnly.includes('"component":"ssr"'),
+    browserOnly.includes('</script><div id="app"></div></body>') &&
+      browserOnly.includes('"component":"ssr"'),
   )
   await page.goto(BASE + '/ssr/browser', { waitUntil: 'networkidle0' })
   ok(
@@ -803,11 +905,17 @@ await page.click('[data-testid=click]')
 await page.click('[data-testid=click]')
 const served = await testid('served-at')
 await page.click('[data-testid=preserve]')
-await page.waitForFunction((s) => document.querySelector('[data-testid=served-at]').textContent !== s, {}, served)
+await page.waitForFunction(
+  (s) => document.querySelector('[data-testid=served-at]').textContent !== s,
+  {},
+  served,
+)
 ok('preserveState: new props, the component state kept', (await testid('clicks')) === '2')
 await page.click('[data-testid=reset-state]')
 await page
-  .waitForFunction(() => document.querySelector('[data-testid=clicks]').textContent === '0', { timeout: 5000 })
+  .waitForFunction(() => document.querySelector('[data-testid=clicks]').textContent === '0', {
+    timeout: 5000,
+  })
   .catch(() => {})
 ok('a plain visit to the same page resets it', (await testid('clicks')) === '0')
 await page.type('[data-testid=note]', 'remember me')
@@ -884,9 +992,12 @@ await setValue('main form input[name=name]', 'Demo Person')
 await page.click('main form button')
 await waitText('Profile saved')
 await page
-  .waitForFunction(() => document.querySelector('[data-testid=user]')?.ariaLabel === 'Demo Person', {
-    timeout: 4000,
-  })
+  .waitForFunction(
+    () => document.querySelector('[data-testid=user]')?.ariaLabel === 'Demo Person',
+    {
+      timeout: 4000,
+    },
+  )
   .catch(() => {})
 ok(
   "<Form>: the profile saved by Better Auth, the header's user renewed with it (its session cookie)",
@@ -894,7 +1005,9 @@ ok(
 )
 await setValue('main form input[name=name]', 'Demo User')
 await page.click('main form button')
-await page.waitForFunction(() => document.querySelector('[data-testid=user]')?.ariaLabel === 'Demo User')
+await page.waitForFunction(
+  () => document.querySelector('[data-testid=user]')?.ariaLabel === 'Demo User',
+)
 
 // ---- live validation (Precognition) and the same schema in the browser
 {
@@ -902,7 +1015,9 @@ await page.waitForFunction(() => document.querySelector('[data-testid=user]')?.a
   await h1('Forms & validation')
   await page.type('[data-testid=add-contact] input[name=email]', 'nope')
   await page.keyboard.press('Tab')
-  await page.waitForSelector('[data-testid=add-contact] [data-testid=err-email]', { timeout: 6000 }).catch(() => {})
+  await page
+    .waitForSelector('[data-testid=add-contact] [data-testid=err-email]', { timeout: 6000 })
+    .catch(() => {})
   ok(
     "Precognition: the field is checked by the action's schema when it is left (nothing is added)",
     precognition.at(-1) === '/contacts' &&
@@ -950,19 +1065,31 @@ await page.waitForFunction(() => document.querySelector('[data-testid=user]')?.a
     await page.goBack()
     await h1('Errors')
   }
-  const missingPage = await (await fetch(BASE + '/errors/missing', { headers: { Accept: 'text/html' } })).text()
+  const missingPage = await (
+    await fetch(BASE + '/errors/missing', { headers: { Accept: 'text/html' } })
+  ).text()
   ok(
     'a page that does not exist: said so (development), the error page (production)',
-    dev ? missingPage.includes('create app/pages/reports/yearly.tsx') : missingPage.includes('"status":500'),
+    dev
+      ? missingPage.includes('create app/pages/reports/yearly.tsx')
+      : missingPage.includes('"status":500'),
   )
-  const failed = await fetchAs(BASE + '/errors?fail', { method: 'POST', headers: { ...inertia(), Origin: ORIGIN } })
+  const failed = await fetchAs(BASE + '/errors?fail', {
+    method: 'POST',
+    headers: { ...inertia(), Origin: ORIGIN },
+  })
   ok(
     'an action that throws: 500, a report or the error page',
     failed.status === 500 &&
-      (dev ? (await failed.text()).includes('The action failed') : (await failed.json()).props.status === 500),
+      (dev
+        ? (await failed.text()).includes('The action failed')
+        : (await failed.json()).props.status === 500),
   )
   const api500 = await fetch(BASE + '/errors/loader')
-  ok('… for an API client: plain text', api500.status === 500 && (await api500.text()) === 'Internal Server Error')
+  ok(
+    '… for an API client: plain text',
+    api500.status === 500 && (await api500.text()) === 'Internal Server Error',
+  )
 }
 
 // ---- admin: a guard, a layout of its own, no server render
@@ -975,7 +1102,10 @@ await page.waitForFunction(() => document.querySelector('[data-testid=user]')?.a
   await page.type('input[name=password]', 'fondu-admin')
   // from an address of its own: the sign-ins above may have used this one's tries (Better Auth: 3 in 10 s)
   await page.setExtraHTTPHeaders({ 'CF-Connecting-IP': '203.0.113.20' })
-  await Promise.all([page.waitForFunction(() => location.pathname === '/account'), page.click('main form button')])
+  await Promise.all([
+    page.waitForFunction(() => location.pathname === '/account'),
+    page.click('main form button'),
+  ])
   await page.setExtraHTTPHeaders({})
   ok('Better Auth: the admin account, its role', (await testid('account-role')) === 'admin')
   const doc = await (await fetchAs(BASE + '/admin/dashboard')).text()
@@ -1019,7 +1149,9 @@ await page.waitForFunction(() => document.querySelector('[data-testid=user]')?.a
     tick()
   })
   await page.goBack()
-  await page.waitForFunction(() => location.pathname === '/login', { timeout: 8000 }).catch(() => {})
+  await page
+    .waitForFunction(() => location.pathname === '/login', { timeout: 8000 })
+    .catch(() => {})
   await sleep(400)
   const seen = await page.evaluate(() => window.__headings ?? [])
   ok(
@@ -1059,7 +1191,9 @@ await page.waitForFunction(() => document.querySelector('[data-testid=user]')?.a
   const mp = await browser.newPage()
   await mp.setViewport({ width: 390, height: 760 })
   await mp.goto(BASE + '/props', { waitUntil: 'networkidle0' })
-  await mp.waitForFunction(() => document.querySelector('[data-testid=render-mode]')?.textContent === 'SSR: hydrated')
+  await mp.waitForFunction(
+    () => document.querySelector('[data-testid=render-mode]')?.textContent === 'SSR: hydrated',
+  )
   const shown = () => mp.evaluate(() => Boolean(document.querySelector('#menu')?.checkVisibility()))
   const closed = await shown()
   await mp.click('[data-testid=menu]')
@@ -1067,7 +1201,9 @@ await page.waitForFunction(() => document.querySelector('[data-testid=user]')?.a
   const opened = await shown()
   await mp.evaluate(() => document.querySelector('#menu a[href="/partial"]').click())
   await h1('Partial reloads', mp)
-  await mp.waitForFunction(() => !document.querySelector('#menu')?.checkVisibility(), { timeout: 3000 }).catch(() => {})
+  await mp
+    .waitForFunction(() => !document.querySelector('#menu')?.checkVisibility(), { timeout: 3000 })
+    .catch(() => {})
   ok(
     'mobile: the menu opens in a drawer from its button and closes after a visit',
     !closed && opened && !(await shown()),
@@ -1085,14 +1221,21 @@ await page.waitForFunction(() => document.querySelector('[data-testid=user]')?.a
 {
   const tp = await (await browser.createBrowserContext()).newPage()
   await tp.goto(BASE + '/props', { waitUntil: 'networkidle0' })
-  await tp.waitForFunction(() => document.querySelector('[data-testid=render-mode]')?.textContent === 'SSR: hydrated')
+  await tp.waitForFunction(
+    () => document.querySelector('[data-testid=render-mode]')?.textContent === 'SSR: hydrated',
+  )
   const before = await tp.evaluate(() => document.documentElement.className)
   await tp.click('[data-testid=theme]')
   await tp.waitForSelector('[role=menuitemradio]')
   await tp.evaluate(() =>
-    [...document.querySelectorAll('[role=menuitemradio]')].find((e) => e.textContent.includes('Dark')).click(),
+    [...document.querySelectorAll('[role=menuitemradio]')]
+      .find((e) => e.textContent.includes('Dark'))
+      .click(),
   )
-  const now = await tp.evaluate(() => [document.documentElement.className, getComputedStyle(document.body).colorScheme])
+  const now = await tp.evaluate(() => [
+    document.documentElement.className,
+    getComputedStyle(document.body).colorScheme,
+  ])
   await tp.reload({ waitUntil: 'networkidle0' })
   const served = await tp.evaluate(() => document.documentElement.className)
   ok(
@@ -1138,10 +1281,18 @@ await page.waitForFunction(() => document.querySelector('[data-testid=user]')?.a
   const evil = { Origin: 'https://evil.example' }
   const csrf = []
   for (const [label, headers, body] of [
-    ['urlencoded', { ...evil, 'Content-Type': 'application/x-www-form-urlencoded' }, 'name=x&email=y'],
+    [
+      'urlencoded',
+      { ...evil, 'Content-Type': 'application/x-www-form-urlencoded' },
+      'name=x&email=y',
+    ],
     ['multipart', { ...evil, 'Content-Type': 'multipart/form-data; boundary=x' }, '--x--'],
     ['text/plain', { ...evil, 'Content-Type': 'text/plain' }, '{}'],
-    ['Sec-Fetch-Site: cross-site', { 'Sec-Fetch-Site': 'cross-site', 'Content-Type': 'text/plain' }, '{}'],
+    [
+      'Sec-Fetch-Site: cross-site',
+      { 'Sec-Fetch-Site': 'cross-site', 'Content-Type': 'text/plain' },
+      '{}',
+    ],
   ]) {
     for (const target of ['/contacts', '/login', '/logout']) {
       let r = await fetch(BASE + target, { method: 'POST', headers, body })
@@ -1156,13 +1307,21 @@ await page.waitForFunction(() => document.querySelector('[data-testid=user]')?.a
   )
   const same = await page.evaluate(
     async () =>
-      (await fetch('/api/contacts', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: '{}' })).status,
+      (
+        await fetch('/api/contacts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain' },
+          body: '{}',
+        })
+      ).status,
   )
   ok('CSRF: the same request from the app itself passes', same !== 403, String(same))
   const doc = await fetch(BASE + '/', { headers: { Accept: 'text/html' } })
   const csp = doc.headers.get('content-security-policy') ?? ''
   const nonce = csp.match(/'nonce-([^']+)'/)?.[1]
-  const scripts = [...(await doc.text()).matchAll(/<script(?![^>]*application\/json)([^>]*)>/g)].map((m) => m[1])
+  const scripts = [
+    ...(await doc.text()).matchAll(/<script(?![^>]*application\/json)([^>]*)>/g),
+  ].map((m) => m[1])
   ok(
     "CSP: script-src 'self' + a nonce; every script carries it",
     scripts.length > 0 && scripts.every((a) => a.includes(`nonce="${nonce}"`)),
@@ -1170,11 +1329,13 @@ await page.waitForFunction(() => document.querySelector('[data-testid=user]')?.a
   )
   ok(
     'CSP: a fresh nonce per response',
-    nonce && !((await fetch(BASE + '/')).headers.get('content-security-policy') ?? '').includes(nonce),
+    nonce &&
+      !((await fetch(BASE + '/')).headers.get('content-security-policy') ?? '').includes(nonce),
   )
   ok(
     'secure headers (createApp default): Referrer-Policy same-origin, nosniff',
-    doc.headers.get('referrer-policy') === 'same-origin' && doc.headers.get('x-content-type-options') === 'nosniff',
+    doc.headers.get('referrer-policy') === 'same-origin' &&
+      doc.headers.get('x-content-type-options') === 'nosniff',
   )
   const sameSite = { Origin: ORIGIN }
   const json = { 'Content-Type': 'application/json' }
@@ -1191,7 +1352,10 @@ await page.waitForFunction(() => document.querySelector('[data-testid=user]')?.a
   const login = (body, headers = {}) =>
     fetch(
       BASE + '/login',
-      manual({ ...json, ...sameSite, 'X-Inertia': 'true', ...headers }, { method: 'POST', body: JSON.stringify(body) }),
+      manual(
+        { ...json, ...sameSite, 'X-Inertia': 'true', ...headers },
+        { method: 'POST', body: JSON.stringify(body) },
+      ),
     )
   const nexts = []
   // each from its own address: Better Auth limits sign-ins per client (cf-connecting-ip)
@@ -1205,23 +1369,36 @@ await page.waitForFunction(() => document.querySelector('[data-testid=user]')?.a
   ok(
     'login: `next` is followed only into this site',
     nexts.join('|') ===
-      ['/\\evil.com -> 303 /account', '//evil.com/x -> 303 /account', '/contacts?x=2 -> 303 /contacts?x=2'].join('|'),
+      [
+        '/\\evil.com -> 303 /account',
+        '//evil.com/x -> 303 /account',
+        '/contacts?x=2 -> 303 /contacts?x=2',
+      ].join('|'),
     nexts.join(' | '),
   )
   const tries = []
   for (let i = 0; i < 4; i++)
-    tries.push(await login({ email: 'demo@fondu.dev', password: 'wrong' }, { 'CF-Connecting-IP': '203.0.113.9' }))
+    tries.push(
+      await login(
+        { email: 'demo@fondu.dev', password: 'wrong' },
+        { 'CF-Connecting-IP': '203.0.113.9' },
+      ),
+    )
   const tooMany = decodeURIComponent(tries.at(-1).headers.get('set-cookie') ?? '')
   ok(
     "login: Better Auth's rate limit (3 sign-ins in 10 s per client), shown under the field",
     tooMany.includes('Too many attempts'),
     tooMany.slice(0, 160),
   )
-  const slash = await fetch(BASE + '/contacts/?x=2', { redirect: 'manual', headers: { Accept: 'text/html' } })
+  const slash = await fetch(BASE + '/contacts/?x=2', {
+    redirect: 'manual',
+    headers: { Accept: 'text/html' },
+  })
   ok(
     'trailing slash: /contacts/?x=2 -> 301 /contacts?x=2',
     slash.status === 301 &&
-      new URL(slash.headers.get('location')).pathname + new URL(slash.headers.get('location')).search ===
+      new URL(slash.headers.get('location')).pathname +
+        new URL(slash.headers.get('location')).search ===
         '/contacts?x=2',
   )
   const doubleSlash = await fetch(BASE + '//evil.com/', { redirect: 'manual' })
@@ -1265,7 +1442,11 @@ await page.waitForFunction(() => document.querySelector('[data-testid=user]')?.a
     fetchAs(BASE + '/contacts', {
       method: 'POST',
       redirect: 'manual',
-      headers: { ...sameSite, Referer: BASE + '/contacts', 'Content-Type': 'application/x-www-form-urlencoded' },
+      headers: {
+        ...sameSite,
+        Referer: BASE + '/contacts',
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
       body: `__proto__[x]=1&constructor=y&name=Proto+Field&email=proto-${Date.now()}%40x.org`,
     })
   let proto = await protoPost()
@@ -1335,7 +1516,8 @@ await page.waitForFunction(() => document.querySelector('[data-testid=user]')?.a
   await hp.goBack()
   await at('/deferred')
   const restored =
-    (await hp.$('[data-testid=recommendations]')) !== null && (await hp.$('[data-testid=stats]')) !== null
+    (await hp.$('[data-testid=recommendations]')) !== null &&
+    (await hp.$('[data-testid=stats]')) !== null
   await sleep(500)
   // Inertia asks again only for the group of the rescued prop (it is missing from the page)
   ok(
@@ -1349,7 +1531,8 @@ await page.waitForFunction(() => document.querySelector('[data-testid=user]')?.a
   await sleep(300)
   ok(
     'Forward too',
-    (await hp.$('[data-testid=add-contact]')) !== null && !requests.some((r) => r.startsWith('/contacts')),
+    (await hp.$('[data-testid=add-contact]')) !== null &&
+      !requests.some((r) => r.startsWith('/contacts')),
     JSON.stringify(requests),
   )
   await nav('/account', hp)
@@ -1359,7 +1542,9 @@ await page.waitForFunction(() => document.querySelector('[data-testid=user]')?.a
   await hp.click('[data-testid=user]')
   await (await hp.waitForSelector('[data-testid=sign-out]')).click()
   await hp.waitForFunction(() =>
-    [...document.querySelectorAll('[data-slot=toast-title]')].some((t) => t.textContent === 'Signed out'),
+    [...document.querySelectorAll('[data-slot=toast-title]')].some(
+      (t) => t.textContent === 'Signed out',
+    ),
   )
   await hp.evaluate(() => {
     window.__headings = []
@@ -1395,7 +1580,8 @@ if ((await fetch(BASE + '/@vite/client').catch(() => null))?.ok) {
     await waitText('Hello again from Hono', hp).catch(() => {})
     ok(
       'dev: a route edited, its page gets the new props without a reload',
-      (await text(hp)).includes('Hello again from Hono') && (await hp.evaluate(() => window.__kept === true)),
+      (await text(hp)).includes('Hello again from Hono') &&
+        (await hp.evaluate(() => window.__kept === true)),
     )
   } finally {
     writeFileSync(file, source)
@@ -1407,14 +1593,18 @@ if ((await fetch(BASE + '/@vite/client').catch(() => null))?.ok) {
   try {
     await broken.goto(BASE + '/props', { waitUntil: 'networkidle0' })
     writeFileSync(file, `throw new Error('a route that fails to load')\n${source}`)
-    await broken.waitForFunction(() => document.querySelector('vite-error-overlay'), { timeout: 10000 }).catch(() => {})
+    await broken
+      .waitForFunction(() => document.querySelector('vite-error-overlay'), { timeout: 10000 })
+      .catch(() => {})
     await sleep(500)
     ok(
       "dev: an app that fails to load, Vite's overlay as a whole page (no blank Inertia dialog)",
       await broken.evaluate(
         () =>
           !document.querySelector('#inertia-error-dialog') &&
-          document.querySelector('vite-error-overlay')?.shadowRoot?.textContent?.includes('a route that fails to load'),
+          document
+            .querySelector('vite-error-overlay')
+            ?.shadowRoot?.textContent?.includes('a route that fails to load'),
       ),
     )
     writeFileSync(file, source)
@@ -1430,14 +1620,18 @@ if ((await fetch(BASE + '/@vite/client').catch(() => null))?.ok) {
   }
 }
 
-ok('no console errors or warnings (incl. hydration)', problems.length === 0, problems.slice(0, 3).join(' | '))
+ok(
+  'no console errors or warnings (incl. hydration)',
+  problems.length === 0,
+  problems.slice(0, 3).join(' | '),
+)
 if (problems.length) console.log(problems.join('\n'))
 // ---- the demo's reset (the cron of wrangler.jsonc), run by hand: the seed again, the changes above gone
 {
   const reset = await fetch(BASE + '/cdn-cgi/handler/scheduled')
-  const names = (await (await fetch(BASE + '/contacts', { headers: inertia() })).json()).props.contacts.map(
-    (c) => c.name,
-  )
+  const names = (
+    await (await fetch(BASE + '/contacts', { headers: inertia() })).json()
+  ).props.contacts.map((c) => c.name)
   ok(
     'the scheduled reset: the contacts are the seed again',
     reset.ok && JSON.stringify(names.sort()) === '["Ada Lovelace","Alan Turing","Grace Hopper"]',

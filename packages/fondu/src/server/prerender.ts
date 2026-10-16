@@ -24,7 +24,9 @@ const STATIC_FILES = Symbol.for('fondu.staticFiles')
 type StaticFiles = (file: string) => Promise<Uint8Array | null>
 
 /** The paths to prerender, and what stops a route from being prerendered (the build fails on those) */
-export async function prerenderPaths(routes: PrerenderRoute[]): Promise<{ paths: string[]; problems: string[] }> {
+export async function prerenderPaths(
+  routes: PrerenderRoute[],
+): Promise<{ paths: string[]; problems: string[] }> {
   const paths = new Set<string>()
   const problems: string[] = []
   for (const route of routes) {
@@ -67,7 +69,8 @@ export function prerenderRoutes(app: Hono, routes: () => PrerenderRoute[], versi
     const read = (globalThis as Record<symbol, unknown>)[STATIC_FILES] as StaticFiles | undefined
     if (!read || (c.req.method !== 'GET' && c.req.method !== 'HEAD')) return next()
     const data = pathOfPageData(c.req.path) !== null // a visit, rewritten to the page object by fondu/client
-    if (!data && (isInertia(c) || !(c.req.header('accept') ?? '').includes('text/html'))) return next()
+    if (!data && (isInertia(c) || !(c.req.header('accept') ?? '').includes('text/html')))
+      return next()
     let file: string
     try {
       file = data ? decodeURIComponent(c.req.path).slice(1) : staticFiles(c.req.path).html
@@ -82,7 +85,9 @@ export function prerenderRoutes(app: Hono, routes: () => PrerenderRoute[], versi
     // security headers give it a new one
     const nonce = (c.get as (key: string) => unknown)('secureHeadersNonce') as string | undefined
     if (!data && nonce) {
-      const html = new TextDecoder().decode(body).replace(/(<(?:script|link)\b[^>]*\snonce=")[^"]*"/gi, `$1${nonce}"`)
+      const html = new TextDecoder()
+        .decode(body)
+        .replace(/(<(?:script|link)\b[^>]*\snonce=")[^"]*"/gi, `$1${nonce}"`)
       return c.html(html, 200)
     }
     return c.body(body as Uint8Array<ArrayBuffer>, 200, {
@@ -105,7 +110,8 @@ export function prerenderRoutes(app: Hono, routes: () => PrerenderRoute[], versi
   app.get('/__fondu/prerender', async (c) => {
     // set for the build only: a Worker binding, or the environment of `node` / `bun dist/index.js`
     const env =
-      (c.env as Record<string, unknown> | undefined)?.FONDU_PRERENDER ?? globalThis.process?.env?.FONDU_PRERENDER
+      (c.env as Record<string, unknown> | undefined)?.FONDU_PRERENDER ??
+      globalThis.process?.env?.FONDU_PRERENDER
     if (!env) return c.notFound()
     return c.json({ version, ...(await prerenderPaths(routes())) })
   })

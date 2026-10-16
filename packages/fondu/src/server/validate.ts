@@ -54,10 +54,13 @@ const DEPTH = 32
  * object (JSON that doesn't parse, `a=1&a[b]=2`, names nested deeper than 32) is a 400.
  */
 export async function readBody(c: Context): Promise<unknown> {
-  const malformed = (why: string) => new HTTPException(400, { message: `Malformed request body: ${why}` })
+  const malformed = (why: string) =>
+    new HTTPException(400, { message: `Malformed request body: ${why}` })
   const type = c.req.header('content-type') ?? ''
-  if (type.includes('application/json')) return c.req.json().catch(() => Promise.reject(malformed('invalid JSON')))
-  if (!type.includes('multipart/form-data') && !type.includes('application/x-www-form-urlencoded')) return {}
+  if (type.includes('application/json'))
+    return c.req.json().catch(() => Promise.reject(malformed('invalid JSON')))
+  if (!type.includes('multipart/form-data') && !type.includes('application/x-www-form-urlencoded'))
+    return {}
   const form = await c.req.formData()
   const body: Record<string, unknown> = Object.create(null)
   for (const [key, value] of form.entries()) {
@@ -70,13 +73,22 @@ export async function readBody(c: Context): Promise<unknown> {
       const name = segment === '' ? String(Object.keys(target).length) : segment // `a[]`: the next index
       const has = Object.hasOwn(target, name)
       if (i === path.length - 1) {
-        if (has && typeof target[name] === 'object' && !(target[name] instanceof File) && !Array.isArray(target[name]))
+        if (
+          has &&
+          typeof target[name] === 'object' &&
+          !(target[name] instanceof File) &&
+          !Array.isArray(target[name])
+        )
           throw malformed(`\`${key}\` is both a value and an object`)
         if (has && path.length === 1) target[name] = [target[name], value].flat() // `a=1&a=2`
         else target[name] = value
       } else {
         if (!has) target[name] = Object.create(null)
-        else if (typeof target[name] !== 'object' || target[name] instanceof File || Array.isArray(target[name]))
+        else if (
+          typeof target[name] !== 'object' ||
+          target[name] instanceof File ||
+          Array.isArray(target[name])
+        )
           throw malformed(`\`${key}\` is both a value and an object`)
         target = target[name] as Record<string, unknown>
       }
@@ -87,7 +99,8 @@ export async function readBody(c: Context): Promise<unknown> {
 
 /** objects whose keys are 0..n-1 become arrays */
 const arrays = (value: unknown): unknown => {
-  if (typeof value !== 'object' || value === null || value instanceof File || Array.isArray(value)) return value
+  if (typeof value !== 'object' || value === null || value instanceof File || Array.isArray(value))
+    return value
   const entries = Object.entries(value).map(([k, v]) => [k, arrays(v)] as const)
   const isList = entries.length > 0 && entries.every(([k], i) => k === String(i))
   return isList ? entries.map(([, v]) => v) : Object.fromEntries(entries)
@@ -102,7 +115,9 @@ export interface Schemas {
   query?: StandardSchemaV1
   params?: StandardSchemaV1
 }
-export type Input<S extends Schemas> = { [K in keyof S]: S[K] extends StandardSchemaV1 ? InferOutput<S[K]> : never }
+export type Input<S extends Schemas> = {
+  [K in keyof S]: S[K] extends StandardSchemaV1 ? InferOutput<S[K]> : never
+}
 
 /**
  * The validation step of `withValidator`: a middleware, and the validated input of its request. Params that don't
@@ -110,7 +125,9 @@ export type Input<S extends Schemas> = { [K in keyof S]: S[K] extends StandardSc
  * request (Inertia's live validation: `<Form validate>`, `useForm().withPrecognition()`) stops here: 204 when
  * valid, 422 `{ errors }` otherwise, the handler never runs.
  */
-export function validator<S extends Schemas>(schemas: S): [MiddlewareHandler, (c: Context) => Input<S>] {
+export function validator<S extends Schemas>(
+  schemas: S,
+): [MiddlewareHandler, (c: Context) => Input<S>] {
   const inputs = new WeakMap<Context, Input<S>>()
   const middleware: MiddlewareHandler = async (c, next) => {
     const values = {
@@ -124,12 +141,15 @@ export function validator<S extends Schemas>(schemas: S): [MiddlewareHandler, (c
       const result = await schemas[key]!['~standard'].validate(await values[key]())
       // route params that don't fit: the URL names nothing here
       if (result.issues && key === 'params') throw new HTTPException(404)
-      if (result.issues) for (const issue of result.issues) errors[pathOf(issue.path)] ??= issue.message
+      if (result.issues)
+        for (const issue of result.issues) errors[pathOf(issue.path)] ??= issue.message
       else input[key] = result.value
     }
     if (c.req.header('precognition') === 'true') {
       const only = c.req.header('precognition-validate-only')?.split(',').filter(Boolean)
-      const shown = only ? Object.fromEntries(Object.entries(errors).filter(([field]) => only.includes(field))) : errors
+      const shown = only
+        ? Object.fromEntries(Object.entries(errors).filter(([field]) => only.includes(field)))
+        : errors
       const headers = { Precognition: 'true', Vary: 'Precognition' }
       return Object.keys(shown).length
         ? c.json({ errors: shown }, 422, headers)

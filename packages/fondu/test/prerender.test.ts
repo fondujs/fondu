@@ -8,7 +8,12 @@ import { pageDataPath, pathOfPageData } from '../src/paths.js'
 import { prerenderPaths, type PrerenderRoute } from '../src/server/prerender.js'
 import { headerRules, ownScripts, staticFiles, staticPolicy } from '../src/vite/prerender.js'
 
-const route = (file: string, pattern: string, settings: PrerenderRoute['settings'], more = {}): PrerenderRoute => ({
+const route = (
+  file: string,
+  pattern: string,
+  settings: PrerenderRoute['settings'],
+  more = {},
+): PrerenderRoute => ({
   file,
   pattern,
   settings,
@@ -20,21 +25,31 @@ const route = (file: string, pattern: string, settings: PrerenderRoute['settings
 describe('files', () => {
   test('a page and its page object', () => {
     expect(staticFiles('/')).toEqual({ html: 'index.html', json: '_fondu/pages/index.json' })
-    expect(staticFiles('/docs/intro')).toEqual({ html: 'docs/intro.html', json: '_fondu/pages/docs/intro.json' })
-    expect(staticFiles('/docs/')).toEqual({ html: 'docs/index.html', json: '_fondu/pages/docs/index.json' })
-    expect(staticFiles('/docs/caf%C3%A9')).toEqual({ html: 'docs/café.html', json: '_fondu/pages/docs/café.json' })
+    expect(staticFiles('/docs/intro')).toEqual({
+      html: 'docs/intro.html',
+      json: '_fondu/pages/docs/intro.json',
+    })
+    expect(staticFiles('/docs/')).toEqual({
+      html: 'docs/index.html',
+      json: '_fondu/pages/docs/index.json',
+    })
+    expect(staticFiles('/docs/caf%C3%A9')).toEqual({
+      html: 'docs/café.html',
+      json: '_fondu/pages/docs/café.json',
+    })
   })
   test('the page object URL, both ways', () => {
-    for (const path of ['/', '/docs/intro', '/docs/', '/a%20b']) expect(pathOfPageData(pageDataPath(path))).toBe(path)
+    for (const path of ['/', '/docs/intro', '/docs/', '/a%20b'])
+      expect(pathOfPageData(pageDataPath(path))).toBe(path)
     expect(pathOfPageData('/docs/intro.json')).toBe(null)
   })
 })
 
 describe('headers', () => {
   test('a static document has no nonce; script-src keeps a source', () => {
-    expect(staticPolicy("default-src 'self'; script-src 'self' 'nonce-abc'; object-src 'none'")).toBe(
-      "default-src 'self'; script-src 'self'; object-src 'none'",
-    )
+    expect(
+      staticPolicy("default-src 'self'; script-src 'self' 'nonce-abc'; object-src 'none'"),
+    ).toBe("default-src 'self'; script-src 'self'; object-src 'none'")
     expect(staticPolicy("script-src 'nonce-abc'")).toBe("script-src 'self'")
   })
   test('the scripts that had the nonce: allowed by their hashes instead', () => {
@@ -45,13 +60,17 @@ describe('headers', () => {
     expect(staticPolicy("script-src 'self' 'nonce-abc'; style-src 'self'", hashes)).toBe(
       `script-src 'self' ${hashes[0]}; style-src 'self'`,
     )
-    expect(staticPolicy("script-src 'self' 'unsafe-inline'", hashes)).toBe("script-src 'self' 'unsafe-inline'")
+    expect(staticPolicy("script-src 'self' 'unsafe-inline'", hashes)).toBe(
+      "script-src 'self' 'unsafe-inline'",
+    )
   })
   test("only the build's nonce is the document's: another one is dropped, its script not hashed", () => {
     const html =
       '<script nonce="abc">a()</script><div><script nonce="guess">evil()</script><link nonce="x" href="/y"></div>'
     const own = ownScripts(html, "script-src 'self' 'nonce-abc'")
-    expect(own.html).toBe('<script nonce="abc">a()</script><div><script>evil()</script><link href="/y"></div>')
+    expect(own.html).toBe(
+      '<script nonce="abc">a()</script><div><script>evil()</script><link href="/y"></div>',
+    )
     expect(own.hashes).toEqual([`'sha256-${createHash('sha256').update('a()').digest('base64')}'`])
     expect(ownScripts(html, "script-src 'self'")).toEqual({ html, hashes: [] }) // no nonce: nothing is replaced
   })
@@ -84,7 +103,9 @@ describe('paths', () => {
     expect(problems).toHaveLength(3)
     expect(problems[0]).toMatch(/^routes\/pricing\.ts takes POST/)
     expect(problems[1]).toMatch(/^routes\/blog\/\[slug\]\.ts is dynamic/)
-    expect(problems[2]).toMatch(/^routes\/docs\/\[\.\.\.path\]\.ts: fondu: param "path" is not a path segment/)
+    expect(problems[2]).toMatch(
+      /^routes\/docs\/\[\.\.\.path\]\.ts: fondu: param "path" is not a path segment/,
+    )
   })
 })
 
@@ -93,7 +114,11 @@ describe('the app', () => {
   test('the paths, only while the build prerenders', async () => {
     expect((await app.request('/__fondu/prerender')).status).toBe(404)
     const res = await app.request('/__fondu/prerender', {}, { FONDU_PRERENDER: '1' })
-    expect(await res.json()).toEqual({ version: 'v1', paths: ['/', '/users/1', '/users/2'], problems: [] })
+    expect(await res.json()).toEqual({
+      version: 'v1',
+      paths: ['/', '/users/1', '/users/2'],
+      problems: [],
+    })
   })
   test('the page object of a page without a file: the page, as a visit', async () => {
     const res = await app.request('/_fondu/pages/index.json?fresh', {
@@ -123,14 +148,22 @@ describe('the app', () => {
       const doc = await app.request('/', { headers: { Accept: 'text/html' } })
       expect(await doc.text()).toBe('<html>static home</html>')
       expect(doc.headers.get('content-security-policy')).toContain("script-src 'self' 'nonce-")
-      const data = await app.request('/_fondu/pages/index.json', { headers: { 'X-Inertia': 'true' } })
+      const data = await app.request('/_fondu/pages/index.json', {
+        headers: { 'X-Inertia': 'true' },
+      })
       expect(data.headers.get('x-inertia')).toBe('true')
       expect(await data.text()).toBe('{"component":"home"}')
       // a visit to the page itself, or a page with no file: the routes
-      const visit = await app.request('/', { headers: { 'X-Inertia': 'true', 'X-Inertia-Version': 'v1' } })
+      const visit = await app.request('/', {
+        headers: { 'X-Inertia': 'true', 'X-Inertia-Version': 'v1' },
+      })
       expect(((await visit.json()) as { component: string }).component).toBe('home')
-      expect(await (await app.request('/items', { headers: { Accept: 'text/html' } })).text()).toContain('data-page')
-      expect((await app.request('/%2e%2e/secret', { headers: { Accept: 'text/html' } })).status).toBe(404)
+      expect(
+        await (await app.request('/items', { headers: { Accept: 'text/html' } })).text(),
+      ).toContain('data-page')
+      expect(
+        (await app.request('/%2e%2e/secret', { headers: { Accept: 'text/html' } })).status,
+      ).toBe(404)
     } finally {
       delete g[key]
     }

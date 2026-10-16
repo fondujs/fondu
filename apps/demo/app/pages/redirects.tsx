@@ -39,15 +39,15 @@ export default function Redirects({ visitedAt }: { visitedAt: string }) {
         </DemoCard>
         <DemoCard title="With a fragment" tag="409 X-Inertia-Redirect">
           <p className="mb-4 text-muted-foreground">
-            The browser's <code>fetch</code> drops <code>#target</code> when it follows a redirect, so the server tells
-            the client to visit it.
+            The browser's <code>fetch</code> drops <code>#target</code> when it follows a redirect,
+            so the server tells the client to visit it.
           </p>
           <Action to={href('/redirects?fragment')} label="Redirect to #target" id="fragment" />
         </DemoCard>
         <DemoCard title="Not an Inertia page" tag="location(c, url)">
           <p className="mb-4 text-muted-foreground">
-            409 with <code>X-Inertia-Location</code>: the browser loads <code>/api/health</code> as a document (another
-            site works the same way).
+            409 with <code>X-Inertia-Location</code>: the browser loads <code>/api/health</code> as
+            a document (another site works the same way).
           </p>
           <Action to={href('/redirects?external')} label="Load /api/health" id="external" />
         </DemoCard>

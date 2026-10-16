@@ -9,8 +9,12 @@ import { stripVTControlCharacters } from 'node:util'
 
 const here = new URL('..', import.meta.url).pathname
 const work = mkdtempSync(join(tmpdir(), 'create-fondu-'))
-const sh = (cmd, args, cwd) => execFileSync(cmd, args, { cwd, stdio: ['ignore', 'pipe', 'inherit'], encoding: 'utf8' })
-const tarball = join(work, sh('npm', ['pack', '--silent', '--pack-destination', work], join(here, '../fondu')).trim())
+const sh = (cmd, args, cwd) =>
+  execFileSync(cmd, args, { cwd, stdio: ['ignore', 'pipe', 'inherit'], encoding: 'utf8' })
+const tarball = join(
+  work,
+  sh('npm', ['pack', '--silent', '--pack-destination', work], join(here, '../fondu')).trim(),
+)
 
 const production = {
   node: { script: 'start', port: 3000, says: 'Listening on http://localhost:3000' },
@@ -23,10 +27,15 @@ const check = (name, ok, detail = '') => {
   failed ||= !ok
 }
 
-for (const target of Object.keys(production).filter((t) => !process.argv[2] || t === process.argv[2])) {
+for (const target of Object.keys(production).filter(
+  (t) => !process.argv[2] || t === process.argv[2],
+)) {
   const app = join(work, `my_app.${target}-2.0`) // a name with characters a Worker's name may not have
   sh('node', [join(here, 'index.js'), app, '--target', target, '--no-install'], work)
-  check(`${target}: no code checks unless asked`, !readFileSync(join(app, 'AGENTS.md'), 'utf8').includes('checks}}'))
+  check(
+    `${target}: no code checks unless asked`,
+    !readFileSync(join(app, 'AGENTS.md'), 'utf8').includes('checks}}'),
+  )
   const pkg = JSON.parse(readFileSync(join(app, 'package.json'), 'utf8'))
   pkg.dependencies.fondu = `file:${tarball}`
   writeFileSync(join(app, 'package.json'), JSON.stringify(pkg, null, 2))
@@ -55,7 +64,10 @@ for (const target of Object.keys(production).filter((t) => !process.argv[2] || t
     const config = join(app, 'vite.config.ts')
     writeFileSync(
       config,
-      readFileSync(config, 'utf8').replace(`target: '${target}' }`, `target: '${target}', prerender: true }`),
+      readFileSync(config, 'utf8').replace(
+        `target: '${target}' }`,
+        `target: '${target}', prerender: true }`,
+      ),
     )
     writeFileSync(
       join(app, 'app/routes/index.ts'),
@@ -76,7 +88,9 @@ for (const target of Object.keys(production).filter((t) => !process.argv[2] || t
     const missing = await page(base + '/nope')
     check(
       `${target} ${script}: home server-rendered`,
-      home.status === 200 && html.includes('data-server-rendered') && html.includes('Hello from Hono'),
+      home.status === 200 &&
+        html.includes('data-server-rendered') &&
+        html.includes('Hello from Hono'),
     )
     check(
       `${target} ${script}: an unknown URL, the error page with 404`,
@@ -100,12 +114,20 @@ for (const target of Object.keys(production).filter((t) => !process.argv[2] || t
 // --checks: oxfmt and oxlint pass on the app as created; AGENTS.md says how to run them and set up the hooks
 if (!process.argv[2] || process.argv[2] === 'node') {
   const app = join(work, 'checked')
-  sh('node', [join(here, 'index.js'), app, '--target', 'node', '--checks', '--git', '--no-install'], work)
+  sh(
+    'node',
+    [join(here, 'index.js'), app, '--target', 'node', '--checks', '--git', '--no-install'],
+    work,
+  )
   const pkg = JSON.parse(readFileSync(join(app, 'package.json'), 'utf8'))
   pkg.dependencies.fondu = `file:${tarball}`
   writeFileSync(join(app, 'package.json'), JSON.stringify(pkg, null, 2) + '\n')
   // lefthook's install sets up no hooks in CI unless LEFTHOOK is set
-  execFileSync('bun', ['install'], { cwd: app, stdio: 'ignore', env: { ...process.env, LEFTHOOK: '1' } })
+  execFileSync('bun', ['install'], {
+    cwd: app,
+    stdio: 'ignore',
+    env: { ...process.env, LEFTHOOK: '1' },
+  })
   const passes = (...args) => {
     try {
       sh('bunx', args, app)
@@ -121,7 +143,10 @@ if (!process.argv[2] || process.argv[2] === 'node') {
     ['pre-commit', 'commit-msg'].every((hook) => existsSync(join(app, '.git/hooks', hook))),
   )
   const agents = readFileSync(join(app, 'AGENTS.md'), 'utf8')
-  check('checks: AGENTS.md says how', agents.includes('Code checks') && agents.includes('lefthook install'))
+  check(
+    'checks: AGENTS.md says how',
+    agents.includes('Code checks') && agents.includes('lefthook install'),
+  )
 }
 rmSync(work, { recursive: true, force: true })
 process.exit(failed ? 1 : 0)

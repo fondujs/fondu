@@ -14,14 +14,20 @@ const SUMMARY =
  */
 function pageMarkdown(doc: Doc): string {
   let fenced = false
-  const body = readFileSync(new URL(`./app/pages/docs/${doc.slug || 'index'}.mdx`, import.meta.url), 'utf8')
+  const body = readFileSync(
+    new URL(`./app/pages/docs/${doc.slug || 'index'}.mdx`, import.meta.url),
+    'utf8',
+  )
     .split('\n')
     .filter((line) => {
       if (/^(```|~~~)/.test(line)) fenced = !fenced
       return fenced || !/^(import |export |<\/?[A-Z]\w*.*>$)/.test(line)
     })
     .join('\n')
-    .replace(/\]\((\/docs[^)#]*)(#[^)]*)?\)/g, (_, path: string, hash = '') => `](${SITE}${path}.md${hash})`)
+    .replace(
+      /\]\((\/docs[^)#]*)(#[^)]*)?\)/g,
+      (_, path: string, hash = '') => `](${SITE}${path}.md${hash})`,
+    )
     .replace(/\n{3,}/g, '\n\n')
     .trim()
   return `# ${doc.title}\n\n> ${doc.description}\n\n${body}\n`
@@ -71,7 +77,8 @@ export function markdown(): Plugin {
     },
     generateBundle() {
       if (this.environment.name !== 'client') return
-      for (const [fileName, source] of Object.entries(files())) this.emitFile({ type: 'asset', fileName, source })
+      for (const [fileName, source] of Object.entries(files()))
+        this.emitFile({ type: 'asset', fileName, source })
     },
   }
 }

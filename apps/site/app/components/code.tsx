@@ -40,7 +40,11 @@ export function CopyButton({
         className,
       )}
     >
-      {copied ? <Check className="size-3.5 text-brand-foreground" /> : <Copy className="size-3.5" />}
+      {copied ? (
+        <Check className="size-3.5 text-brand-foreground" />
+      ) : (
+        <Copy className="size-3.5" />
+      )}
     </button>
   )
 }
@@ -93,7 +97,11 @@ export function CodeTabs({ group, children }: { group?: string; children: ReactN
   // each block: a <pre>, inside a fragment as Shiki's rehype plugin writes it
   const blocks = Children.toArray(children)
     .filter(isValidElement)
-    .map((el) => (el.type === Fragment ? Children.toArray((el.props as { children: ReactNode }).children)[0] : el))
+    .map((el) =>
+      el.type === Fragment
+        ? Children.toArray((el.props as { children: ReactNode }).children)[0]
+        : el,
+    )
     .filter(isValidElement) as Array<ReactElement<{ 'data-title'?: string }>>
   const titles = blocks.map((block, i) => block.props['data-title'] ?? `Tab ${i + 1}`)
   const [chosen, choose] = useGroup(group)

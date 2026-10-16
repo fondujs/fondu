@@ -36,16 +36,22 @@ type ComponentProps<N> = N extends keyof Pages
     : Record<string, unknown>
   : Record<string, unknown>
 /** shared props the page takes with the same type: `render` may leave them out (every page gets them) */
-type FromShared<P> = { [K in keyof P & keyof SharedPageProps]: SharedPageProps[K] extends P[K] ? K : never }[keyof P &
-  keyof SharedPageProps]
+type FromShared<P> = {
+  [K in keyof P & keyof SharedPageProps]: SharedPageProps[K] extends P[K] ? K : never
+}[keyof P & keyof SharedPageProps]
 /** a page prop named like a shared prop, of another type: it would hide the shared one from the layout */
 type Clashing<P> = string extends keyof SharedPageProps
   ? never
   : Exclude<keyof P & keyof SharedPageProps, FromShared<P>>
 type ClashError = 'fondu: this page prop has the name of a shared prop (share()); rename it'
 /** what `render` takes: the component's props, less `errors` and the shared props it gets anyway (may still be given) */
-type OwnProps<N> = Omit<ComponentProps<N>, FromShared<ComponentProps<N>> | Clashing<ComponentProps<N>> | 'errors'> &
-  Partial<Pick<ComponentProps<N>, FromShared<ComponentProps<N>>>> & { [K in Clashing<ComponentProps<N>>]: ClashError }
+type OwnProps<N> = Omit<
+  ComponentProps<N>,
+  FromShared<ComponentProps<N>> | Clashing<ComponentProps<N>> | 'errors'
+> &
+  Partial<Pick<ComponentProps<N>, FromShared<ComponentProps<N>>>> & {
+    [K in Clashing<ComponentProps<N>>]: ClashError
+  }
 type PropsInput<P> = { [K in keyof P]: P[K] | (() => P[K] | Promise<P[K]>) }
 
 // ---- props as JSON delivers them: a page's prop types are what it receives; `render` takes what becomes that
@@ -76,7 +82,13 @@ type JsonMember<T, D extends unknown[]> = T extends Json | undefined
           ? Arrives<T[keyof T], [...D, 0]>
           : true
 type Arrives<T, D extends unknown[] = []> =
-  IsAny<T> extends true ? true : unknown extends T ? true : [JsonMember<T, D>] extends [true] ? true : false
+  IsAny<T> extends true
+    ? true
+    : unknown extends T
+      ? true
+      : [JsonMember<T, D>] extends [true]
+        ? true
+        : false
 /** what a route may pass for a page prop of type T: T, or anything JSON turns into it (a Date for a string: toJSON) */
 type JsonInput<T> =
   IsAny<T> extends true
@@ -88,9 +100,12 @@ type JsonInput<T> =
         : T extends object
           ? { [K in keyof T]: JsonInput<T[K]> } | { toJSON(): T }
           : T
-type NotJsonError = 'fondu: the page receives this prop as JSON (a Date as a string, a Map as {}): type it as such'
+type NotJsonError =
+  'fondu: the page receives this prop as JSON (a Date as a string, a Map as {}): type it as such'
 /** a page's props as `render` takes them: what becomes each as JSON, or an error for a type JSON can't deliver */
-export type Delivered<P> = { [K in keyof P]: Arrives<P[K]> extends true ? JsonInput<P[K]> : NotJsonError }
+export type Delivered<P> = {
+  [K in keyof P]: Arrives<P[K]> extends true ? JsonInput<P[K]> : NotJsonError
+}
 type RequiredKeys<T> = { [K in keyof T]-?: object extends Pick<T, K> ? never : K }[keyof T]
 
 const encrypted = new WeakSet<Context>()
@@ -125,7 +140,8 @@ const devPages = import.meta.env.DEV ? import.meta.glob('/app/pages/**/*.{tsx,js
 export const hasPage = (name: string) =>
   pages
     ? pages.includes(name)
-    : isPageFile(`${name}.tsx`) && ['tsx', 'jsx', 'mdx'].some((ext) => `/app/pages/${name}.${ext}` in devPages)
+    : isPageFile(`${name}.tsx`) &&
+      ['tsx', 'jsx', 'mdx'].some((ext) => `/app/pages/${name}.${ext}` in devPages)
 
 const headerSet = (c: Context, name: string) => {
   const value = c.req.header(name)
@@ -139,7 +155,8 @@ const headerSet = (c: Context, name: string) => {
       )
 }
 const isPrefetch = (c: Context) =>
-  c.req.header('purpose') === 'prefetch' || c.req.header('sec-purpose')?.includes('prefetch') === true
+  c.req.header('purpose') === 'prefetch' ||
+  c.req.header('sec-purpose')?.includes('prefetch') === true
 
 /** This URL as the page's: the request's for a GET, the page the request came from otherwise. */
 function pageUrl(c: Context): string {
@@ -158,7 +175,9 @@ export async function render<N extends PageName>(
   ...[props = {} as PropsInput<Delivered<OwnProps<N>>>, options = {}]: RenderArgs<N>
 ): Promise<Response> {
   if (!hasPage(component))
-    throw new Error(`fondu: there is no page "${component}": create app/pages/${component}.tsx (or .mdx)`)
+    throw new Error(
+      `fondu: there is no page "${component}": create app/pages/${component}.tsx (or .mdx)`,
+    )
   const partial = c.req.header('x-inertia-partial-component') === component
   const only = partial ? headerSet(c, 'x-inertia-partial-data') : null
   const except = partial ? headerSet(c, 'x-inertia-partial-except') : null
@@ -186,19 +205,29 @@ export async function render<N extends PageName>(
   const onceProps: Record<string, { prop: string; expiresAt: number | null }> = {}
   const pending: Array<[string, unknown]> = []
   const listOnce = (key: string, once: NonNullable<PropSpec['once']>) => {
-    onceProps[once.key ?? key] = { prop: key, expiresAt: once.ttl ? Date.now() + once.ttl * 1000 : null }
+    onceProps[once.key ?? key] = {
+      prop: key,
+      expiresAt: once.ttl ? Date.now() + once.ttl * 1000 : null,
+    }
   }
   const listMerge = (key: string, spec: PropSpec) => {
     if (reset.has(key)) return
     if (spec.scroll) {
       // <InfiniteScroll> says which side it loads: the previous page goes before what the client holds
       const intent =
-        c.req.header('x-inertia-infinite-scroll-merge-intent') === 'prepend' ? 'prependProps' : 'mergeProps'
+        c.req.header('x-inertia-infinite-scroll-merge-intent') === 'prepend'
+          ? 'prependProps'
+          : 'mergeProps'
       lists[intent].push(`${key}.data`)
       return
     }
     const { strategy, paths, matchOn } = spec.merge!
-    const into = strategy === 'append' ? 'mergeProps' : strategy === 'prepend' ? 'prependProps' : 'deepMergeProps'
+    const into =
+      strategy === 'append'
+        ? 'mergeProps'
+        : strategy === 'prepend'
+          ? 'prependProps'
+          : 'deepMergeProps'
     lists[into].push(...(paths.length ? paths.map((path) => `${key}.${path}`) : [key]))
     lists.matchPropsOn.push(...matchOn.map((field) => `${key}.${field}`))
   }
@@ -283,15 +312,28 @@ export async function render<N extends PageName>(
 
 const versionCheck: MiddlewareHandler = async (c, next) => {
   // an Inertia visit made by a client built from other assets: reload the page as a document
-  if (version && c.req.method === 'GET' && isInertia(c) && c.req.header('x-inertia-version') !== version) {
-    return c.body(null, 409, { 'X-Inertia-Location': c.req.url, 'X-Inertia-Version': version, Vary: 'X-Inertia' })
+  if (
+    version &&
+    c.req.method === 'GET' &&
+    isInertia(c) &&
+    c.req.header('x-inertia-version') !== version
+  ) {
+    return c.body(null, 409, {
+      'X-Inertia-Location': c.req.url,
+      'X-Inertia-Version': version,
+      Vary: 'X-Inertia',
+    })
   }
   await next()
   // a URL answers a visit and a document differently: caches keep them apart
   c.header('Vary', 'X-Inertia', { append: true })
   if (!isInertia(c)) return
   // an empty answer to a visit (an action that returns nothing to show): back to the page, as inertia-laravel does
-  if (c.res.status === 200 && !c.res.headers.has('x-inertia') && (await c.res.clone().text()) === '') {
+  if (
+    c.res.status === 200 &&
+    !c.res.headers.has('x-inertia') &&
+    (await c.res.clone().text()) === ''
+  ) {
     c.res = back(c)
     return
   }

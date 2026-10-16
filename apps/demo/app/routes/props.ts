@@ -10,7 +10,13 @@ export const loader = defineHandler((c) =>
     boolean: true,
     nothing: null,
     list: ['Hono', 'Inertia', 'React'],
-    profile: { id: 7, name: 'Ada', email: 'ada@example.com', roles: ['editor', 'reviewer'], isAdmin: false },
+    profile: {
+      id: 7,
+      name: 'Ada',
+      email: 'ada@example.com',
+      roles: ['editor', 'reviewer'],
+      isAdmin: false,
+    },
     computedAt: () => new Date().toISOString(),
   }),
 )

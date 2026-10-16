@@ -19,9 +19,9 @@ export default function Merging({ page, messages, log, counters }: Props) {
       <Head title="Merging props" />
       <h1>Merging props</h1>
       <p className="lede">
-        On a partial reload, merge props are combined with what the client already holds instead of replacing it:{' '}
-        <code>merge()</code> appends, <code>prepend()</code> puts new items first, <code>deepMerge()</code> merges
-        objects at any depth.
+        On a partial reload, merge props are combined with what the client already holds instead of
+        replacing it: <code>merge()</code> appends, <code>prepend()</code> puts new items first,{' '}
+        <code>deepMerge()</code> merges objects at any depth.
       </p>
       <div className="grid gap-4 sm:grid-cols-2">
         <DemoCard title="Append" tag="merge(…, { matchOn: 'id' })">
@@ -33,7 +33,10 @@ export default function Merging({ page, messages, log, counters }: Props) {
             ))}
           </ul>
           <div className="flex gap-2">
-            <Button onClick={() => reload(['messages', 'page'], { page: page + 1 })} data-testid="more">
+            <Button
+              onClick={() => reload(['messages', 'page'], { page: page + 1 })}
+              data-testid="more"
+            >
               Load page {page + 1}
             </Button>
             <Button

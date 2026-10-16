@@ -53,27 +53,37 @@ export const propSpec = (value: unknown): PropSpec | null =>
 function make<T>(name: string, value: unknown, add: Partial<PropSpec>, can: Kind[]): Prop<T> {
   const inner = propSpec(value)
   if (!inner) return { [PROP]: true, value, ...add } as unknown as Prop<T>
-  const kinds = (Object.keys(inner) as Array<keyof PropSpec>).filter((k): k is Kind => k !== 'value')
+  const kinds = (Object.keys(inner) as Array<keyof PropSpec>).filter(
+    (k): k is Kind => k !== 'value',
+  )
   const other = kinds.find((k) => !can.includes(k))
   if (other) throw new Error(`fondu: ${name}() can't wrap ${other}()`)
   return { ...inner, ...add } as unknown as Prop<T>
 }
 
-export const optional = <T>(value: Resolver<T>) => make<T>('optional', value, { optional: true }, [])
+export const optional = <T>(value: Resolver<T>) =>
+  make<T>('optional', value, { optional: true }, [])
 export const always = <T>(value: Lazy<T>) => make<T>('always', value, { always: true }, [])
 export const defer = <T>(
   value: Resolver<T> | Prop<T>,
   { group = 'default', rescue = false }: { group?: string; rescue?: boolean } = {},
 ) => make<T>('defer', value, { defer: { group, rescue } }, ['scroll'])
-export const once = <T>(value: Resolver<T> | Prop<T>, options: { key?: string; ttl?: number; fresh?: boolean } = {}) =>
-  make<T>('once', value, { once: options }, ['defer', 'optional', 'merge'])
-export const scroll = <T>(value: Resolver<Paginated<T>>, { pageName = 'page' }: { pageName?: string } = {}) =>
-  make<Paginated<T>>('scroll', value, { scroll: { pageName } }, [])
+export const once = <T>(
+  value: Resolver<T> | Prop<T>,
+  options: { key?: string; ttl?: number; fresh?: boolean } = {},
+) => make<T>('once', value, { once: options }, ['defer', 'optional', 'merge'])
+export const scroll = <T>(
+  value: Resolver<Paginated<T>>,
+  { pageName = 'page' }: { pageName?: string } = {},
+) => make<Paginated<T>>('scroll', value, { scroll: { pageName } }, [])
 
 const list = (value: string | string[] | undefined) => [value ?? []].flat()
 const merger =
   (strategy: 'append' | 'prepend') =>
-  <T>(value: Lazy<T> | Prop<T>, options: { path?: string | string[]; matchOn?: string | string[] } = {}) =>
+  <T>(
+    value: Lazy<T> | Prop<T>,
+    options: { path?: string | string[]; matchOn?: string | string[] } = {},
+  ) =>
     make<T>(
       strategy === 'append' ? 'merge' : 'prepend',
       value,
@@ -82,11 +92,16 @@ const merger =
     )
 export const merge = merger('append')
 export const prepend = merger('prepend')
-export const deepMerge = <T>(value: Lazy<T> | Prop<T>, options: { matchOn?: string | string[] } = {}) =>
-  make<T>('deepMerge', value, { merge: { strategy: 'deep', paths: [], matchOn: list(options.matchOn) } }, [
-    'defer',
-    'once',
-  ])
+export const deepMerge = <T>(
+  value: Lazy<T> | Prop<T>,
+  options: { matchOn?: string | string[] } = {},
+) =>
+  make<T>(
+    'deepMerge',
+    value,
+    { merge: { strategy: 'deep', paths: [], matchOn: list(options.matchOn) } },
+    ['defer', 'once'],
+  )
 
 export const resolve = async (value: Lazy<unknown>) =>
   typeof value === 'function' ? (value as Resolver<unknown>)() : value

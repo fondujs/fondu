@@ -26,14 +26,33 @@ export function Alert({
   variant,
   ...props
 }: React.ComponentProps<'div'> & VariantProps<typeof alertVariants>): React.ReactElement {
-  return <div className={cn(alertVariants({ variant }), className)} data-slot="alert" role="alert" {...props} />
+  return (
+    <div
+      className={cn(alertVariants({ variant }), className)}
+      data-slot="alert"
+      role="alert"
+      {...props}
+    />
+  )
 }
 
-export function AlertTitle({ className, ...props }: React.ComponentProps<'div'>): React.ReactElement {
-  return <div className={cn('font-medium [svg~&]:col-start-2', className)} data-slot="alert-title" {...props} />
+export function AlertTitle({
+  className,
+  ...props
+}: React.ComponentProps<'div'>): React.ReactElement {
+  return (
+    <div
+      className={cn('font-medium [svg~&]:col-start-2', className)}
+      data-slot="alert-title"
+      {...props}
+    />
+  )
 }
 
-export function AlertDescription({ className, ...props }: React.ComponentProps<'div'>): React.ReactElement {
+export function AlertDescription({
+  className,
+  ...props
+}: React.ComponentProps<'div'>): React.ReactElement {
   return (
     <div
       className={cn('flex flex-col gap-2.5 text-muted-foreground [svg~&]:col-start-2', className)}
@@ -43,7 +62,10 @@ export function AlertDescription({ className, ...props }: React.ComponentProps<'
   )
 }
 
-export function AlertAction({ className, ...props }: React.ComponentProps<'div'>): React.ReactElement {
+export function AlertAction({
+  className,
+  ...props
+}: React.ComponentProps<'div'>): React.ReactElement {
   return (
     <div
       className={cn(
