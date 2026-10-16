@@ -16,11 +16,23 @@ import {
   DrawerTitle,
 } from '#/components/ui/drawer.tsx'
 
-const sections: Array<[group: string, links: Array<[url: string, label: string]>]> = [
+// the overview, then Fondu's demos, then Inertia's (as on the overview)
+const sections: Array<[group: string | null, links: Array<[url: string, label: string]>]> = [
+  [null, [[href('/'), 'Overview']]],
+  [
+    'Fondu',
+    [
+      [href('/routes'), 'Routes & actions'],
+      [href('/http'), 'HTTP requests'],
+      [href('/errors'), 'Errors'],
+      [href('/i18n'), 'Languages'],
+      [href('/account'), 'Account'],
+      [href('/admin/dashboard'), 'Admin'],
+    ],
+  ],
   [
     'Inertia',
     [
-      [href('/'), 'Overview'],
       [href('/props'), 'Props'],
       [href('/partial'), 'Partial reloads'],
       [href('/deferred'), 'Deferred props'],
@@ -32,18 +44,7 @@ const sections: Array<[group: string, links: Array<[url: string, label: string]>
       [href('/versioning'), 'Asset versioning'],
       [href('/history'), 'History encryption'],
       [href('/ssr'), 'Server-side rendering'],
-    ],
-  ],
-  [
-    'Fondu',
-    [
-      [href('/routes'), 'Routes & actions'],
-      [href('/http'), 'HTTP requests'],
       [href('/navigation'), 'Navigation'],
-      [href('/errors'), 'Errors'],
-      [href('/i18n'), 'Languages'],
-      [href('/account'), 'Account'],
-      [href('/admin/dashboard'), 'Admin'],
     ],
   ],
 ]
@@ -96,7 +97,22 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             /{component}
           </span>
           <RenderBadge />
-          <span className="ml-auto flex items-center gap-2">
+          <span className="ml-auto flex items-center gap-1">
+            <a
+              href="https://fondu.dev/docs"
+              className="rounded-md px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+              data-testid="docs"
+            >
+              Docs
+            </a>
+            <a
+              href="https://github.com/fondujs/fondu"
+              aria-label="Fondu on GitHub"
+              className="mr-1 rounded-md p-2 text-muted-foreground transition-colors hover:text-foreground"
+              data-testid="github"
+            >
+              <GitHub className="size-4" />
+            </a>
             <AccountMenu />
           </span>
         </header>
@@ -109,8 +125,16 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
 const Home = () => (
   <Link href={href('/')} className="flex items-center gap-2 px-2 font-heading font-semibold">
-    <Logo className="size-6" /> Fondu
+    <Logo className="size-6" /> Fondu{' '}
+    <span className="font-normal text-muted-foreground">demo</span>
   </Link>
+)
+
+/** GitHub's mark (Octicons' mark-github), for the link to the repository */
+const GitHub = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 16 16" aria-hidden="true" fill="currentColor" className={className}>
+    <path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z" />
+  </svg>
 )
 
 /** The demos, by group; where you are: a bar of the brand's gold */
@@ -126,8 +150,8 @@ function Nav({
   return (
     <nav id={id} aria-label="Demos" className="grid gap-5">
       {sections.map(([group, links]) => (
-        <div key={group}>
-          <p className="mb-1 px-2 text-xs font-medium text-muted-foreground">{group}</p>
+        <div key={group ?? 'start'}>
+          {group && <p className="mb-1 px-2 text-xs font-medium text-muted-foreground">{group}</p>}
           <ul className="grid gap-px">
             {links.map(([to, label]) => (
               <li key={to}>

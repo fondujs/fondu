@@ -9,7 +9,7 @@ import './styles/app.css'
 // with its own _layout.tsx (pages/admin/_layout.tsx).
 createInertiaApp({
   pages: './pages',
-  title: (title) => (title ? `${title} · Fondu` : 'Fondu'),
+  title: (title) => (title ? `${title} · Fondu demo` : 'Fondu demo'),
   layout: () => AppLayout,
   progress: { delay: 350, color: 'var(--brand)' },
 })
