@@ -37,7 +37,7 @@ for (const target of Object.keys(production).filter(
     `${target}: AGENTS.md filled in, no code checks unless asked`,
     !agents.includes('{{') && !agents.includes('Code checks'),
   )
-  const greeting = target === 'cloudflare' ? 'Hello from Cloudflare' : 'Hello from Hono' // a Worker variable
+  const greeting = target === 'cloudflare' ? 'Hello from Cloudflare' : 'Hello from Fondu' // a Worker variable
   const pkg = JSON.parse(readFileSync(join(app, 'package.json'), 'utf8'))
   pkg.dependencies.fondu = `file:${tarball}`
   writeFileSync(join(app, 'package.json'), JSON.stringify(pkg, null, 2))
