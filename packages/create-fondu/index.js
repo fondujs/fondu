@@ -139,6 +139,7 @@ for (const layer of layers) {
   for (const key of ['dependencies', 'devDependencies'])
     pkg[key] = sortKeys({ ...pkg[key], ...extra[key] })
 }
+pkg.scripts = sortKeys(pkg.scripts) // as oxfmt's sortPackageJson (with sortScripts) leaves them
 pkg.dependencies.fondu = `^${own.version}`
 writeFileSync(join(root, 'package.json'), JSON.stringify(pkg, null, 2) + '\n')
 

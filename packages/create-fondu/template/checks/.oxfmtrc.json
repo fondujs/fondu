@@ -3,7 +3,9 @@
   "semi": false,
   "singleQuote": true,
   "sortImports": true,
-  "sortPackageJson": false,
+  "sortPackageJson": {
+    "sortScripts": true
+  },
   "sortTailwindcss": {
     "stylesheet": "./app/styles/app.css"
   },
