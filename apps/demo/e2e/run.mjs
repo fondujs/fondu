@@ -225,11 +225,15 @@ ok(
 ok('title on a document load', (await page.title()) === 'Overview · Fondu demo', await page.title())
 {
   const links = await page.evaluate(() =>
-    ['docs', 'github'].map((id) => document.querySelector(`[data-testid=${id}]`)?.href),
+    ['docs', 'github'].map((id) => {
+      const a = document.querySelector(`aside [data-testid=${id}]`)
+      return [a?.href, a?.target]
+    }),
   )
   ok(
-    'the header links to the docs and the repository',
-    JSON.stringify(links) === '["https://fondu.dev/docs","https://github.com/fondujs/fondu"]',
+    'the menu links to the docs and to the repository (in a new tab)',
+    JSON.stringify(links) ===
+      '[["https://fondu.dev/docs",""],["https://github.com/fondujs/fondu","_blank"]]',
     JSON.stringify(links),
   )
 }
@@ -1220,11 +1224,23 @@ await page.waitForFunction(
     !closed && opened && !(await shown()),
     JSON.stringify([closed, opened]),
   )
-  await mp.goto(BASE + '/admin/dashboard', { waitUntil: 'networkidle0' })
-  ok(
-    'mobile: no part of a page is wider than the screen',
-    await mp.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
-  )
+  const wide = []
+  for (const p of new Set([
+    ...(await mp.evaluate(() =>
+      [...document.querySelectorAll('#menu a[href^="/"], aside a[href^="/"]')].map((a) =>
+        a.getAttribute('href'),
+      ),
+    )),
+    '/contacts/1',
+    '/ssr/browser',
+    '/de/i18n',
+    '/login',
+    '/nope',
+  ])) {
+    await mp.goto(BASE + p, { waitUntil: 'networkidle0' })
+    if (await mp.evaluate(() => document.documentElement.scrollWidth > innerWidth)) wide.push(p)
+  }
+  ok('mobile: no page is wider than the screen', wide.length === 0, JSON.stringify(wide))
   await mp.close()
 }
 

@@ -25,7 +25,8 @@ export function DemoCard({
   className?: string
 }) {
   return (
-    <Card render={<section />} className={className}>
+    // min-w-0: in a grid or a row, a wide line (code) scrolls inside the card instead of widening the page
+    <Card render={<section />} className={cn('min-w-0', className)}>
       <CardHeader className="p-5">
         <CardTitle render={<h2 />} className="text-base">
           {title}
