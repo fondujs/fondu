@@ -9,6 +9,7 @@ npm create fondu@latest my-app
 pnpm create fondu@latest my-app
 ```
 
-Options: `--target bun|cloudflare|node`, `--no-install`.
+Options: `--target bun|cloudflare|node`; `--checks` (or `--no-checks`) for code checks: oxfmt and oxlint, git hooks
+that run them and check commit messages (lefthook, commitlint), VS Code settings that format on save; `--no-install`.
 
 Then the [quick start](https://fondu.dev/docs/quick-start), and the [docs](https://fondu.dev/docs).

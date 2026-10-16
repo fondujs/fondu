@@ -1,0 +1,13 @@
+{
+  "scripts": {
+    "fmt": "oxfmt",
+    "lint": "oxlint"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^21.2.3",
+    "@commitlint/config-conventional": "^21.2.3",
+    "lefthook": "^2.2.2",
+    "oxfmt": "^0.73.0",
+    "oxlint": "^1.88.0"
+  }
+}

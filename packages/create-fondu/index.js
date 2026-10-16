@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// `bun create fondu [dir] [--target bun|cloudflare|node] [--no-install]` (or npm / pnpm / yarn create fondu)
+// `bun create fondu [dir] [--target bun|cloudflare|node] [--checks|--no-checks] [--no-install]` (or npm / pnpm / yarn)
 import { spawnSync } from 'node:child_process'
 import { cpSync, existsSync, readdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs'
 import { basename, join, relative, resolve } from 'node:path'
@@ -20,13 +20,21 @@ const SCRIPTS = {
   deploy: 'build and deploy with wrangler',
   'cf-typegen': 'types for the bindings in wrangler.jsonc',
   typecheck: 'tsc',
+  fmt: 'format (oxfmt)',
+  lint: 'lint (oxlint)',
 }
+const EXEC = { bun: 'bunx', pnpm: 'pnpm exec', yarn: 'yarn', npm: 'npx' }
 
 const template = new URL('./template/', import.meta.url)
 const own = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'))
 const { values, positionals } = parseArgs({
   allowPositionals: true,
-  options: { target: { type: 'string' }, 'no-install': { type: 'boolean' } },
+  options: {
+    target: { type: 'string' },
+    checks: { type: 'boolean' },
+    'no-checks': { type: 'boolean' },
+    'no-install': { type: 'boolean' },
+  },
 })
 const done = (value) => {
   if (p.isCancel(value)) {
@@ -57,28 +65,45 @@ target ??= done(
   }),
 )
 
-// the files: the base, then the target's (its package.json is merged into the base's)
+const checks = values.checks
+  ? true
+  : values['no-checks'] || !process.stdin.isTTY
+    ? false
+    : done(
+        await p.confirm({
+          message: 'Add code checks? oxfmt and oxlint, and git hooks (lefthook, commitlint)',
+          initialValue: false,
+        }),
+      )
+const pm = (process.env.npm_config_user_agent ?? 'npm').split('/')[0]
+// `bun build` is Bun's bundler, not the script
+const run = (script) =>
+  pm === 'npm' || (pm === 'bun' && script === 'build') ? `${pm} run ${script}` : `${pm} ${script}`
+
+// the files: the base, then the target's, then the checks' (their package.json merged into the base's)
 const name =
   basename(root)
     .toLowerCase()
     .replace(/[^a-z0-9._~-]+/g, '-')
     .replace(/^[._-]+/, '') || 'fondu-app'
 cpSync(new URL('base/', template), root, { recursive: true })
-for (const file of readdirSync(new URL(`${target}/`, template))) {
-  if (file !== 'package.json') cpSync(new URL(`${target}/${file}`, template), join(root, file))
-}
+const layers = [target, ...(checks ? ['checks'] : [])]
+for (const layer of layers)
+  for (const file of readdirSync(new URL(`${layer}/`, template))) {
+    if (file !== 'package.json') cpSync(new URL(`${layer}/${file}`, template), join(root, file), { recursive: true })
+  }
 renameSync(join(root, '_gitignore'), join(root, '.gitignore')) // npm leaves .gitignore out of packages
 
 const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
-const extra = JSON.parse(readFileSync(new URL(`${target}/package.json`, template), 'utf8'))
 pkg.name = name
-pkg.scripts = { ...extra.scripts, ...pkg.scripts }
-for (const key of ['dependencies', 'devDependencies']) pkg[key] = sortKeys({ ...pkg[key], ...extra[key] })
+for (const layer of layers) {
+  const extra = JSON.parse(readFileSync(new URL(`${layer}/package.json`, template), 'utf8'))
+  pkg.scripts = layer === 'checks' ? { ...pkg.scripts, ...extra.scripts } : { ...extra.scripts, ...pkg.scripts }
+  for (const key of ['dependencies', 'devDependencies']) pkg[key] = sortKeys({ ...pkg[key], ...extra[key] })
+}
 pkg.dependencies.fondu = `^${own.version}`
 writeFileSync(join(root, 'package.json'), JSON.stringify(pkg, null, 2) + '\n')
 
-const pm = (process.env.npm_config_user_agent ?? 'npm').split('/')[0]
-const run = (script) => (pm === 'npm' ? `npm run ${script}` : `${pm} ${script}`)
 const readme = readFileSync(join(root, 'README.md'), 'utf8')
   .replace('{{name}}', name)
   .replace('{{target}}', TARGETS[target].label)
@@ -89,6 +114,23 @@ const readme = readFileSync(join(root, 'README.md'), 'utf8')
       .join('\n'),
   )
 writeFileSync(join(root, 'README.md'), readme)
+const hooks = `${EXEC[pm] ?? 'npx'} lefthook install` // in a git repository only: none is made here
+const agents = join(root, 'AGENTS.md')
+writeFileSync(
+  agents,
+  readFileSync(agents, 'utf8').replace(
+    '{{checks}}\n',
+    checks
+      ? `- Code checks: \`${run('fmt')}\` formats (oxfmt), \`${run('lint')}\` lints (oxlint); run both before finishing.
+  Git hooks (lefthook; after \`git init\`, \`${hooks}\`) do it for each commit, and check its message:
+  Conventional Commits (\`feat: …\`, \`fix: …\`).\n`
+      : '',
+  ),
+)
+if (checks) {
+  const file = join(root, 'lefthook.yml')
+  writeFileSync(file, readFileSync(file, 'utf8').replaceAll('__EXEC__', EXEC[pm] ?? 'npx'))
+}
 if (target === 'cloudflare') {
   const wrangler = join(root, 'wrangler.jsonc')
   // a Worker's name: lowercase letters, digits and dashes (no dots or underscores, which a package name may have)
@@ -111,7 +153,13 @@ if (install) {
 
 const cd = relative(process.cwd(), root) || '.'
 p.outro(
-  ['Next:', cd === '.' ? null : `  cd ${cd}`, install ? null : `  ${pm} install`, `  ${run('dev')}`]
+  [
+    'Next:',
+    cd === '.' ? null : `  cd ${cd}`,
+    install ? null : `  ${pm} install`,
+    checks ? `  git init && ${hooks}   # the git hooks` : null,
+    `  ${run('dev')}`,
+  ]
     .filter(Boolean)
     .join('\n'),
 )

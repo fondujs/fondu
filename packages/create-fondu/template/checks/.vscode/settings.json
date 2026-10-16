@@ -1,0 +1,11 @@
+{
+  "files.readonlyInclude": {
+    "**/fondu.gen.d.ts": true
+  },
+  "editor.defaultFormatter": "oxc.oxc-vscode",
+  "editor.formatOnSave": true,
+  "editor.formatOnSaveMode": "file",
+  "editor.codeActionsOnSave": {
+    "source.fixAll.oxc": "always"
+  }
+}

@@ -26,6 +26,7 @@ const check = (name, ok, detail = '') => {
 for (const target of Object.keys(production).filter((t) => !process.argv[2] || t === process.argv[2])) {
   const app = join(work, `my_app.${target}-2.0`) // a name with characters a Worker's name may not have
   sh('node', [join(here, 'index.js'), app, '--target', target, '--no-install'], work)
+  check(`${target}: no code checks unless asked`, !readFileSync(join(app, 'AGENTS.md'), 'utf8').includes('checks}}'))
   const pkg = JSON.parse(readFileSync(join(app, 'package.json'), 'utf8'))
   pkg.dependencies.fondu = `file:${tarball}`
   writeFileSync(join(app, 'package.json'), JSON.stringify(pkg, null, 2))
@@ -95,6 +96,27 @@ for (const target of Object.keys(production).filter((t) => !process.argv[2] || t
       )
     check(`${target} ${script}: says where it listens`, output().includes(says), output())
   })
+}
+// --checks: oxfmt and oxlint pass on the app as created; AGENTS.md says how to run them and set up the hooks
+if (!process.argv[2] || process.argv[2] === 'node') {
+  const app = join(work, 'checked')
+  sh('node', [join(here, 'index.js'), app, '--target', 'node', '--checks', '--no-install'], work)
+  const pkg = JSON.parse(readFileSync(join(app, 'package.json'), 'utf8'))
+  pkg.dependencies.fondu = `file:${tarball}`
+  writeFileSync(join(app, 'package.json'), JSON.stringify(pkg, null, 2) + '\n')
+  sh('bun', ['install'], app)
+  const passes = (...args) => {
+    try {
+      sh('bunx', args, app)
+      return true
+    } catch {
+      return false
+    }
+  }
+  check('checks: the new app is formatted (oxfmt --check)', passes('oxfmt', '--check'))
+  check('checks: the new app is linted (oxlint)', passes('oxlint'))
+  const agents = readFileSync(join(app, 'AGENTS.md'), 'utf8')
+  check('checks: AGENTS.md says how', agents.includes('Code checks') && agents.includes('lefthook install'))
 }
 rmSync(work, { recursive: true, force: true })
 process.exit(failed ? 1 : 0)
