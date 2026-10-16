@@ -2,7 +2,7 @@
 // runs it in development (`dev`), then builds, typechecks and runs it in production (`start` / `preview`): the home
 // page server-rendered, a 404 page, the server saying where it listens. `bun run test [target]` here.
 import { execFileSync, spawn } from 'node:child_process'
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { stripVTControlCharacters } from 'node:util'
@@ -100,7 +100,7 @@ for (const target of Object.keys(production).filter((t) => !process.argv[2] || t
 // --checks: oxfmt and oxlint pass on the app as created; AGENTS.md says how to run them and set up the hooks
 if (!process.argv[2] || process.argv[2] === 'node') {
   const app = join(work, 'checked')
-  sh('node', [join(here, 'index.js'), app, '--target', 'node', '--checks', '--no-install'], work)
+  sh('node', [join(here, 'index.js'), app, '--target', 'node', '--checks', '--git', '--no-install'], work)
   const pkg = JSON.parse(readFileSync(join(app, 'package.json'), 'utf8'))
   pkg.dependencies.fondu = `file:${tarball}`
   writeFileSync(join(app, 'package.json'), JSON.stringify(pkg, null, 2) + '\n')
@@ -115,6 +115,10 @@ if (!process.argv[2] || process.argv[2] === 'node') {
   }
   check('checks: the new app is formatted (oxfmt --check)', passes('oxfmt', '--check'))
   check('checks: the new app is linted (oxlint)', passes('oxlint'))
+  check(
+    'checks: --git, the hooks set up by the install',
+    ['pre-commit', 'commit-msg'].every((hook) => existsSync(join(app, '.git/hooks', hook))),
+  )
   const agents = readFileSync(join(app, 'AGENTS.md'), 'utf8')
   check('checks: AGENTS.md says how', agents.includes('Code checks') && agents.includes('lefthook install'))
 }

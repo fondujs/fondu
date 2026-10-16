@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// `bun create fondu [dir] [--target bun|cloudflare|node] [--checks|--no-checks] [--no-install]` (or npm / pnpm / yarn)
+// `bun create fondu [dir] [--target bun|cloudflare|node] [--checks] [--git] [--no-install]` (or npm / pnpm / yarn);
+// `--no-checks`, `--no-git` answer no without asking
 import { spawnSync } from 'node:child_process'
 import { cpSync, existsSync, readdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs'
 import { basename, join, relative, resolve } from 'node:path'
@@ -33,6 +34,8 @@ const { values, positionals } = parseArgs({
     target: { type: 'string' },
     checks: { type: 'boolean' },
     'no-checks': { type: 'boolean' },
+    git: { type: 'boolean' },
+    'no-git': { type: 'boolean' },
     'no-install': { type: 'boolean' },
   },
 })
@@ -114,7 +117,7 @@ const readme = readFileSync(join(root, 'README.md'), 'utf8')
       .join('\n'),
   )
 writeFileSync(join(root, 'README.md'), readme)
-const hooks = `${EXEC[pm] ?? 'npx'} lefthook install` // in a git repository only: none is made here
+const hooks = `${EXEC[pm] ?? 'npx'} lefthook install` // in a git repository only
 const agents = join(root, 'AGENTS.md')
 writeFileSync(
   agents,
@@ -122,8 +125,8 @@ writeFileSync(
     '{{checks}}\n',
     checks
       ? `- Code checks: \`${run('fmt')}\` formats (oxfmt), \`${run('lint')}\` lints (oxlint); run both before finishing.
-  Git hooks (lefthook; after \`git init\`, \`${hooks}\`) do it for each commit, and check its message:
-  Conventional Commits (\`feat: …\`, \`fix: …\`).\n`
+  Git hooks (lefthook, set up by the install in a git repository, or \`${hooks}\`) do it for each commit, and
+  check its message: Conventional Commits (\`feat: …\`, \`fix: …\`).\n`
       : '',
   ),
 )
@@ -143,6 +146,22 @@ if (target === 'cloudflare') {
   writeFileSync(wrangler, readFileSync(wrangler, 'utf8').replace('"name": "fondu-app"', `"name": "${worker}"`))
 }
 
+// a git repository: asked for unless the app is in one already (or git isn't there); made before the install, so
+// lefthook's own install sets up the hooks
+const git = (args) => spawnSync('git', args, { cwd: root, stdio: 'ignore' })
+const inRepo = git(['rev-parse', '--is-inside-work-tree']).status === 0
+const gitThere = inRepo || !git(['--version']).error
+const initGit =
+  !inRepo &&
+  gitThere &&
+  (values.git
+    ? true
+    : values['no-git'] || !process.stdin.isTTY
+      ? false
+      : done(await p.confirm({ message: 'Initialize a git repository?' })))
+if (initGit && git(['init', '--quiet']).status !== 0) p.log.warn('git init failed')
+const repo = inRepo || (initGit && git(['rev-parse', '--git-dir']).status === 0)
+
 const install = values['no-install']
   ? false
   : !process.stdin.isTTY || done(await p.confirm({ message: `Install the dependencies with ${pm}?` }))
@@ -157,7 +176,7 @@ p.outro(
     'Next:',
     cd === '.' ? null : `  cd ${cd}`,
     install ? null : `  ${pm} install`,
-    checks ? `  git init && ${hooks}   # the git hooks` : null,
+    checks && !repo ? `  git init && ${hooks}   # the git hooks` : null,
     `  ${run('dev')}`,
   ]
     .filter(Boolean)
