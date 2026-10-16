@@ -1,14 +1,14 @@
 import { createHash } from 'node:crypto'
 import { appendFileSync, existsSync, readdirSync, readFileSync } from 'node:fs'
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { createRequire } from 'node:module'
+import { builtinModules, createRequire } from 'node:module'
 import { dirname, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
 import devServer, { defaultOptions as devServerDefaults } from '@hono/vite-dev-server'
 import inertia from '@inertiajs/vite'
 import react, { type Options as ReactOptions } from '@vitejs/plugin-react'
-import type { Plugin, PluginOption, ResolvedConfig } from 'vite'
+import type { Plugin, PluginOption, ResolvedConfig, UserConfig } from 'vite'
 
 import { isPageFile } from '../paths.js'
 import { hmr, PAGE_EXPORTS, PROPS_EVENT } from './hmr.js'
@@ -20,9 +20,10 @@ import { typegen } from './typegen.js'
  * `vite.config.ts`: `plugins: [fondu({ target: 'node' })]` (or `'bun'`; for Cloudflare: `cloudflare()` and
  * `fondu({ target: 'cloudflare' })`). Composes the packages that do the work:
  * - `@vitejs/plugin-react`, and `@inertiajs/vite` (pages from `app/pages/`, the server render of `app/app.tsx`)
- * - Node / Bun: `@hono/vite-dev-server` (dev) and `@hono/vite-build` (`vite build --mode client && vite build`)
- * - Cloudflare: `@cloudflare/vite-plugin` (yours: dev in workerd, one `vite build`)
- * and adds what none of them does: the document's asset tags, the generated types, the server-only guard.
+ * - Node / Bun: `@hono/vite-dev-server` (dev); the build is Vite's own, of two environments (`serverEntry()`)
+ * - Cloudflare: `@cloudflare/vite-plugin` (yours: dev in workerd, the Worker's build)
+ * and adds what none of them does: the document's asset tags, the generated types, the server-only guard. One
+ * `vite build` builds the client, then the server, then the pages to prerender.
  */
 export interface FonduOptions {
   target: 'node' | 'bun' | 'cloudflare'
@@ -52,7 +53,11 @@ export const HONO = [
 ]
 const SERVER = './app/server.ts'
 const DEV_CSS = '/@fondu/dev.css'
-const V = { assets: 'virtual:fondu/assets', ssr: 'virtual:fondu/ssr' }
+const V = {
+  assets: 'virtual:fondu/assets',
+  ssr: 'virtual:fondu/ssr',
+  serverEntry: 'virtual:fondu/server-entry',
+}
 const resolved = (id: string) => '\0' + id
 
 /**
@@ -130,54 +135,50 @@ export default function fondu(options: FonduOptions): PluginOption[] {
   ]
 }
 
-async function buildPlugin(options: FonduOptions): Promise<Plugin> {
-  const { default: build } =
-    options.target === 'bun'
-      ? await import('@hono/vite-build/bun')
-      : await import('@hono/vite-build/node')
-  // the app's dependencies stay in node_modules (as with any Node server: native modules cannot be bundled)
-  const pkg = JSON.parse(readFileSync(resolve('package.json'), 'utf8')) as {
+/** the app's dependencies stay in node_modules, as with any Node server (native modules cannot be bundled) */
+function dependencies(root = ''): string[] {
+  const pkg = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8')) as {
     dependencies?: Record<string, string>
   }
-  const external = Object.keys(pkg.dependencies ?? {}).filter((d) => d !== 'fondu')
-  const plugin = build({
-    entry: SERVER,
-    external,
-    outputDir: './dist/server', // next to dist/client, as the client build writes it
-    emptyOutDir: true, // dist/server is the server build's own
-    // Node: @hono/node-server's serve() on `PORT` (else the option), saying where it listens, with a graceful
-    // shutdown on SIGTERM / SIGINT (10 s). Bun serves the default export itself and reads `PORT`.
-    ...(options.target === 'node' && {
-      entryContentAfterHooks: [
-        (app: string) =>
-          [
-            `import { serve } from '@hono/node-server'`,
-            `const server = serve({ fetch: ${app}.fetch, port: Number(process.env.PORT) || ${options.port ?? 3000} }, (info) => console.log(\`Listening on http://localhost:\${info.port}\`))`,
-            `const shutdown = () => { server.close(() => process.exit(0)); setTimeout(() => process.exit(1), 10_000).unref() }`,
-            `process.on('SIGINT', shutdown)`,
-            `process.on('SIGTERM', shutdown)`,
-          ].join('\n'),
-      ],
-    }),
-    // the client build's files (dist/client), found next to the server bundle wherever it runs from; hashed files
-    // never change
-    entryContentBeforeHooks: [
-      (app: string) => {
-        const dir = resolve('dist/client') // vite runs in the project root
+  return Object.keys(pkg.dependencies ?? {}).filter((d) => d !== 'fondu')
+}
+
+/**
+ * Node / Bun: the server build's entry, dist/server/index.js. The client build's files first (found next to the
+ * server bundle wherever it runs from; hashed files never change), then the app. Node: @hono/node-server's serve()
+ * on `PORT` (else the option), saying where it listens, with a graceful shutdown on SIGTERM / SIGINT (10 s). Bun
+ * serves the default export itself and reads `PORT` (with the app's `websocket`, if it has one).
+ */
+function serverEntry(options: FonduOptions): Plugin {
+  let root = process.cwd()
+  return {
+    name: 'fondu:server-entry',
+    apply: 'build',
+    applyToEnvironment: (env) => env.name === 'ssr',
+    configResolved(c) {
+      root = c.root
+    },
+    resolveId: { filter: { id: /^virtual:fondu\/server-entry$/ }, handler: (id) => resolved(id) },
+    load: {
+      filter: { id: /^\0virtual:fondu\/server-entry$/ },
+      handler() {
+        const dir = resolve(root, 'dist/client')
         const paths = existsSync(dir)
           ? readdirSync(dir, { withFileTypes: true })
               .filter((e) => e.name !== '.vite')
               .map((e) => (e.isDirectory() ? `/${e.name}/*` : `/${e.name}`))
           : []
+        const bun = options.target === 'bun'
         return [
-          `import { serveStatic } from '${options.target === 'bun' ? 'hono/bun' : '@hono/node-server/serve-static'}'`,
+          `import { Hono } from 'hono'`,
+          `import { serveStatic } from '${bun ? 'hono/bun' : '@hono/node-server/serve-static'}'`,
           `import { fileURLToPath } from 'node:url'`,
+          `import app from '${SERVER.slice(1)}'`,
           `const clientRoot = fileURLToPath(new URL('../client', import.meta.url))`,
-          `${app}.use('/assets/*', async (c, next) => { await next(); if (c.res.ok) c.header('Cache-Control', 'public, max-age=31536000, immutable') })`,
-          ...paths.map(
-            (p) => `${app}.use(${JSON.stringify(p)}, serveStatic({ root: clientRoot }))`,
-          ),
-          // prerender: how the app reads the prerendered pages (fondu's server/prerender.ts), in the client build
+          `const main = new Hono()`,
+          `main.use('/assets/*', async (c, next) => { await next(); if (c.res.ok) c.header('Cache-Control', 'public, max-age=31536000, immutable') })`,
+          ...paths.map((p) => `main.use(${JSON.stringify(p)}, serveStatic({ root: clientRoot }))`),
+          // prerender: how the app reads the prerendered pages (fondu's server/prerender.ts)
           ...(options.prerender
             ? [
                 `import { readFile } from 'node:fs/promises'`,
@@ -185,11 +186,23 @@ async function buildPlugin(options: FonduOptions): Promise<Plugin> {
                 `globalThis[Symbol.for('fondu.staticFiles')] = (file) => { const to = joinPath(clientRoot, file); return to.startsWith(clientRoot + sep) ? readFile(to).catch(() => null) : Promise.resolve(null) }`,
               ]
             : []),
+          `main.all('*', (c) => app.fetch(c.req.raw, c.env))`,
+          ...(bun
+            ? [
+                `export default app.websocket ? { fetch: main.fetch, websocket: app.websocket } : main`,
+              ]
+            : [
+                `import { serve } from '@hono/node-server'`,
+                `const server = serve({ fetch: main.fetch, port: Number(process.env.PORT) || ${options.port ?? 3000} }, (info) => console.log(\`Listening on http://localhost:\${info.port}\`))`,
+                `const shutdown = () => { server.close(() => process.exit(0)); setTimeout(() => process.exit(1), 10_000).unref() }`,
+                `process.on('SIGINT', shutdown)`,
+                `process.on('SIGTERM', shutdown)`,
+                `export default main`,
+              ]),
         ].join('\n')
       },
-    ],
-  } as never) as Plugin
-  return plugin
+    },
+  }
 }
 
 function runtimePlugins(options: FonduOptions): PluginOption[] {
@@ -222,7 +235,7 @@ function runtimePlugins(options: FonduOptions): PluginOption[] {
       exclude: devServerDefaults.exclude,
       handleHotUpdate: () => {}, // fondu's plugin does it, for every target
     }),
-    buildPlugin(options),
+    serverEntry(options),
   ]
 }
 
@@ -269,13 +282,11 @@ function loadFailure(): Plugin {
 function core(options: FonduOptions): Plugin {
   let config: ResolvedConfig
   let isBuild = false
-  let serverBuild = false // Node / Bun: `vite build`, after `vite build --mode client`
   return {
     name: 'fondu',
     enforce: 'pre',
-    config(_user, env) {
+    config(user, env): UserConfig {
       isBuild = env.command === 'build'
-      serverBuild = isBuild && options.target !== 'cloudflare' && env.mode !== 'client'
       const client = { manifest: true, rollupOptions: { input: ENTRY } }
       if (options.target === 'cloudflare') {
         return {
@@ -302,16 +313,47 @@ function core(options: FonduOptions): Plugin {
           ssr: { noExternal: ['fondu'] },
         }
       }
-      // Node / Bun: `vite build --mode client` builds the client into dist/client, `vite build` the server
-      return env.mode === 'client'
-        ? { build: { ...client, outDir: 'dist/client', emptyOutDir: true } }
-        : {
-            ssr: { noExternal: ['fondu'] },
+      // Node / Bun: the client into dist/client, then the server into dist/server (index.js: serverEntry()), then the
+      // pages to prerender. The server bundles all but the app's dependencies, and is minified
+      const target = options.target
+      const external = isBuild ? dependencies(user.root) : []
+      return {
+        ssr: isBuild ? { noExternal: true, external, target: 'node' } : { noExternal: ['fondu'] },
+        environments: {
+          client: { build: { ...client, outDir: 'dist/client', emptyOutDir: true } },
+          ssr: {
             build: {
+              outDir: 'dist/server',
+              emptyOutDir: true,
               copyPublicDir: false,
-              rollupOptions: { output: { chunkFileNames: '[name]-[hash].js' } },
+              minify: true,
+              rollupOptions: {
+                input: V.serverEntry,
+                external: [
+                  ...builtinModules,
+                  /^node:/,
+                  ...(target === 'bun' ? ['bun'] : []),
+                  ...external,
+                ],
+                output: { entryFileNames: 'index.js', chunkFileNames: '[name]-[hash].js' },
+              },
             },
-          }
+          },
+        },
+        builder: {
+          async buildApp(builder) {
+            await builder.build(builder.environments.client!)
+            await builder.build(builder.environments.ssr!)
+            if (options.prerender)
+              await prerender(
+                nodeServer(config.root, target),
+                resolve(config.root, 'dist/client'),
+                config.logger,
+                false,
+              )
+          },
+        },
+      }
     },
     // dev: the dependencies are found before the first request (Vite scans index.html by default; an app has none),
     // so the first page is not reloaded once they are optimized. The scan reads JavaScript: an MDX page is compiled
@@ -339,13 +381,6 @@ function core(options: FonduOptions): Plugin {
     },
     configResolved(c) {
       config = c
-    },
-    // Node / Bun: the server built, its pages to prerender written next to the client build's files
-    async closeBundle() {
-      if (!options.prerender || !serverBuild || options.target === 'cloudflare') return
-      serverBuild = false // once
-      const clientDir = resolve(config.root, 'dist/client')
-      await prerender(nodeServer(config.root, options.target), clientDir, config.logger, false)
     },
     // dev: the CSS the client entry imports, as a stylesheet in the document, so a server-rendered page is styled
     // at first paint (Vite would add it only once the JS runs); removed once the entry has run
@@ -473,7 +508,7 @@ function productionAssets(config: ResolvedConfig, options: FonduOptions): string
   const file = resolve(outDir, '.vite/manifest.json')
   if (!existsSync(file))
     throw new Error(
-      `fondu: the client manifest (${file}) is missing: build the client first (\`vite build --mode client\`)`,
+      `fondu: the client manifest (${file}) is missing: the client is built first (\`vite build\`)`,
     )
   const text = readFileSync(file, 'utf8')
   const manifest = JSON.parse(text) as Record<string, ManifestChunk>
