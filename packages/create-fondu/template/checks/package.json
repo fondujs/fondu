@@ -1,8 +1,8 @@
 {
   "scripts": {
+    "check": "oxfmt && oxlint && tsc --noEmit",
     "fmt": "oxfmt",
-    "lint": "oxlint",
-    "check": "oxfmt && oxlint && tsc --noEmit"
+    "lint": "oxlint"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.2.3",
