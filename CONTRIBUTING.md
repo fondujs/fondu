@@ -1,6 +1,6 @@
 # Contributing
 
-Fondu is built on Hono, Vite and Inertia, and tries to write as little of its own as it can: a change that lets
+Fondu is built on Hono, Vite and Inertia, and writes only what none of them does: a change that lets
 the platform (Hono, Vite, Inertia, the runtime) do the work is preferred to one that adds code. For anything larger
 than a fix, open an issue first to agree on the approach.
 
@@ -38,6 +38,20 @@ Commit messages follow [Conventional Commits](https://www.conventionalcommits.or
 
 A pull request: one change, with a test (`packages/fondu/test`) or an e2e check when behavior changes, and the README
 updated when the API does.
+
+## Inertia's server side
+
+Most of Fondu's own code is Inertia's server side for Hono: the protocol (`server/protocol.ts`, `server/props.ts`),
+validation errors and flash data (`server/flash.ts`), redirects (`server/http.ts`) and Precognition
+(`server/validate.ts`). Inertia's protocol page describes it; what a server does in each case is what
+[inertia-laravel](https://github.com/inertiajs/inertia-laravel) does. So a change to how Fondu answers Inertia's
+requests:
+
+- says what inertia-laravel does in the same case (its code or its tests), and does the same, or says why not;
+- can be compared with [@adonisjs/inertia](https://github.com/adonisjs/inertia) (TypeScript, the same Inertia) and
+  [@hono/inertia](https://github.com/honojs/middleware/tree/main/packages/inertia) (Hono's middleware).
+
+When Inertia is updated, read what changed on the server side in its release notes and inertia-laravel's.
 
 ## Describing Fondu
 

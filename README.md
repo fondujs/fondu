@@ -9,8 +9,10 @@ Routes are Hono handlers in `app/routes/`; pages are React components in `app/pa
 props, and Inertia does the rest in the browser: visits without full reloads, forms with validation, deferred and
 merged props, all without an API to write or a client-side router to keep in sync.
 
-Fondu writes as little of its own as it can: the server side of Inertia's protocol, file routes, typed pages and
-URLs, the document and error pages. Everything else is Hono's, Vite's and Inertia's.
+Fondu writes only what none of them does: Inertia's server side for Hono (the protocol, forms' errors and flash
+data), file routes, typed pages and URLs, the document and error pages. Everything else is Hono's, Vite's and
+Inertia's. [Fondu and @hono/inertia](https://fondu.dev/docs#fondu-and-honoinertia) says how it compares with Hono's
+own middleware.
 
 ## Quick start
 
