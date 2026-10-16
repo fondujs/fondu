@@ -8,7 +8,7 @@ import type { Pages } from '../types.js'
 import { renderDocument } from './document.js'
 import { flashCookie, takeCarried } from './flash.js'
 import { back, isInertia, sameOrigin } from './http.js'
-import { kindOf, propSpec, resolve, type Paginated } from './props.js'
+import { propSpec, resolve, type Paginated, type PropSpec } from './props.js'
 
 /**
  * The server side of Inertia's protocol (https://inertiajs.com/docs/v3/core-concepts/the-protocol).
@@ -185,43 +185,47 @@ export async function render<N extends PageName>(
   const deferred: Record<string, string[]> = {}
   const onceProps: Record<string, { prop: string; expiresAt: number | null }> = {}
   const pending: Array<[string, unknown]> = []
+  const listOnce = (key: string, once: NonNullable<PropSpec['once']>) => {
+    onceProps[once.key ?? key] = { prop: key, expiresAt: once.ttl ? Date.now() + once.ttl * 1000 : null }
+  }
+  const listMerge = (key: string, spec: PropSpec) => {
+    if (reset.has(key)) return
+    if (spec.scroll) {
+      // <InfiniteScroll> says which side it loads: the previous page goes before what the client holds
+      const intent =
+        c.req.header('x-inertia-infinite-scroll-merge-intent') === 'prepend' ? 'prependProps' : 'mergeProps'
+      lists[intent].push(`${key}.data`)
+      return
+    }
+    const { strategy, paths, matchOn } = spec.merge!
+    const into = strategy === 'append' ? 'mergeProps' : strategy === 'prepend' ? 'prependProps' : 'deepMergeProps'
+    lists[into].push(...(paths.length ? paths.map((path) => `${key}.${path}`) : [key]))
+    lists.matchPropsOn.push(...matchOn.map((field) => `${key}.${field}`))
+  }
 
   for (const [key, value] of Object.entries(all)) {
     const spec = propSpec(value)
-    const kind = spec && kindOf(spec)
-    const asked = only ? only.has(key) : true
-    const sent = kind === 'always' || (asked && !except?.has(key))
-    if (kind === 'defer' && !partial) {
-      ;(deferred[(spec as { group: string }).group] ??= []).push(key)
+    // a partial reload: the props it names (`only`) or keeps (`except`), and the `always` ones
+    if (!spec?.always && ((only && !only.has(key)) || except?.has(key))) continue
+    // only when named (Inertia's docs: `only`), not with `except`, though inertia-laravel's code sends it then
+    if (spec?.optional && !only?.has(key)) {
+      if (!partial && spec.once) listOnce(key, spec.once)
       continue
     }
-    // only when named (Inertia's docs: `only`), not with `except`, though inertia-laravel's code sends it then
-    if (kind === 'optional' && !only?.has(key)) continue
-    if (kind === 'once') {
-      const once = spec as { key?: string; ttl?: number; fresh?: boolean }
-      const name = once.key ?? key
-      const listed = { prop: key, expiresAt: once.ttl ? Date.now() + once.ttl * 1000 : null }
-      // held by the client: not sent again on a visit (a partial reload sends what it asks for), still listed
-      if (!partial && heldOnce.has(name) && !once.fresh) {
-        onceProps[name] = listed
-        continue
-      }
-      if (sent) onceProps[name] = listed
+    // held by the client: not sent again on a visit (a partial reload sends what it asks for), still listed
+    const held = !partial && spec?.once && heldOnce.has(spec.once.key ?? key) && !spec.once.fresh
+    if (spec?.defer && !partial) {
+      if (!held) (deferred[spec.defer.group] ??= []).push(key)
+      if (spec.once) listOnce(key, spec.once)
+      if (spec.merge || spec.scroll) listMerge(key, spec)
+      continue
     }
-    if (!sent) continue
-    if (kind === 'merge' && !reset.has(key)) {
-      const m = spec as { strategy: 'append' | 'prepend' | 'deep'; matchOn: string[] }
-      lists[m.strategy === 'append' ? 'mergeProps' : m.strategy === 'prepend' ? 'prependProps' : 'deepMergeProps'].push(
-        key,
-      )
-      lists.matchPropsOn.push(...m.matchOn.map((field) => `${key}.${field}`))
+    if (held) {
+      listOnce(key, spec.once!)
+      continue
     }
-    if (kind === 'scroll' && !reset.has(key)) {
-      // <InfiniteScroll> says which side it loads: the previous page goes before what the client holds
-      lists[c.req.header('x-inertia-infinite-scroll-merge-intent') === 'prepend' ? 'prependProps' : 'mergeProps'].push(
-        `${key}.data`,
-      )
-    }
+    if (spec?.once) listOnce(key, spec.once)
+    if (spec?.merge || spec?.scroll) listMerge(key, spec)
     pending.push([key, value])
   }
   const rescued: string[] = []
@@ -231,7 +235,7 @@ export async function render<N extends PageName>(
       try {
         return [[key, await resolve(spec ? spec.value : value)] as const]
       } catch (error) {
-        if (!(spec && kindOf(spec) === 'defer' && (spec as { rescue: boolean }).rescue)) throw error
+        if (!spec?.defer?.rescue) throw error
         console.error(`[fondu] deferred prop "${key}" failed (rescued):`, error)
         rescued.push(key)
         return []
@@ -244,10 +248,10 @@ export async function render<N extends PageName>(
   const scrollProps: NonNullable<Page['scrollProps']> = {}
   for (const [key, value] of pending) {
     const spec = propSpec(value)
-    if (spec && kindOf(spec) === 'scroll' && key in page.props) {
+    if (spec?.scroll && key in page.props) {
       const { currentPage, previousPage, nextPage } = page.props[key] as Paginated<unknown>
       scrollProps[key] = {
-        pageName: (spec as { pageName: string }).pageName,
+        pageName: spec.scroll.pageName,
         currentPage,
         previousPage,
         nextPage,

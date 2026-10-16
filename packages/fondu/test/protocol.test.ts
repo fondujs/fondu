@@ -1,4 +1,4 @@
-import { createApp } from 'fondu'
+import { always, createApp, defer, merge, once } from 'fondu'
 import { createElement as h } from 'react'
 // Inertia's protocol and the app conventions, on test/app/ with `app.request()`. Inertia's cases are answered as
 // inertia-laravel answers them (CONTRIBUTING: Inertia's server side).
@@ -147,6 +147,69 @@ describe('partial reloads', () => {
       await app.request('/', { headers: partial('people', { 'X-Inertia-Infinite-Scroll-Merge-Intent': 'prepend' }) }),
     )
     expect(res.prependProps).toEqual(['people.data'])
+  })
+})
+
+describe('props combined', () => {
+  const visit = async (headers: Record<string, string> = {}) =>
+    page(await app.request('/combos', { headers: inertia(headers) }))
+  const reload = async (data: string, headers: Record<string, string> = {}) =>
+    page(
+      await app.request('/combos', {
+        headers: inertia({ 'X-Inertia-Partial-Component': 'home', 'X-Inertia-Partial-Data': data, ...headers }),
+      }),
+    )
+  test('once(defer()): deferred until the client holds it, then neither sent nor deferred', async () => {
+    const first = await visit()
+    expect([first.props.permissions, first.deferredProps]).toEqual([
+      undefined,
+      { default: ['permissions', 'results', 'feed'] },
+    ])
+    expect(first.onceProps).toMatchObject({ permissions: { prop: 'permissions' } })
+    expect((await reload('permissions')).props.permissions).toEqual(['edit'])
+    const held = await visit({ 'X-Inertia-Except-Once-Props': 'permissions' })
+    expect(held.deferredProps).toEqual({ default: ['results', 'feed'] })
+    expect(held.onceProps).toHaveProperty('permissions')
+  })
+  test('once(optional()): listed on a visit, sent when named', async () => {
+    const first = await visit()
+    expect([first.props.categories, (first.onceProps as Record<string, unknown>).categories]).toEqual([
+      undefined,
+      { prop: 'categories', expiresAt: null },
+    ])
+    expect((await reload('categories')).props.categories).toEqual(['news'])
+  })
+  test('once(merge()): merged when sent; not sent, nor listed to merge, when held', async () => {
+    const first = await visit()
+    expect([first.props.activity, first.mergeProps]).toEqual([[{ id: 1 }], ['activity', 'users.data', 'feed.data']])
+    const held = await visit({ 'X-Inertia-Except-Once-Props': 'activity' })
+    expect([held.props.activity, held.mergeProps]).toEqual([undefined, ['users.data', 'feed.data']])
+  })
+  test('deepMerge(defer()): deferred, and listed to merge from the first visit', async () => {
+    const first = await visit()
+    expect(first.deepMergeProps).toEqual(['results', 'thread'])
+    const later = await reload('results')
+    expect([later.props.results, later.deepMergeProps]).toEqual([{ data: [1] }, ['results']])
+  })
+  test('merge at a path, matching on a field', async () => {
+    const first = await visit()
+    expect(first.prependProps).toEqual(['chat.messages'])
+    expect(first.matchPropsOn).toEqual(['users.data.id', 'thread.messages.id'])
+  })
+  test('defer(scroll()): deferred, its page merged once loaded', async () => {
+    const first = await visit()
+    expect([first.props.feed, first.scrollProps]).toEqual([undefined, undefined])
+    expect(first.mergeProps).toContain('feed.data') // listed to merge from the first visit, as Laravel does
+    const later = await reload('feed')
+    expect([later.mergeProps, (later.scrollProps as Record<string, unknown>).feed]).toEqual([
+      ['feed.data'],
+      { pageName: 'page', currentPage: 1, previousPage: null, nextPage: 2, reset: false },
+    ])
+  })
+  test('what Inertia does not combine is an error', () => {
+    expect(() => once(always(1))).toThrow("once() can't wrap always()")
+    expect(() => defer(merge(() => 1) as never)).toThrow("defer() can't wrap merge()")
+    expect(() => once(once(() => 1))).toThrow("once() can't wrap once()")
   })
 })
 

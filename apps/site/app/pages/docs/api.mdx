@@ -51,15 +51,18 @@ createApp({
 
 ### Props
 
-| Export                             |                                                       |
-| ---------------------------------- | ----------------------------------------------------- |
-| `optional(fn)`                     | only when a partial reload asks for it                |
-| `always(value)`                    | on every partial reload                               |
-| `defer(fn, { group?, rescue? })`   | after the page renders                                |
-| `merge(value)`, `prepend(value)`   | appended to, or prepended to, the list the page holds |
-| `deepMerge(value, { matchOn? })`   | merged into the object the page holds                 |
-| `once(fn, { key?, ttl?, fresh? })` | when the browser doesn't hold it already              |
-| `scroll(fn, { pageName? })`        | a page of a list, for `<InfiniteScroll>`              |
+| Export                                            |                                                       |
+| ------------------------------------------------- | ----------------------------------------------------- |
+| `optional(fn)`                                    | only when a partial reload asks for it                |
+| `always(value)`                                   | on every partial reload                               |
+| `defer(fn, { group?, rescue? })`                  | after the page renders                                |
+| `merge(value, { path?, matchOn? })`, `prepend(…)` | appended to, or prepended to, the list the page holds |
+| `deepMerge(value, { matchOn? })`                  | merged into the object the page holds                 |
+| `once(fn, { key?, ttl?, fresh? })`                | when the browser doesn't hold it already              |
+| `scroll(fn, { pageName? })`                       | a page of a list, for `<InfiniteScroll>`              |
+
+They combine by wrapping: `once(defer(fn))`, `once(optional(fn))`, `once(merge(fn))`, `merge(defer(fn))`,
+`defer(scroll(fn))` ([Pages and props](/docs/pages#kinds-of-props)).
 
 [Pages and props](/docs/pages#kinds-of-props) shows them in use.
 

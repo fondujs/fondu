@@ -12,6 +12,8 @@ router and no API layer for pages: a route's loader renders a page with props, a
   Standard Schema (zod…); invalid input goes back to the page with `errors` (Inertia) or 422 for API clients.
 - Responses: `render(c, 'page/name', props)` for pages; `back(c)` or `c.redirect(url, 303)` after an action;
   `flash(c, { … })` for the next page; `throw new HTTPException(404)` (from `hono/http-exception`) for errors.
+- Kinds of props (from `fondu`, Inertia's prop types): `optional`, `always`, `defer`, `once`, `merge` / `prepend` /
+  `deepMerge`, `scroll`; combined by wrapping, as in Inertia's docs: `once(defer(fn))`, `merge(defer(fn))`.
 - `app/pages/`: React components, default export, rendered by name (`'users/show'` is `pages/users/show.tsx`). The
   component's props are the page's props; `render()` checks them. `pages/error.tsx` gets `{ status }`. Name a page
   after its route where it can be (`routes/index.ts` renders `index`); a dynamic route's page gets a name such as

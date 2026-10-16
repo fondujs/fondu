@@ -400,18 +400,24 @@ ok(
 // ---- once props
 await nav('/once')
 await h1('Once props')
-await sleep(300)
+await page.waitForFunction(() => /\d/.test(document.querySelector('[data-testid=permissions]')?.textContent ?? ''))
 const plans = await testid('plans')
+const permissions = await testid('permissions')
 await page.click('[data-testid=second]')
 await waitText("You're on the second page")
 await sleep(200)
 res = lastJson('/once?page=second')
 ok(
   'once: the client lists what it holds, the server skips it, the page still shows it',
-  (res?.req['x-inertia-except-once-props'] ?? '').split(',').sort().join() === 'plans,rates' &&
+  (res?.req['x-inertia-except-once-props'] ?? '').split(',').sort().join() === 'permissions,plans,rates' &&
     !('plans' in res.body.props) &&
     (await testid('plans')) === plans,
   JSON.stringify(res && [res.req['x-inertia-except-once-props'], Object.keys(res.body.props)]),
+)
+ok(
+  'once(defer()): deferred on the first visit only; held, it is not asked for again',
+  !res?.body.deferredProps && (await testid('permissions')) === permissions,
+  JSON.stringify(res?.body.deferredProps),
 )
 const noHeader = await (await fetch(BASE + '/once?page=second', { headers: inertia() })).json()
 ok(
