@@ -65,7 +65,8 @@ The schema is plain code: a page can import it (from any file that is not [serve
 and check before sending:
 
 ```tsx
-const form = useForm({ name: '', email: '' })
+// the form's fields are the schema's input
+const form = useForm<z.input<typeof contactSchema>>({ name: '', email: '' })
 
 const submit = (e: FormEvent) => {
   e.preventDefault()
