@@ -11,6 +11,7 @@ declare module 'fondu' {
       "errors": typeof import("./pages/errors")
       "history": typeof import("./pages/history")
       "http": typeof import("./pages/http")
+      "i18n": typeof import("./pages/i18n")
       "index": typeof import("./pages/index")
       "infinite": typeof import("./pages/infinite")
       "login": typeof import("./pages/login")
@@ -26,6 +27,8 @@ declare module 'fondu' {
       "versioning": typeof import("./pages/versioning")
     }
     routes: {
+      "/i18n": typeof import("./routes/[[locale]]/i18n")
+      "/:locale/i18n": typeof import("./routes/[[locale]]/i18n")
       "/account": typeof import("./routes/account")
       "/admin/dashboard": typeof import("./routes/admin/dashboard")
       "/api/auth/:all{.+}": typeof import("./routes/api/auth/[...all]")

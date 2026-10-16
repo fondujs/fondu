@@ -152,6 +152,7 @@ for (const p of [
   '/http',
   '/navigation',
   '/routes',
+  '/i18n',
   '/login',
 ])
   await page.goto(BASE + p, { waitUntil: 'networkidle0' })
@@ -1255,6 +1256,95 @@ await page.waitForFunction(
     toast,
   )
   await tp.close()
+}
+
+// ---- languages: one route file, a URL per language (routes/[[locale]]/, Paraglide)
+{
+  const ctx = await browser.createBrowserContext()
+  const lp = await ctx.newPage()
+  watchProblems(lp)
+  const lang = () => lp.evaluate(() => document.documentElement.lang)
+  await lp.goto(BASE + '/i18n', { waitUntil: 'networkidle0' })
+  ok(
+    'languages: /i18n in English, the base language, without a prefix',
+    (await testid('greeting', lp)) === 'Hello, Ada!' && (await lang()) === 'en',
+  )
+  await Promise.all([
+    lp.waitForNavigation({ waitUntil: 'networkidle0' }),
+    lp.click('[data-testid=locale-de]'),
+  ])
+  const german = [
+    await path(lp),
+    await lang(),
+    await testid('greeting', lp),
+    await testid('books', lp),
+    await testid('date', lp),
+    await lp.$eval('aside a[href="/i18n"]', (a) => a.getAttribute('aria-current')),
+  ]
+  ok(
+    'languages: setLocale() loads /de/i18n; the messages, plurals, formats and <html lang> in German',
+    JSON.stringify(german) ===
+      '["/de/i18n","de","Hallo, Ada!","1 Buch · 3 Bücher","16. Oktober 2026","page"]',
+    JSON.stringify(german),
+  )
+  await lp.click('[data-testid=say-hello]')
+  await lp.waitForSelector('[data-testid=err-name]', { timeout: 4000 }).catch(() => {})
+  ok(
+    "languages: the server's validation error in the URL's language",
+    (await testid('err-name', lp)) === 'Bitte gib deinen Namen ein',
+    await testid('err-name', lp),
+  )
+  await lp.type('input[name=name]', 'Grace')
+  await lp.click('[data-testid=say-hello]')
+  await waitText('Der Server sagt Hallo, Grace!', lp).catch(() => {})
+  ok(
+    'languages: the flash, written on the server in German; the page stays /de/i18n',
+    (await text(lp)).includes('Der Server sagt Hallo, Grace!') && (await path(lp)) === '/de/i18n',
+  )
+  await ctx.close()
+
+  const html = await (await fetch(BASE + '/zh/i18n')).text()
+  ok(
+    'languages: /zh/i18n rendered by the server in Chinese, with links to each language (hreflang)',
+    html.includes('<html lang="zh"') &&
+      html.includes('你好，Ada！') &&
+      ['en', 'de', 'zh', 'x-default'].every((l) =>
+        html.includes(
+          `hrefLang="${l}" href="${ORIGIN}${l === 'en' || l === 'x-default' ? '' : '/' + l}/i18n"`,
+        ),
+      ),
+  )
+  const statuses = await Promise.all(
+    ['/xx/i18n', '/en/i18n', '/DE/i18n', '/de'].map(async (p) => (await fetch(BASE + p)).status),
+  )
+  ok(
+    'languages: a first segment that is not one of the languages (or the base one): a 404',
+    statuses.every((s) => s === 404),
+    JSON.stringify(statuses),
+  )
+
+  // a first visit: the browser's language; once one is picked, that one
+  const ctx2 = await browser.createBrowserContext()
+  const fp = await ctx2.newPage()
+  watchProblems(fp)
+  await fp.setExtraHTTPHeaders({ 'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8' })
+  await fp.goto(BASE + '/i18n?from=search', { waitUntil: 'networkidle0' })
+  ok(
+    "languages: a first visit to /i18n goes to the browser's language, the query kept",
+    (await path(fp)) === '/zh/i18n?from=search' && (await testid('greeting', fp)) === '你好，Ada！',
+    await path(fp),
+  )
+  await Promise.all([
+    fp.waitForNavigation({ waitUntil: 'networkidle0' }),
+    fp.click('[data-testid=locale-en]'),
+  ])
+  await fp.goto(BASE + '/i18n', { waitUntil: 'networkidle0' })
+  ok(
+    'languages: English picked, /i18n stays English',
+    (await path(fp)) === '/i18n' && (await testid('greeting', fp)) === 'Hello, Ada!',
+    await path(fp),
+  )
+  await ctx2.close()
 }
 
 // ---- 404
