@@ -26,6 +26,9 @@ export default withoutSsr()
 
 Or in one handler: `defineHandler(withoutSsr(), (c) => render(c, 'admin/dashboard'))`.
 
+A page rendered in the browser only is empty until its JavaScript runs, on a reload too, so the browser can paint a
+blank frame first. Keep the server render for pages whose first paint matters.
+
 ## Browser-only parts
 
 A component that needs the browser (`window`, a chart library) can stay on a server-rendered page inside Inertia's

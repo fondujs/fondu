@@ -78,6 +78,11 @@ render(c, 'dashboard', {
 })
 ```
 
+A deferred prop's loading state is the page's to show, with Inertia's
+[`<Deferred fallback>`](https://inertiajs.com/docs/v3/data-props/deferred-props). The progress bar is Inertia's too,
+and it is the visit's, not the deferred props': their requests don't show it, and its `delay` only holds it back on
+short visits ([progress indicators](https://inertiajs.com/docs/v3/advanced/progress-indicators)).
+
 ## Shared props
 
 Props every page gets, such as the signed-in user, are shared from a middleware with `share()`:

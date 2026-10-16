@@ -32,6 +32,19 @@ the server's resources: what they need comes as props.
 A module with no secrets, such as a validation schema, can be shared: a route validates with it, a page checks the
 same rules before sending.
 
+## Route modules load with the app
+
+Every file of `app/routes/` is imported when the app starts (in development, on the first request), so what a route
+imports at the top runs for every page, not only for its own. Keep a heavy dependency out of the start: import the
+entry you need (one icon's module, not the whole icon library), or import it in the handler:
+
+```ts
+export const GET = defineHandler(async (c) => {
+  const { renderPdf } = await import('#/lib/pdf.server.ts') // loaded on the first request to this route
+  return c.body(await renderPdf(), 200, { 'Content-Type': 'application/pdf' })
+})
+```
+
 ## Editing in development
 
 The dev server updates what an edit changes, without reloading the page where it can:
