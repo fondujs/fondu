@@ -48,6 +48,7 @@ validation errors and flash data (`server/flash.ts`), redirects (`server/http.ts
 requests:
 
 - says what inertia-laravel does in the same case (its code or its tests), and does the same, or says why not;
+- has its case tested in `packages/fondu/test/protocol.test.ts`;
 - can be compared with [@adonisjs/inertia](https://github.com/adonisjs/inertia) (TypeScript, the same Inertia) and
   [@hono/inertia](https://github.com/honojs/middleware/tree/main/packages/inertia) (Hono's middleware).
 
