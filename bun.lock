@@ -86,7 +86,7 @@
     },
     "packages/create-fondu": {
       "name": "create-fondu",
-      "version": "0.6.0",
+      "version": "0.6.1",
       "bin": {
         "create-fondu": "index.js",
       },
@@ -96,7 +96,7 @@
     },
     "packages/fondu": {
       "name": "fondu",
-      "version": "0.6.0",
+      "version": "0.6.1",
       "dependencies": {
         "@hono/vite-build": "^1.11.1",
         "@hono/vite-dev-server": "^0.26.1",
