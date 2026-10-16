@@ -2,7 +2,14 @@ import { Head, Link } from '@inertiajs/react'
 import { href } from 'fondu/client'
 
 import { DemoCard } from '#/components/demo.tsx'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '#/components/ui/table.tsx'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '#/components/ui/table.tsx'
 
 const files: Array<[file: string, url: string, exports: string]> = [
   ['routes/_middleware.ts', 'every request', 'default: the session, shared props'],
@@ -15,7 +22,9 @@ const files: Array<[file: string, url: string, exports: string]> = [
 ]
 
 const Code = ({ children }: { children: string }) => (
-  <pre className="overflow-x-auto rounded-lg bg-muted p-3 font-mono text-xs/relaxed">{children}</pre>
+  <pre className="overflow-x-auto rounded-lg bg-muted p-3 font-mono text-xs/relaxed">
+    {children}
+  </pre>
 )
 
 export default function Routes() {
@@ -24,10 +33,11 @@ export default function Routes() {
       <Head title="Routes & actions" />
       <h1>Routes & actions</h1>
       <p className="lede">
-        Each file in <code>app/routes/</code> is a URL, handled by Hono. A page route exports a <code>loader</code>{' '}
-        (GET), an <code>action</code> (POST) and <code>actions</code> (POST <code>?name</code>, so a plain form can pick
-        one); an API route exports <code>GET</code>, <code>POST</code>, <code>PUT</code>, <code>PATCH</code>,{' '}
-        <code>DELETE</code>. The page it renders lives in <code>app/pages/</code>.
+        Each file in <code>app/routes/</code> is a URL, handled by Hono. A page route exports a{' '}
+        <code>loader</code> (GET), an <code>action</code> (POST) and <code>actions</code> (POST{' '}
+        <code>?name</code>, so a plain form can pick one); an API route exports <code>GET</code>,{' '}
+        <code>POST</code>, <code>PUT</code>, <code>PATCH</code>, <code>DELETE</code>. The page it
+        renders lives in <code>app/pages/</code>.
       </p>
       <DemoCard title="This app's routes" className="mb-4">
         <Table data-testid="routes">
@@ -52,7 +62,8 @@ export default function Routes() {
       <div className="grid gap-4 sm:grid-cols-2">
         <DemoCard title="Typed URLs" tag="href()">
           <p className="mb-3 text-muted-foreground">
-            Only patterns that exist in <code>routes/</code>, with every param: a typo is a type error.
+            Only patterns that exist in <code>routes/</code>, with every param: a typo is a type
+            error.
           </p>
           <Code>{`href('/contacts/:id', { id: 1 })  // '${href('/contacts/:id', { id: 1 })}'\nhref('/contacts?delete')          // '${href('/contacts?delete')}'`}</Code>
           <p className="mt-3">

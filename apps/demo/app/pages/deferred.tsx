@@ -13,15 +13,21 @@ interface Props {
   recommendations?: string[]
 }
 
-export default function DeferredDemo({ renderedAt, stats, flaky, activity, recommendations }: Props) {
+export default function DeferredDemo({
+  renderedAt,
+  stats,
+  flaky,
+  activity,
+  recommendations,
+}: Props) {
   const [initial] = useState(usePage().deferredProps)
   return (
     <>
       <Head title="Deferred props" />
       <h1>Deferred props</h1>
       <p className="lede">
-        The page rendered at {renderedAt} without waiting for these props. The server announced them in{' '}
-        <code>deferredProps</code>, and the client fetched each group in its own request.
+        The page rendered at {renderedAt} without waiting for these props. The server announced them
+        in <code>deferredProps</code>, and the client fetched each group in its own request.
       </p>
       <div className="mb-4 grid gap-4 sm:grid-cols-2">
         <DemoCard title="stats" tag="group: default · ~0.8s">
@@ -45,8 +51,9 @@ export default function DeferredDemo({ renderedAt, stats, flaky, activity, recom
                 <CircleAlertIcon />
                 <AlertDescription>
                   <p>
-                    This prop failed on the server. Because it uses <code>rescue: true</code>, the error was logged, the
-                    prop was listed in <code>rescuedProps</code>, and the rest of the response still succeeded.
+                    This prop failed on the server. Because it uses <code>rescue: true</code>, the
+                    error was logged, the prop was listed in <code>rescuedProps</code>, and the rest
+                    of the response still succeeded.
                   </p>
                 </AlertDescription>
               </Alert>

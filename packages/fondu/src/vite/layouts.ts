@@ -18,7 +18,9 @@ export function layouts(): Plugin {
   const pagesDir = () => join(root, 'app/pages')
   // the `_layout.tsx` of a directory of app/pages/ ('' is the root), if there is one
   const layoutFile = (dir: string) =>
-    LAYOUT_EXTENSIONS.map((ext) => join(pagesDir(), dir, `_layout${ext}`)).find((f) => existsSync(f))
+    LAYOUT_EXTENSIONS.map((ext) => join(pagesDir(), dir, `_layout${ext}`)).find((f) =>
+      existsSync(f),
+    )
   return {
     name: 'fondu:layouts',
     enforce: 'post', // after the JSX and MDX are compiled: plain JavaScript to read
@@ -36,7 +38,9 @@ export function layouts(): Plugin {
       const found = defaultExport(this.parse(code) as unknown as Program, code)
       if (!found) return
       // added at the end (imports are hoisted) and within a line: the lines stay where they were (`map: null`)
-      const imports = chain.map((f, i) => `import __fondu_layout_${i} from ${JSON.stringify(f)};`).join('\n')
+      const imports = chain
+        .map((f, i) => `import __fondu_layout_${i} from ${JSON.stringify(f)};`)
+        .join('\n')
       const set = `${found.name}.layout ??= [${chain.map((_, i) => `__fondu_layout_${i}`).join(', ')}];`
       return { code: `${found.code}\n${imports}\n${set}\n`, map: null }
     },
@@ -64,7 +68,10 @@ type Program = { body: Node[] }
 function defaultExport(program: Program, code: string): { name: string; code: string } | undefined {
   for (const node of program.body) {
     if (node.type === 'ExportNamedDeclaration' && !node.source) {
-      const specifiers = node.specifiers as Array<{ local: { name: string }; exported: { name: string } }>
+      const specifiers = node.specifiers as Array<{
+        local: { name: string }
+        exported: { name: string }
+      }>
       const specifier = specifiers.find((sp) => sp.exported.name === 'default')
       if (specifier) return { name: specifier.local.name, code }
     }

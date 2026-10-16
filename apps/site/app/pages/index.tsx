@@ -43,8 +43,9 @@ export default function Home() {
             <span className="block">No API in between.</span>
           </h1>
           <p className="mt-6 max-w-xl text-lg/relaxed text-muted-foreground">
-            Each route is a Hono handler that renders a React page with its props. Inertia swaps the pages in the
-            browser, so there is no client router and no API to write. Deploy to Bun, Cloudflare Workers or Node.
+            Each route is a Hono handler that renders a React page with its props. Inertia swaps the
+            pages in the browser, so there is no client router and no API to write. Deploy to Bun,
+            Cloudflare Workers or Node.
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <Button size="lg" render={<Link href="/docs" />}>
@@ -71,8 +72,8 @@ export default function Home() {
           <div>
             <h2 className="font-heading text-2xl font-semibold tracking-tight">Who does what</h2>
             <p className="mt-3 text-muted-foreground">
-              Fondu writes as little of its own as it can. The rest is three projects you may know already, and their
-              docs apply as they are.
+              Fondu writes as little of its own as it can. The rest is three projects you may know
+              already, and their docs apply as they are.
             </p>
           </div>
           <dl className="divide-y border-y">
@@ -98,7 +99,9 @@ export default function Home() {
 
       <section className="border-t">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-8 gap-y-4 px-4 py-16 sm:px-6">
-          <p className="mr-auto text-xl font-medium tracking-tight">Start with one route and one page.</p>
+          <p className="mr-auto text-xl font-medium tracking-tight">
+            Start with one route and one page.
+          </p>
           <Button size="lg" render={<Link href="/docs/quick-start" />}>
             Quick start
           </Button>
@@ -127,7 +130,11 @@ function CopyCommand() {
     >
       <span className="text-muted-foreground select-none">$</span>
       {CREATE}
-      {copied ? <Check className="size-4 text-brand-foreground" /> : <Copy className="size-4 text-muted-foreground" />}
+      {copied ? (
+        <Check className="size-4 text-brand-foreground" />
+      ) : (
+        <Copy className="size-4 text-muted-foreground" />
+      )}
     </button>
   )
 }

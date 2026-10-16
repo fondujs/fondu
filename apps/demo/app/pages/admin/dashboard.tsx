@@ -3,7 +3,14 @@ import { href } from 'fondu/client'
 
 import { SubmitButton } from '#/components/demo.tsx'
 import { Badge } from '#/components/ui/badge.tsx'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '#/components/ui/table.tsx'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '#/components/ui/table.tsx'
 
 interface Props {
   accounts: Array<{ id: string; name: string; email: string; role: string }>
@@ -49,7 +56,11 @@ export default function Dashboard({ accounts }: Props) {
                     options={{ preserveScroll: true }}
                   >
                     <input type="hidden" name="userId" value={a.id} />
-                    <input type="hidden" name="role" value={a.role === 'admin' ? 'user' : 'admin'} />
+                    <input
+                      type="hidden"
+                      name="role"
+                      value={a.role === 'admin' ? 'user' : 'admin'}
+                    />
                     <SubmitButton variant="outline" size="sm">
                       {a.role === 'admin' ? 'Make user' : 'Make admin'}
                     </SubmitButton>

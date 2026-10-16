@@ -21,9 +21,10 @@ export default function Errors() {
       <Head title="Errors" />
       <h1>Errors</h1>
       <p className="lede">
-        Fondu answers unknown URLs and thrown errors itself. A 404 or 403 renders <code>pages/error.tsx</code> with the
-        status. A 500 in development is a report of the error (during a visit, Inertia shows it in its dialog); in
-        production it is the same error page with status 500. API clients get plain text.
+        Fondu answers unknown URLs and thrown errors itself. A 404 or 403 renders{' '}
+        <code>pages/error.tsx</code> with the status. A 500 in development is a report of the error
+        (during a visit, Inertia shows it in its dialog); in production it is the same error page
+        with status 500. API clients get plain text.
       </p>
       <div className="grid gap-4 sm:grid-cols-2">
         <DemoCard title="During a visit" tag="<Link>">

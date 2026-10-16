@@ -131,17 +131,24 @@ export function createApp(options: CreateAppOptions = {}): Hono {
   const routes = files
     .filter(isRouteFile)
     // static before dynamic before catch-all, segment by segment
-    .map((file) => ({ file, pattern: withSlash(routePattern(file), append), mod: modules[ROOT + file]! }))
+    .map((file) => ({
+      file,
+      pattern: withSlash(routePattern(file), append),
+      mod: modules[ROOT + file]!,
+    }))
     .sort((a, b) => rank(a.pattern).localeCompare(rank(b.pattern)))
 
   for (const { file, pattern, mod } of routes) {
-    const mws = middlewareFor(file, middlewareFiles).flatMap((f) => chain(modules[ROOT + f]!.default ?? []))
+    const mws = middlewareFor(file, middlewareFiles).flatMap((f) =>
+      chain(modules[ROOT + f]!.default ?? []),
+    )
     prerendered.push({
       file,
       pattern,
-      settings: [file, ...middlewareFor(file, [...middlewareFiles, '_middleware.ts']).reverse()].map(
-        (f) => modules[ROOT + f]?.prerender,
-      ),
+      settings: [
+        file,
+        ...middlewareFor(file, [...middlewareFiles, '_middleware.ts']).reverse(),
+      ].map((f) => modules[ROOT + f]?.prerender),
       get: Boolean(mod.loader ?? mod.GET),
       others: [
         ...(mod.action || mod.actions || mod.POST ? ['POST'] : []),
@@ -150,7 +157,9 @@ export function createApp(options: CreateAppOptions = {}): Hono {
     })
     const conflict = (a: keyof RouteModule, b: keyof RouteModule) => {
       if (mod[a] && mod[b])
-        throw new Error(`fondu: routes/${file} exports both \`${a}\` and \`${b}\`, which handle the same requests`)
+        throw new Error(
+          `fondu: routes/${file} exports both \`${a}\` and \`${b}\`, which handle the same requests`,
+        )
     }
     conflict('loader', 'GET')
     conflict('action', 'POST')

@@ -14,7 +14,8 @@ export default function Navigation({ servedAt }: { servedAt: string }) {
       <Head title="Navigation" />
       <h1>Navigation</h1>
       <p className="lede">
-        Visits are fetches of the next page's props; the layout and its state stay mounted. Served at{' '}
+        Visits are fetches of the next page's props; the layout and its state stay mounted. Served
+        at{' '}
         <span className="font-mono" data-testid="served-at">
           {servedAt}
         </span>
@@ -25,7 +26,11 @@ export default function Navigation({ servedAt }: { servedAt: string }) {
           <p className="mb-4 text-muted-foreground">
             Fetched on hover; the click renders at once. The sidebar prefetches every demo.
           </p>
-          <Button variant="outline" render={<Link href={href('/props')} prefetch="hover" />} data-testid="prefetch">
+          <Button
+            variant="outline"
+            render={<Link href={href('/props')} prefetch="hover" />}
+            data-testid="prefetch"
+          >
             Props (prefetched on hover)
           </Button>
         </DemoCard>
@@ -33,7 +38,11 @@ export default function Navigation({ servedAt }: { servedAt: string }) {
           <p className="mb-4 text-muted-foreground">
             The page swap runs inside <code>document.startViewTransition()</code>.
           </p>
-          <Button variant="outline" render={<Link href={href('/routes')} viewTransition />} data-testid="vt">
+          <Button
+            variant="outline"
+            render={<Link href={href('/routes')} viewTransition />}
+            data-testid="vt"
+          >
             Routes, with a transition
           </Button>
         </DemoCard>
@@ -49,10 +58,18 @@ export default function Navigation({ servedAt }: { servedAt: string }) {
             <Button variant="outline" onClick={() => setClicks((n) => n + 1)} data-testid="click">
               Click
             </Button>
-            <Button variant="outline" render={<Link href={href('/navigation')} preserveState />} data-testid="preserve">
+            <Button
+              variant="outline"
+              render={<Link href={href('/navigation')} preserveState />}
+              data-testid="preserve"
+            >
               Visit, keep state
             </Button>
-            <Button variant="outline" render={<Link href={href('/navigation')} />} data-testid="reset-state">
+            <Button
+              variant="outline"
+              render={<Link href={href('/navigation')} />}
+              data-testid="reset-state"
+            >
               Visit
             </Button>
           </div>

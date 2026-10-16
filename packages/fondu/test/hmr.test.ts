@@ -10,7 +10,8 @@ function graph(edges: Record<string, string[]>) {
     if (!nodes.has(file)) nodes.set(file, { file, importers: new Set() })
     return nodes.get(file)!
   }
-  for (const [file, importers] of Object.entries(edges)) for (const i of importers) node(file).importers.add(node(i))
+  for (const [file, importers] of Object.entries(edges))
+    for (const i of importers) node(file).importers.add(node(i))
   return (file: string) => [node(file)]
 }
 
@@ -33,16 +34,31 @@ const modules = graph({
 
 describe('what a change reaches on the server', () => {
   test('a route, and what it imports: its props', () => {
-    expect(reach(modules(at('app/routes/docs.ts')), root)).toEqual({ routes: true, document: false })
-    expect(reach(modules(at('app/lib/db.server.ts')), root)).toEqual({ routes: true, document: false })
+    expect(reach(modules(at('app/routes/docs.ts')), root)).toEqual({
+      routes: true,
+      document: false,
+    })
+    expect(reach(modules(at('app/lib/db.server.ts')), root)).toEqual({
+      routes: true,
+      document: false,
+    })
   })
   test('a page: the browser’s own update, unless a route reads it too (an MDX page’s toc)', () => {
-    expect(reach(modules(at('app/pages/users.tsx')), root)).toEqual({ routes: false, document: false })
-    expect(reach(modules(at('app/pages/docs/intro.mdx')), root)).toEqual({ routes: true, document: false })
+    expect(reach(modules(at('app/pages/users.tsx')), root)).toEqual({
+      routes: false,
+      document: false,
+    })
+    expect(reach(modules(at('app/pages/docs/intro.mdx')), root)).toEqual({
+      routes: true,
+      document: false,
+    })
   })
   test('server.ts, and what only it imports: the document', () => {
     expect(reach(modules(at('app/server.ts')), root)).toEqual({ routes: false, document: true })
-    expect(reach(modules(at('app/lib/theme.server.ts')), root)).toEqual({ routes: false, document: true })
+    expect(reach(modules(at('app/lib/theme.server.ts')), root)).toEqual({
+      routes: false,
+      document: true,
+    })
     expect(reach(modules(at('app/lib/shared.ts')), root)).toEqual({ routes: true, document: true })
   })
 })

@@ -4,7 +4,11 @@ import type { FormEvent } from 'react'
 
 import { DemoCard, SignInFirst, SubmitButton, TextField } from '#/components/demo.tsx'
 
-export default function Show({ contact }: { contact: { id: number; name: string; email: string } }) {
+export default function Show({
+  contact,
+}: {
+  contact: { id: number; name: string; email: string }
+}) {
   // useForm: the form's state in React; errors of this form come back in its own error bag
   const rename = useForm({ name: contact.name })
   const { user } = usePage().props.auth
@@ -24,7 +28,8 @@ export default function Show({ contact }: { contact: { id: number; name: string;
       </p>
       <h1 data-testid="contact-name">{contact.name}</h1>
       <p className="lede">
-        Two forms on one page, each with its own error bag: the server puts each form's errors under its name.
+        Two forms on one page, each with its own error bag: the server puts each form's errors under
+        its name.
       </p>
       {/* the changes are for signed-in users (the actions use requireUser) */}
       {user ? (

@@ -20,12 +20,19 @@ export const loader = defineHandler((c) =>
       async () => {
         await wait(1800)
         const at = new Date().toISOString().slice(11, 23)
-        return [`Ada pushed to main ${at}`, `Alan opened a pull request ${at}`, `Grace deployed to production ${at}`]
+        return [
+          `Ada pushed to main ${at}`,
+          `Alan opened a pull request ${at}`,
+          `Grace deployed to production ${at}`,
+        ]
       },
       { group: 'slow' },
     ),
-    recommendations: defer(async () => ['Try deferred groups', 'Combine with merge props', 'Rescue failures'], {
-      group: 'slow',
-    }),
+    recommendations: defer(
+      async () => ['Try deferred groups', 'Combine with merge props', 'Rescue failures'],
+      {
+        group: 'slow',
+      },
+    ),
   }),
 )

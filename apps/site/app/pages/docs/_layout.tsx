@@ -7,7 +7,13 @@ import { CodeTabs, Pre } from '#/components/code.tsx'
 import { External } from '#/components/external.tsx'
 import { MarkdownActions } from '#/components/markdown-actions.tsx'
 import { Meta } from '#/components/meta.tsx'
-import { Drawer, DrawerHeader, DrawerPanel, DrawerPopup, DrawerTitle } from '#/components/ui/drawer.tsx'
+import {
+  Drawer,
+  DrawerHeader,
+  DrawerPanel,
+  DrawerPopup,
+  DrawerTitle,
+} from '#/components/ui/drawer.tsx'
 import { Menu as Dropdown, MenuItem, MenuPopup, MenuTrigger } from '#/components/ui/menu.tsx'
 import { docOf, docs, docUrl, markdownUrl, sections, type Doc, type TocItem } from '#/docs.ts'
 
@@ -104,7 +110,10 @@ export default function DocsLayout({ children }: { children: ReactNode }) {
             data-pagefind-ignore
           >
             {prev && (
-              <Link href={docUrl(prev)} className="rounded-lg border px-4 py-3 transition-colors hover:bg-accent">
+              <Link
+                href={docUrl(prev)}
+                className="rounded-lg border px-4 py-3 transition-colors hover:bg-accent"
+              >
                 <span className="flex items-center gap-1 text-xs text-muted-foreground">
                   <ChevronLeft className="size-3.5" /> Previous
                 </span>
@@ -160,7 +169,9 @@ function useCurrentHeading(toc: TocItem[]) {
       // at the end of the page, the headings it cannot scroll to the top count as reached
       const end = innerHeight + scrollY >= document.documentElement.scrollHeight - 2
       const line = end ? innerHeight : 96
-      const above = toc.filter((item) => (document.getElementById(item.id)?.getBoundingClientRect().top ?? line) < line)
+      const above = toc.filter(
+        (item) => (document.getElementById(item.id)?.getBoundingClientRect().top ?? line) < line,
+      )
       setCurrent(above.at(-1)?.id)
     }
     const onScroll = () => (frame ||= requestAnimationFrame(update))

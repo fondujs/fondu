@@ -11,7 +11,10 @@ type Contact = { id: number; name: string; email: string }
 export default function Http() {
   const signedIn = usePage().props.auth.user !== null
   const list = useHttp<Record<string, never>, { contacts: Contact[] }>({})
-  const create = useHttp<{ name: string; email: string }, { contact: Contact }>({ name: '', email: '' })
+  const create = useHttp<{ name: string; email: string }, { contact: Contact }>({
+    name: '',
+    email: '',
+  })
   const [status, setStatus] = useState<number | null>(null)
   const onHttpException = (r: { status: number }) => {
     setStatus(r.status)
@@ -22,8 +25,9 @@ export default function Http() {
       <Head title="HTTP requests" />
       <h1>HTTP requests</h1>
       <p className="lede">
-        Not every request is a page visit. <code>useHttp</code> calls JSON endpoints with the same form helpers:
-        processing state, the response, and validation errors from a <code>422 {'{ errors }'}</code>.
+        Not every request is a page visit. <code>useHttp</code> calls JSON endpoints with the same
+        form helpers: processing state, the response, and validation errors from a{' '}
+        <code>422 {'{ errors }'}</code>.
       </p>
       {signedIn ? null : (
         <div className="mb-4">
@@ -80,7 +84,9 @@ export default function Http() {
               Create
             </SubmitButton>
           </form>
-          {create.response ? <Json value={create.response} className="mt-4" data-testid="created" /> : null}
+          {create.response ? (
+            <Json value={create.response} className="mt-4" data-testid="created" />
+          ) : null}
         </DemoCard>
       </div>
     </>

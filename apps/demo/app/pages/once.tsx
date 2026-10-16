@@ -31,8 +31,9 @@ export default function Once({ which, renderedAt, plans, rates, permissions }: P
       <Head title="Once props" />
       <h1>Once props</h1>
       <p className="lede">
-        Once props are resolved a single time and remembered by the client. On later visits the client lists them in{' '}
-        <code>X-Inertia-Except-Once-Props</code> and the server skips their (slow) functions.
+        Once props are resolved a single time and remembered by the client. On later visits the
+        client lists them in <code>X-Inertia-Except-Once-Props</code> and the server skips their
+        (slow) functions.
       </p>
       <DemoCard title="Visits" className="mb-4">
         <p className="mb-4 text-muted-foreground">You're on the {which} page.</p>
@@ -40,10 +41,18 @@ export default function Once({ which, renderedAt, plans, rates, permissions }: P
           <Button variant="outline" render={<Link href={href('/once')} />} data-testid="first">
             First page
           </Button>
-          <Button variant="outline" render={<Link href={`${href('/once')}?page=second`} />} data-testid="second">
+          <Button
+            variant="outline"
+            render={<Link href={`${href('/once')}?page=second`} />}
+            data-testid="second"
+          >
             Second page
           </Button>
-          <Button variant="outline" render={<Link href={`${href('/once')}?fresh`} />} data-testid="fresh">
+          <Button
+            variant="outline"
+            render={<Link href={`${href('/once')}?fresh`} />}
+            data-testid="fresh"
+          >
             First page with <code>fresh</code>
           </Button>
         </div>
@@ -56,7 +65,12 @@ export default function Once({ which, renderedAt, plans, rates, permissions }: P
       <div className="mb-4">
         <Deferred
           data="permissions"
-          fallback={stat('permissions (once, deferred)', '…', 'Loading after the page.', 'permissions')}
+          fallback={stat(
+            'permissions (once, deferred)',
+            '…',
+            'Loading after the page.',
+            'permissions',
+          )}
         >
           {stat(
             'permissions (once, deferred)',

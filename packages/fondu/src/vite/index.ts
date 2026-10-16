@@ -132,9 +132,13 @@ export default function fondu(options: FonduOptions): PluginOption[] {
 
 async function buildPlugin(options: FonduOptions): Promise<Plugin> {
   const { default: build } =
-    options.target === 'bun' ? await import('@hono/vite-build/bun') : await import('@hono/vite-build/node')
+    options.target === 'bun'
+      ? await import('@hono/vite-build/bun')
+      : await import('@hono/vite-build/node')
   // the app's dependencies stay in node_modules (as with any Node server: native modules cannot be bundled)
-  const pkg = JSON.parse(readFileSync(resolve('package.json'), 'utf8')) as { dependencies?: Record<string, string> }
+  const pkg = JSON.parse(readFileSync(resolve('package.json'), 'utf8')) as {
+    dependencies?: Record<string, string>
+  }
   const external = Object.keys(pkg.dependencies ?? {}).filter((d) => d !== 'fondu')
   const plugin = build({
     entry: SERVER,
@@ -169,7 +173,9 @@ async function buildPlugin(options: FonduOptions): Promise<Plugin> {
           `import { fileURLToPath } from 'node:url'`,
           `const clientRoot = fileURLToPath(new URL('./client', import.meta.url))`,
           `${app}.use('/assets/*', async (c, next) => { await next(); if (c.res.ok) c.header('Cache-Control', 'public, max-age=31536000, immutable') })`,
-          ...paths.map((p) => `${app}.use(${JSON.stringify(p)}, serveStatic({ root: clientRoot }))`),
+          ...paths.map(
+            (p) => `${app}.use(${JSON.stringify(p)}, serveStatic({ root: clientRoot }))`,
+          ),
           // prerender: how the app reads the prerendered pages (fondu's server/prerender.ts), in the client build
           ...(options.prerender
             ? [
@@ -194,7 +200,9 @@ function runtimePlugins(options: FonduOptions): PluginOption[] {
       apply: 'serve',
       async configureServer() {
         // the dev server's own copy, as an ES module (its CommonJS build would be another class)
-        const fromDevServer = createRequire(createRequire(import.meta.url).resolve('@hono/vite-dev-server'))
+        const fromDevServer = createRequire(
+          createRequire(import.meta.url).resolve('@hono/vite-dev-server'),
+        )
         const dir = dirname(dirname(fromDevServer.resolve('@hono/node-server'))) // …/dist/index.js
         const pkg = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')) as {
           exports: { '.': { import: string | { default: string } } }
@@ -232,12 +240,19 @@ function loadFailure(): Plugin {
       // after the dev server (the Cloudflare plugin's too), before Vite's error page
       return () =>
         server.middlewares.use(
-          (error: unknown, req: IncomingMessage, res: ServerResponse, next: (e: unknown) => void) => {
+          (
+            error: unknown,
+            req: IncomingMessage,
+            res: ServerResponse,
+            next: (e: unknown) => void,
+          ) => {
             const visit = Boolean(req.headers['x-inertia'])
             // a page failed (not a module of the browser's): the next change reloads it
             if (visit || req.headers.accept?.includes('text/html')) failed = true
             if (!visit) return next(error)
-            res.writeHead(409, { 'X-Inertia-Location': (req as { originalUrl?: string }).originalUrl ?? req.url })
+            res.writeHead(409, {
+              'X-Inertia-Location': (req as { originalUrl?: string }).originalUrl ?? req.url,
+            })
             res.end()
           },
         )
@@ -291,7 +306,10 @@ function core(options: FonduOptions): Plugin {
         ? { build: { ...client, outDir: 'dist/client', emptyOutDir: true } }
         : {
             ssr: { noExternal: ['fondu'] },
-            build: { copyPublicDir: false, rollupOptions: { output: { chunkFileNames: 'server/[name]-[hash].js' } } },
+            build: {
+              copyPublicDir: false,
+              rollupOptions: { output: { chunkFileNames: 'server/[name]-[hash].js' } },
+            },
           }
     },
     // dev: the dependencies are found before the first request (Vite scans index.html by default; an app has none),
@@ -337,7 +355,9 @@ function core(options: FonduOptions): Plugin {
         try {
           await env.transformRequest('/' + ENTRY)
           const seen = new Set<string>()
-          const walk = (mod: { id: string | null; url: string; importedModules: Set<typeof mod> } | undefined) => {
+          const walk = (
+            mod: { id: string | null; url: string; importedModules: Set<typeof mod> } | undefined,
+          ) => {
             if (!mod?.id || seen.has(mod.id)) return
             seen.add(mod.id)
             if (/\.(css|scss|sass|less|styl|pcss|postcss)(\?|$)/.test(mod.url)) css.push(mod.url)
@@ -346,7 +366,9 @@ function core(options: FonduOptions): Plugin {
           walk(env.moduleGraph.getModuleById(resolve(config.root, ENTRY)) as never)
           const parts = await Promise.all(
             css.map(
-              async (url) => (await env.transformRequest(url + (url.includes('?') ? '&' : '?') + 'direct'))?.code ?? '',
+              async (url) =>
+                (await env.transformRequest(url + (url.includes('?') ? '&' : '?') + 'direct'))
+                  ?.code ?? '',
             ),
           )
           res.setHeader('Content-Type', 'text/css')
@@ -378,7 +400,8 @@ function core(options: FonduOptions): Plugin {
     // the client entry: with prerender, page objects read from the prerendered files (fondu/client's `prerendered`);
     // in dev, the page's props asked for again when what its route depends on changed (hmr.ts)
     transform(code, id) {
-      if (this.environment.config.consumer !== 'client' || id !== resolve(config.root, ENTRY)) return
+      if (this.environment.config.consumer !== 'client' || id !== resolve(config.root, ENTRY))
+        return
       const before = [
         ...(options.prerender ? [`import { prerendered } from 'fondu/client';prerendered();`] : []),
         ...(isBuild
@@ -415,7 +438,9 @@ function core(options: FonduOptions): Plugin {
 const isServerOnly = (id: string, root: string) => {
   const file = id.split('?')[0]!
   return (
-    /\.server\.[cm]?[jt]sx?$/.test(file) || file.startsWith(`${root}/app/routes/`) || file === `${root}/app/server.ts`
+    /\.server\.[cm]?[jt]sx?$/.test(file) ||
+    file.startsWith(`${root}/app/routes/`) ||
+    file === `${root}/app/server.ts`
   )
 }
 

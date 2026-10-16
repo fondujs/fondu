@@ -12,16 +12,20 @@ export default function Versioning() {
     const response = await fetch(location.pathname, {
       headers: { 'X-Inertia': 'true', 'X-Inertia-Version': 'a-previous-deploy' },
     })
-    setAnswer({ status: response.status, 'X-Inertia-Location': response.headers.get('x-inertia-location') })
+    setAnswer({
+      status: response.status,
+      'X-Inertia-Location': response.headers.get('x-inertia-location'),
+    })
   }
   return (
     <>
       <Head title="Asset versioning" />
       <h1>Asset versioning</h1>
       <p className="lede">
-        Every Inertia request carries the version of the assets the page was loaded with. After a deploy the versions
-        differ, and the server answers <code>409</code> with <code>X-Inertia-Location</code>: the client loads the page
-        again as a document, with the new assets.
+        Every Inertia request carries the version of the assets the page was loaded with. After a
+        deploy the versions differ, and the server answers <code>409</code> with{' '}
+        <code>X-Inertia-Location</code>: the client loads the page again as a document, with the new
+        assets.
       </p>
       <div className="grid gap-4 sm:grid-cols-2">
         <DemoCard title="This page's version">
@@ -29,7 +33,8 @@ export default function Versioning() {
             {version ?? 'null'}
           </p>
           <p className="mt-2 text-muted-foreground">
-            A hash of the client build's manifest; <code>null</code> in development, where nothing is checked.
+            A hash of the client build's manifest; <code>null</code> in development, where nothing
+            is checked.
           </p>
         </DemoCard>
         <DemoCard title="A visit from the previous deploy">

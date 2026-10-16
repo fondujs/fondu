@@ -4,7 +4,8 @@ import type { DocumentParts } from 'fondu'
  * Sets the theme chosen in the theme menu (a cookie) on <html> before the page paints. Fondu gives the document's
  * scripts the nonce, and allows them on static pages by their hashes.
  */
-const THEME = "document.documentElement.className=/(?:^|; )theme=(light|dark)/.exec(document.cookie)?.[1]??'system'"
+const THEME =
+  "document.documentElement.className=/(?:^|; )theme=(light|dark)/.exec(document.cookie)?.[1]??'system'"
 
 /** The HTML around every page (server.ts) */
 export default function Document({ head, body }: DocumentParts) {

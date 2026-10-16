@@ -21,7 +21,8 @@ export function Search() {
   }
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const typing = e.target instanceof HTMLElement && e.target.closest('input, textarea, [contenteditable]')
+      const typing =
+        e.target instanceof HTMLElement && e.target.closest('input, textarea, [contenteditable]')
       if ((e.key === 'k' && (e.metaKey || e.ctrlKey)) || (e.key === '/' && !typing)) {
         e.preventDefault()
         show()
@@ -33,12 +34,24 @@ export function Search() {
   const prefetch = { onPointerEnter: () => void importDialog(), onFocus: () => void importDialog() }
   return (
     <>
-      <Button variant="outline" className="w-52 text-muted-foreground max-sm:hidden" onClick={show} {...prefetch}>
+      <Button
+        variant="outline"
+        className="w-52 text-muted-foreground max-sm:hidden"
+        onClick={show}
+        {...prefetch}
+      >
         <SearchIcon />
         Search docs
         <kbd className="ml-auto font-sans text-xs">{mac ? '⌘K' : 'Ctrl K'}</kbd>
       </Button>
-      <Button variant="ghost" size="icon" className="sm:hidden" aria-label="Search docs" onClick={show} {...prefetch}>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="sm:hidden"
+        aria-label="Search docs"
+        onClick={show}
+        {...prefetch}
+      >
         <SearchIcon />
       </Button>
       {loaded && (

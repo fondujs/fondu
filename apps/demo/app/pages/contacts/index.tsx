@@ -33,17 +33,21 @@ export default function Contacts({ contacts }: { contacts: Contact[] }) {
       quick.setError({ name: fields.name?.[0] ?? '', email: fields.email?.[0] ?? '' })
       return
     }
-    quick.post(href('/contacts'), { preserveScroll: true, showProgress: false, onSuccess: () => quick.reset() })
+    quick.post(href('/contacts'), {
+      preserveScroll: true,
+      showProgress: false,
+      onSuccess: () => quick.reset(),
+    })
   }
   return (
     <>
       <Head title="Forms & validation" />
       <h1>Forms & validation</h1>
       <p className="lede">
-        One schema (<code>schemas/contact.ts</code>) validates on the server; invalid input is answered with a 303 back
-        to this page and the errors in its <code>errors</code> prop. The same schema can check in the browser first, or
-        the server can check each field as you leave it (Precognition), the address not yet taken included. Contacts are
-        stored in D1.
+        One schema (<code>schemas/contact.ts</code>) validates on the server; invalid input is
+        answered with a 303 back to this page and the errors in its <code>errors</code> prop. The
+        same schema can check in the browser first, or the server can check each field as you leave
+        it (Precognition), the address not yet taken included. Contacts are stored in D1.
       </p>
       {/* adding, changing and deleting are for signed-in users (the actions use requireUser) */}
       {auth.user ? (
@@ -113,7 +117,10 @@ export default function Contacts({ contacts }: { contacts: Contact[] }) {
         <ul className="divide-y" data-testid="contacts">
           {contacts.map((contact) => (
             <li key={contact.id} className="flex items-center gap-3 py-2">
-              <Link href={href('/contacts/:id', { id: contact.id })} className="font-medium hover:underline">
+              <Link
+                href={href('/contacts/:id', { id: contact.id })}
+                className="font-medium hover:underline"
+              >
                 {contact.name}
               </Link>
               <span className="truncate text-muted-foreground">{contact.email}</span>
@@ -136,17 +143,27 @@ export default function Contacts({ contacts }: { contacts: Contact[] }) {
                     <AlertDialogTrigger
                       type="submit"
                       onClick={(e) => e.preventDefault()}
-                      render={<Button variant="ghost" size="icon-sm" aria-label={`Delete ${contact.name}`} />}
+                      render={
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          aria-label={`Delete ${contact.name}`}
+                        />
+                      }
                     >
                       <Trash2Icon />
                     </AlertDialogTrigger>
                     <AlertDialogPopup>
                       <AlertDialogHeader>
                         <AlertDialogTitle>Delete {contact.name}?</AlertDialogTitle>
-                        <AlertDialogDescription>This removes {contact.email} from the contacts.</AlertDialogDescription>
+                        <AlertDialogDescription>
+                          This removes {contact.email} from the contacts.
+                        </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
-                        <AlertDialogClose render={<Button variant="ghost" />}>Cancel</AlertDialogClose>
+                        <AlertDialogClose render={<Button variant="ghost" />}>
+                          Cancel
+                        </AlertDialogClose>
                         <AlertDialogClose
                           type="submit"
                           form={`delete-${contact.id}`}

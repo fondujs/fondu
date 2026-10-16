@@ -57,12 +57,21 @@ export const requireAdmin = defineMiddleware(async (c, next) => {
  * browser would go: rate limits, origin checks, its cookies. A refusal is a `ValidationError` on `field`, shown
  * under that field of the form.
  */
-export async function callAuth<T = unknown>(c: Context, path: string, body: object, field: string): Promise<T> {
+export async function callAuth<T = unknown>(
+  c: Context,
+  path: string,
+  body: object,
+  field: string,
+): Promise<T> {
   const headers = new Headers(c.req.raw.headers) // the cookies, Origin, the client's address
   headers.set('content-type', 'application/json')
   headers.delete('content-length')
   const res = await auth.handler(
-    new Request(new URL(`/api/auth${path}`, c.req.url), { method: 'POST', headers, body: JSON.stringify(body) }),
+    new Request(new URL(`/api/auth${path}`, c.req.url), {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body),
+    }),
   )
   if (res.status === 429)
     throw new ValidationError({
@@ -78,5 +87,7 @@ export async function callAuth<T = unknown>(c: Context, path: string, body: obje
 export function safeNext(c: Context, next: string | undefined) {
   const here = new URL(c.req.url)
   const url = new URL(next ?? '/account', here)
-  return url.origin === here.origin ? url.pathname.replace(/^\/+/, '/') + url.search + url.hash : '/account'
+  return url.origin === here.origin
+    ? url.pathname.replace(/^\/+/, '/') + url.search + url.hash
+    : '/account'
 }

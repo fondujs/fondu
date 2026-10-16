@@ -1,5 +1,15 @@
 {
   "extends": "../../tsconfig.base.json",
-  "compilerOptions": { "noEmit": true, "allowImportingTsExtensions": true, "types": ["vite/client"] },
-  "include": ["app", "vite.config.ts", "drizzle.config.ts", "e2e/types.ts", "worker-configuration.d.ts"]
+  "compilerOptions": {
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "types": ["vite/client"]
+  },
+  "include": [
+    "app",
+    "vite.config.ts",
+    "drizzle.config.ts",
+    "e2e/types.ts",
+    "worker-configuration.d.ts"
+  ]
 }

@@ -33,13 +33,23 @@ export interface SelectButtonProps extends useRender.ComponentProps<'button'> {
   size?: VariantProps<typeof selectTriggerVariants>['size']
 }
 
-export function SelectButton({ className, size, render, children, ...props }: SelectButtonProps): React.ReactElement {
-  const typeValue: React.ButtonHTMLAttributes<HTMLButtonElement>['type'] = render ? undefined : 'button'
+export function SelectButton({
+  className,
+  size,
+  render,
+  children,
+  ...props
+}: SelectButtonProps): React.ReactElement {
+  const typeValue: React.ButtonHTMLAttributes<HTMLButtonElement>['type'] = render
+    ? undefined
+    : 'button'
 
   const defaultProps = {
     children: (
       <>
-        <span className="flex-1 truncate in-data-placeholder:text-muted-foreground/72">{children}</span>
+        <span className="flex-1 truncate in-data-placeholder:text-muted-foreground/72">
+          {children}
+        </span>
         <ChevronsUpDownIcon className={selectTriggerIconClassName} />
       </>
     ),
@@ -75,7 +85,10 @@ export function SelectTrigger({
   )
 }
 
-export function SelectValue({ className, ...props }: SelectPrimitive.Value.Props): React.ReactElement {
+export function SelectValue({
+  className,
+  ...props
+}: SelectPrimitive.Value.Props): React.ReactElement {
   return (
     <SelectPrimitive.Value
       className={cn('flex-1 truncate data-placeholder:text-muted-foreground', className)}
@@ -148,7 +161,11 @@ export function SelectPopup({
   )
 }
 
-export function SelectItem({ className, children, ...props }: SelectPrimitive.Item.Props): React.ReactElement {
+export function SelectItem({
+  className,
+  children,
+  ...props
+}: SelectPrimitive.Item.Props): React.ReactElement {
   return (
     <SelectPrimitive.Item
       className={cn(
@@ -174,12 +191,17 @@ export function SelectItem({ className, children, ...props }: SelectPrimitive.It
           <path d="M5.252 12.7 10.2 18.63 18.748 5.37" />
         </svg>
       </SelectPrimitive.ItemIndicator>
-      <SelectPrimitive.ItemText className="col-start-2 min-w-0 wrap-anywhere">{children}</SelectPrimitive.ItemText>
+      <SelectPrimitive.ItemText className="col-start-2 min-w-0 wrap-anywhere">
+        {children}
+      </SelectPrimitive.ItemText>
     </SelectPrimitive.Item>
   )
 }
 
-export function SelectSeparator({ className, ...props }: SelectPrimitive.Separator.Props): React.ReactElement {
+export function SelectSeparator({
+  className,
+  ...props
+}: SelectPrimitive.Separator.Props): React.ReactElement {
   return (
     <SelectPrimitive.Separator
       className={cn('mx-2 my-1 h-px bg-border', className)}
@@ -193,7 +215,10 @@ export function SelectGroup(props: SelectPrimitive.Group.Props): React.ReactElem
   return <SelectPrimitive.Group data-slot="select-group" {...props} />
 }
 
-export function SelectLabel({ className, ...props }: SelectPrimitive.Label.Props): React.ReactElement {
+export function SelectLabel({
+  className,
+  ...props
+}: SelectPrimitive.Label.Props): React.ReactElement {
   return (
     <SelectPrimitive.Label
       className={cn(

@@ -23,20 +23,22 @@ export const actions = {
   // POST /contacts/:id?rename — its errors arrive in the `rename` error bag (the form sends X-Inertia-Error-Bag)
   rename: defineHandler.withValidator({
     params,
-    body: z.object({ name: z.string().check(z.trim(), z.minLength(2, 'Name must be at least 2 characters')) }),
+    body: z.object({
+      name: z.string().check(z.trim(), z.minLength(2, 'Name must be at least 2 characters')),
+    }),
   })(requireUser, async (c, { params, body }) => {
     await db.update(contacts).set(body).where(eq(contacts.id, params.id))
     flash(c, { message: 'Renamed' })
     return back(c)
   }),
   // POST /contacts/:id?email — the `email` bag
-  email: defineHandler.withValidator({ params, body: z.object({ email: contactSchema.shape.email }) })(
-    requireUser,
-    async (c, { params, body }) => {
-      if (!(await emailFree(body.email, params.id))) throw new ValidationError({ email: EMAIL_TAKEN })
-      await db.update(contacts).set(body).where(eq(contacts.id, params.id))
-      flash(c, { message: 'Email changed' })
-      return back(c)
-    },
-  ),
+  email: defineHandler.withValidator({
+    params,
+    body: z.object({ email: contactSchema.shape.email }),
+  })(requireUser, async (c, { params, body }) => {
+    if (!(await emailFree(body.email, params.id))) throw new ValidationError({ email: EMAIL_TAKEN })
+    await db.update(contacts).set(body).where(eq(contacts.id, params.id))
+    flash(c, { message: 'Email changed' })
+    return back(c)
+  }),
 }

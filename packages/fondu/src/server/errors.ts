@@ -21,11 +21,16 @@ const TEXT: Record<number, string> = {
  * - pages, in development: a report of the error (Inertia shows it in its dialog during a visit)
  * - pages: the error page (`app/pages/error.tsx`, `{ status }`) with the shared props, as Inertia's docs describe
  */
-export async function errorResponse(c: Context, status: number, error?: unknown): Promise<Response> {
+export async function errorResponse(
+  c: Context,
+  status: number,
+  error?: unknown,
+): Promise<Response> {
   if (status >= 500) console.error(error)
   const code = status as ContentfulStatusCode
   const text = TEXT[status] ?? (status >= 500 ? 'Internal Server Error' : 'Error')
-  if (!wantsPage(c)) return error instanceof HTTPException ? error.getResponse() : c.text(text, code)
+  if (!wantsPage(c))
+    return error instanceof HTTPException ? error.getResponse() : c.text(text, code)
   if (import.meta.env.DEV && status >= 500) return c.html(report(c, error), 500)
   const page = settings.get(c)?.errorPage
   if (page && hasPage(page)) {

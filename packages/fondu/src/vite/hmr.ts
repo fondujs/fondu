@@ -100,8 +100,10 @@ function namedExports(program: Program): string[] {
       declarations?: Array<{ id: { type: string; name?: string } }>
     } | null
     if (declaration?.id) names.push(declaration.id.name)
-    for (const d of declaration?.declarations ?? []) if (d.id.type === 'Identifier') names.push(d.id.name!)
-    for (const s of (node.specifiers as Array<{ exported: { name?: string; value?: string } }>) ?? [])
+    for (const d of declaration?.declarations ?? [])
+      if (d.id.type === 'Identifier') names.push(d.id.name!)
+    for (const s of (node.specifiers as Array<{ exported: { name?: string; value?: string } }>) ??
+      [])
       names.push(s.exported.name ?? s.exported.value!)
   }
   return names.filter((n) => n !== 'default')

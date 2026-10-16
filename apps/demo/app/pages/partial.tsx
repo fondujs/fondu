@@ -28,8 +28,8 @@ export default function Partial({ time, random, requestCount, report }: Props) {
       <Head title="Partial reloads" />
       <h1>Partial reloads</h1>
       <p className="lede">
-        The client sends <code>X-Inertia-Partial-Data</code> / <code>X-Inertia-Partial-Except</code> and the server only
-        resolves the matching props. Always props are included regardless.
+        The client sends <code>X-Inertia-Partial-Data</code> / <code>X-Inertia-Partial-Except</code>{' '}
+        and the server only resolves the matching props. Always props are included regardless.
       </p>
       <div className="mb-4 grid gap-4 sm:grid-cols-3">
         {stat('time', time, 'time')}
@@ -45,23 +45,31 @@ export default function Partial({ time, random, requestCount, report }: Props) {
             <Button onClick={() => router.reload({ only: ['random'] })} data-testid="only-random">
               Reload only random
             </Button>
-            <Button variant="outline" onClick={() => router.reload({ except: ['random'] })} data-testid="except-random">
+            <Button
+              variant="outline"
+              onClick={() => router.reload({ except: ['random'] })}
+              data-testid="except-random"
+            >
               Reload except random
             </Button>
-            <Button variant="outline" onClick={() => (poll.polling ? poll.stop() : poll.start())} data-testid="poll">
+            <Button
+              variant="outline"
+              onClick={() => (poll.polling ? poll.stop() : poll.start())}
+              data-testid="poll"
+            >
               {poll.polling ? 'Stop polling' : 'Poll time every second'}
             </Button>
           </div>
           <p className="mt-4 text-muted-foreground">
-            <code>requestCount</code> increments on every reload: it's wrapped in <code>always()</code>, so it bypasses
-            the partial filter.
+            <code>requestCount</code> increments on every reload: it's wrapped in{' '}
+            <code>always()</code>, so it bypasses the partial filter.
           </p>
         </CardPanel>
       </Card>
       <DemoCard title="Optional prop" className="mb-4">
         <p className="mb-4 text-muted-foreground">
-          <code>report</code> is an <code>optional()</code> prop: never sent on the first load, only when a partial
-          reload asks for it.
+          <code>report</code> is an <code>optional()</code> prop: never sent on the first load, only
+          when a partial reload asks for it.
         </p>
         {report ? (
           <p data-testid="report">

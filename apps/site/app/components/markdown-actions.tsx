@@ -7,7 +7,9 @@ const load = (url: string) => {
   if (!fetched.has(url))
     fetched.set(
       url,
-      fetch(url).then((res) => (res.ok ? res.text() : Promise.reject(new Error(String(res.status))))),
+      fetch(url).then((res) =>
+        res.ok ? res.text() : Promise.reject(new Error(String(res.status))),
+      ),
     )
   return fetched.get(url)!
 }
@@ -24,7 +26,9 @@ export function MarkdownActions({ url }: { url: string }) {
       const text = load(url)
       if (typeof ClipboardItem === 'function')
         await navigator.clipboard.write([
-          new ClipboardItem({ 'text/plain': text.then((t) => new Blob([t], { type: 'text/plain' })) }),
+          new ClipboardItem({
+            'text/plain': text.then((t) => new Blob([t], { type: 'text/plain' })),
+          }),
         ])
       else await navigator.clipboard.writeText(await text)
       setState('copied')
@@ -42,7 +46,10 @@ export function MarkdownActions({ url }: { url: string }) {
   }
   const [Icon, label] = states[state]
   return (
-    <div className="mt-4 mb-8 flex items-center gap-3 border-b pb-6 text-sm text-muted-foreground" data-pagefind-ignore>
+    <div
+      className="mt-4 mb-8 flex items-center gap-3 border-b pb-6 text-sm text-muted-foreground"
+      data-pagefind-ignore
+    >
       <button
         type="button"
         onClick={copy}

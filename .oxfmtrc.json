@@ -1,6 +1,5 @@
 {
   "$schema": "./node_modules/oxfmt/configuration_schema.json",
-  "printWidth": 120,
   "semi": false,
   "singleQuote": true,
   "sortImports": true,
@@ -31,5 +30,10 @@
       }
     }
   ],
-  "ignorePatterns": ["**/worker-configuration.d.ts", "**/fondu.gen.d.ts", "**/migrations/**", "bun.lock"]
+  "ignorePatterns": [
+    "**/worker-configuration.d.ts",
+    "**/fondu.gen.d.ts",
+    "**/migrations/**",
+    "bun.lock"
+  ]
 }

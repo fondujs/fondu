@@ -12,7 +12,11 @@ export const Menu: typeof MenuPrimitive.Root = MenuPrimitive.Root
 
 export const MenuPortal: typeof MenuPrimitive.Portal = MenuPrimitive.Portal
 
-export function MenuTrigger({ className, children, ...props }: MenuPrimitive.Trigger.Props): React.ReactElement {
+export function MenuTrigger({
+  className,
+  children,
+  ...props
+}: MenuPrimitive.Trigger.Props): React.ReactElement {
   return (
     <MenuPrimitive.Trigger className={className} data-slot="menu-trigger" {...props}>
       {children}
@@ -175,7 +179,11 @@ export function MenuRadioGroup(props: MenuPrimitive.RadioGroup.Props): React.Rea
   return <MenuPrimitive.RadioGroup data-slot="menu-radio-group" {...props} />
 }
 
-export function MenuRadioItem({ className, children, ...props }: MenuPrimitive.RadioItem.Props): React.ReactElement {
+export function MenuRadioItem({
+  className,
+  children,
+  ...props
+}: MenuPrimitive.RadioItem.Props): React.ReactElement {
   return (
     <MenuPrimitive.RadioItem
       className={cn(
@@ -226,7 +234,10 @@ export function MenuGroupLabel({
   )
 }
 
-export function MenuSeparator({ className, ...props }: MenuPrimitive.Separator.Props): React.ReactElement {
+export function MenuSeparator({
+  className,
+  ...props
+}: MenuPrimitive.Separator.Props): React.ReactElement {
   return (
     <MenuPrimitive.Separator
       className={cn('mx-2 my-1 h-px bg-border', className)}
@@ -236,10 +247,16 @@ export function MenuSeparator({ className, ...props }: MenuPrimitive.Separator.P
   )
 }
 
-export function MenuShortcut({ className, ...props }: React.ComponentProps<'kbd'>): React.ReactElement {
+export function MenuShortcut({
+  className,
+  ...props
+}: React.ComponentProps<'kbd'>): React.ReactElement {
   return (
     <kbd
-      className={cn('ms-auto font-medium font-sans text-muted-foreground/72 text-xs tracking-widest', className)}
+      className={cn(
+        'ms-auto font-medium font-sans text-muted-foreground/72 text-xs tracking-widest',
+        className,
+      )}
       data-slot="menu-shortcut"
       {...props}
     />

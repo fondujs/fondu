@@ -20,7 +20,9 @@ const post: Delivered<Post> = {
   tags: ['a'],
   author: { name: 'Ada', joinedAt: new Date() },
 }
-const tree: Delivered<{ root: Tree }> = { root: { name: 'a', children: [{ name: 'b', children: [] }] } }
+const tree: Delivered<{ root: Tree }> = {
+  root: { name: 'a', children: [{ name: 'b', children: [] }] },
+}
 // oxlint-disable-next-line no-explicit-any -- an untyped prop is not checked
 const loose: Delivered<{ anything: unknown; any: any }> = { anything: new Map(), any: new Set() }
 
@@ -34,7 +36,11 @@ const nested: Delivered<{ user: { roles: Set<string> } }> = { user: { roles: new
 const wrong: Delivered<Post> = { title: 1, publishedAt: '', tags: [], author: { name: 'Ada' } }
 
 // props combined (once(defer()), deepMerge(defer()), defer(scroll())) stand for their value
-const combined: Delivered<{ permissions: string[]; results: { data: number[] }; feed: Paginated<number> }> = {
+const combined: Delivered<{
+  permissions: string[]
+  results: { data: number[] }
+  feed: Paginated<number>
+}> = {
   permissions: once(defer(() => ['edit'])),
   results: deepMerge(defer(() => ({ data: [1] }))),
   feed: defer(scroll(() => ({ data: [1], currentPage: 1, previousPage: null, nextPage: 2 }))),
@@ -45,5 +51,16 @@ const combinedWrong: Delivered<{ permissions: string[] }> = { permissions: once(
 const deferValue = defer(['edit'])
 
 test('the types above are checked by tsc', () => {
-  expect([post, tree, loose, date, map, nested, wrong, combined, combinedWrong, deferValue]).toHaveLength(10)
+  expect([
+    post,
+    tree,
+    loose,
+    date,
+    map,
+    nested,
+    wrong,
+    combined,
+    combinedWrong,
+    deferValue,
+  ]).toHaveLength(10)
 })

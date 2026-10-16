@@ -22,7 +22,13 @@ const load = () =>
   ))
 
 /** The search dialog (components/search.tsx loads it when it is first opened) */
-export default function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+export default function SearchDialog({
+  open,
+  onOpenChange,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogPopup showCloseButton={false} className="max-w-xl" bottomStickOnMobile={false}>
@@ -37,7 +43,11 @@ function result(page: Page): Result {
   const title = page.meta.title ?? page.url
   const part = page.sub_results.find((s) => s.url.includes('#'))
   const { url, excerpt } = part ?? page
-  return { url: url.replace(/\.html(?=#|$)/, ''), title: part ? `${title} › ${part.title}` : title, excerpt }
+  return {
+    url: url.replace(/\.html(?=#|$)/, ''),
+    title: part ? `${title} › ${part.title}` : title,
+    excerpt,
+  }
 }
 
 function Results({ onPick }: { onPick: () => void }) {
@@ -70,7 +80,8 @@ function Results({ onPick }: { onPick: () => void }) {
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault()
-      const next = (active + (e.key === 'ArrowDown' ? 1 : -1) + results.length) % Math.max(results.length, 1)
+      const next =
+        (active + (e.key === 'ArrowDown' ? 1 : -1) + results.length) % Math.max(results.length, 1)
       setActive(next)
       list.current?.children[next]?.scrollIntoView({ block: 'nearest' })
     } else if (e.key === 'Enter' && results[active]) go(results[active].url)
@@ -98,11 +109,20 @@ function Results({ onPick }: { onPick: () => void }) {
         />
       </div>
       {state === 'unavailable' ? (
-        <p className="border-t p-6 text-center text-muted-foreground">The search index is written by the build.</p>
+        <p className="border-t p-6 text-center text-muted-foreground">
+          The search index is written by the build.
+        </p>
       ) : query && query === searched && !results.length ? (
-        <p className="border-t p-6 text-center text-muted-foreground">Nothing found for “{query}”.</p>
+        <p className="border-t p-6 text-center text-muted-foreground">
+          Nothing found for “{query}”.
+        </p>
       ) : results.length ? (
-        <ul ref={list} id="search-results" role="listbox" className="max-h-[60vh] overflow-y-auto border-t p-2">
+        <ul
+          ref={list}
+          id="search-results"
+          role="listbox"
+          className="max-h-[60vh] overflow-y-auto border-t p-2"
+        >
           {results.map((r, i) => (
             <li
               key={r.url}

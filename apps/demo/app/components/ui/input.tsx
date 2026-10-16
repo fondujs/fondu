@@ -5,7 +5,10 @@ import type * as React from 'react'
 
 import { cn } from '#/lib/utils.ts'
 
-export type InputProps = Omit<InputPrimitive.Props & React.RefAttributes<HTMLInputElement>, 'size'> & {
+export type InputProps = Omit<
+  InputPrimitive.Props & React.RefAttributes<HTMLInputElement>,
+  'size'
+> & {
   size?: 'sm' | 'default' | 'lg' | number
   unstyled?: boolean
   nativeInput?: boolean

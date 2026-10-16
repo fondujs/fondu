@@ -59,7 +59,11 @@
     "scope": "typescript",
     "prefix": "/validated",
     "description": "A handler with validated body, query and params",
-    "body": ["defineHandler.withValidator({ ${1:body}: ${2:schema} })((c, { ${1:body} }) => {", "  $0", "})"],
+    "body": [
+      "defineHandler.withValidator({ ${1:body}: ${2:schema} })((c, { ${1:body} }) => {",
+      "  $0",
+      "})",
+    ],
   },
   "get": {
     "scope": "typescript",

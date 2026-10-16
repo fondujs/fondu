@@ -17,11 +17,19 @@ export function AccountMenu() {
         <Menu>
           <MenuTrigger
             render={
-              <Button variant="ghost" size="icon" className="rounded-full" aria-label={user.name} data-testid="user" />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="rounded-full"
+                aria-label={user.name}
+                data-testid="user"
+              />
             }
           >
             <Avatar className="size-7">
-              <AvatarFallback className="bg-secondary font-semibold uppercase">{user.name.slice(0, 1)}</AvatarFallback>
+              <AvatarFallback className="bg-secondary font-semibold uppercase">
+                {user.name.slice(0, 1)}
+              </AvatarFallback>
             </Avatar>
           </MenuTrigger>
           <MenuPopup align="end" className="w-56">
@@ -37,7 +45,12 @@ export function AccountMenu() {
           </MenuPopup>
         </Menu>
       ) : (
-        <Button variant="outline" size="sm" render={<Link href={href('/login')} />} data-testid="sign-in">
+        <Button
+          variant="outline"
+          size="sm"
+          render={<Link href={href('/login')} />}
+          data-testid="sign-in"
+        >
           Sign in
         </Button>
       )}

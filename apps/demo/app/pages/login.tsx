@@ -15,8 +15,8 @@ export default function Login({ next }: { next: string }) {
         <AlertTitle>Demo accounts</AlertTitle>
         <AlertDescription>
           <p>
-            <code>demo@fondu.dev</code> / <code>fondu-demo</code>, or the admin <code>admin@fondu.dev</code> /{' '}
-            <code>fondu-admin</code>
+            <code>demo@fondu.dev</code> / <code>fondu-demo</code>, or the admin{' '}
+            <code>admin@fondu.dev</code> / <code>fondu-admin</code>
           </p>
         </AlertDescription>
       </Alert>

@@ -1,4 +1,14 @@
-import { deepMerge, defer, defineHandler, merge, once, optional, prepend, render, scroll } from 'fondu'
+import {
+  deepMerge,
+  defer,
+  defineHandler,
+  merge,
+  once,
+  optional,
+  prepend,
+  render,
+  scroll,
+} from 'fondu'
 
 // props combined as Inertia's docs combine them (Laravel's ->once(), ->deepMerge(), ->defer())
 export const loader = defineHandler((c) =>
