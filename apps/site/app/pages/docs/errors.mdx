@@ -22,6 +22,13 @@ shows it in its dialog. And `render()` of a page that doesn't exist says which f
 An error before any handler runs, in a route that throws as it is imported, is Vite's: its overlay shows it, as a
 whole page, and the next edit reloads the page.
 
+## Answers from outside the app
+
+During a visit, an answer that isn't an Inertia page, such as a proxy's 502 or a CDN's 524 timeout page, is shown in
+Inertia's dialog, in production too. Fondu itself answers visits in production with pages only, errors included, so
+those come from what stands in front of the app. Inertia's `httpException` event (`router.on('httpException', …)`)
+lets the app handle them otherwise.
+
 ## Your own handling
 
 `createApp()` returns a Hono app: its `notFound()` and `onError()` replace Fondu's.
