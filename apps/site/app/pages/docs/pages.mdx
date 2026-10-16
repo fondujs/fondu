@@ -58,15 +58,15 @@ so the key of the encrypted pages is gone.
 
 Wrap a prop to change when it is sent. Each is an Inertia feature, and the page uses it with Inertia's API:
 
-| Prop                               | Sent                                                                                           |
-| ---------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `optional(fn)`                     | only when a partial reload asks for it                                                         |
-| `always(value)`                    | on partial reloads too, asked for or not                                                       |
-| `defer(fn, { group?, rescue? })`   | after the page renders, one request per group; `rescue`: a failure is listed in `rescuedProps` |
-| `merge(value)`, `prepend(value)`   | added to the end, or the start, of the list the page holds                                     |
-| `deepMerge(value, { matchOn? })`   | merged into the object the page holds                                                          |
-| `once(fn, { key?, ttl?, fresh? })` | only when the browser doesn't hold it already                                                  |
-| `scroll(fn, { pageName? })`        | a page of a list for `<InfiniteScroll>`: `{ data, currentPage, previousPage, nextPage }`       |
+| Prop                                              | Sent                                                                                           |
+| ------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `optional(fn)`                                    | only when a partial reload asks for it                                                         |
+| `always(value)`                                   | on partial reloads too, asked for or not                                                       |
+| `defer(fn, { group?, rescue? })`                  | after the page renders, one request per group; `rescue`: a failure is listed in `rescuedProps` |
+| `merge(value, { path?, matchOn? })`, `prepend(…)` | added to the end, or the start, of the list the page holds                                     |
+| `deepMerge(value, { matchOn? })`                  | merged into the object the page holds                                                          |
+| `once(fn, { key?, ttl?, fresh? })`                | only when the browser doesn't hold it already                                                  |
+| `scroll(fn, { pageName? })`                       | a page of a list for `<InfiniteScroll>`: `{ data, currentPage, previousPage, nextPage }`       |
 
 ```ts
 import { defer, merge, render } from 'fondu'
@@ -77,6 +77,26 @@ render(c, 'dashboard', {
   activity: merge(await activityPage(page)), // "Load more" adds to the list
 })
 ```
+
+A list inside a prop, such as a paginator's `data`, is merged with `path`; `matchOn` names the field, from the prop,
+that finds an item the page holds already, which the new one replaces:
+
+```ts
+users: merge(() => paginate(page), { path: 'data', matchOn: 'data.id' }) // the rest of the prop is replaced
+```
+
+They combine as in Inertia's docs, by wrapping one in another:
+
+| Combined                                                         | Inertia's (Laravel's)                          |
+| ---------------------------------------------------------------- | ---------------------------------------------- |
+| `once(defer(fn))`                                                | `Inertia::defer(fn)->once()`                   |
+| `once(optional(fn))`                                             | `Inertia::optional(fn)->once()`                |
+| `once(merge(fn))`                                                | `Inertia::merge(fn)->once()`                   |
+| `merge(defer(fn))`, `deepMerge(defer(fn))`, `prepend(defer(fn))` | `Inertia::defer(fn)->merge()`, `->deepMerge()` |
+| `defer(scroll(fn))`                                              | `Inertia::scroll(fn)->defer()`                 |
+
+`once(defer(fn))` is deferred on the first visit only: once the browser holds it, it is neither sent nor asked for
+again. A combination Inertia doesn't have is an error.
 
 A deferred prop's loading state is the page's to show, with Inertia's
 [`<Deferred fallback>`](https://inertiajs.com/docs/v3/data-props/deferred-props). The progress bar is Inertia's too,

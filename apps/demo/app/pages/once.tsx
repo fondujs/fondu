@@ -1,4 +1,4 @@
-import { Head, Link, usePage } from '@inertiajs/react'
+import { Deferred, Head, Link, usePage } from '@inertiajs/react'
 import { href } from 'fondu/client'
 
 import { DemoCard, Json } from '#/components/demo.tsx'
@@ -10,9 +10,10 @@ interface Props {
   renderedAt: string
   plans: string
   rates: string
+  permissions?: string
 }
 
-export default function Once({ which, renderedAt, plans, rates }: Props) {
+export default function Once({ which, renderedAt, plans, rates, permissions }: Props) {
   const { onceProps } = usePage()
   const stat = (title: string, value: string, note: string, id: string) => (
     <Card>
@@ -51,6 +52,19 @@ export default function Once({ which, renderedAt, plans, rates }: Props) {
         {stat('renderedAt (regular)', renderedAt, 'Changes on every visit.', 'rendered-at')}
         {stat('plans (once)', plans, 'Resolved once, reused when switching pages.', 'plans')}
         {stat('rates (once, 15s)', rates, 'ttl: 15 — fetched again after it expires.', 'rates')}
+      </div>
+      <div className="mb-4">
+        <Deferred
+          data="permissions"
+          fallback={stat('permissions (once, deferred)', '…', 'Loading after the page.', 'permissions')}
+        >
+          {stat(
+            'permissions (once, deferred)',
+            permissions ?? '',
+            'once(defer()): loaded after the first page, then held: not deferred again.',
+            'permissions',
+          )}
+        </Deferred>
       </div>
       <DemoCard title="onceProps metadata">
         <Json value={onceProps} />
