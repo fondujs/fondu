@@ -87,16 +87,31 @@ requests itself, from the validator: 204 when the fields are valid, 422 with the
 only when the form is sent.
 
 ```tsx
-<Form action={href('/contacts')} method="post">
-  {({ errors, validate }) => <input name="email" onBlur={() => validate('email')} />}
+<Form action={href('/contacts')} method="post" validationTimeout={500}>
+  {({ errors, validate, invalid }) => (
+    <input
+      name="email"
+      onBlur={() => validate('email')}
+      onChange={() => invalid('email') && validate('email')}
+    />
+  )}
 </Form>
 ```
+
+A field is checked when it is left, then again as it is typed in while it has an error, so the error goes as soon as
+the value is right. The checks wait for a pause in typing: `validationTimeout` (1500 ms by default), or `useForm()`'s
+`setValidationTimeout()`.
 
 ## Focus on the first error
 
 A form that comes back with errors leaves the focus on its button. Move it to the first field to fix, so a keyboard
-or screen reader user lands there: mark each invalid field with `aria-invalid`, and its message with
-`aria-describedby`. Then a submit button can do it for any `<Form>` it is in:
+or screen reader user lands there. Your UI library may do it already: Base UI's `<Form errors={form.errors}>` (coss
+ui's `Form`, for one) focuses the first field with an error after a submit, for `useForm()` and `useHttp()`. It
+doesn't send while a field has an error, so clear the field's error as it changes:
+`onChange={(e) => (form.setData('email', e.target.value), form.clearErrors('email'))}`.
+
+Otherwise, mark each invalid field with `aria-invalid`, and its message with `aria-describedby`. Then a submit button
+can do it for any `<Form>` it is in:
 
 ```tsx
 // app/components/submit-button.tsx
@@ -128,9 +143,9 @@ export function SubmitButton(props: ComponentProps<'button'>) {
 </Form>
 ```
 
-The focus moves after a submit only: Precognition's errors come as the user leaves a field, and leave the focus where
-it is. With `useForm()`, which has no form context, the button takes the form's `processing` and `errors` instead, as
-in the [demo's forms](https://github.com/fondujs/fondu/blob/main/apps/demo/app/components/demo.tsx).
+The focus moves after a submit only: Precognition's errors come as the user leaves a field or types in it, and leave
+the focus where it is. The [demo's forms](https://github.com/fondujs/fondu/blob/main/apps/demo/app/pages/contacts/index.tsx)
+do both: this button in `<Form>`, Base UI's form with `useForm()`.
 
 ## Files and nested fields
 
