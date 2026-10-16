@@ -25,8 +25,17 @@ npm run deploy   # vite build && wrangler deploy
 Worker, minified as Workers start faster with less code to parse (`build.minify: false` in the Worker's Vite
 environment keeps it readable). `wrangler deploy` ships both: the files are served by Workers Static Assets.
 
-Bindings (D1, KV, R2…) are declared in `wrangler.jsonc` and read from `c.env` in handlers; `npm run cf-typegen` writes
-their types. With [static pages](/docs/static-pages), the pages chosen are files too.
+Bindings (D1, KV, R2…) and variables are declared in `wrangler.jsonc`, secrets in `.dev.vars` locally and with
+`wrangler secret put` deployed. Server code reads them all from `env`, typed by `npm run cf-typegen`
+(`worker-configuration.d.ts`; `c.env` is untyped):
+
+```ts
+import { env } from 'cloudflare:workers'
+
+const user = await env.DB.prepare('select * from users where id = ?').bind(id).first()
+```
+
+With [static pages](/docs/static-pages), the pages chosen are files too.
 
 ## The Content Security Policy
 
