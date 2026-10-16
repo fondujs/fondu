@@ -3,6 +3,7 @@ import { href } from 'fondu/client'
 import type { FormEvent } from 'react'
 
 import { DemoCard, SignInFirst, SubmitButton, TextField } from '#/components/demo.tsx'
+import { Form as BaseForm } from '#/components/ui/form.tsx'
 
 export default function Show({
   contact,
@@ -35,18 +36,24 @@ export default function Show({
       {user ? (
         <div className="grid gap-4 sm:grid-cols-2">
           <DemoCard title="Rename" tag="useForm · bag: rename">
-            <form onSubmit={submit} className="grid gap-4" data-testid="rename">
+            <BaseForm
+              onSubmit={submit}
+              errors={rename.errors}
+              className="grid gap-4"
+              data-testid="rename"
+            >
               <TextField
                 label="Name"
                 value={rename.data.name}
-                onChange={(e) => rename.setData('name', e.target.value)}
+                onChange={(e) => (
+                  rename.setData('name', e.target.value),
+                  rename.clearErrors('name')
+                )}
                 error={rename.errors.name}
                 testid="err-rename"
               />
-              <SubmitButton processing={rename.processing} errors={rename.errors}>
-                Rename
-              </SubmitButton>
-            </form>
+              <SubmitButton processing={rename.processing}>Rename</SubmitButton>
+            </BaseForm>
           </DemoCard>
           <DemoCard title="Email" tag="<Form> · bag: email">
             <Form

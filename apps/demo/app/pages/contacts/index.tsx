@@ -16,6 +16,7 @@ import {
   AlertDialogTrigger,
 } from '#/components/ui/alert-dialog.tsx'
 import { Button } from '#/components/ui/button.tsx'
+import { Form as BaseForm } from '#/components/ui/form.tsx'
 import { contactSchema } from '#/schemas/contact.ts'
 
 type Contact = { id: number; name: string; email: string }
@@ -53,16 +54,18 @@ export default function Contacts({ contacts }: { contacts: Contact[] }) {
       {auth.user ? (
         <div className="mb-4 grid gap-4 sm:grid-cols-2">
           <DemoCard title="Live validation" tag="<Form> · Precognition">
-            {/* each field is checked by the action's own schema when you leave it; the action itself runs on submit */}
+            {/* each field is checked by the action's own schema when you leave it, then as you type while it is
+                wrong; the action itself runs on submit */}
             <Form
               action={href('/contacts')}
               method="post"
               resetOnSuccess
               showProgress={false}
+              validationTimeout={500}
               className="grid gap-4"
               data-testid="add-contact"
             >
-              {({ errors: formErrors, validate }) => {
+              {({ errors: formErrors, validate, invalid }) => {
                 const errors = { ...pageErrors, ...formErrors }
                 return (
                   <>
@@ -70,6 +73,7 @@ export default function Contacts({ contacts }: { contacts: Contact[] }) {
                       label="Name"
                       name="name"
                       onBlur={() => validate('name')}
+                      onChange={() => invalid('name') && validate('name')}
                       error={errors.name}
                       testid="err-name"
                     />
@@ -77,6 +81,7 @@ export default function Contacts({ contacts }: { contacts: Contact[] }) {
                       label="Email"
                       name="email"
                       onBlur={() => validate('email')}
+                      onChange={() => invalid('email') && validate('email')}
                       error={errors.email}
                       testid="err-email"
                     />
@@ -87,25 +92,32 @@ export default function Contacts({ contacts }: { contacts: Contact[] }) {
             </Form>
           </DemoCard>
           <DemoCard title="Checked in the browser" tag="useForm · safeParse">
-            <form onSubmit={addQuickly} className="grid gap-4" data-testid="quick-contact">
+            {/* Base UI's form: after a submit, the focus goes to the first field with an error */}
+            <BaseForm
+              onSubmit={addQuickly}
+              errors={quick.errors}
+              className="grid gap-4"
+              data-testid="quick-contact"
+            >
               <TextField
                 label="Name"
                 value={quick.data.name}
-                onChange={(e) => quick.setData('name', e.target.value)}
+                onChange={(e) => (quick.setData('name', e.target.value), quick.clearErrors('name'))}
                 error={quick.errors.name}
                 testid="quick-err-name"
               />
               <TextField
                 label="Email"
                 value={quick.data.email}
-                onChange={(e) => quick.setData('email', e.target.value)}
+                onChange={(e) => (
+                  quick.setData('email', e.target.value),
+                  quick.clearErrors('email')
+                )}
                 error={quick.errors.email}
                 testid="quick-err-email"
               />
-              <SubmitButton processing={quick.processing} errors={quick.errors}>
-                Add contact
-              </SubmitButton>
-            </form>
+              <SubmitButton processing={quick.processing}>Add contact</SubmitButton>
+            </BaseForm>
           </DemoCard>
         </div>
       ) : (

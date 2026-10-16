@@ -103,18 +103,15 @@ export function TextField({
 const noErrors = {}
 
 /**
- * A form's submit button, busy while the form is sent (so the form turns off Inertia's progress bar). When the
- * submit comes back with errors, the first field to fix gets the focus. In an Inertia <Form> it reads the form's
- * state; for useForm, pass `processing` and `errors`.
+ * A form's submit button, busy while the form is sent (so the form turns off Inertia's progress bar). In an
+ * Inertia <Form> it reads the form's state, and when the submit comes back with errors, the first field to fix
+ * gets the focus. For useForm or useHttp, pass `processing`, in Base UI's form (`ui/form.tsx`, given the
+ * `errors`), which moves the focus itself.
  */
-export function SubmitButton({
-  processing,
-  errors,
-  ...props
-}: ButtonProps & { processing?: boolean; errors?: Record<string, string> }) {
+export function SubmitButton({ processing, ...props }: ButtonProps & { processing?: boolean }) {
   const form = useFormContext()
   processing ??= form?.processing ?? false
-  errors ??= form?.errors ?? noErrors
+  const errors = form?.errors ?? noErrors
   const ref = useRef<HTMLButtonElement>(null)
   const sent = useRef(false) // clicked: Enter in a field clicks it too
   useEffect(() => {

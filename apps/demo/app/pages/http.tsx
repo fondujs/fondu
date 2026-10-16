@@ -4,6 +4,7 @@ import { useState } from 'react'
 
 import { DemoCard, Json, SignInFirst, SubmitButton, TextField } from '#/components/demo.tsx'
 import { Button } from '#/components/ui/button.tsx'
+import { Form as BaseForm } from '#/components/ui/form.tsx'
 
 type Contact = { id: number; name: string; email: string }
 
@@ -58,32 +59,34 @@ export default function Http() {
           ) : null}
         </DemoCard>
         <DemoCard title="POST /api/contacts">
-          <form
+          <BaseForm
             className="grid gap-4"
             onSubmit={(e) => {
               e.preventDefault()
               create.post(href('/api/contacts'), { onHttpException })
             }}
+            errors={create.errors}
             data-testid="create"
           >
             <TextField
               label="Name"
               value={create.data.name}
-              onChange={(e) => create.setData('name', e.target.value)}
+              onChange={(e) => (create.setData('name', e.target.value), create.clearErrors('name'))}
               error={create.errors.name}
               testid="err-name"
             />
             <TextField
               label="Email"
               value={create.data.email}
-              onChange={(e) => create.setData('email', e.target.value)}
+              onChange={(e) => (
+                create.setData('email', e.target.value),
+                create.clearErrors('email')
+              )}
               error={create.errors.email}
               testid="err-email"
             />
-            <SubmitButton processing={create.processing} errors={create.errors}>
-              Create
-            </SubmitButton>
-          </form>
+            <SubmitButton processing={create.processing}>Create</SubmitButton>
+          </BaseForm>
           {create.response ? (
             <Json value={create.response} className="mt-4" data-testid="created" />
           ) : null}

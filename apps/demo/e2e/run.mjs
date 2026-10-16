@@ -629,6 +629,20 @@ ok(
     Boolean(await testid('err-rename')),
   await testid('err-rename'),
 )
+await page
+  .waitForFunction(
+    () => document.activeElement === document.querySelector('[data-testid=rename] input'),
+    {
+      timeout: 2000,
+    },
+  )
+  .catch(() => {})
+ok(
+  "useForm in Base UI's form: the server's errors put the focus on the field",
+  await page.evaluate(
+    () => document.activeElement === document.querySelector('[data-testid=rename] input'),
+  ),
+)
 await setValue('[data-testid=email] input', 'nope')
 await page.click('[data-testid=email] button')
 await page.waitForSelector('[data-testid=err-email]')
@@ -1001,6 +1015,20 @@ ok(
   (await testid('err-name')) === 'Name must be at least 2 characters' &&
     (await testid('err-email')) === 'Enter a valid email',
 )
+await page
+  .waitForFunction(
+    () => document.activeElement === document.querySelector('[data-testid=create] input'),
+    {
+      timeout: 2000,
+    },
+  )
+  .catch(() => {})
+ok(
+  "Base UI's form, given useHttp's errors: the first field to fix has the focus",
+  await page.evaluate(
+    () => document.activeElement === document.querySelector('[data-testid=create] input'),
+  ),
+)
 await nav('/account')
 await h1('Account')
 await setValue('main form input[name=name]', 'Demo Person')
@@ -1040,12 +1068,42 @@ await page.waitForFunction(
       !(await text()).includes('Added'),
     `${precognition.length} requests`,
   )
+  // then, while it is wrong, as it is typed in: the error goes once the address is valid, without a submit
+  await setValue('[data-testid=add-contact] input[name=email]', `typed-${Date.now()}@x.org`)
+  await page
+    .waitForFunction(
+      () => !document.querySelector('[data-testid=add-contact] [data-testid=err-email]'),
+      { timeout: 6000 },
+    )
+    .catch(() => {})
+  ok(
+    'Precognition: a field with an error is checked again as it is typed in, and the error goes',
+    (await page.$('[data-testid=add-contact] [data-testid=err-email]')) === null &&
+      (await page.evaluate(() => document.activeElement?.name)) === 'email' &&
+      !(await text()).includes('Added'),
+  )
   const before = fetches.length
+  const firstQuick = () =>
+    document.activeElement === document.querySelector('[data-testid=quick-contact] input')
   await page.click('[data-testid=quick-contact] button')
   await page.waitForSelector('[data-testid=quick-err-name]')
+  await page.waitForFunction(firstQuick, { timeout: 2000 }).catch(() => {})
   ok(
-    'the same schema in the browser: errors at once, no request',
-    (await testid('quick-err-email')) === 'Enter a valid email' && fetches.length === before,
+    "the same schema in the browser: errors at once, no request; Base UI's form focuses the first",
+    (await testid('quick-err-email')) === 'Enter a valid email' &&
+      fetches.length === before &&
+      (await page.evaluate(firstQuick)),
+  )
+  // what is typed clears its field's error, so the form can be sent again
+  const quickName = `Quick ${Date.now()}`
+  await setValue('[data-testid=quick-contact] > :nth-child(1) input', quickName)
+  await setValue('[data-testid=quick-contact] > :nth-child(2) input', `quick-${Date.now()}@x.org`)
+  const cleared = (await page.$('[data-testid=quick-err-name]')) === null
+  await page.click('[data-testid=quick-contact] button')
+  await waitText(`Added ${quickName}`)
+  ok(
+    "useForm: typing clears the field's error, and the fixed form is sent",
+    cleared && (await text()).includes(`Added ${quickName}`),
   )
 }
 
