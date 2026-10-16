@@ -9,6 +9,7 @@ const cases: Array<[url: string, label: string, what: string]> = [
   ['/errors/forbidden', 'HTTPException(403)', '403'],
   ['/errors/loader', 'A loader that throws', '500'],
   ['/errors/missing', 'A page that does not exist', '500'],
+  ['/errors/proxy', "A proxy's own page", '502'],
 ]
 
 const Status = ({ children }: { children: string }) => (
@@ -24,7 +25,8 @@ export default function Errors() {
         Fondu answers unknown URLs and thrown errors itself. A 404 or 403 renders{' '}
         <code>pages/error.tsx</code> with the status. A 500 in development is a report of the error
         (during a visit, Inertia shows it in its dialog); in production it is the same error page
-        with status 500. API clients get plain text.
+        with status 500. API clients get plain text. An answer that isn't a page, such as a proxy's
+        502, loads as a document in production; in development Inertia shows it in its dialog.
       </p>
       <div className="grid gap-4 sm:grid-cols-2">
         <DemoCard title="During a visit" tag="<Link>">

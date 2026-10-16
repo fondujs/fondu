@@ -399,14 +399,16 @@ function core(options: FonduOptions): Plugin {
       if (id === V.assets || id === V.ssr) return resolved(id)
     },
     // the client entry: with prerender, page objects read from the prerendered files (fondu/client's `prerendered`);
-    // in dev, the page's props asked for again when what its route depends on changed (hmr.ts)
+    // in production, an answer to a visit that isn't a page loaded as a document (`documentFallback`); in dev,
+    // Inertia's dialog (the error report is shown there), and the page's props asked for again when what its route
+    // depends on changed (hmr.ts)
     transform(code, id) {
       if (this.environment.config.consumer !== 'client' || id !== resolve(config.root, ENTRY))
         return
       const before = [
         ...(options.prerender ? [`import { prerendered } from 'fondu/client';prerendered();`] : []),
         ...(isBuild
-          ? []
+          ? [`import { documentFallback } from 'fondu/client';documentFallback();`]
           : [
               `import { router as __fondu_router } from '@inertiajs/react';`,
               `import.meta.hot?.on(${JSON.stringify(PROPS_EVENT)}, () => __fondu_router.reload());`,

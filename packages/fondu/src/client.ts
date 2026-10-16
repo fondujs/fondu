@@ -1,4 +1,4 @@
-import { http } from '@inertiajs/react'
+import { http, router } from '@inertiajs/react'
 
 import { fillPattern, pageDataPath } from './paths.js'
 import type { Routes } from './types.js'
@@ -54,5 +54,23 @@ export function prerendered() {
       data: '',
       headers: { 'x-inertia-location': page.url, 'x-inertia-version': page.version },
     }
+  })
+}
+
+/**
+ * The build adds this to the client entry: in production, a GET visit answered with something that isn't an Inertia
+ * page (a proxy's 502, a CDN's 524) loads the URL as a document, as a site without Inertia would, instead of showing
+ * that answer in Inertia's dialog. Fondu's own answers to visits are pages, errors included. Other methods keep the
+ * dialog (loading the URL would drop the form); a visit's own `onHttpException` comes first.
+ */
+export function documentFallback() {
+  let visit: { url: URL; method: string } | undefined
+  router.on('start', (event) => {
+    visit = event.detail.visit
+  })
+  router.on('httpException', (event) => {
+    if (event.detail.response.headers['x-inertia'] || visit?.method !== 'get') return
+    event.preventDefault()
+    window.location.href = visit.url.href
   })
 }
