@@ -31,7 +31,7 @@ const watchProblems = (p) => {
     // the browser's own log line for the intentional 401 / 404 / 409 / 422 / 500 responses below
     if (
       ['error', 'warning'].includes(m.type()) &&
-      !/favicon|status of (401|403|404|409|422|500)\b/.test(m.text())
+      !/favicon|status of (401|403|404|409|422|500|502)\b/.test(m.text())
     )
       problems.push(`[${m.type()}] ${m.text().slice(0, 240)}`)
   })
@@ -1101,6 +1101,38 @@ await page.waitForFunction(
     '… for an API client: plain text',
     api500.status === 500 && (await api500.text()) === 'Internal Server Error',
   )
+  // a proxy's own page (here, the app's route standing in for one), during a visit
+  await page.click('[data-testid=visit-502-proxy]')
+  if (dev) {
+    await page
+      .waitForSelector('dialog#inertia-error-dialog iframe', { timeout: 8000 })
+      .catch(() => {})
+    const shown = await page
+      .$eval('dialog#inertia-error-dialog iframe', (f) => f.srcdoc)
+      .catch(() => '')
+    ok(
+      "an answer that isn't a page (development): in Inertia's dialog",
+      shown.includes('Bad gateway'),
+    )
+    await page.keyboard.press('Escape')
+  } else {
+    await page
+      .waitForFunction(() => location.pathname === '/errors/proxy', { timeout: 8000 })
+      .catch(() => {})
+    const loaded = await page.evaluate(() => [
+      location.pathname,
+      document.querySelector('h1')?.textContent,
+      Boolean(document.querySelector('#inertia-error-dialog')),
+    ])
+    ok(
+      "an answer that isn't a page (production): loaded as a document, not in Inertia's dialog",
+      JSON.stringify(loaded) === '["/errors/proxy","Bad gateway",false]' &&
+        docs.includes(BASE + '/errors/proxy'),
+      JSON.stringify(loaded),
+    )
+    await page.goBack()
+    await h1('Errors')
+  }
 }
 
 // ---- admin: a guard, a layout of its own, no server render
