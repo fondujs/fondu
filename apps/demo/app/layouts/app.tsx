@@ -41,6 +41,7 @@ const sections: Array<[group: string, links: Array<[url: string, label: string]>
       [href('/http'), 'HTTP requests'],
       [href('/navigation'), 'Navigation'],
       [href('/errors'), 'Errors'],
+      [href('/i18n'), 'Languages'],
       [href('/account'), 'Account'],
       [href('/admin/dashboard'), 'Admin'],
     ],
@@ -52,7 +53,8 @@ const sections: Array<[group: string, links: Array<[url: string, label: string]>
 export default function AppLayout({ children }: { children: ReactNode }) {
   const { url, component } = usePage()
   const [open, setOpen] = useState(false)
-  const path = url.split(/[?#]/)[0]!
+  // the Languages page has a URL per language (/de/i18n…): one item
+  const path = component === 'i18n' ? href('/i18n') : url.split(/[?#]/)[0]!
   const active = (to: string) =>
     to === '/' ? path === '/' : path === to || path.startsWith(to + '/')
   return (

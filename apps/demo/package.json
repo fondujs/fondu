@@ -15,7 +15,7 @@
     "dev": "bun run db:migrate:local && vite",
     "e2e": "node e2e/run.mjs",
     "preview": "bun run build && bun run db:migrate:local && vite preview",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "paraglide-js compile --project ./project.inlang --outdir ./app/paraglide && tsc --noEmit"
   },
   "dependencies": {
     "@base-ui/react": "1.9.0",
@@ -37,6 +37,7 @@
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.64.0",
+    "@inlang/paraglide-js": "2.29.0",
     "@tailwindcss/vite": "4.3.3",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",

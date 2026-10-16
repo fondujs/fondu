@@ -1,0 +1,19 @@
+{
+  "$schema": "https://inlang.com/schema/inlang-message-format",
+  "this_language": "Diese Karte ist auf Deutsch.",
+  "greeting": "Hallo, {name}!",
+  "books": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} Buch",
+        "countPlural=other": "{count} Bücher"
+      }
+    }
+  ],
+  "name_label": "Dein Name",
+  "name_required": "Bitte gib deinen Namen ein",
+  "say_hello": "Hallo sagen",
+  "said_hello": "Der Server sagt Hallo, {name}!"
+}

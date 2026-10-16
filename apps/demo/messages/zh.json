@@ -1,0 +1,18 @@
+{
+  "$schema": "https://inlang.com/schema/inlang-message-format",
+  "this_language": "这张卡片是中文的。",
+  "greeting": "你好，{name}！",
+  "books": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=other": "{count} 本书"
+      }
+    }
+  ],
+  "name_label": "你的名字",
+  "name_required": "请输入你的名字",
+  "say_hello": "打招呼",
+  "said_hello": "服务器向你问好，{name}！"
+}
