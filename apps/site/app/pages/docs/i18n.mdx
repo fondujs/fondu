@@ -141,15 +141,15 @@ const alternates = { ...Object.fromEntries(locales.map((l) => [l, url(l)])), 'x-
 [Static pages](/docs/static-pages): `export const prerender = () => params.locale.map((locale) => ({ locale }))` next
 to `params` writes each page in each language; the base language's comes with them.
 
-## A first visit in the browser's language
+## The home page in the visitor's language
 
 The URL decides, so a visitor opening `/` reads the base language and picks theirs. To open the home page in the
-browser's language once, until a language is picked:
+language picked, or else the browser's:
 
 ```ts
 // app/routes/_middleware.ts, before Paraglide's middleware; strategy: ['url', 'cookie', 'baseLocale'] in
 // vite.config.ts, so setLocale() keeps the choice in a cookie (the URL still decides the language)
-if (c.req.path === '/' && c.req.header('sec-fetch-dest') === 'document') {
+if (c.req.path === '/' && c.req.method === 'GET') {
   const locale = toLocale(getCookie(c, cookieName)) ?? extractLocaleFromHeader(c.req.raw)
   if (locale && locale !== baseLocale) {
     c.header('Vary', 'Accept-Language, Cookie')
@@ -158,10 +158,11 @@ if (c.req.path === '/' && c.req.header('sec-fetch-dest') === 'document') {
 }
 ```
 
-The home page only, so a shared link opens as it was sent; a page load only, not Inertia's visits; and the language
-from the cookie or the header is one of the app's (`toLocale`, `extractLocaleFromHeader`) before it is used. Add the
-`Vary` header to the home page's own response too, for caches, and don't prerender it: a static file is served before
-any middleware. `getCookie` is `hono/cookie`'s; the rest is `#/paraglide/runtime.js`.
+The home page only, so a shared link opens as it was sent; a page load or a visit, so a link to `/` inside the app
+goes there too; and the language from the cookie or the header is one of the app's (`toLocale`,
+`extractLocaleFromHeader`) before it is used. Add the `Vary` header to the home page's own response too, for caches,
+and don't prerender it: a static file is served before any middleware. `getCookie` is `hono/cookie`'s; the rest is
+`#/paraglide/runtime.js`.
 
 ## Type checking
 
