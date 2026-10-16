@@ -10,7 +10,37 @@ which the app doesn't load. Its path is its URL:
 | `users/index.ts`         | `/users`                                    |
 | `users/[id].ts`          | `/users/:id`                                |
 | `files/[...path].ts`     | `/files/*`: one or more segments, in `path` |
+| `[[lang]]/about.ts`      | `/about` and `/:lang/about`                 |
 | `(marketing)/pricing.ts` | `/pricing`: a `(group)` adds no segment     |
+
+Where two routes could take a URL, a static segment comes first, then a param with listed values, then any param,
+then a catch-all: `/users/new` is `users/new.ts`, not `users/[id].ts`.
+
+## Optional segments
+
+`[[lang]]` is a segment the URL may leave out: `routes/[[lang]]/about.ts` answers `/about` and `/de/about`, and the
+`_middleware.ts` files of its directories run for both. A route has one at most. The types have both URLs:
+`href('/about')`, `href('/:lang/about', { lang: 'de' })`.
+
+## The values of a param
+
+`export const params` lists the values a param takes; any other isn't the route's URL. In a route, or in a
+`_middleware.ts` for its directory and below (the nearest one counts):
+
+```ts
+// app/routes/[[lang]]/_middleware.ts
+export const params = { lang: ['de', 'fr'] }
+```
+
+`/de/about` and `/fr/about` answer, `/xx/about` is a 404. The values are URL segments: letters, digits, `-`, `.`,
+`_`, `~`. A dynamic route beside it keeps the other URLs: with `[slug].ts` next to `[[lang]]/index.ts`, `/de` is the
+language and `/my-post` the slug.
+
+## One file per URL
+
+Two files that answer the same URLs stop the app at startup: `index.ts` and `[[lang]]/index.ts`, `users/[id].ts`
+and `users/[slug].ts`, `about.ts` and `(site)/about.ts`. Only one of them could answer, and maybe without the other's
+middleware. Routes whose URLs differ by the values of a param list them with `params`.
 
 ## Loader and actions
 

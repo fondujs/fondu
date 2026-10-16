@@ -3,16 +3,27 @@ import { Hono } from 'hono'
 import { describe, expect, test } from 'vitest'
 
 import { href } from '../src/client.js'
-import { fillPattern, isRouteFile, middlewareFor, routePattern } from '../src/paths.js'
+import { fillPattern, isRouteFile, middlewareFor, routePatterns } from '../src/paths.js'
 import { readBody } from '../src/server/validate.js'
 
 describe('routes/ files', () => {
   test('file -> URL pattern', () => {
-    expect(routePattern('index.ts')).toBe('/')
-    expect(routePattern('users/index.ts')).toBe('/users')
-    expect(routePattern('users/[id].ts')).toBe('/users/:id')
-    expect(routePattern('docs/[...path].ts')).toBe('/docs/:path{.+}')
-    expect(routePattern('(marketing)/about.ts')).toBe('/about')
+    expect(routePatterns('index.ts')).toEqual(['/'])
+    expect(routePatterns('users/index.ts')).toEqual(['/users'])
+    expect(routePatterns('users/[id].ts')).toEqual(['/users/:id'])
+    expect(routePatterns('docs/[...path].ts')).toEqual(['/docs/:path{.+}'])
+    expect(routePatterns('(marketing)/about.ts')).toEqual(['/about'])
+  })
+  test('an optional segment: the URLs without it and with it', () => {
+    expect(routePatterns('[[lang]]/about.ts')).toEqual(['/about', '/:lang/about'])
+    expect(routePatterns('[[lang]]/index.ts')).toEqual(['/', '/:lang'])
+    expect(routePatterns('blog/[[page]].ts')).toEqual(['/blog', '/blog/:page'])
+    expect(routePatterns('[[lang]]/(shop)/items/[id].ts')).toEqual([
+      '/items/:id',
+      '/:lang/items/:id',
+    ])
+    expect(() => routePatterns('[[lang]]/[[page]].ts')).toThrow('2 optional segments; one at most')
+    expect(() => routePatterns('docs/[[...path]].ts')).toThrow('an optional catch-all')
   })
   test('what is a route', () => {
     expect(isRouteFile('users/index.ts')).toBe(true)

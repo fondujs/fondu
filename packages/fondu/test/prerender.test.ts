@@ -116,7 +116,7 @@ describe('the app', () => {
     const res = await app.request('/__fondu/prerender', {}, { FONDU_PRERENDER: '1' })
     expect(await res.json()).toEqual({
       version: 'v1',
-      paths: ['/', '/users/1', '/users/2'],
+      paths: ['/', '/de/hello', '/fr/hello', '/hello', '/users/1', '/users/2'],
       problems: [],
     })
   })
