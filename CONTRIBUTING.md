@@ -53,6 +53,7 @@ requests:
   [@hono/inertia](https://github.com/honojs/middleware/tree/main/packages/inertia) (Hono's middleware).
 
 When Inertia is updated, read what changed on the server side in its release notes and inertia-laravel's.
+What inertia-laravel does and Fondu doesn't yet is listed in [#53](https://github.com/fondujs/fondu/issues/53).
 
 ## Describing Fondu
 
