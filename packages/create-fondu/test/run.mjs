@@ -104,7 +104,8 @@ if (!process.argv[2] || process.argv[2] === 'node') {
   const pkg = JSON.parse(readFileSync(join(app, 'package.json'), 'utf8'))
   pkg.dependencies.fondu = `file:${tarball}`
   writeFileSync(join(app, 'package.json'), JSON.stringify(pkg, null, 2) + '\n')
-  sh('bun', ['install'], app)
+  // lefthook's install sets up no hooks in CI unless LEFTHOOK is set
+  execFileSync('bun', ['install'], { cwd: app, stdio: 'ignore', env: { ...process.env, LEFTHOOK: '1' } })
   const passes = (...args) => {
     try {
       sh('bunx', args, app)
