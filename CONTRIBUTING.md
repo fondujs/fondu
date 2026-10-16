@@ -74,6 +74,17 @@ a release made on an old `main` is refused when it is pushed): fondu and create-
 (create-fondu's apps depend on `^` its own version). CI stages both on npm and a maintainer approves them (npmjs.com
 → Staged Packages, or `npm stage approve <id>`, with 2FA).
 
+The version, by what changed since the last release (`bun run release` offers them; not `next`, which only adds one
+to the last number):
+
+| Changed          | Before 1.0            | From 1.0              |
+| ---------------- | --------------------- | --------------------- |
+| something breaks | minor (0.6 → 0.7)     | major (1 → 2)         |
+| a feature        | minor (0.6 → 0.7)     | minor (1.0 → 1.1)     |
+| fixes only       | patch (0.6.0 → 0.6.1) | patch (1.0.0 → 1.0.1) |
+
+1.0 itself is a major.
+
 Before a release, read what npm will show and what new apps get, as it can only change with the next version:
 
 - `README.md`: fondu's npm page (CI copies it into `packages/fondu`); its links absolute, as npm resolves relative
