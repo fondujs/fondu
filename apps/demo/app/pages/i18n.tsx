@@ -70,8 +70,8 @@ export default function I18n({ rendered, date, price, alternates }: Props) {
             ))}
           </div>
           <p className="mt-3 text-xs text-muted-foreground">
-            A first visit to <code>/i18n</code> goes to the browser's language, unless one was
-            picked here.
+            <code>/i18n</code>, from a link or the menu, opens in the language picked here, or else
+            the browser's.
           </p>
         </DemoCard>
         <DemoCard title="From the server" tag="flash(c, { message: m.said_hello({ name }) })">

@@ -17,9 +17,9 @@ export const params = { locale: locales.filter((locale) => locale !== baseLocale
 
 export default defineMiddleware(async (c, next) => {
   const unprefixed = c.req.param('locale') === undefined
-  // Opened in the base language, by a visitor who hasn't picked one (setLocale's cookie): theirs, if the browser
-  // asks for one of ours. Not for a link followed inside the app (Inertia), so it happens once.
-  if (unprefixed && c.req.header('sec-fetch-dest') === 'document') {
+  // Asked for in the base language, without its prefix: the language picked (setLocale's cookie), or the browser's
+  // if it is one of ours. A page load or a visit (the menu's link has no prefix); a URL with one opens as it is.
+  if (unprefixed && c.req.method === 'GET') {
     const locale = toLocale(getCookie(c, cookieName)) ?? extractLocaleFromHeader(c.req.raw)
     if (locale && locale !== baseLocale) {
       c.header('Vary', 'Accept-Language, Cookie')

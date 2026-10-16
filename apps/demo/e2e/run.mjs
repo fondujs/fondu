@@ -222,7 +222,17 @@ ok(
   (await page.evaluate(() => window.__fcp)) === '0px',
   String(await page.evaluate(() => window.__fcp)),
 )
-ok('title on a document load', (await page.title()) === 'Overview · Fondu', await page.title())
+ok('title on a document load', (await page.title()) === 'Overview · Fondu demo', await page.title())
+{
+  const links = await page.evaluate(() =>
+    ['docs', 'github'].map((id) => document.querySelector(`[data-testid=${id}]`)?.href),
+  )
+  ok(
+    'the header links to the docs and the repository',
+    JSON.stringify(links) === '["https://fondu.dev/docs","https://github.com/fondujs/fondu"]',
+    JSON.stringify(links),
+  )
+}
 fetches.length = 0
 await page.hover('aside a[href="/props"]')
 await sleep(600)
@@ -235,9 +245,9 @@ ok(
   JSON.stringify(propsFetches.map((f) => f.purpose)),
 )
 await page
-  .waitForFunction(() => document.title === 'Props · Fondu', { timeout: 3000 })
+  .waitForFunction(() => document.title === 'Props · Fondu demo', { timeout: 3000 })
   .catch(() => {})
-ok('title after a visit', (await page.title()) === 'Props · Fondu', await page.title())
+ok('title after a visit', (await page.title()) === 'Props · Fondu demo', await page.title())
 ok(
   'props: values, an object, a function called when sent, shared props',
   (await text()).includes('Hello from Hono') &&
@@ -1286,6 +1296,17 @@ await page.waitForFunction(
     JSON.stringify(german) ===
       '["/de/i18n","de","Hallo, Ada!","1 Buch · 3 Bücher","16. Oktober 2026","page"]',
     JSON.stringify(german),
+  )
+  await nav('/', lp)
+  await h1('Fondu demo', lp).catch(() => {})
+  await nav('/i18n', lp)
+  await lp
+    .waitForFunction(() => location.pathname === '/de/i18n', { timeout: 4000 })
+    .catch(() => {})
+  ok(
+    'languages: away and back from the menu (/i18n, a visit): the language picked, /de/i18n',
+    (await path(lp)) === '/de/i18n' && (await testid('greeting', lp)) === 'Hallo, Ada!',
+    await path(lp),
   )
   await lp.click('[data-testid=say-hello]')
   await lp.waitForSelector('[data-testid=err-name]', { timeout: 4000 }).catch(() => {})
