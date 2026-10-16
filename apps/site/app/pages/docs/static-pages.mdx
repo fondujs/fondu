@@ -26,7 +26,7 @@ export const prerender = () => posts.map((post) => ({ slug: post.slug }))
 
 ## How it works
 
-The build starts the server it built (`node` or `bun dist/index.js`, or the Worker in wrangler), asks it for the pages
+The build starts the server it built (`node` or `bun dist/server/index.js`, or the Worker in wrangler), asks it for the pages
 to prerender, and writes each twice in the client build:
 
 - as a document, `docs/intro.html`, for a first visit;

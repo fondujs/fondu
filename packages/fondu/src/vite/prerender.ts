@@ -71,7 +71,7 @@ interface Server {
 }
 
 /**
- * After the build: the built server (the Worker in wrangler, or `node` / `bun dist/index.js`), started with
+ * After the build: the built server (the Worker in wrangler, or `node` / `bun dist/server/index.js`), started with
  * `FONDU_PRERENDER` set, lists the pages to prerender (`/__fondu/prerender`); each is asked for as a document and as
  * a visit, and both are written to the client build. Cloudflare serves them before the Worker, with the security
  * headers written to `_headers`; Node and Bun before the routes, behind the app's own headers.
@@ -178,10 +178,10 @@ export const worker = (root: string, workerConfig: string) => async (): Promise<
   }
 }
 
-/** Node / Bun: `node dist/index.js` (or `bun`), on a free port, until it answers */
+/** Node / Bun: `node dist/server/index.js` (or `bun`), on a free port, until it answers */
 export const nodeServer = (root: string, runtime: 'node' | 'bun') => async (): Promise<Server> => {
   const port = await freePort()
-  const child = spawn(runtime, ['dist/index.js'], {
+  const child = spawn(runtime, ['dist/server/index.js'], {
     cwd: root,
     env: { ...process.env, PORT: String(port), FONDU_PRERENDER: '1', NODE_ENV: 'production' },
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -203,7 +203,9 @@ export const nodeServer = (root: string, runtime: 'node' | 'bun') => async (): P
   }
   for (let tries = 0; ; tries++) {
     if (child.exitCode !== null || tries === 200)
-      throw new Error(`the server (${runtime} dist/index.js) did not start:\n${output.trim()}`)
+      throw new Error(
+        `the server (${runtime} dist/server/index.js) did not start:\n${output.trim()}`,
+      )
     try {
       await fetch(base + '/__fondu/prerender')
       return server

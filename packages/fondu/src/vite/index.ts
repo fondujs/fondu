@@ -143,7 +143,8 @@ async function buildPlugin(options: FonduOptions): Promise<Plugin> {
   const plugin = build({
     entry: SERVER,
     external,
-    outputDir: './dist',
+    outputDir: './dist/server', // next to dist/client, as the client build writes it
+    emptyOutDir: true, // dist/server is the server build's own
     // Node: @hono/node-server's serve() on `PORT` (else the option), saying where it listens, with a graceful
     // shutdown on SIGTERM / SIGINT (10 s). Bun serves the default export itself and reads `PORT`.
     ...(options.target === 'node' && {
@@ -171,7 +172,7 @@ async function buildPlugin(options: FonduOptions): Promise<Plugin> {
         return [
           `import { serveStatic } from '${options.target === 'bun' ? 'hono/bun' : '@hono/node-server/serve-static'}'`,
           `import { fileURLToPath } from 'node:url'`,
-          `const clientRoot = fileURLToPath(new URL('./client', import.meta.url))`,
+          `const clientRoot = fileURLToPath(new URL('../client', import.meta.url))`,
           `${app}.use('/assets/*', async (c, next) => { await next(); if (c.res.ok) c.header('Cache-Control', 'public, max-age=31536000, immutable') })`,
           ...paths.map(
             (p) => `${app}.use(${JSON.stringify(p)}, serveStatic({ root: clientRoot }))`,
@@ -308,7 +309,7 @@ function core(options: FonduOptions): Plugin {
             ssr: { noExternal: ['fondu'] },
             build: {
               copyPublicDir: false,
-              rollupOptions: { output: { chunkFileNames: 'server/[name]-[hash].js' } },
+              rollupOptions: { output: { chunkFileNames: '[name]-[hash].js' } },
             },
           }
     },
