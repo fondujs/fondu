@@ -24,10 +24,11 @@ whole page, and the next edit reloads the page.
 
 ## Answers from outside the app
 
-During a visit, an answer that isn't an Inertia page, such as a proxy's 502 or a CDN's 524 timeout page, is shown in
-Inertia's dialog, in production too. Fondu itself answers visits in production with pages only, errors included, so
-those come from what stands in front of the app. Inertia's `httpException` event (`router.on('httpException', …)`)
-lets the app handle them otherwise.
+During a visit, an answer that isn't an Inertia page, such as a proxy's 502 or a CDN's 524 timeout page, comes from
+what stands in front of the app: in production, Fondu answers visits with pages, errors included. Then a GET visit
+that gets one loads the URL as a document, as a site without Inertia would: the browser shows that page, or the app's
+if the failure has passed. Other methods, and development, show it in Inertia's dialog (a form isn't lost, and the
+development report is read there). A visit's own `onHttpException` comes first.
 
 ## Your own handling
 
