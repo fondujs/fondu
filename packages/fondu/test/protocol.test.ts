@@ -1,6 +1,7 @@
 import { createApp } from 'fondu'
 import { createElement as h } from 'react'
-// Inertia's protocol and the app conventions, on test/app/ with `app.request()`.
+// Inertia's protocol and the app conventions, on test/app/ with `app.request()`. Inertia's cases are answered as
+// inertia-laravel answers them (CONTRIBUTING: Inertia's server side).
 import { afterEach, describe, expect, test, vi } from 'vitest'
 
 const app = createApp()
@@ -61,6 +62,29 @@ describe('pages', () => {
     expect(res.headers.get('x-inertia-location')).toBe(`${ORIGIN}/`)
     expect(res.headers.get('x-inertia-version')).toBe('v1')
   })
+  test('other assets: not a 409 for a POST; the errors and flash wait for the reloaded page', async () => {
+    const stale = inertia({ 'X-Inertia-Version': 'old' })
+    const post = await app.request('/items', {
+      method: 'POST',
+      headers: { ...stale, 'Content-Type': 'application/json', Origin: ORIGIN, Referer: `${ORIGIN}/` },
+      body: '{"name":"x"}',
+    })
+    expect(post.status).toBe(303)
+    const cookie = post.headers.get('set-cookie')!.split(';')[0]!
+    const reload = await app.request('/', { headers: { ...stale, Cookie: cookie } })
+    expect([reload.status, reload.headers.get('set-cookie')]).toEqual([409, null])
+    const next = await page(await app.request('/', { headers: { ...inertia(), Cookie: cookie } }))
+    expect(next.props.errors).toEqual({ name: 'Too short' })
+  })
+  test('Vary: X-Inertia on every answer (a page, a redirect, a 409)', async () => {
+    const answers = [
+      await app.request('/', { headers: html }),
+      await app.request('/', { headers: inertia() }),
+      await app.request('/redirect'),
+      await app.request('/', { headers: inertia({ 'X-Inertia-Version': 'old' }) }),
+    ]
+    for (const res of answers) expect(res.headers.get('vary')).toBe('X-Inertia')
+  })
 })
 
 describe('partial reloads', () => {
@@ -78,7 +102,16 @@ describe('partial reloads', () => {
     const props = (await page(res)).props
     expect(props).not.toHaveProperty('plain')
     expect(props).toHaveProperty('fn')
-    expect(props).not.toHaveProperty('report') // optional: only when named
+    expect(props).not.toHaveProperty('report') // optional: only when named in `only`, as Inertia's docs say
+  })
+  test("another page's partial reload: a visit to this one, every prop", async () => {
+    const res = await page(
+      await app.request('/', {
+        headers: inertia({ 'X-Inertia-Partial-Component': 'other', 'X-Inertia-Partial-Data': 'fn' }),
+      }),
+    )
+    expect(res.props).toHaveProperty('plain')
+    expect(res.deferredProps).toBeDefined()
   })
   test('optional: computed when named', async () => {
     expect((await page(await app.request('/', { headers: partial('report') }))).props.report).toBe('report')
@@ -94,9 +127,20 @@ describe('partial reloads', () => {
     expect((await page(await app.request('/', { headers: inertia(held) }))).props).not.toHaveProperty('plan')
     expect((await page(await app.request('/?fresh', { headers: inertia(held) }))).props.plan).toBe('plan')
   })
+  test('once: a partial reload sends what it asks for, held or not, and lists only what it sends', async () => {
+    const held = { 'X-Inertia-Except-Once-Props': 'plan' }
+    const asked = await page(await app.request('/', { headers: partial('plan', held) }))
+    expect([asked.props.plan, asked.onceProps]).toEqual(['plan', { plan: { prop: 'plan', expiresAt: null } }])
+    const other = await page(await app.request('/', { headers: partial('fn', held) }))
+    expect([other.props.plan, other.onceProps]).toEqual([undefined, undefined])
+  })
   test('merge: X-Inertia-Reset replaces instead', async () => {
     const res = await page(await app.request('/', { headers: partial('items', { 'X-Inertia-Reset': 'items' }) }))
     expect(res.mergeProps).toBeUndefined()
+  })
+  test('merge: a partial reload lists the merged props it sends only', async () => {
+    const res = await page(await app.request('/', { headers: partial('fn') }))
+    expect([res.mergeProps, res.matchPropsOn, res.deepMergeProps]).toEqual([undefined, undefined, undefined])
   })
   test('scroll: the previous page is prepended', async () => {
     const res = await page(
@@ -122,6 +166,17 @@ describe('routes', () => {
     const res = await app.request('/redirect?fragment', { method: 'POST', headers: { ...inertia(), Origin: ORIGIN } })
     expect(res.status).toBe(409)
     expect(res.headers.get('x-inertia-redirect')).toBe('/#target')
+    const prefetch = await app.request('/redirect', { headers: inertia({ Purpose: 'prefetch' }) })
+    expect([prefetch.status, prefetch.headers.get('location')]).toEqual([302, '/#target']) // not for a prefetch
+  })
+  test('an empty answer to a visit: back to the page', async () => {
+    const res = await app.request('/redirect?nothing', {
+      method: 'POST',
+      headers: { ...inertia(), Origin: ORIGIN, Referer: `${ORIGIN}/items` },
+    })
+    expect([res.status, res.headers.get('location')]).toEqual([303, '/items'])
+    const api = await app.request('/redirect?nothing', { method: 'POST', headers: { Origin: ORIGIN } })
+    expect(api.status).toBe(200) // not a visit: as it is
   })
   test('location(): 409 + X-Inertia-Location for a visit, a redirect otherwise', async () => {
     const visit = await app.request('/redirect?away', { method: 'POST', headers: { ...inertia(), Origin: ORIGIN } })
