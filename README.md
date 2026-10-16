@@ -22,8 +22,9 @@ cd my-app
 bun dev
 ```
 
-It asks where the app runs (Bun, Cloudflare Workers or Node; or `--target bun|cloudflare|node`) and writes a small
-app: a route, its page, the error page, Tailwind CSS, editor snippets and an `AGENTS.md` for coding agents.
+It asks where the app runs (Bun, Cloudflare Workers or Node; or `--target bun|cloudflare|node`) and whether to add
+code checks (oxfmt, oxlint, lefthook, commitlint; or `--checks`), and writes a small app: a route, its page, the error
+page, Tailwind CSS, editor snippets and an `AGENTS.md` for coding agents.
 
 [demo.fondu.dev](https://demo.fondu.dev) ([apps/demo](https://github.com/fondujs/fondu/tree/main/apps/demo)) shows every Inertia feature, one page each, on
 Cloudflare Workers with D1 and Better Auth.

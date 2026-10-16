@@ -1,0 +1,16 @@
+# git hooks: the staged files formatted and linted, the commit message checked (Conventional Commits)
+pre-commit:
+  parallel: true
+  commands:
+    fmt:
+      glob: '*.{ts,tsx,js,mjs,json,jsonc,css,md,yml}'
+      run: __EXEC__ oxfmt --no-error-on-unmatched-pattern {staged_files}
+      stage_fixed: true
+    lint:
+      glob: '*.{ts,tsx,js,mjs}'
+      run: __EXEC__ oxlint {staged_files}
+
+commit-msg:
+  commands:
+    commitlint:
+      run: __EXEC__ commitlint --edit {1}
