@@ -3,6 +3,7 @@ import { SearchIcon } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
 import { Dialog, DialogPopup, DialogTitle } from '#/components/ui/dialog.tsx'
+import { Spinner } from '#/components/ui/spinner.tsx'
 
 type Result = { url: string; title: string; excerpt: string }
 type Page = Result & { meta: { title?: string }; sub_results: Result[] }
@@ -57,6 +58,8 @@ function Results({ onPick }: { onPick: () => void }) {
   const [state, setState] = useState<'ready' | 'unavailable'>('ready')
   const [active, setActive] = useState(0)
   const list = useRef<HTMLUListElement>(null)
+  // a query typed, its results not in yet (the index loads with the first one)
+  const searching = state === 'ready' && query !== '' && query !== searched
   useEffect(() => {
     let current = true
     void load().then(async (pf) => {
@@ -106,7 +109,9 @@ function Results({ onPick }: { onPick: () => void }) {
           aria-expanded={results.length > 0}
           aria-controls="search-results"
           aria-activedescendant={results.length ? `search-result-${active}` : undefined}
+          aria-busy={searching}
         />
+        {searching && <Spinner className="size-4 shrink-0 text-muted-foreground" />}
       </div>
       {state === 'unavailable' ? (
         <p className="border-t p-6 text-center text-muted-foreground">
