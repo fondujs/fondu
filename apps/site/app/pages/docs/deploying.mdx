@@ -1,14 +1,14 @@
 ## Node
 
 ```sh
-npm run build    # vite build --mode client && vite build
+npm run build    # vite build
 npm start        # NODE_ENV=production node dist/server/index.js
 ```
 
-The build writes the server to `dist/server` (its entry: `dist/server/index.js`) and the browser's files to
-`dist/client`; the dependencies stay in `node_modules`, so deploy them with it. `NODE_ENV=production` makes React use its production build. `PORT` sets the
-port (3000 by default). On SIGTERM or SIGINT the server stops taking requests and waits for the running ones, up to
-10 seconds.
+One `vite build` writes the browser's files to `dist/client`, then the server to `dist/server` (its entry:
+`dist/server/index.js`, minified), then the static pages if any; the dependencies stay in `node_modules`, so deploy
+them with it. `NODE_ENV=production` makes React use its production build. `PORT` sets the port (3000 by default). On
+SIGTERM or SIGINT the server stops taking requests and waits for the running ones, up to 10 seconds.
 
 ## Bun
 

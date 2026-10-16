@@ -30,13 +30,13 @@ server: the routes are the only router.
 Fondu writes only what none of them does: Inertia's server side for Hono, which no official adapter covers, and what
 holds the parts together.
 
-| Part                                                                                                                                         | Done by                                                                                 |
-| -------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| Visits, history, prefetching, forms, `<Head>`, deferred and merged props, infinite scroll                                                    | `@inertiajs/react`                                                                      |
-| HTTP, middleware, CSRF protection, security headers                                                                                          | Hono and its middleware                                                                 |
-| Dev server and production build                                                                                                              | Vite, with `@hono/vite-dev-server` and `@hono/vite-build`, or `@cloudflare/vite-plugin` |
-| Finding the page component, the entry of the server render                                                                                   | `@inertiajs/vite`                                                                       |
-| Inertia's server side (the protocol, forms' errors and flash data), `routes/`, typed pages and URLs, the document, error pages, static pages | Fondu                                                                                   |
+| Part                                                                                                                                         | Done by                                                         |
+| -------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| Visits, history, prefetching, forms, `<Head>`, deferred and merged props, infinite scroll                                                    | `@inertiajs/react`                                              |
+| HTTP, middleware, CSRF protection, security headers                                                                                          | Hono and its middleware                                         |
+| Dev server and production build                                                                                                              | Vite, with `@hono/vite-dev-server` or `@cloudflare/vite-plugin` |
+| Finding the page component, the entry of the server render                                                                                   | `@inertiajs/vite`                                               |
+| Inertia's server side (the protocol, forms' errors and flash data), `routes/`, typed pages and URLs, the document, error pages, static pages | Fondu                                                           |
 
 So most of what you write is Hono's API on the server and Inertia's in the browser, and their docs apply as they are.
 The pages here cover what Fondu adds.
