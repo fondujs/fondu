@@ -39,6 +39,26 @@ Commit messages follow [Conventional Commits](https://www.conventionalcommits.or
 A pull request: one change, with a test (`packages/fondu/test`) or an e2e check when behavior changes, and the README
 updated when the API does.
 
+## Checking a change
+
+- **Types are behavior.** A change to a public type (`render`, `href`, `share`, `flash`, `withValidator`, the
+  generated types) has a `tsc` test in `packages/fondu/test/types.test.ts` (`@ts-expect-error` for what must fail),
+  with the empty case (a page without props, a route without params), the app's own declarations (shared props,
+  flash data) and each optional argument given.
+- **What the template runs, a test runs.** Scripts, git hooks and generated config are each run by the
+  create-fondu test at least once, with nothing to do too (no files, ignored files only).
+- **Edge inputs.** None, one, many; encoded (`%2e%2e`, `%2f`); hidden or ignored files; an index signature or
+  `never` in a type.
+- **Siblings alike.** A fix to one of a pair (fmt and lint, GET and POST, Node and Bun, development and
+  production) is checked on the other.
+- **Request handling** (`server/`, the server's entry): what the request controls (the path, `Host`, `Referer`,
+  cookies, the body) and where it goes (file paths, redirects, HTML, regular expressions, another request), each
+  with a test.
+- **Before a release**, the request-handling check on what changed since the last one:
+  `git diff v<last>..main -- packages/fondu/src`.
+
+A pull request says which of these it checked.
+
 ## Inertia's server side
 
 Most of Fondu's own code is Inertia's server side for Hono: the protocol (`server/protocol.ts`, `server/props.ts`),
