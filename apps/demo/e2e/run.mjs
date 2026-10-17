@@ -1,5 +1,9 @@
 // Browser end-to-end checks of the Cloudflare example. Start it first (`bun run dev` or `bun run preview`), then:
 //   CHROME_PATH=/path/to/chrome node e2e/run.mjs http://localhost:5173 [label]
+import { mkdtempSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
 import puppeteer from 'puppeteer-core'
 
 const BASE = process.argv[2] ?? 'http://localhost:5173'
@@ -1195,27 +1199,124 @@ await page.waitForFunction(
     await page.goBack()
     await h1('Errors')
   }
-  // the same page after a form (a POST): Inertia's dialog, in production too, and the form as it was
+  // the same page after a form (a POST): the form as it was, the answer in Inertia's dialog (development) or, as
+  // this app handles it in production, a toast
   await page.type('[data-testid=proxy-message]', 'kept')
   await page.click('[data-testid=action-proxy]')
-  await page
-    .waitForSelector('dialog#inertia-error-dialog iframe', { timeout: 8000 })
-    .catch(() => {})
-  const afterForm = await page
-    .$eval('dialog#inertia-error-dialog iframe', (f) => f.srcdoc)
-    .catch(() => '')
-  await page.keyboard.press('Escape')
-  await page.waitForFunction(() => !document.querySelector('dialog#inertia-error-dialog[open]'), {
-    timeout: 3000,
-  })
+  let afterForm = ''
+  if (dev) {
+    await page
+      .waitForSelector('dialog#inertia-error-dialog iframe', { timeout: 8000 })
+      .catch(() => {})
+    afterForm = await page
+      .$eval('dialog#inertia-error-dialog iframe', (f) => f.srcdoc)
+      .catch(() => '')
+    await page.keyboard.press('Escape')
+    await page.waitForFunction(() => !document.querySelector('dialog#inertia-error-dialog[open]'), {
+      timeout: 3000,
+    })
+  } else {
+    afterForm = await page
+      .waitForFunction(
+        () =>
+          [...document.querySelectorAll('[data-slot=toast-title]')].find((t) =>
+            t.textContent.includes('did not answer'),
+          )?.textContent,
+        { timeout: 8000 },
+      )
+      .then((h) => h.jsonValue())
+      .catch(() => '')
+  }
   const form = await page.evaluate(() => [
     location.pathname,
     document.querySelector('[data-testid=proxy-message]')?.value,
+    Boolean(document.querySelector('dialog#inertia-error-dialog')),
   ])
   ok(
-    "an answer that isn't a page, after a form: in Inertia's dialog, the form kept",
-    afterForm.includes('Bad gateway') && JSON.stringify(form) === '["/errors","kept"]',
-    JSON.stringify(form),
+    dev
+      ? "an answer that isn't a page, after a form (development): in Inertia's dialog, the form kept"
+      : "an answer that isn't a page, after a form (production): the app's toast, no dialog, the form kept",
+    (dev ? afterForm.includes('Bad gateway') : afterForm === 'The server did not answer (502)') &&
+      JSON.stringify(form) === '["/errors","kept",false]',
+    JSON.stringify([afterForm.slice(0, 40), form]),
+  )
+}
+
+// ---- flash data: toasts, data of the app's own, once
+{
+  await nav('/flash')
+  await h1('Flash data')
+  const toastText = (t) =>
+    page
+      .waitForFunction(
+        (t) =>
+          [...document.querySelectorAll('[data-slot=toast-title]')].some(
+            (e) => e.textContent === t,
+          ),
+        { timeout: 5000 },
+        t,
+      )
+      .then(() => true)
+      .catch(() => false)
+  await page.click('[data-testid=flash-saved]')
+  const saved = await toastText('Saved, said the server')
+  await page.click('[data-testid=flash-failed]')
+  const failed = await toastText('Not saved: the server said no')
+  ok('flash: message and error, as toasts after the redirect', saved && failed)
+  await page.click('[data-testid=pick-teal]')
+  await page
+    .waitForFunction(
+      () => document.querySelector('[data-testid=picked]')?.textContent.includes('teal'),
+      { timeout: 5000 },
+    )
+    .catch(() => {})
+  const picked = await testid('picked')
+  await page.click('[data-testid=flash-reload]')
+  await page
+    .waitForFunction(
+      () => document.querySelector('[data-testid=picked]')?.textContent.startsWith('Nothing'),
+      { timeout: 5000 },
+    )
+    .catch(() => {})
+  ok(
+    'flash: data of its own for the next page, gone on the next visit',
+    picked === 'Picked teal, on this visit only' &&
+      (await testid('picked')) === 'Nothing picked on this visit' &&
+      (await testid('flash-json')) === '{}',
+    JSON.stringify([picked, await testid('flash-json')]),
+  )
+}
+
+// ---- file uploads: a File in the body, checked by the schema
+{
+  await nav('/uploads')
+  await h1('File uploads')
+  await page.click('[data-testid=upload-send]')
+  await page.waitForSelector('[data-testid=err-file]', { timeout: 5000 }).catch(() => {})
+  const missing = await testid('err-file')
+  const dir = mkdtempSync(join(tmpdir(), 'upload-'))
+  writeFileSync(join(dir, 'big.txt'), 'x'.repeat(1024 * 1024 + 1))
+  writeFileSync(join(dir, 'note.txt'), 'A note for the upload demo.\n')
+  const input = await page.$('[data-testid=upload] input[type=file]')
+  await input.uploadFile(join(dir, 'big.txt'))
+  await page.click('[data-testid=upload-send]')
+  await page
+    .waitForFunction(
+      () => document.querySelector('[data-testid=err-file]')?.textContent === 'At most 1 MB',
+      { timeout: 8000 },
+    )
+    .catch(() => {})
+  const big = await testid('err-file')
+  await input.uploadFile(join(dir, 'note.txt'))
+  await page.click('[data-testid=upload-send]')
+  await waitText('Received note.txt, 1 kB').catch(() => {})
+  ok(
+    'uploads: required, too big, then received (multipart, checked by z.file())',
+    missing === 'Choose a file' &&
+      big === 'At most 1 MB' &&
+      (await text()).includes('Received note.txt, 1 kB') &&
+      (await page.$('[data-testid=err-file]')) === null,
+    JSON.stringify([missing, big]),
   )
 }
 

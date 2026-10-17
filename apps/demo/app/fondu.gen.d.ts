@@ -9,6 +9,7 @@ declare module 'fondu' {
       "deferred": typeof import("./pages/deferred")
       "error": typeof import("./pages/error")
       "errors": typeof import("./pages/errors")
+      "flash": typeof import("./pages/flash")
       "history": typeof import("./pages/history")
       "http": typeof import("./pages/http")
       "i18n": typeof import("./pages/i18n")
@@ -24,6 +25,7 @@ declare module 'fondu' {
       "routes": typeof import("./pages/routes")
       "signup": typeof import("./pages/signup")
       "ssr": typeof import("./pages/ssr")
+      "uploads": typeof import("./pages/uploads")
       "versioning": typeof import("./pages/versioning")
     }
     routes: {
@@ -40,6 +42,7 @@ declare module 'fondu' {
       "/deferred": typeof import("./routes/deferred")
       "/errors/:kind": typeof import("./routes/errors/[kind]")
       "/errors": typeof import("./routes/errors/index")
+      "/flash": typeof import("./routes/flash")
       "/history": typeof import("./routes/history")
       "/http": typeof import("./routes/http")
       "/": typeof import("./routes/index")
@@ -56,6 +59,7 @@ declare module 'fondu' {
       "/signup": typeof import("./routes/signup")
       "/ssr/browser": typeof import("./routes/ssr/browser")
       "/ssr": typeof import("./routes/ssr/index")
+      "/uploads": typeof import("./routes/uploads")
       "/versioning": typeof import("./routes/versioning")
     }
   }

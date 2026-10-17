@@ -15,8 +15,9 @@ import {
   DrawerPopup,
   DrawerTitle,
 } from '#/components/ui/drawer.tsx'
+import { groups } from '#/lib/demos.ts'
 
-// the overview and the links out, then Fondu's demos, then Inertia's (as on the overview)
+// the overview and the links out, then the demos by group (lib/demos.ts, as on the overview)
 const sections: Array<[group: string | null, links: Array<[url: string, label: string]>]> = [
   [
     null,
@@ -26,34 +27,10 @@ const sections: Array<[group: string | null, links: Array<[url: string, label: s
       ['https://github.com/fondujs/fondu', 'GitHub'],
     ],
   ],
-  [
-    'Fondu',
-    [
-      [href('/routes'), 'Routes & actions'],
-      [href('/http'), 'HTTP requests'],
-      [href('/errors'), 'Errors'],
-      [href('/i18n'), 'Languages'],
-      [href('/account'), 'Account'],
-      [href('/admin/dashboard'), 'Admin'],
-    ],
-  ],
-  [
-    'Inertia',
-    [
-      [href('/props'), 'Props'],
-      [href('/partial'), 'Partial reloads'],
-      [href('/deferred'), 'Deferred props'],
-      [href('/merging'), 'Merging props'],
-      [href('/infinite'), 'Infinite scroll'],
-      [href('/once'), 'Once props'],
-      [href('/contacts'), 'Forms & validation'],
-      [href('/redirects'), 'Redirects'],
-      [href('/versioning'), 'Asset versioning'],
-      [href('/history'), 'History encryption'],
-      [href('/ssr'), 'Server-side rendering'],
-      [href('/navigation'), 'Navigation'],
-    ],
-  ],
+  ...groups.map(([group, demos]): [string, Array<[string, string]>] => [
+    group,
+    demos.map(([url, title]): [string, string] => [url, title]),
+  ]),
 ]
 
 // The default layout (app.tsx): Inertia keeps it mounted while pages change. Below md the menu is a drawer from the

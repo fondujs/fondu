@@ -32,6 +32,22 @@ development report is read there). A visit's own `onHttpException` comes first.
 
 ## Your own handling
 
+After a form, an answer from outside the app is shown in Inertia's dialog, which is made for development. In
+production, an app can say it in its own way, a toast for one, with Inertia's `httpException` event:
+
+```tsx
+// app/app.tsx, or a component of the layout
+let method = 'get'
+router.on('start', (event) => void (method = event.detail.visit.method))
+router.on('httpException', (event) => {
+  if (!import.meta.env.PROD || method === 'get') return // a GET loads as a document
+  event.preventDefault() // no dialog: the page and its form stay as they are
+  showToast(`The server did not answer (${event.detail.response.status}). Try again.`)
+})
+```
+
+On the server:
+
 `createApp()` returns a Hono app: its `notFound()` and `onError()` replace Fondu's.
 
 ```ts

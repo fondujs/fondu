@@ -27,7 +27,8 @@ export default function Errors() {
         (during a visit, Inertia shows it in its dialog); in production it is the same error page
         with status 500. API clients get plain text. An answer that isn't a page, such as a proxy's
         502, loads as a document in production; in development Inertia shows it in its dialog. After
-        a form it stays in the dialog, in production too, so what was typed is kept.
+        a form it would be Inertia&apos;s dialog, where the form is kept; this app shows a toast
+        instead in production (<code>components/toasts.tsx</code>).
       </p>
       <div className="grid gap-4 sm:grid-cols-2">
         <DemoCard title="During a visit" tag="<Link>">
