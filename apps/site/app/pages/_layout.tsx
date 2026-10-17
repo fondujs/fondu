@@ -43,7 +43,7 @@ export default function SiteLayout({ children }: { children: ReactNode }) {
               {inDocs ? (
                 <Search />
               ) : (
-                <Button variant="outline" className="sm:w-36" render={<Link href="/docs" />}>
+                <Button variant="outline" render={<Link href="/docs" />}>
                   Docs
                 </Button>
               )}

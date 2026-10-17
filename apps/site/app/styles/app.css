@@ -282,7 +282,7 @@
   pre.shiki {
     @apply overflow-x-auto rounded-xl border bg-muted px-4 py-3.5 font-mono text-[13.5px]/6;
     & code {
-      @apply bg-transparent p-0 text-[inherit] text-inherit;
+      @apply bg-transparent p-0 text-inherit;
     }
     & span {
       color: light-dark(var(--shiki-light), var(--shiki-dark));
@@ -344,9 +344,10 @@
 }
 .hero-code {
   & .code-tabs {
-    @apply my-0 bg-background shadow-xl/10;
+    @apply my-0 border-none bg-background shadow-xl/5;
   }
   & pre {
-    @apply h-[22rem] overflow-y-auto;
+    @apply h-88 overflow-y-auto;
+    background: none;
   }
 }

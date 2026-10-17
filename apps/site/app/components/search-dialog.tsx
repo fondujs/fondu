@@ -37,7 +37,7 @@ export default function SearchDialog({
         showCloseButton={false}
         className="max-w-xl"
         bottomStickOnMobile={false}
-        viewportClassName="grid-rows-[min(12vh,7rem)_auto_1fr]"
+        viewportClassName="grid-rows-[min(12vh,1rem)_auto_1fr]"
       >
         <Results onPick={() => onOpenChange(false)} />
       </DialogPopup>
