@@ -32,7 +32,7 @@ export const isSecure = (c: Context) =>
 const cookieName = (c: Context) => (isSecure(c) ? '__Host-fondu-flash' : 'fondu-flash')
 
 /** Flash data for the next page (`page.flash` / `usePage().flash`, Inertia's `flash` event). */
-export function flash(c: Context, data: Partial<FlashData> & Record<string, unknown>) {
+export function flash(c: Context, data: Partial<FlashData>) {
   const out = state(c).outgoing
   out.flash = { ...out.flash, ...data }
 }
