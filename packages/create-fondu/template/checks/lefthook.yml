@@ -9,7 +9,7 @@ pre-commit:
       stage_fixed: true
     lint:
       glob: '*.{ts,tsx,js,mjs}'
-      run: __EXEC__ oxlint {staged_files}
+      run: __EXEC__ oxlint --no-error-on-unmatched-pattern {staged_files}
 
 commit-msg:
   commands:
