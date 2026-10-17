@@ -867,17 +867,18 @@ ok(
   /^encrypted: \d+ bytes$/.test(await testid('stored')),
   await testid('stored'),
 )
-// the page object after the redirect, read from its own response (the response listener above may miss its body)
+// the page object after the redirect, read from its own response (the response listener above may miss its body).
+// Matched by the response's X-Inertia: puppeteer may not give the headers of a request that followed a redirect.
+// The toast is awaited at the same time: it lasts 5 s
 const cleared = page.waitForResponse(
-  (r) =>
-    r.url() === BASE + '/history' &&
-    r.status() === 200 &&
-    r.request().headers()['x-inertia'] !== undefined,
+  (r) => r.url() === BASE + '/history' && r.status() === 200 && r.headers()['x-inertia'] === 'true',
   { timeout: 8000 },
 )
 await page.click('[data-testid=clear]')
-const clearedPage = await cleared.then((r) => r.json()).catch(() => null)
-await waitText('History cleared')
+const [clearedPage] = await Promise.all([
+  cleared.then((r) => r.json()).catch(() => null),
+  waitText('History cleared'),
+])
 ok(
   'clearHistory(c): the next page clears the history (clearHistory: true)',
   clearedPage?.clearHistory === true,
