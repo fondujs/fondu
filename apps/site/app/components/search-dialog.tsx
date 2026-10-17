@@ -32,7 +32,13 @@ export default function SearchDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogPopup showCloseButton={false} className="max-w-xl" bottomStickOnMobile={false}>
+      {/* at the same height whether results are shown or not: it doesn't move as they come */}
+      <DialogPopup
+        showCloseButton={false}
+        className="max-w-xl"
+        bottomStickOnMobile={false}
+        viewportClassName="grid-rows-[min(12vh,7rem)_auto_1fr]"
+      >
         <Results onPick={() => onOpenChange(false)} />
       </DialogPopup>
     </Dialog>
@@ -141,13 +147,31 @@ function Results({ onPick }: { onPick: () => void }) {
               <p className="font-medium">{r.title}</p>
               {/* Pagefind's excerpt: the page's text, escaped, the matches in <mark> */}
               <p
-                className="line-clamp-2 text-muted-foreground [&_mark]:bg-transparent [&_mark]:font-medium [&_mark]:text-foreground"
+                className="line-clamp-2 text-muted-foreground [&_mark]:bg-transparent [&_mark]:font-medium [&_mark]:text-brand-foreground"
                 dangerouslySetInnerHTML={{ __html: r.excerpt }}
               />
             </li>
           ))}
         </ul>
       ) : null}
+      <div className="flex items-center gap-4 border-t px-4 py-2 text-xs text-muted-foreground max-sm:hidden">
+        <span className="flex items-center gap-1.5">
+          <Key>↑</Key>
+          <Key>↓</Key> Select
+        </span>
+        <span className="flex items-center gap-1.5">
+          <Key>↵</Key> Open
+        </span>
+        <span className="ml-auto flex items-center gap-1.5">
+          <Key>esc</Key> Close
+        </span>
+      </div>
     </>
   )
 }
+
+const Key = ({ children }: { children: string }) => (
+  <kbd className="inline-flex h-5 min-w-5 items-center justify-center rounded border bg-muted px-1 font-sans text-[11px]">
+    {children}
+  </kbd>
+)

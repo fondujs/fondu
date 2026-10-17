@@ -1,6 +1,7 @@
 @import 'tailwindcss';
 @import '@fontsource-variable/inter';
 @import '@fontsource-variable/geist-mono';
+@import '@fontsource/instrument-serif/400-italic.css';
 
 /* coss ui's `dark:`: the dark theme chosen, or the system's while none is (<html class="system">). And its
    `not-dark:`, which Tailwind can't derive from a variant of two rules. */
@@ -68,6 +69,9 @@
   --ring: light-dark(var(--color-neutral-400), var(--color-neutral-500));
   --brand: light-dark(oklch(76% 0.16 78), oklch(80% 0.16 85));
   --brand-foreground: light-dark(oklch(55% 0.13 70), var(--brand)); /* text: 4.9:1 on white */
+  /* code in a sentence: the gold, darker on light (5.6:1 on its tint), lighter on dark */
+  --code: light-dark(oklch(49% 0.11 66), oklch(86% 0.12 86));
+  --code-background: light-dark(oklch(76% 0.16 78 / 12%), oklch(80% 0.16 85 / 11%));
   --radius: 0.625rem;
 }
 :root.light {
@@ -107,6 +111,7 @@
   --color-brand-foreground: var(--brand-foreground);
   --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
   --font-heading: var(--font-sans);
+  --font-serif: 'Instrument Serif', ui-serif, Georgia, serif;
   --font-mono: 'Geist Mono Variable', ui-monospace, Menlo, Consolas, monospace;
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
@@ -209,7 +214,10 @@
   }
   /* a long one breaks rather than widen the page on a phone */
   code {
-    @apply rounded-sm bg-muted px-1 py-px font-mono text-[0.85em] wrap-break-word;
+    @apply rounded-sm bg-(--code-background) px-1 py-px font-mono text-[0.85em] wrap-break-word text-(--code);
+  }
+  a code {
+    color: inherit;
   }
 }
 
@@ -274,7 +282,7 @@
   pre.shiki {
     @apply overflow-x-auto rounded-xl border bg-muted px-4 py-3.5 font-mono text-[13.5px]/6;
     & code {
-      @apply bg-transparent p-0 text-[inherit];
+      @apply bg-transparent p-0 text-[inherit] text-inherit;
     }
     & span {
       color: light-dark(var(--shiki-light), var(--shiki-dark));
@@ -290,5 +298,55 @@
     & .highlighted-word {
       @apply rounded-sm bg-brand/16 px-0.5 ring-1 ring-brand/40;
     }
+  }
+}
+
+/* The home page's code (pages/index.tsx): on a field of the brand's gold, grained, its corners cut in squares */
+.mosaic {
+  --cell: 0.875rem;
+  background:
+    radial-gradient(
+      120% 90% at 0% 0%,
+      light-dark(oklch(97% 0.035 92), oklch(70% 0.12 88)) 0%,
+      transparent 55%
+    ),
+    linear-gradient(
+      135deg,
+      light-dark(oklch(87% 0.14 88), oklch(60% 0.13 80)),
+      light-dark(oklch(70% 0.17 55), oklch(38% 0.1 50))
+    );
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.35;
+    mix-blend-mode: soft-light;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+}
+.mosaic-corner {
+  width: var(--cell);
+  height: var(--cell);
+  background: var(--background);
+  &.top-0.left-0 {
+    box-shadow: var(--cell) var(--cell) 0 var(--background);
+  }
+  &.top-0.right-0 {
+    box-shadow: calc(var(--cell) * -1) var(--cell) 0 var(--background);
+  }
+  &.bottom-0.left-0 {
+    box-shadow: var(--cell) calc(var(--cell) * -1) 0 var(--background);
+  }
+  &.bottom-0.right-0 {
+    box-shadow: calc(var(--cell) * -1) calc(var(--cell) * -1) 0 var(--background);
+  }
+}
+.hero-code {
+  & .code-tabs {
+    @apply my-0 bg-background shadow-xl/10;
+  }
+  & pre {
+    @apply h-[22rem] overflow-y-auto;
   }
 }
