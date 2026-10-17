@@ -16,7 +16,7 @@ declare module '@inertiajs/core' {
       auth: { user: { name: string; email: string; role: string } | null }
       theme: 'system' | 'light' | 'dark'
     }
-    flashDataType: { message?: string; error?: string }
+    flashDataType: { message?: string; error?: string; picked?: 'gold' | 'teal' | 'plum' }
   }
 }
 

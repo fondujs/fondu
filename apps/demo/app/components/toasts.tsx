@@ -18,6 +18,23 @@ export function Toasts() {
       }),
     [],
   )
+  // production: a form's answer that isn't a page (a proxy's 502, a CDN's timeout) as a toast, the form as it was.
+  // Inertia's dialog is for development (Fondu loads a GET's answer as a document)
+  useEffect(() => {
+    if (!import.meta.env.PROD) return
+    let method = 'get'
+    const offStart = router.on('start', ({ detail }) => void (method = detail.visit.method))
+    const offException = router.on('httpException', (event) => {
+      if (method === 'get' || event.detail.response.headers['x-inertia']) return
+      event.preventDefault()
+      toastManager.add({
+        title: `The server did not answer (${event.detail.response.status})`,
+        description: 'What you typed is still here: try again.',
+        type: 'error',
+      })
+    })
+    return () => (offStart(), offException())
+  }, [])
   const text = flash.error ?? flash.message
   return (
     <ToastProvider>
