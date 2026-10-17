@@ -35,14 +35,18 @@ type ComponentProps<N> = N extends keyof Pages
       : Record<string, never>
     : Record<string, unknown>
   : Record<string, unknown>
+/** the props a page names: not an index signature (a page without props takes `Record<string, never>`) */
+type Named<P> = keyof {
+  [K in keyof P as string extends K ? never : number extends K ? never : K]: 0
+}
 /** shared props the page takes with the same type: `render` may leave them out (every page gets them) */
 type FromShared<P> = {
-  [K in keyof P & keyof SharedPageProps]: SharedPageProps[K] extends P[K] ? K : never
-}[keyof P & keyof SharedPageProps]
+  [K in Named<P> & keyof SharedPageProps]: SharedPageProps[K] extends P[K] ? K : never
+}[Named<P> & keyof SharedPageProps]
 /** a page prop named like a shared prop, of another type: it would hide the shared one from the layout */
 type Clashing<P> = string extends keyof SharedPageProps
   ? never
-  : Exclude<keyof P & keyof SharedPageProps, FromShared<P>>
+  : Exclude<Named<P> & keyof SharedPageProps, FromShared<P>>
 type ClashError = 'fondu: this page prop has the name of a shared prop (share()); rename it'
 /** what `render` takes: the component's props, less `errors` and the shared props it gets anyway (may still be given) */
 type OwnProps<N> = Omit<
