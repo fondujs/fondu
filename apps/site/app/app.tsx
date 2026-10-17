@@ -1,6 +1,6 @@
 import { createInertiaApp } from '@inertiajs/react'
 
-import { fullTitle } from './components/meta'
+import { fullTitle } from './components/meta.tsx'
 
 import './styles/app.css'
 
