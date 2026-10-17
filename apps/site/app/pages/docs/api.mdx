@@ -62,9 +62,7 @@ createApp({
 | `scroll(fn, { pageName? })`                       | a page of a list, for `<InfiniteScroll>`              |
 
 They combine by wrapping: `once(defer(fn))`, `once(optional(fn))`, `once(merge(fn))`, `merge(defer(fn))`,
-`defer(scroll(fn))` ([Pages and props](/docs/pages#kinds-of-props)).
-
-[Pages and props](/docs/pages#kinds-of-props) shows them in use.
+`defer(scroll(fn))`. [Pages and props](/docs/pages#kinds-of-props) shows them in use.
 
 ### Route exports
 
@@ -93,6 +91,10 @@ For the browser.
 | Export                |                                                                |
 | --------------------- | -------------------------------------------------------------- |
 | `href(path, params?)` | a URL of `app/routes/`, typed: `href('/users/:id', { id: 7 })` |
+
+`prerendered()` (static pages) and `documentFallback()` (in production, a GET visit answered by something other than
+a page loads as a document) are exported for the build, which adds them to the client entry: an app doesn't call
+them.
 
 ## `fondu/vite`
 

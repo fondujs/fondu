@@ -26,13 +26,13 @@ It asks where the app runs (Bun, Cloudflare Workers or Node; or `--target bun|cl
 code checks (oxfmt, oxlint, lefthook, commitlint; or `--checks`), and writes a small app: a route, its page, the
 error page, Tailwind CSS, editor snippets and an `AGENTS.md` for coding agents. `--yes` asks nothing more.
 
-[demo.fondu.dev](https://demo.fondu.dev) ([apps/demo](https://github.com/fondujs/fondu/tree/main/apps/demo)) shows every Inertia feature, one page each, on
-Cloudflare Workers with D1 and Better Auth.
+[demo.fondu.dev](https://demo.fondu.dev) ([apps/demo](https://github.com/fondujs/fondu/tree/main/apps/demo)) shows Fondu's and Inertia's features, one page each,
+on Cloudflare Workers with D1 and Better Auth.
 
 ## Docs
 
-**[fondu.dev](https://fondu.dev/docs)**: routes, pages and props, layouts, forms and validation, type safety,
-server-side rendering, static pages, MDX pages, deploying, and the API. Every page is also Markdown for coding agents
+**[fondu.dev](https://fondu.dev/docs)**: routes, pages and props, layouts, forms and validation, errors, type safety,
+server-side rendering, static pages, MDX pages, internationalization, deploying, and the API. Every page is also Markdown for coding agents
 ([llms.txt](https://fondu.dev/llms.txt)).
 
 ## Contributing
@@ -40,7 +40,7 @@ server-side rendering, static pages, MDX pages, deploying, and the API. Every pa
 ```
 packages/fondu          the package
 packages/create-fondu   `bun create fondu`
-apps/demo               every Inertia feature, one page each — Workers, D1, Better Auth, coss ui
+apps/demo               Fondu's and Inertia's features, one page each — Workers, D1, Better Auth, coss ui
 apps/site               fondu.dev: the docs, MDX and static pages on Workers
 ```
 
