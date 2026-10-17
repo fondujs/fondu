@@ -1,2 +1,2 @@
-export * from './auth'
-export * from './contacts'
+export * from './auth.ts'
+export * from './contacts.ts'

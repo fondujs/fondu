@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["typescript", "react", "unicorn", "oxc"],
+  "plugins": ["typescript", "react", "unicorn", "oxc", "import"],
   "categories": {
     "correctness": "error"
   },
@@ -13,6 +13,13 @@
       {
         "argsIgnorePattern": "^_",
         "varsIgnorePattern": "^_"
+      }
+    ],
+    "import/extensions": [
+      "error",
+      "always",
+      {
+        "ignorePackages": true
       }
     ]
   },
