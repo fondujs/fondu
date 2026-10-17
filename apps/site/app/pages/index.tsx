@@ -11,6 +11,7 @@ import {
   Server,
   TextCursorInput,
   TriangleAlert,
+  ArrowUpRight,
   type LucideIcon,
 } from 'lucide-react'
 import { useState, type ComponentProps, type ReactNode } from 'react'
@@ -150,20 +151,26 @@ export default function Home() {
               No API in between.
             </span>
           </h1>
-          <p className="mt-6 max-w-xl text-lg/[1.75] text-muted-foreground">
+          <p className="mt-6 max-w-xl text-lg/[1.75]">
             Each route is a{' '}
-            <Chip mark={<Hono />} className="bg-[#E36002]/10 text-[#B44C02] dark:text-[#FF9A52]">
+            <Chip
+              mark={<Hono />}
+              className="bg-[#E36002]/10 font-mono text-[#B44C02] dark:text-[#FF9A52]"
+            >
               Hono
             </Chip>{' '}
             handler that renders a{' '}
             <Chip
               mark={<ReactMark />}
-              className="bg-[#087EA4]/10 text-[#087EA4] dark:bg-[#61DAFB]/10 dark:text-[#61DAFB]"
+              className="bg-[#087EA4]/10 font-mono text-[#087EA4] dark:bg-[#61DAFB]/10 dark:text-[#61DAFB]"
             >
               React
             </Chip>{' '}
             page with its props.{' '}
-            <Chip mark={<Inertia />} className="bg-[#9553E9]/10 text-[#7B3FCC] dark:text-[#B88CF5]">
+            <Chip
+              mark={<Inertia />}
+              className="bg-[#9553E9]/10 font-mono text-[#7B3FCC] dark:text-[#B88CF5]"
+            >
               Inertia
             </Chip>{' '}
             swaps the pages in the browser, so there is no client router and no API to write. Deploy
@@ -260,7 +267,7 @@ export default function Home() {
               Quick start
             </Button>
             <Button size="lg" variant="outline" render={<External href="https://demo.fondu.dev" />}>
-              See the demo
+              See the demo <ArrowUpRight />
             </Button>
           </div>
         </div>
@@ -295,7 +302,7 @@ function Chip({
 /** the hero's code, on a field of the brand's gold, its corners cut in squares */
 function Mosaic({ children }: { children: ReactNode }) {
   return (
-    <div className="mosaic relative min-w-0 p-4 sm:p-8">
+    <div className="mosaic relative min-w-0 p-8 sm:p-10">
       {(['top-0 left-0', 'top-0 right-0', 'bottom-0 left-0', 'bottom-0 right-0'] as const).map(
         (corner) => (
           <span key={corner} aria-hidden="true" className={cn('mosaic-corner absolute', corner)} />

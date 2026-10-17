@@ -53,7 +53,7 @@ export function CopyButton({
 export function Pre({ className, ...props }: ComponentProps<'pre'>) {
   const ref = useRef<HTMLPreElement>(null)
   return (
-    <div className="group/code relative my-4 [.code-tabs_&]:my-0">
+    <div className="group/code relative my-4 in-[.code-tabs]:my-0">
       <pre ref={ref} className={className} {...props} />
       <CopyButton
         text={() => ref.current?.textContent ?? ''}
