@@ -21,7 +21,7 @@ type Shareable<T> = { [K in keyof T]?: T[K] | (() => T[K] | Promise<T[K]>) }
 const shared = new WeakMap<Context, Record<string, unknown>>()
 
 /** Props every page of this request gets (a middleware calls it: the signed-in user…). */
-export function share(c: Context, props: Shareable<SharedPageProps> & Record<string, unknown>) {
+export function share(c: Context, props: Shareable<SharedPageProps>) {
   shared.set(c, { ...shared.get(c), ...props })
 }
 

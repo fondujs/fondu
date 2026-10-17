@@ -94,9 +94,13 @@ const shared = [
   typed(({ share }, c) => share(c, { auth: async () => ({ user: null }) })),
   // @ts-expect-error a shared prop of the wrong type
   typed(({ share }, c) => share(c, { auth: { user: 7 } })),
+  // @ts-expect-error only the declared shared props (an app that declares none shares anything)
+  typed(({ share }, c) => share(c, { autk: { user: null } })),
   typed(({ flash }, c) => flash(c, { message: 'Saved' })),
   // @ts-expect-error flash data of the wrong type
   typed(({ flash }, c) => flash(c, { message: 7 })),
+  // @ts-expect-error only the declared flash data
+  typed(({ flash }, c) => flash(c, { mesage: 'Saved' })),
 ]
 
 const params = z.object({ id: z.coerce.number() })
@@ -135,5 +139,5 @@ const validated = [
 ]
 
 test('the types above are checked by tsc', () => {
-  expect([...renders, ...hrefs, ...shared, ...validated]).toHaveLength(31)
+  expect([...renders, ...hrefs, ...shared, ...validated]).toHaveLength(33)
 })
