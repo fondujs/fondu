@@ -1,4 +1,5 @@
-import { Link } from '@inertiajs/react'
+import instrumentSerif from '@fontsource/instrument-serif/files/instrument-serif-latin-400-italic.woff2?url'
+import { Head, Link } from '@inertiajs/react'
 import {
   BadgeCheck,
   Check,
@@ -141,17 +142,28 @@ export default function Home() {
   return (
     <>
       <Meta description="Fondu is a small meta-framework for full-stack React apps, built on Hono, Vite and Inertia. It runs on Bun, Cloudflare Workers and Node." />
+      {/* the headline's serif, this page's only: fetched with the stylesheet (document.tsx preloads the others) */}
+      <Head>
+        <link
+          head-key="preload-serif"
+          rel="preload"
+          href={instrumentSerif}
+          as="font"
+          type="font/woff2"
+          crossOrigin=""
+        />
+      </Head>
 
       <section className="mx-auto grid max-w-7xl grid-cols-[minmax(0,1fr)] items-center gap-12 px-4 pt-12 pb-16 sm:px-6 sm:pt-16 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:gap-16">
         <div className="min-w-0">
           <h1 className="text-[2.5rem]/[1.05] font-semibold tracking-[-0.035em] text-balance sm:text-[3.5rem]/[1.03]">
             <span className="block">Server routes.</span>
             <span className="block">React pages.</span>
-            <span className="block font-serif text-[1.1em]/[1] font-normal tracking-[-0.01em] italic">
+            <span className="mt-[5px] block font-serif text-[1.1em]/[1] font-normal tracking-[-0.01em] italic">
               No API in between.
             </span>
           </h1>
-          <p className="mt-6 max-w-xl text-lg/[1.75]">
+          <p className="mt-6 max-w-xl text-base/[1.5] text-(--hero-text) sm:text-lg/[1.5]">
             Each route is a{' '}
             <Chip
               mark={<Hono />}
@@ -162,7 +174,7 @@ export default function Home() {
             handler that renders a{' '}
             <Chip
               mark={<ReactMark />}
-              className="bg-[#087EA4]/10 font-mono text-[#087EA4] dark:bg-[#61DAFB]/10 dark:text-[#61DAFB]"
+              className="bg-[#087EA4]/10 font-mono text-[#066985] dark:bg-[#61DAFB]/10 dark:text-[#61DAFB]"
             >
               React
             </Chip>{' '}
@@ -203,7 +215,7 @@ export default function Home() {
             Fondu writes as little of its own as it can. The rest is three projects you may know
             already, and their docs apply as they are.
           </p>
-          <ul className="mt-10 grid grid-cols-2 gap-px overflow-hidden rounded-xl border bg-border lg:grid-cols-4">
+          <ul className="mt-10 grid gap-px overflow-hidden rounded-xl border bg-border sm:grid-cols-2 lg:grid-cols-4">
             {parts.map(({ name, url, mark, tint, does }) => {
               const Anchor = url.startsWith('/') ? Link : External
               return (
@@ -289,7 +301,7 @@ function Chip({
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 rounded-md px-1.5 align-[-0.1em] text-[0.92em]/[1.6] font-medium whitespace-nowrap [&_svg]:size-[0.9em]',
+        'inline-flex items-center gap-1 rounded-md px-1.5 align-[-0.1em] text-[15px]/[1.5] font-medium whitespace-nowrap [&_svg]:size-[0.9em]',
         className,
       )}
     >
@@ -356,7 +368,7 @@ function CreateCommand() {
         aria-label={`Copy “${command}”`}
       >
         <span className="text-muted-foreground select-none">$</span>
-        <span className="truncate">{command}</span>
+        <span className="truncate text-muted-foreground">{command}</span>
         {copied ? (
           <Check className="size-4 shrink-0 text-brand-foreground" />
         ) : (

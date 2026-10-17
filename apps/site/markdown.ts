@@ -42,6 +42,7 @@ const files = (): Record<string, string> => ({
       docs.map((d) => `- [${d.title}](${SITE}${markdownUrl(d)}): ${d.description}`).join('\n'),
       '## Optional',
       `- [All the docs](${SITE}/llms-full.txt): every page above in one file`,
+      '- [Demo](https://demo.fondu.dev): a Fondu app on Cloudflare Workers, one page per feature, each with its code; its source: https://github.com/fondujs/fondu/tree/main/apps/demo',
     ].join('\n\n') + '\n',
   'llms-full.txt': [`# Fondu\n\n> ${SUMMARY}\n`, ...docs.map(pageMarkdown)].join('\n'),
   ...Object.fromEntries(docs.map((d) => [markdownUrl(d).slice(1), pageMarkdown(d)])),

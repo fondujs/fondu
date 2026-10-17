@@ -70,6 +70,8 @@
   --brand: light-dark(oklch(76% 0.16 78), oklch(80% 0.16 85));
   --brand-foreground: light-dark(oklch(55% 0.13 70), var(--brand)); /* text: 4.9:1 on white */
   /* code in a sentence: the gold, darker on light (5.6:1 on its tint), lighter on dark */
+  /* the home page's opening paragraph: between the muted grey and the text */
+  --hero-text: color-mix(in srgb, var(--muted-foreground) 65%, var(--foreground));
   --code: light-dark(oklch(49% 0.11 66), oklch(86% 0.12 86));
   --code-background: light-dark(oklch(76% 0.16 78 / 12%), oklch(80% 0.16 85 / 11%));
   --radius: 0.625rem;
