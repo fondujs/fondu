@@ -1,8 +1,11 @@
 # Contributing
 
 Fondu is built on Hono, Vite and Inertia, and writes only what none of them does: a change that lets
-the platform (Hono, Vite, Inertia, the runtime) do the work is preferred to one that adds code. For anything larger
-than a fix, open an issue first to agree on the approach.
+the platform (Hono, Vite, Inertia, the runtime) do the work is preferred to one that adds code.
+
+Pull requests are opened by the repository's collaborators. To report a bug or propose a change, open an
+[issue](https://github.com/fondujs/fondu/issues): a reproduction for a bug, the case for a feature. Once the approach is
+agreed, a maintainer makes the change, or invites you to.
 
 ## Setup
 
