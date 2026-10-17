@@ -4,7 +4,7 @@ export const SITE = 'https://fondu.dev'
 
 /** a page's <title> (app.tsx); the home page's is the site's own */
 export const fullTitle = (title?: string) =>
-  title ? `${title} · Fondu` : 'Fondu: Server routes. React pages. No API in between.'
+  title ? `${title} · Fondu` : 'Fondu · Server routes. React pages. No API in between.'
 
 /**
  * A page's title and the tags search engines and link previews read: the description, the canonical URL (no query),

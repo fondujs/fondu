@@ -64,11 +64,11 @@ export function Pre({ className, ...props }: ComponentProps<'pre'>) {
   )
 }
 
-// The tab chosen in each group (`group="pm"`: the package manager), the same in every block of the group, kept for
-// the next visit
+// The tab chosen in each group (`group="pm"`: the package manager), the same in every block of the group (and the
+// home page's command), kept for the next visit
 const listeners = new Set<() => void>()
 const KEY = 'code-tabs:'
-function useGroup(group: string | undefined) {
+export function useGroup(group: string | undefined) {
   const chosen = useSyncExternalStore(
     (listener) => (listeners.add(listener), () => listeners.delete(listener)),
     () => {

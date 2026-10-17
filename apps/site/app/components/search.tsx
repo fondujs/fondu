@@ -10,7 +10,7 @@ const SearchDialog = lazy(importDialog)
 const noop = () => () => {}
 const isMac = () => /Mac|iPhone|iPad/.test(navigator.platform)
 
-/** The docs search: a field-like button (an icon on small screens), ⌘K / Ctrl K or / */
+/** The docs search: a button the width of the header's Docs (an icon on small screens), ⌘K / Ctrl K or / */
 export function Search() {
   const [open, setOpen] = useState(false)
   const [loaded, setLoaded] = useState(false)
@@ -36,12 +36,13 @@ export function Search() {
     <>
       <Button
         variant="outline"
-        className="w-52 text-muted-foreground max-sm:hidden"
+        className="w-36 justify-start text-muted-foreground max-sm:hidden"
         onClick={show}
+        aria-label="Search docs"
         {...prefetch}
       >
         <SearchIcon />
-        Search docs
+        Search
         <kbd className="ml-auto font-sans text-xs">{mac ? '⌘K' : 'Ctrl K'}</kbd>
       </Button>
       <Button
