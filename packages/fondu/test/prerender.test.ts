@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto'
+import { posix } from 'node:path'
 
 import { createApp } from 'fondu'
 // fondu({ prerender: true }): the files, the paths, the page objects of the pages without a file.
@@ -129,6 +130,12 @@ describe('the app', () => {
     expect(page.component).toBe('home')
     expect(page.url).toBe('/?fresh')
   })
+  test('the page object of a page object: none', async () => {
+    const res = await app.request('/_fondu/pages/_fondu/pages/index.json.json', {
+      headers: { 'X-Inertia': 'true', 'X-Inertia-Version': 'v1' },
+    })
+    expect(res.status).toBe(404)
+  })
   test('… from other assets: reloaded at the page, not at the page object', async () => {
     const res = await app.request('/_fondu/pages/index.json', {
       headers: { 'X-Inertia': 'true', 'X-Inertia-Version': 'old' },
@@ -143,7 +150,11 @@ describe('the app', () => {
     }
     const key = Symbol.for('fondu.staticFiles')
     const g = globalThis as unknown as Record<symbol, unknown>
-    g[key] = async (file: string) => (file in files ? new TextEncoder().encode(files[file]) : null)
+    // as the built server's entry reads them: the path joined to the client build's folder, nothing above it
+    g[key] = async (file: string) => {
+      const to = posix.normalize(file)
+      return !to.startsWith('../') && to in files ? new TextEncoder().encode(files[to]) : null
+    }
     try {
       const doc = await app.request('/', { headers: { Accept: 'text/html' } })
       expect(await doc.text()).toBe('<html>static home</html>')
@@ -164,6 +175,15 @@ describe('the app', () => {
       expect(
         (await app.request('/%2e%2e/secret', { headers: { Accept: 'text/html' } })).status,
       ).toBe(404)
+      // only the pages' files: not the build's hidden ones, encoded or not
+      files['.vite/manifest.json'] = '{"secret":true}'
+      for (const path of [
+        '/_fondu/pages/..%2f..%2f.vite%2fmanifest.json',
+        '/_fondu/pages/%2e%2e/%2e%2e/.vite/manifest.json',
+      ]) {
+        const res = await app.request(path, { headers: { 'X-Inertia': 'true' } })
+        expect(await res.text(), path).not.toContain('secret')
+      }
     } finally {
       delete g[key]
     }

@@ -22,6 +22,8 @@ export interface PrerenderRoute {
 /** Node / Bun: reads a file of the client build (`docs/intro.html`), or null; set by the built server's entry */
 const STATIC_FILES = Symbol.for('fondu.staticFiles')
 type StaticFiles = (file: string) => Promise<Uint8Array | null>
+/** a page's file: no hidden one (`.vite/manifest.json`), nothing above the client build (`..`), no empty segment */
+const isPageFile = (file: string) => file.split('/').every((s) => s !== '' && !s.startsWith('.'))
 
 /** The paths to prerender, and what stops a route from being prerendered (the build fails on those) */
 export async function prerenderPaths(
@@ -77,6 +79,7 @@ export function prerenderRoutes(app: Hono, routes: () => PrerenderRoute[], versi
     } catch {
       return next() // not a path a file could have
     }
+    if (!isPageFile(file)) return next()
     const body = await read(file)
     if (!body) return next()
     c.header('Cache-Control', 'private, no-cache')
@@ -96,7 +99,8 @@ export function prerenderRoutes(app: Hono, routes: () => PrerenderRoute[], versi
   })
   app.get(`${PAGE_DATA}/*`, (c) => {
     const path = pathOfPageData(c.req.path)
-    if (!path) return c.notFound()
+    // a page object's own URL is not a page: no page object of a page object (and so on)
+    if (!path || path.startsWith(`${PAGE_DATA}/`)) return c.notFound()
     const url = new URL(c.req.url)
     url.pathname = path
     const headers = new Headers(c.req.raw.headers)
