@@ -1,6 +1,6 @@
 {
   "name": "fondu",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "description": "A small meta-framework for full-stack React apps, built on Hono, Vite and Inertia. It runs on Bun, Cloudflare Workers and Node.",
   "keywords": [
     "bun",
