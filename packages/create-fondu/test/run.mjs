@@ -149,6 +149,23 @@ if (!process.argv[2] || process.argv[2] === 'node') {
     'checks: --yes makes a git repository, and the install sets up the hooks',
     ['pre-commit', 'commit-msg'].every((hook) => existsSync(join(app, '.git/hooks', hook))),
   )
+  // a commit of files the linter ignores only (the generated types): nothing to lint, not a failure (#81)
+  const types = join(app, 'app/fondu.gen.d.ts')
+  writeFileSync(types, (existsSync(types) ? readFileSync(types, 'utf8') : '') + '// types\n')
+  check(
+    'checks: a commit of ignored files only passes the hooks',
+    passes('git', 'add', 'app/fondu.gen.d.ts') &&
+      passes(
+        'git',
+        '-c',
+        'user.name=Fondu',
+        '-c',
+        'user.email=test@fondu.dev',
+        'commit',
+        '-m',
+        'chore: types',
+      ),
+  )
   const agents = readFileSync(join(app, 'AGENTS.md'), 'utf8')
   check(
     'checks: AGENTS.md says how',
