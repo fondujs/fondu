@@ -1,6 +1,6 @@
 # Fondu
 
-**Server routes. React pages. No API in between.**
+[![Fondu · Server routes. React pages. No API in between.](https://fondu.dev/og.png)](https://fondu.dev)
 
 Fondu is a small meta-framework for full-stack React apps, built on Hono, Vite and Inertia. It runs on Bun, Cloudflare
 Workers and Node.

@@ -8,7 +8,8 @@ export const fullTitle = (title?: string) =>
 
 /**
  * A page's title and the tags search engines and link previews read: the description, the canonical URL (no query),
- * Open Graph. `noindex`: kept out of search results (the error page).
+ * Open Graph with the site's image (public/og.png, from .github/assets/og.svg). `noindex`: kept out of search results
+ * (the error page).
  */
 export function Meta({
   title,
@@ -36,7 +37,11 @@ export function Meta({
         <meta head-key="og:description" property="og:description" content={description} />
       )}
       <meta head-key="og:url" property="og:url" content={canonical} />
-      <meta head-key="twitter:card" name="twitter:card" content="summary" />
+      <meta head-key="og:image" property="og:image" content={`${SITE}/og.png`} />
+      <meta head-key="og:image:width" property="og:image:width" content="1200" />
+      <meta head-key="og:image:height" property="og:image:height" content="630" />
+      <meta head-key="og:image:alt" property="og:image:alt" content={fullTitle()} />
+      <meta head-key="twitter:card" name="twitter:card" content="summary_large_image" />
     </Head>
   )
 }
