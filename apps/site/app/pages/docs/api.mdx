@@ -82,7 +82,8 @@ They combine by wrapping: `once(defer(fn))`, `once(optional(fn))`, `once(merge(f
 | ---------------------- | ------------------------------------------------------------------- |
 | `name.tsx`, `name.mdx` | the page `name` (`users/show.tsx`: `'users/show'`)                  |
 | `_layout.tsx`          | the [layout](/docs/layouts) of the pages in its directory and below |
-| `_name.tsx`            | not a page: a file starting with `_`                                |
+| `_name.tsx`, `_name/`  | not a page: a file, or a directory, starting with `_`               |
+| `name.test.tsx`        | not a page: a test (`*.test.tsx`, `*.spec.tsx`)                     |
 
 ## `fondu/client`
 

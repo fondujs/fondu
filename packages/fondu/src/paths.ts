@@ -44,9 +44,16 @@ export function isRouteFile(file: string): boolean {
   )
 }
 
-/** a path inside `pages/` that is a page: a .tsx, .jsx or .mdx file whose name doesn't start with `_` (`_layout.tsx`) */
+/**
+ * a path inside `pages/` that is a page: a .tsx, .jsx or .mdx file but tests (as for routes), neither its name nor a
+ * directory on its path starting with `_` (`_layout.tsx`, `_parts/badge.tsx`)
+ */
 export function isPageFile(file: string): boolean {
-  return /\.(?:[jt]sx|mdx)$/.test(file) && !file.split('/').at(-1)!.startsWith('_')
+  return (
+    /\.(?:[jt]sx|mdx)$/.test(file) &&
+    !/\.(?:test|spec)\.[jt]sx$/.test(file) &&
+    !file.split('/').some((s) => s.startsWith('_'))
+  )
 }
 
 /** the directories of `pages/` whose `_layout.tsx` wraps a page, outermost first: `docs/intro.mdx` → `['', 'docs']` */

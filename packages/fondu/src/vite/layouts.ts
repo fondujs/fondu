@@ -31,12 +31,17 @@ export function layouts(): Plugin {
       const file = id.split('?')[0]!
       const rel = relative(pagesDir(), file).split(sep).join('/')
       if (rel.startsWith('..') || !isPageFile(rel)) return
+      const found = defaultExport(this.parse(code) as unknown as Program, code)
+      // a component put in app/pages/ by mistake would be a page, named and typed: an error instead
+      if (!found) {
+        this.error(
+          `fondu: app/pages/${rel} has no default export. A page is its module's default export; a file in app/pages/ that is not a page goes elsewhere (components/, say), or its name starts with _`,
+        )
+      }
       const chain = layoutsOf(rel)
         .map(layoutFile)
         .filter((f): f is string => f !== undefined)
-      if (!chain.length) return
-      const found = defaultExport(this.parse(code) as unknown as Program, code)
-      if (!found) return
+      if (!chain.length || found.name === undefined) return
       // added at the end (imports are hoisted) and within a line: the lines stay where they were (`map: null`)
       const imports = chain
         .map((f, i) => `import __fondu_layout_${i} from ${JSON.stringify(f)};`)
@@ -61,19 +66,44 @@ export function layouts(): Plugin {
 type Node = { type: string; start: number; end: number; [key: string]: unknown }
 type Program = { body: Node[] }
 
+type Specifier = Node & { local: Name; exported: Name }
+type Name = Node & { name?: string; value?: string }
+const nameOf = (n: Name) => n.name ?? n.value!
+
 /**
  * The name of the module's default export, to set `layout` on: a named function or class as it is; an anonymous one,
- * or an expression, given a name first (`const __fondu_page = …`, exported at the end)
+ * or an expression, given a name first (`const __fondu_page = …`, exported at the end). A component re-exported from
+ * another module (`export { default } from './edit.tsx'`) is wrapped in one of this page's own: two pages may share a
+ * component under different layouts. `name: undefined`: a default export to leave alone (`export * as default`).
  */
-function defaultExport(program: Program, code: string): { name: string; code: string } | undefined {
+function defaultExport(
+  program: Program,
+  code: string,
+): { name: string | undefined; code: string } | undefined {
   for (const node of program.body) {
-    if (node.type === 'ExportNamedDeclaration' && !node.source) {
-      const specifiers = node.specifiers as Array<{
-        local: { name: string }
-        exported: { name: string }
-      }>
-      const specifier = specifiers.find((sp) => sp.exported.name === 'default')
-      if (specifier) return { name: specifier.local.name, code }
+    if (node.type === 'ExportAllDeclaration' && node.exported)
+      if (nameOf(node.exported as Name) === 'default') return { name: undefined, code }
+    if (node.type === 'ExportNamedDeclaration') {
+      const specifiers = node.specifiers as Specifier[]
+      const specifier = specifiers.find((sp) => nameOf(sp.exported) === 'default')
+      if (!specifier) continue
+      if (!node.source) return { name: nameOf(specifier.local), code }
+      const source = code.slice((node.source as Node).start, (node.source as Node).end)
+      const others = specifiers.filter((sp) => sp !== specifier)
+      const kept = others.length
+        ? `export { ${others.map((sp) => code.slice(sp.start, sp.end)).join(', ')} } from ${source};`
+        : ''
+      const local = nameOf(specifier.local)
+      const imported = /^[A-Za-z_$][\w$]*$/.test(local) ? local : JSON.stringify(local)
+      return {
+        name: '__fondu_page',
+        code:
+          `${code.slice(0, node.start)}${kept}${code.slice(node.end)}\n` +
+          `import { ${imported} as __fondu_shared } from ${source};\n` +
+          `import { createElement as __fondu_h } from 'react';\n` +
+          `const __fondu_page = (props) => __fondu_h(__fondu_shared, props);\n` +
+          `export default __fondu_page;`,
+      }
     }
     if (node.type !== 'ExportDefaultDeclaration') continue
     const declaration = node.declaration as Node & { id?: { name: string } | null }

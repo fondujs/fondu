@@ -70,8 +70,16 @@ layout.
 
 A page can still set its own, as Inertia allows: `Page.layout = OtherLayout` replaces its directories' layouts.
 
+A page that is another page's component, `export { default } from './edit.tsx'`, gets the layouts of its own
+directory: `users/new` can share `users/edit`'s form, and a page elsewhere can share it under other layouts. A
+`layout` set on that component stays its own page's.
+
 ## Files that are not pages
 
-A file in `app/pages/` whose name starts with `_` is not a page: `render()` can't name it, and it is not in the
-generated types. Besides `_layout.tsx`, a component used by the pages of one directory can live there too, as
-`_toc.tsx`.
+A file in `app/pages/` whose name starts with `_`, or that is in a directory whose name does, is not a page:
+`render()` can't name it, and it is not in the generated types. Besides `_layout.tsx`, a component used by the pages
+of one directory can live there too, as `_toc.tsx` or `_parts/toc.tsx`. Tests (`*.test.tsx`, `*.spec.tsx`) are not
+pages either, as in `app/routes/`.
+
+Any other file there is a page, and a page is its file's default export. So a file with none, a component put in
+`app/pages/` by mistake say, is an error: shown by Vite's error overlay in development, and the build stops.
