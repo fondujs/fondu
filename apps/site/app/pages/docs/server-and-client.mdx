@@ -31,8 +31,8 @@ TypeScript before the build looks at the imports.
 import type { UserSummary } from '#/modules/users/users.server.ts'
 ```
 
-Write the whole import as `import type`: `import { type UserSummary } from …` leaves an empty import of the file
-behind, and the build stops at it.
+Write the whole import as `import type`. With `verbatimModuleSyntax`, which a new app's `tsconfig.json` has,
+`import { type UserSummary } from …` leaves an empty import of the file behind, and the build stops at it.
 
 ## Code for both
 
