@@ -1,7 +1,7 @@
 import { createApp } from 'fondu'
 
 import Document from '#/document.tsx'
-import { resetDemo } from '#/lib/demo.server.ts'
+import { resetDemo } from '#/modules/demo/demo.server.ts'
 
 // The app from app/routes/. Built in: CSRF, security headers with a Content Security Policy, trailing slashes, the
 // error page (pages/error.tsx). The document is this app's own (document.tsx): the chosen theme is on <html>.

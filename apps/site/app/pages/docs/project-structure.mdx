@@ -70,7 +70,7 @@ createInertiaApp({
 `app/routes/`, `app/server.ts` and files named `*.server.ts` are server code: browser code must not import them, and
 the build stops if it does. [Server and client code](/docs/server-and-client) explains where each file runs.
 
-`package.json` maps `#/*` to `./app/*`, so `import { db } from '#/lib/db.server.ts'` works from anywhere in `app/`.
+`package.json` maps `#/*` to `./app/*`, so `import { db } from '#/db/index.server.ts'` works from anywhere in `app/`.
 
 ## `app/fondu.gen.d.ts`
 
@@ -81,3 +81,33 @@ Commit it, so the types are there before the first build (in CI, say); don't edi
 
 A new app has `.vscode/fondu.code-snippets`: type `/route`, `/api`, `/loader`, `/action`, `/actions`, `/validated`,
 `/get` … `/delete` or `/middleware` in a route file, `/page`, `/layout` or `/form` in a page. Edit them freely.
+
+## One way to organize an app
+
+Fondu reads `routes/`, `pages/` and the files above; the rest of `app/` is yours, and Fondu only checks that browser
+code doesn't import server code. Here is one way to arrange it, which [the demo](/docs/demo) follows. It is an
+example, not a rule.
+
+```
+app/
+├─ routes/               # URLs and server code
+├─ pages/                # pages only, named after their routes
+├─ components/           # all UI that isn't a page
+│  ├─ ui/                # the primitives: buttons, fields, dialogs
+│  └─ users/             # the parts of the pages in pages/users/
+├─ modules/              # what the app does, a directory per domain, no UI
+│  ├─ auth/              # auth.server.ts, guards.server.ts
+│  └─ users/             # users.server.ts, schemas.ts
+├─ lib/                  # helpers that know no domain: dates, class names
+└─ db/                   # the tables and the client
+```
+
+- A page's path is its route's, without what only the URL needs: `routes/[[locale]]/(user)/account.ts` renders
+  `account`, and `routes/users/[id].ts` renders `users/show`. From one file you find the other.
+- A page's own parts are in `components/`, in a directory named like the page's. `pages/` holds pages and their
+  `_layout.tsx` only.
+- A domain keeps its code together: `modules/users/` has the server code, the schemas its routes validate with and
+  its forms use, and the types of the data it gives pages (which a page imports with
+  [`import type`](/docs/server-and-client#server-code)).
+- A new file goes where the first answer is yes: a page or a layout, `pages/`; UI, `components/`; about one domain,
+  `modules/<domain>/`; anything else, `lib/`.

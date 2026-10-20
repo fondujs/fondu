@@ -24,5 +24,5 @@ bun run db:migrate                            # the tables and the demo accounts
 Then `bun run deploy` for each new version (and `bun run db:migrate` when `migrations/` changed).
 
 - The demo signs in with its two accounts (on the sign-in page); sign-up is turned off.
-- Every 6 hours a cron (wrangler.jsonc) puts the data back to the seed: `resetDemo()` in `app/lib/demo.server.ts`.
+- Every 6 hours a cron (wrangler.jsonc) puts the data back to the seed: `resetDemo()` in `app/modules/demo/demo.server.ts`.
 - `robots.txt` keeps it out of search engines.

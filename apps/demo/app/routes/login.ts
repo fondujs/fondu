@@ -1,7 +1,7 @@
 import { defineHandler, flash, render } from 'fondu'
 import * as z from 'zod/mini'
 
-import { callAuth, safeNext } from '#/lib/auth.server.ts'
+import { callAuth, safeNext } from '#/modules/auth/auth.server.ts'
 
 export const loader = defineHandler(async (c) => {
   // Better Auth's own errors (onAPIError.errorURL) arrive as ?error=: shown once, as a toast

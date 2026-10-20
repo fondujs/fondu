@@ -1,7 +1,7 @@
 import { defineMiddleware, share } from 'fondu'
 
-import { auth, type User } from '#/lib/auth.server.ts'
 import { themeOf } from '#/lib/theme.server.ts'
+import { auth, type User } from '#/modules/auth/auth.server.ts'
 
 // What this middleware sets, typed where it is set: `c.get('user')` (Hono's ContextVariableMap) and the shared
 // props and flash data of every page (Inertia's InertiaConfig: `usePage().props` in the browser too).

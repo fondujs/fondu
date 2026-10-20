@@ -4,7 +4,7 @@ import * as z from 'zod/mini'
 
 import { db } from '#/db/index.server.ts'
 import { contacts } from '#/db/schema/index.ts'
-import { requireApiUser } from '#/lib/api.server.ts'
+import { requireApiUser } from '#/modules/auth/api.server.ts'
 
 const params = z.object({ id: z.coerce.number().check(z.int()) })
 

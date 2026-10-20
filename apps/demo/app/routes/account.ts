@@ -1,7 +1,7 @@
 import { back, defineHandler, flash, render } from 'fondu'
 import * as z from 'zod/mini'
 
-import { callAuth, requireUser } from '#/lib/auth.server.ts'
+import { callAuth, requireUser } from '#/modules/auth/auth.server.ts'
 
 export const loader = defineHandler(requireUser, (c) => {
   const { name, email, role } = c.get('user')!

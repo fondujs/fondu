@@ -5,9 +5,9 @@ import * as z from 'zod/mini'
 
 import { db } from '#/db/index.server.ts'
 import { contacts } from '#/db/schema/index.ts'
-import { requireUser } from '#/lib/auth.server.ts'
-import { EMAIL_TAKEN, emailFree } from '#/lib/contacts.server.ts'
-import { contactSchema } from '#/schemas/contact.ts'
+import { requireUser } from '#/modules/auth/auth.server.ts'
+import { EMAIL_TAKEN, emailFree } from '#/modules/contacts/contacts.server.ts'
+import { contactSchema } from '#/modules/contacts/schemas.ts'
 
 const params = z.object({ id: z.coerce.number().check(z.int()) })
 
