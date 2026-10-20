@@ -27,7 +27,7 @@ export default function NewContact() {
 // app/routes/contacts/index.ts
 import { back, defineHandler, flash } from 'fondu'
 
-import { contactSchema } from '#/schemas/contact.ts'
+import { contactSchema } from '#/modules/contacts/schemas.ts'
 
 export const action = defineHandler.withValidator({ body: contactSchema })(async (c, { body }) => {
   await addContact(body)

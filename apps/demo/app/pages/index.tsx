@@ -1,7 +1,7 @@
 import { Head, Link } from '@inertiajs/react'
 
+import { groups } from '#/components/demos.ts'
 import { Card, CardDescription, CardHeader, CardTitle } from '#/components/ui/card.tsx'
-import { groups } from '#/lib/demos.ts'
 
 export default function Overview() {
   return (

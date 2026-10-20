@@ -1,7 +1,7 @@
 import { back, defineHandler, flash, render } from 'fondu'
 import * as z from 'zod/mini'
 
-import { auth } from '#/lib/auth.server.ts'
+import { auth } from '#/modules/auth/auth.server.ts'
 
 export const loader = defineHandler(async (c) => {
   const { users } = await auth.api.listUsers({

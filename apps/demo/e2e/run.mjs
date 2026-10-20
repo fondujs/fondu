@@ -1750,7 +1750,7 @@ await page.waitForFunction(
   )
   const sources = await Promise.all(
     [
-      '/app/lib/auth.server.ts?raw',
+      '/app/modules/auth/auth.server.ts?raw',
       '/app/routes/login.ts?raw',
       '/app/server.ts?raw',
       '/app/routes/login.ts?import&raw',

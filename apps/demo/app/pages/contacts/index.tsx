@@ -17,7 +17,7 @@ import {
 } from '#/components/ui/alert-dialog.tsx'
 import { Button } from '#/components/ui/button.tsx'
 import { Form as BaseForm } from '#/components/ui/form.tsx'
-import { contactSchema } from '#/schemas/contact.ts'
+import { contactSchema } from '#/modules/contacts/schemas.ts'
 
 type Contact = { id: number; name: string; email: string }
 
@@ -45,8 +45,8 @@ export default function Contacts({ contacts }: { contacts: Contact[] }) {
       <Head title="Forms & validation" />
       <h1>Forms & validation</h1>
       <p className="lede">
-        One schema (<code>schemas/contact.ts</code>) validates on the server; invalid input is
-        answered with a 303 back to this page and the errors in its <code>errors</code> prop. The
+        One schema (<code>modules/contacts/schemas.ts</code>) validates on the server; invalid input
+        is answered with a 303 back to this page and the errors in its <code>errors</code> prop. The
         same schema can check in the browser first, or the server can check each field as you leave
         it (Precognition), the address not yet taken included. Contacts are stored in D1.
       </p>

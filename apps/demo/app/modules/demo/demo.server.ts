@@ -1,6 +1,6 @@
 import { env } from 'cloudflare:workers'
 
-import seed from '../../migrations/0001_seed.sql?raw'
+import seed from '../../../migrations/0001_seed.sql?raw'
 
 // children first: sessions and accounts point at users
 const tables = ['sessions', 'accounts', 'verifications', 'rate_limits', 'users', 'contacts']

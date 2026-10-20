@@ -18,10 +18,21 @@ own, loaded when it is visited.
 session. If a page or a component imports one, even through another file, the build stops and names the import:
 
 ```
-fondu: /app/lib/db.server.ts is server code (routes/, server.ts, *.server.ts) and cannot be imported by browser code
+fondu: /app/db/index.server.ts is server code (routes/, server.ts, *.server.ts) and cannot be imported by browser code
 ```
 
 Name a module `*.server.ts` when it must never reach the browser, and import it from routes and other server files.
+
+A type is not code: a page can take one from a server file with `import type`, which is removed with the rest of
+TypeScript before the build looks at the imports.
+
+```tsx
+// app/pages/users/show.tsx
+import type { UserSummary } from '#/modules/users/users.server.ts'
+```
+
+Write the whole import as `import type`: `import { type UserSummary } from …` leaves an empty import of the file
+behind, and the build stops at it.
 
 ## Code for both
 

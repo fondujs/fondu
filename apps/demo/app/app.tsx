@@ -1,6 +1,6 @@
 import { createInertiaApp } from '@inertiajs/react'
 
-import AppLayout from './layouts/app.tsx'
+import AppLayout from './components/app-layout.tsx'
 
 import './styles/app.css'
 

@@ -1,6 +1,6 @@
 import { clearHistory, defineHandler, flash } from 'fondu'
 
-import { callAuth } from '#/lib/auth.server.ts'
+import { callAuth } from '#/modules/auth/auth.server.ts'
 
 // POST /logout: <Link href={href('/logout')} method="post" as="button">
 export const action = defineHandler(async (c) => {

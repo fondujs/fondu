@@ -3,7 +3,7 @@ import * as z from 'zod/mini'
 
 import { db } from '#/db/index.server.ts'
 import { contacts } from '#/db/schema/index.ts'
-import { contactSchema } from '#/schemas/contact.ts'
+import { contactSchema } from '#/modules/contacts/schemas.ts'
 
 export const EMAIL_TAKEN = 'Already in your contacts'
 

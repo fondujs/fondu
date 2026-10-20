@@ -5,6 +5,7 @@ import { useState, type ReactNode } from 'react'
 
 import { AccountMenu } from '#/components/account-menu.tsx'
 import { RenderBadge } from '#/components/demo.tsx'
+import { groups } from '#/components/demos.ts'
 import { Logo } from '#/components/logo.tsx'
 import { Toasts } from '#/components/toasts.tsx'
 import { Button } from '#/components/ui/button.tsx'
@@ -15,9 +16,8 @@ import {
   DrawerPopup,
   DrawerTitle,
 } from '#/components/ui/drawer.tsx'
-import { groups } from '#/lib/demos.ts'
 
-// the overview and the links out, then the demos by group (lib/demos.ts, as on the overview)
+// the overview and the links out, then the demos by group (components/demos.ts, as on the overview)
 const sections: Array<[group: string | null, links: Array<[url: string, label: string]>]> = [
   [
     null,

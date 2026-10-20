@@ -4,8 +4,8 @@ import * as z from 'zod/mini'
 
 import { db } from '#/db/index.server.ts'
 import { contacts } from '#/db/schema/index.ts'
-import { requireUser } from '#/lib/auth.server.ts'
-import { newContactSchema } from '#/lib/contacts.server.ts'
+import { requireUser } from '#/modules/auth/auth.server.ts'
+import { newContactSchema } from '#/modules/contacts/contacts.server.ts'
 
 export const loader = defineHandler((c) =>
   render(c, 'contacts/index', {

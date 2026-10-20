@@ -1,6 +1,6 @@
 import { defineHandler } from 'fondu'
 
-import { auth } from '#/lib/auth.server.ts'
+import { auth } from '#/modules/auth/auth.server.ts'
 
 // Better Auth's own HTTP API (/api/auth/*): for its client, OAuth callbacks…
 export const GET = defineHandler((c) => auth.handler(c.req.raw))
