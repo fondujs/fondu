@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { createServer } from 'node:net'
 import { dirname, join, resolve } from 'node:path'
@@ -58,10 +58,34 @@ export function staticPolicy(policy: string, hashes: string[] = []): string {
     .join('; ')
 }
 
-/** the `_headers` rules: the documents' security headers, and the page objects' X-Inertia (Inertia requires it) */
-export function headerRules(headers: Record<string, string>): string {
-  const lines = Object.entries(headers).map(([name, value]) => `  ${name}: ${value}`)
-  return `\n/*\n${lines.join('\n')}\n${PAGE_DATA}/*\n  X-Inertia: true\n`
+/**
+ * `_headers` with Fondu's rules in it: the documents' security headers (`/*`), and the page objects' X-Inertia
+ * (Inertia requires it). A path the file has a rule for gets the headers it doesn't set there, so the app's own stay
+ * (Workers keep one rule per path: a second `/*` would replace the first); any other, a rule at the end.
+ */
+export function withHeaderRules(file: string, headers: Record<string, string>): string {
+  const lines = file.replace(/\n+$/, '').split('\n')
+  const rules: Array<[string, Record<string, string>]> = [
+    ['/*', headers],
+    [`${PAGE_DATA}/*`, { 'X-Inertia': 'true' }],
+  ]
+  for (const [path, set] of rules) {
+    const start = lines.findIndex((line) => line.trimEnd() === path)
+    let end = start + 1
+    while (start !== -1 && /^\s+\S/.test(lines[end] ?? '')) end++
+    // the names set or removed (`! name`) there
+    const own = new Set(
+      lines
+        .slice(start + 1, end)
+        .map((l) => l.trim().replace(/^!\s*/, '').split(':')[0]!.toLowerCase()),
+    )
+    const added = Object.entries(set)
+      .filter(([name]) => start === -1 || !own.has(name.toLowerCase()))
+      .map(([name, value]) => `  ${name}: ${value}`)
+    if (start === -1) lines.push(...(lines.at(-1) ? [''] : []), path, ...added)
+    else lines.splice(end, 0, ...added)
+  }
+  return `${lines.join('\n')}\n`
 }
 
 /** the built server, running for the prerender: fetch a path of it, stop it */
@@ -150,7 +174,11 @@ export async function prerender(
       logger.info(`fondu: prerendered ${path}`)
     }
     if (errors.length) return fail(errors)
-    if (headersFile) appendFileSync(join(clientDir, '_headers'), headerRules(security ?? {}))
+    if (headersFile) {
+      const file = join(clientDir, '_headers')
+      const own = existsSync(file) ? readFileSync(file, 'utf8') : ''
+      writeFileSync(file, withHeaderRules(own, security ?? {}))
+    }
   } finally {
     await server.dispose()
   }
