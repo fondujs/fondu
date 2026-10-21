@@ -7,7 +7,7 @@ import { describe, expect, test } from 'vitest'
 
 import { pageDataPath, pathOfPageData } from '../src/paths.js'
 import { prerenderPaths, type PrerenderRoute } from '../src/server/prerender.js'
-import { headerRules, ownScripts, staticFiles, staticPolicy } from '../src/vite/prerender.js'
+import { ownScripts, staticFiles, staticPolicy, withHeaderRules } from '../src/vite/prerender.js'
 
 const route = (
   file: string,
@@ -75,10 +75,26 @@ describe('headers', () => {
     expect(own.hashes).toEqual([`'sha256-${createHash('sha256').update('a()').digest('base64')}'`])
     expect(ownScripts(html, "script-src 'self'")).toEqual({ html, hashes: [] }) // no nonce: nothing is replaced
   })
-  test('one rule for the documents, X-Inertia for the page objects', () => {
-    expect(headerRules({ 'referrer-policy': 'same-origin' })).toBe(
-      '\n/*\n  referrer-policy: same-origin\n/_fondu/pages/*\n  X-Inertia: true\n',
+  test("_headers: a rule for the documents, X-Inertia for the page objects, after Fondu's own", () => {
+    const fondus = '/assets/*\n  Cache-Control: public, max-age=31536000, immutable\n'
+    expect(withHeaderRules(fondus, { 'referrer-policy': 'same-origin' })).toBe(
+      `${fondus}\n/*\n  referrer-policy: same-origin\n\n/_fondu/pages/*\n  X-Inertia: true\n`,
     )
+  })
+  test("_headers: the app's rule for a path gets the headers it doesn't set, its own kept (#99)", () => {
+    const app =
+      '/*\n  Cache-Control: no-store\n  Referrer-Policy: no-referrer\n  ! X-Frame-Options\n\n/api/*\n  X-Robots-Tag: noindex\n'
+    const out = withHeaderRules(app, {
+      'referrer-policy': 'same-origin',
+      'x-frame-options': 'DENY',
+      'x-content-type-options': 'nosniff',
+    })
+    expect(out).toBe(
+      '/*\n  Cache-Control: no-store\n  Referrer-Policy: no-referrer\n  ! X-Frame-Options\n  x-content-type-options: nosniff\n\n/api/*\n  X-Robots-Tag: noindex\n\n/_fondu/pages/*\n  X-Inertia: true\n',
+    )
+    expect(out.match(/^\/\*$/gm)).toHaveLength(1)
+    // built again on the result: nothing more
+    expect(withHeaderRules(out, { 'x-content-type-options': 'nosniff' })).toBe(out)
   })
 })
 
