@@ -7,6 +7,17 @@ import { isPageFile, layoutsOf } from '../paths.js'
 
 const LAYOUT_EXTENSIONS = ['.tsx', '.jsx']
 
+/** the `_layout.tsx` files around a page (its path in `app/pages/`), outermost first */
+export function layoutChain(root: string, page: string): string[] {
+  return layoutsOf(page)
+    .map((dir) =>
+      LAYOUT_EXTENSIONS.map((ext) => join(root, 'app/pages', dir, `_layout${ext}`)).find((f) =>
+        existsSync(f),
+      ),
+    )
+    .filter((f): f is string => f !== undefined)
+}
+
 /**
  * `_layout.tsx` in a directory of `app/pages/` wraps the pages below it, outermost first: each page module imports
  * its chain and sets it as the component's `layout` (Inertia's page-level layout), unless the page set its own. So a
@@ -16,20 +27,6 @@ const LAYOUT_EXTENSIONS = ['.tsx', '.jsx']
 export function layouts(): Plugin {
   let root = process.cwd()
   const pagesDir = () => join(root, 'app/pages')
-  // the `_layout.tsx` of a directory of app/pages/ ('' is the root), if there is one
-  const layoutFile = (dir: string) =>
-    LAYOUT_EXTENSIONS.map((ext) => join(pagesDir(), dir, `_layout${ext}`)).find((f) =>
-      existsSync(f),
-    )
-  // a page's module path relative to app/pages/, if it is a page
-  const pageOf = (id: string) => {
-    const rel = relative(pagesDir(), id.split('?')[0]!).split(sep).join('/')
-    return rel.startsWith('..') || !isPageFile(rel) ? undefined : rel
-  }
-  const chainOf = (page: string) =>
-    layoutsOf(page)
-      .map(layoutFile)
-      .filter((f): f is string => f !== undefined)
   return {
     name: 'fondu:layouts',
     enforce: 'post', // after the JSX and MDX are compiled: plain JavaScript to read
@@ -37,8 +34,8 @@ export function layouts(): Plugin {
       root = c.root
     },
     transform(code, id) {
-      const rel = pageOf(id)
-      if (rel === undefined) return
+      const rel = relative(pagesDir(), id.split('?')[0]!).split(sep).join('/')
+      if (rel.startsWith('..') || !isPageFile(rel)) return
       const found = defaultExport(this.parse(code) as unknown as Program, code)
       // a component put in app/pages/ by mistake would be a page, named and typed: an error instead
       if (!found) {
@@ -46,8 +43,8 @@ export function layouts(): Plugin {
           `fondu: app/pages/${rel} has no default export. A page is its module's default export; a file in app/pages/ that is not a page goes elsewhere (components/, say), or its name starts with _`,
         )
       }
-      const chain = chainOf(rel)
       if (found.name === undefined) return
+      const chain = layoutChain(root, rel)
       // a re-exported component is wrapped with no layout above too: the app's default layout for this page, not the
       // layouts its other page set on it
       if (!chain.length) return found.wrapped ? { code: found.code, map: null } : undefined
