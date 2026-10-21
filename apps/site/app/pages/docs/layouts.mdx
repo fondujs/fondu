@@ -71,8 +71,8 @@ layout.
 A page can still set its own, as Inertia allows: `Page.layout = OtherLayout` replaces its directories' layouts.
 
 A page that is another page's component, `export { default } from './edit.tsx'`, gets the layouts of its own
-directory: `users/new` can share `users/edit`'s form, and a page elsewhere can share it under other layouts. A
-`layout` set on that component stays its own page's.
+directory, or the default one with none: `users/new` can share `users/edit`'s form, and a page elsewhere can share it
+under other layouts. A `layout` set on that component stays its own page's.
 
 ## Files that are not pages
 
