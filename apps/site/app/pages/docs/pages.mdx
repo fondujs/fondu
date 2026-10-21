@@ -54,6 +54,25 @@ export default [requireUser, encryptHistory()]
 A route can still opt out with `render(c, page, props, { encryptHistory: false })`. Signing out calls `clearHistory(c)`,
 so the key of the encrypted pages is gone.
 
+## Back and Forward
+
+Back and Forward show a page from the browser's history, with the props it had when it was left: Inertia doesn't ask
+the server again. So after a form adds a record, Back to a list seen before shows it without the record.
+
+Where a page should be fresh, reload it when it comes back. Inertia's `navigate` event says where a page came from:
+
+```tsx
+// app/app.tsx
+import { createInertiaApp, router } from '@inertiajs/react'
+
+router.on('navigate', (event) => {
+  if (event.detail.type === 'history' && event.detail.page.url.startsWith('/admin')) router.reload()
+})
+```
+
+The page shows its old props first, then the new ones. `router.reload()` keeps the page's state and scroll, so only
+the props change. In the server render, `router.on()` does nothing.
+
 ## Kinds of props
 
 Wrap a prop to change when it is sent. Each is an Inertia feature, and the page uses it with Inertia's API:
