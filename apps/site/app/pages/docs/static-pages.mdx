@@ -41,6 +41,10 @@ Then:
 The server still answers every other URL, a page that isn't static or one that doesn't exist. In development, it
 answers all of them.
 
+On Cloudflare, the Worker the build starts runs locally, as in development: `.dev.vars` overrides the `vars` of
+`wrangler.jsonc`. A static page is written with those values and deployed as it is, so a value meant for your
+machine, a `localhost` site URL say, ends up in production. Keep what static pages show out of `.dev.vars`.
+
 ## What a static page can be
 
 A static page is the same for everyone. It is rendered once, for a visitor with no cookies and no query string, shared
