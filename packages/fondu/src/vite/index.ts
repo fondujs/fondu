@@ -15,6 +15,7 @@ import { hmr, PAGE_EXPORTS, PROPS_EVENT } from './hmr.js'
 import { layouts } from './layouts.js'
 import { nodeServer, prerender, worker } from './prerender.js'
 import { typegen } from './typegen.js'
+import { vitestCache } from './vitest-cache.js'
 
 /**
  * `vite.config.ts`: `plugins: [fondu({ target: 'node' })]` (or `'bun'`; for Cloudflare: `cloudflare()` and
@@ -128,6 +129,7 @@ export default function fondu(options: FonduOptions): PluginOption[] {
     inertia({ ssr: options.ssr === false ? false : {}, frameworks: inertiaInProcess }),
     core(options),
     layouts(),
+    vitestCache(ENTRY),
     hmr(),
     loadFailure(),
     typegen(),
