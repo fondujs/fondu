@@ -121,14 +121,17 @@ describe('the layout chain on page modules', () => {
     expect(named).toContain("export { schema } from '../docs/edit.tsx';")
     expect(named).toContain("import { Edit as __fondu_shared } from '../docs/edit.tsx';")
     expect(named).toContain('__fondu_page.layout ??= [__fondu_layout_0];')
-    // with no layout above it, as it is
+    // with no layout above it: wrapped, with no layout of its own, so the app's default applies and not the one its
+    // other page set on the component
     const bare = layouts() as typeof plugin
     const empty = mkdtempSync(join(tmpdir(), 'fondu-layouts-'))
     bare.configResolved({ root: empty })
     const page = join(empty, 'app/pages/new.tsx')
-    expect(
-      bare.transform.call(context, "export { default } from './edit.tsx'", page),
-    ).toBeUndefined()
+    const wrapped = bare.transform.call(context, "export { default } from './edit.tsx'", page)!.code
+    expect(wrapped).toContain('export default __fondu_page;')
+    expect(wrapped).not.toContain('.layout')
+    // a page of its own with no layout above it: as it is
+    expect(bare.transform.call(context, 'export default function New() {}', page)).toBeUndefined()
   })
   test('export * as default: a default export, left as it is', () => {
     expect(transform('admin/all.tsx', "export * as default from './parts.ts'")).toBeUndefined()

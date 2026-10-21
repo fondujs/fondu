@@ -21,6 +21,15 @@ export function layouts(): Plugin {
     LAYOUT_EXTENSIONS.map((ext) => join(pagesDir(), dir, `_layout${ext}`)).find((f) =>
       existsSync(f),
     )
+  // a page's module path relative to app/pages/, if it is a page
+  const pageOf = (id: string) => {
+    const rel = relative(pagesDir(), id.split('?')[0]!).split(sep).join('/')
+    return rel.startsWith('..') || !isPageFile(rel) ? undefined : rel
+  }
+  const chainOf = (page: string) =>
+    layoutsOf(page)
+      .map(layoutFile)
+      .filter((f): f is string => f !== undefined)
   return {
     name: 'fondu:layouts',
     enforce: 'post', // after the JSX and MDX are compiled: plain JavaScript to read
@@ -28,9 +37,8 @@ export function layouts(): Plugin {
       root = c.root
     },
     transform(code, id) {
-      const file = id.split('?')[0]!
-      const rel = relative(pagesDir(), file).split(sep).join('/')
-      if (rel.startsWith('..') || !isPageFile(rel)) return
+      const rel = pageOf(id)
+      if (rel === undefined) return
       const found = defaultExport(this.parse(code) as unknown as Program, code)
       // a component put in app/pages/ by mistake would be a page, named and typed: an error instead
       if (!found) {
@@ -38,10 +46,11 @@ export function layouts(): Plugin {
           `fondu: app/pages/${rel} has no default export. A page is its module's default export; a file in app/pages/ that is not a page goes elsewhere (components/, say), or its name starts with _`,
         )
       }
-      const chain = layoutsOf(rel)
-        .map(layoutFile)
-        .filter((f): f is string => f !== undefined)
-      if (!chain.length || found.name === undefined) return
+      const chain = chainOf(rel)
+      if (found.name === undefined) return
+      // a re-exported component is wrapped with no layout above too: the app's default layout for this page, not the
+      // layouts its other page set on it
+      if (!chain.length) return found.wrapped ? { code: found.code, map: null } : undefined
       // added at the end (imports are hoisted) and within a line: the lines stay where they were (`map: null`)
       const imports = chain
         .map((f, i) => `import __fondu_layout_${i} from ${JSON.stringify(f)};`)
@@ -79,7 +88,7 @@ const nameOf = (n: Name) => n.name ?? n.value!
 function defaultExport(
   program: Program,
   code: string,
-): { name: string | undefined; code: string } | undefined {
+): { name: string | undefined; code: string; wrapped?: true } | undefined {
   for (const node of program.body) {
     if (node.type === 'ExportAllDeclaration' && node.exported)
       if (nameOf(node.exported as Name) === 'default') return { name: undefined, code }
@@ -97,6 +106,7 @@ function defaultExport(
       const imported = /^[A-Za-z_$][\w$]*$/.test(local) ? local : JSON.stringify(local)
       return {
         name: '__fondu_page',
+        wrapped: true,
         code:
           `${code.slice(0, node.start)}${kept}${code.slice(node.end)}\n` +
           `import { ${imported} as __fondu_shared } from ${source};\n` +
