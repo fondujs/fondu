@@ -1,6 +1,6 @@
 {
   "name": "create-fondu",
-  "version": "0.9.4",
+  "version": "0.9.5",
   "description": "Create a Fondu app: full-stack React on Hono, Vite and Inertia, for Bun, Cloudflare Workers or Node.",
   "keywords": [
     "bun",
