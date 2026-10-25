@@ -79,7 +79,6 @@ export function Button({
         )}
       </>
     ),
-    // `loading` only: Inertia's <Link> (render={<Link />}) sets data-loading on itself during its visit
     className: cn(
       buttonVariants({ className, size, variant }),
       loading && 'select-none text-transparent',

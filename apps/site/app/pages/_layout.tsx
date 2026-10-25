@@ -1,4 +1,4 @@
-import { Link, usePage } from '@inertiajs/react'
+import { usePage } from 'fondu/client'
 import { ArrowUpRight } from 'lucide-react'
 import type { ReactNode } from 'react'
 
@@ -27,9 +27,9 @@ export default function SiteLayout({ children }: { children: ReactNode }) {
     <div className="flex min-h-dvh flex-col">
       <header className="z-40 border-b bg-background/88 backdrop-blur-md lg:sticky lg:top-0">
         <div className="mx-auto flex h-14 max-w-7xl items-center gap-1 px-4 sm:px-6">
-          <Link href="/" className="flex items-center gap-2 font-heading text-[15px] font-semibold">
+          <a href="/" className="flex items-center gap-2 font-heading text-[15px] font-semibold">
             <Logo className="size-6" /> Fondu
-          </Link>
+          </a>
           <span className="ml-auto flex items-center gap-1">
             <Button
               variant="ghost"
@@ -43,7 +43,7 @@ export default function SiteLayout({ children }: { children: ReactNode }) {
               {inDocs ? (
                 <Search />
               ) : (
-                <Button variant="outline" render={<Link href="/docs" />}>
+                <Button variant="outline" render={<a href="/docs" />}>
                   Docs
                 </Button>
               )}

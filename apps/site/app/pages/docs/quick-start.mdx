@@ -83,12 +83,10 @@ export const loader = defineHandler((c) => render(c, 'about', { team: ['Ada', 'G
 And `app/pages/about.tsx`:
 
 ```tsx
-import { Head } from '@inertiajs/react'
-
 export default function About({ team }: { team: string[] }) {
   return (
     <>
-      <Head title="About" />
+      <title>About</title>
       <h1>About</h1>
       <ul>
         {team.map((name) => (
@@ -101,13 +99,12 @@ export default function About({ team }: { team: string[] }) {
 ```
 
 `render(c, 'about', …)` is checked against the page: a page that doesn't exist, a missing prop or one of the wrong type
-is a type error. Link to it with Inertia's `<Link>` and a URL from `href()`, typed after your routes:
+is a type error. Link to it with a plain `<a>` and a URL from `href()`, typed after your routes:
 
 ```tsx
-import { Link } from '@inertiajs/react'
 import { href } from 'fondu/client'
 
-export const AboutLink = () => <Link href={href('/about')}>About</Link>
+export const AboutLink = () => <a href={href('/about')}>About</a>
 ```
 
 ## Build

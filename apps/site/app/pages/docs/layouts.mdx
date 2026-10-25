@@ -1,5 +1,5 @@
 A layout is the part of the page that stays the same from one page to the next: a header, a sidebar, a footer. It
-stays mounted while visits move between the pages it wraps, so its state (a scroll position, an open menu) is kept.
+stays mounted while navigations move between the pages it wraps, so its state (a scroll position, an open menu) is kept.
 
 ## `_layout.tsx`
 
@@ -33,7 +33,7 @@ app/pages/
 ```
 
 `docs/intro` is rendered inside `_layout.tsx`, then `docs/_layout.tsx`. Pages written in [MDX](/docs/mdx) get their
-layouts the same way. Read the page and its props in a layout with Inertia's `usePage()`.
+layouts the same way. Read the page and its props in a layout with `usePage()` (`fondu/client`).
 
 ## Different layouts for different parts
 
@@ -59,20 +59,18 @@ A part that should replace a layout rather than sit inside it goes in a director
 
 ## Code-split with their pages
 
-A layout is in the JavaScript of its pages only: a visitor of the home page doesn't download the docs' sidebar. Fondu
-does it at build time: each page imports the `_layout.tsx` files above it and gives them to Inertia as the page's
-layout.
+A layout is in the JavaScript of its pages only: a visitor of the home page doesn't download the docs' sidebar. The
+client loads a page's `_layout.tsx` files with it, found by the page's name.
 
 ## The app's default layout
 
-`createInertiaApp({ layout })` in `app/app.tsx` is Inertia's default layout: Fondu leaves it to the pages with no
-`_layout.tsx` above them. With an `app/pages/_layout.tsx`, every page has one, so the default is not needed.
+`startApp({ layout })` in `app/app.tsx` is the layout of the pages with no `_layout.tsx` above them. With an
+`app/pages/_layout.tsx`, every page has one, so the default is not needed.
 
-A page can still set its own, as Inertia allows: `Page.layout = OtherLayout` replaces its directories' layouts.
+A page can still set its own: `Page.layout = OtherLayout` replaces its directories' layouts.
 
 A page that is another page's component, `export { default } from './edit.tsx'`, gets the layouts of its own
-directory, or the default one with none: `users/new` can share `users/edit`'s form, and a page elsewhere can share it
-under other layouts. A `layout` set on that component stays its own page's.
+directory: `users/new` can share `users/edit`'s form.
 
 ## Files that are not pages
 

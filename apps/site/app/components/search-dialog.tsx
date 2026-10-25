@@ -1,4 +1,3 @@
-import { router } from '@inertiajs/react'
 import { SearchIcon } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
@@ -84,7 +83,7 @@ function Results({ onPick }: { onPick: () => void }) {
   }, [query])
   const go = (url: string) => {
     onPick()
-    router.visit(url)
+    location.assign(url) // a navigation, as a link's
   }
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {

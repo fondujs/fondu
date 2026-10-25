@@ -1,8 +1,8 @@
 ## How it works
 
 A document request (a first visit, a reload, a link opened in a new tab) is rendered on the server, in the same
-process as the routes: the HTML of the page, its `<Head>` tags, and the page data for Inertia. The browser shows it at
-once, then React hydrates it. The visits after that are rendered in the browser.
+process as the routes: the HTML of the page, the tags it renders for `<head>`, and the page data. The browser shows it
+at once, then React hydrates it. The navigations after that are rendered in the browser.
 
 There is no separate render server to run, on any target: on Cloudflare the render is part of the Worker.
 
@@ -31,8 +31,8 @@ blank frame first. Keep the server render for pages whose first paint matters.
 
 ## Browser-only parts
 
-A component that needs the browser (`window`, a chart library) can stay on a server-rendered page inside Inertia's
-`<WhenMounted>`, which renders it after hydration only.
+A component that needs the browser (`window`, a chart library) can stay on a server-rendered page, rendered once it is
+mounted: after an effect, or with `useSyncExternalStore` and a server snapshot of `null`.
 
 ## When the server render fails
 

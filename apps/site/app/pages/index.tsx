@@ -1,5 +1,4 @@
 import instrumentSerif from '@fontsource/instrument-serif/files/instrument-serif-latin-400-italic.woff2?url'
-import { Head, Link } from '@inertiajs/react'
 import {
   BadgeCheck,
   Check,
@@ -23,7 +22,6 @@ import {
   Codex,
   Cursor,
   Hono,
-  Inertia,
   Npm,
   Pi,
   Pnpm,
@@ -65,13 +63,6 @@ const parts: Array<{ name: string; url: string; mark: ReactNode; tint: string; d
     does: 'Answers every request. Your routes are its handlers, with its middleware, CSRF protection and security headers.',
   },
   {
-    name: 'Inertia',
-    url: 'https://inertiajs.com',
-    mark: <Inertia className="size-6 text-[#9553E9]" />,
-    tint: 'from-[#9553E9]/10',
-    does: 'Runs the browser side: visits without reloads, forms, prefetching, deferred and merged props.',
-  },
-  {
     name: 'Vite',
     url: 'https://vite.dev',
     mark: <Vite className="size-6 text-[#9135FF]" />,
@@ -83,7 +74,7 @@ const parts: Array<{ name: string; url: string; mark: ReactNode; tint: string; d
     url: '/docs',
     mark: <Logo className="size-6" />,
     tint: 'from-brand/16',
-    does: 'Holds them together: routes from files, typed pages and URLs, the server render, error and static pages.',
+    does: 'Holds them together: routes from files, typed pages and URLs, the server render, the pages swapped in the browser.',
   },
 ]
 
@@ -104,13 +95,13 @@ const features: Array<[icon: LucideIcon, title: string, slug: string, text: stri
     TextCursorInput,
     'Forms and validation',
     'forms',
-    'One Standard Schema checks the input on the server and in the browser. The errors land on the page.',
+    'Plain forms, a Standard Schema on the server. The errors land on the page, what was typed kept.',
   ],
   [
     Server,
     'Server-side rendering',
     'ssr',
-    'The first visit gets the page as HTML, then Inertia takes over. Off for the pages that need no server render.',
+    'The first visit gets the page as HTML, then pages are swapped in place. Off for the pages that need none.',
   ],
   [
     FileCode,
@@ -141,18 +132,9 @@ const features: Array<[icon: LucideIcon, title: string, slug: string, text: stri
 export default function Home() {
   return (
     <>
-      <Meta description="Fondu is a small meta-framework for full-stack React apps, built on Hono, Vite and Inertia. It runs on Bun, Cloudflare Workers and Node." />
+      <Meta description="Fondu is a small meta-framework for full-stack React apps, built on Hono and Vite. It runs on Bun, Cloudflare Workers and Node." />
       {/* the headline's serif, this page's only: fetched with the stylesheet (document.tsx preloads the others) */}
-      <Head>
-        <link
-          head-key="preload-serif"
-          rel="preload"
-          href={instrumentSerif}
-          as="font"
-          type="font/woff2"
-          crossOrigin=""
-        />
-      </Head>
+      <link rel="preload" href={instrumentSerif} as="font" type="font/woff2" crossOrigin="" />
 
       <section className="mx-auto grid max-w-7xl grid-cols-[minmax(0,1fr)] items-center gap-12 px-4 pt-12 pb-16 sm:px-6 sm:pt-16 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:gap-16">
         <div className="min-w-0">
@@ -178,18 +160,11 @@ export default function Home() {
             >
               React
             </Chip>{' '}
-            page with its props.{' '}
-            <Chip
-              mark={<Inertia />}
-              className="bg-[#9553E9]/10 font-mono text-[#7B3FCC] dark:text-[#B88CF5]"
-            >
-              Inertia
-            </Chip>{' '}
-            swaps the pages in the browser, so there is no client router and no API to write. Deploy
-            to Bun, Cloudflare Workers or Node.
+            page with its props. Links and forms swap the pages in the browser, so there is no
+            client router and no API to write. Deploy to Bun, Cloudflare Workers or Node.
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-3">
-            <Button size="lg" render={<Link href="/docs" />}>
+            <Button size="lg" render={<a href="/docs" />}>
               Read the docs
             </Button>
             <CopyPrompt />
@@ -212,12 +187,12 @@ export default function Home() {
             Who does what
           </h2>
           <p className="mt-3 max-w-2xl text-muted-foreground sm:text-base">
-            Fondu writes as little of its own as it can. The rest is three projects you may know
-            already, and their docs apply as they are.
+            Two projects you may know already do most of the work, and their docs apply as they are;
+            Fondu holds them together.
           </p>
-          <ul className="mt-10 grid gap-px overflow-hidden rounded-xl border bg-border sm:grid-cols-2 lg:grid-cols-4">
+          <ul className="mt-10 grid gap-px overflow-hidden rounded-xl border bg-border sm:grid-cols-3">
             {parts.map(({ name, url, mark, tint, does }) => {
-              const Anchor = url.startsWith('/') ? Link : External
+              const Anchor = url.startsWith('/') ? 'a' : External
               return (
                 <li key={name} className="bg-background">
                   <Anchor
@@ -249,14 +224,14 @@ export default function Home() {
           <ul className="mt-8 grid gap-1 sm:grid-cols-2 sm:gap-2">
             {features.map(([Icon, title, slug, text]) => (
               <li key={slug}>
-                <Link
+                <a
                   href={`/docs/${slug}`}
                   className="grid h-full grid-cols-[auto_1fr] content-start gap-x-4 gap-y-1 rounded-xl p-4 transition-colors hover:bg-accent sm:p-5"
                 >
                   <Icon className="row-span-2 mt-0.5 size-5 text-muted-foreground" />
                   <span className="text-base font-medium">{title}</span>
                   <span className="text-muted-foreground">{text}</span>
-                </Link>
+                </a>
               </li>
             ))}
           </ul>
@@ -275,7 +250,7 @@ export default function Home() {
             The quick start creates an app for your runtime and walks through its first page.
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <Button size="lg" render={<Link href="/docs/quick-start" />}>
+            <Button size="lg" render={<a href="/docs/quick-start" />}>
               Quick start
             </Button>
             <Button size="lg" variant="outline" render={<External href="https://demo.fondu.dev" />}>

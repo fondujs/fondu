@@ -69,10 +69,10 @@ export const actions = {
 ```
 
 - `loader` answers GET, `action` POST.
-- `actions.name` answers `POST ?name`, so one page can have several forms, each with its own action. A plain HTML
-  form can pick one too: `<form method="post" action="/users/7?rename">`.
+- `actions.name` answers `POST ?name`, so one page can have several forms, each with its own action:
+  `<form method="post" action="/users/7?rename">`.
 - After an action, answer with a redirect: `back(c)` to the page the request came from, or `c.redirect(url, 303)`.
-  Inertia then loads that page.
+  The browser then shows that page.
 
 `defineHandler(...middleware, handler)` is Hono's `createHandlers`: `c` is Hono's [Context](https://hono.dev/docs/api/context),
 so `c.req.param()`, `c.req.query()`, `c.json()` and the rest are there.

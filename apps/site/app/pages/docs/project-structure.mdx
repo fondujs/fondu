@@ -4,7 +4,7 @@
 my-app/
 ├─ app/
 │  ├─ server.ts            # the server: export default createApp()
-│  ├─ app.tsx              # createInertiaApp(): the browser and the server render
+│  ├─ app.tsx              # startApp(): the browser and the server render
 │  ├─ routes/              # server code only: the file path is the URL
 │  │  ├─ _middleware.ts    # runs for its directory and below
 │  │  ├─ index.ts          # /
@@ -14,7 +14,7 @@ my-app/
 │  │  ├─ _layout.tsx       # around every page (a directory's _layout.tsx: around its pages)
 │  │  └─ error.tsx         # the error page (404, 403, 500…)
 │  └─ fondu.gen.d.ts       # the generated types (commit it)
-├─ package.json           # fondu, hono, @inertiajs/core, @inertiajs/react, react, react-dom
+├─ package.json           # fondu, hono, react, react-dom
 └─ vite.config.ts         # plugins: [fondu({ target: 'node' })]
 ```
 
@@ -53,16 +53,14 @@ Its options: `document` (the HTML around pages, as in [The document](/docs/docum
 
 ## `app/app.tsx`
 
-The browser's entry, and the server render's: Inertia's `createInertiaApp()`. Fondu's Vite plugin finds the pages in
-`./pages` and wraps the same call for the server.
+The browser's entry, and the server render's: `startApp()`. Fondu's Vite plugin gives it the pages of `app/pages/`.
 
 ```tsx
-import { createInertiaApp } from '@inertiajs/react'
+import { startApp } from 'fondu/client'
 
-createInertiaApp({
-  pages: './pages',
-  title: (title) => (title ? `${title} · My app` : 'My app'),
-})
+import './styles/app.css'
+
+startApp()
 ```
 
 ## Server code
