@@ -44,22 +44,15 @@ const watchProblems = (p) => {
 watchProblems(page)
 const docs = []
 const fetches = []
-const precognition = []
 page.on('request', (r) => {
   if (r.resourceType() === 'document') docs.push(r.url())
-  if (r.headers().precognition) precognition.push(r.url().replace(BASE, ''))
-  if (r.headers()['x-inertia'])
-    fetches.push({
-      url: r.url().replace(BASE, ''),
-      method: r.method(),
-      purpose: r.headers().purpose ?? '',
-      headers: r.headers(),
-    })
+  if (r.headers()['x-fondu'])
+    fetches.push({ url: r.url().replace(BASE, ''), method: r.method(), headers: r.headers() })
 })
-// the page objects Inertia receives
+// the page objects fondu/client receives
 const pageJson = []
 page.on('response', async (r) => {
-  if (!r.request().headers()['x-inertia'] || r.request().headers().purpose) return
+  if (!r.request().headers()['x-fondu']) return
   try {
     pageJson.push({
       url: r.url().replace(BASE, ''),
@@ -72,13 +65,6 @@ page.on('response', async (r) => {
 })
 
 await page.evaluateOnNewDocument(() => {
-  window.__vt = 0
-  const orig = document.startViewTransition?.bind(document)
-  if (orig)
-    document.startViewTransition = (cb) => {
-      window.__vt++
-      return orig(cb)
-    }
   window.__fcp = null
   new PerformanceObserver((list) => {
     for (const e of list.getEntries())
@@ -121,19 +107,15 @@ const signOut = async (p = page) => {
   }
 }
 let assetVersion = null
-const inertia = (extra = {}) => ({
-  'X-Inertia': 'true',
-  ...(assetVersion && { 'X-Inertia-Version': assetVersion }),
+const fondu = (extra = {}) => ({
+  'X-Fondu': 'true',
+  ...(assetVersion && { 'X-Fondu-Version': assetVersion }),
   ...extra,
 })
 const cookieHeader = async () =>
   (await page.cookies(BASE)).map((c) => `${c.name}=${c.value}`).join('; ')
 const fetchAs = async (url, init = {}) =>
   fetch(url, { ...init, headers: { ...init.headers, cookie: await cookieHeader() } })
-const until = async (cond, ms = 3000) => {
-  for (let t = 0; t < ms && !cond(); t += 50) await sleep(50)
-}
-const lastBody = () => pageJson.filter((p) => p.body).at(-1)
 const lastJson = (url) =>
   pageJson.filter((p) => p.body && (p.url === url || p.url.startsWith(url + '?'))).at(-1)
 
@@ -141,16 +123,10 @@ const lastJson = (url) =>
 for (const p of [
   '/',
   '/props',
-  '/partial',
-  '/deferred',
-  '/merging',
-  '/infinite',
-  '/once',
   '/contacts',
   '/errors',
   '/signup',
   '/redirects',
-  '/history',
   '/ssr',
   '/ssr/browser',
   '/http',
@@ -192,14 +168,14 @@ console.log(`\n===== ${LABEL} =====`)
   const body = html.slice(html.indexOf('<body>'))
   ok(
     'document: the page data first in <body>, then the rendered page',
-    /^<body><script data-page="app" type="application\/json">[^<]*<\/script><div data-server-rendered="true" id="app">/.test(
+    /^<body><script data-page="app" type="application\/json">[^<]*<\/script><div id="app"><\w/.test(
       body,
     ),
   )
   ok(
-    'document: Cache-Control private, no-cache; Vary: X-Inertia',
+    'document: Cache-Control private, no-cache; Vary: X-Fondu',
     res.headers.get('cache-control') === 'private, no-cache' &&
-      /X-Inertia/i.test(res.headers.get('vary') ?? ''),
+      /X-Fondu/i.test(res.headers.get('vary') ?? ''),
   )
   const asset = html.match(/href="(\/assets\/[^"]+\.css)"/)?.[1]
   const assetCache = asset ? ((await fetch(BASE + asset)).headers.get('cache-control') ?? '') : ''
@@ -218,7 +194,7 @@ console.log(`\n===== ${LABEL} =====`)
   )
 }
 
-// ---- navigation, prefetch, titles
+// ---- navigation, titles
 await page.goto(BASE + '/', { waitUntil: 'networkidle0' })
 await page.waitForFunction(() => window.__fcp !== null, { timeout: 5000 }).catch(() => {})
 ok(
@@ -226,7 +202,7 @@ ok(
   (await page.evaluate(() => window.__fcp)) === '0px',
   String(await page.evaluate(() => window.__fcp)),
 )
-ok('title on a document load', (await page.title()) === 'Overview · Fondu demo', await page.title())
+ok('title on a document load', (await page.title()) === 'Fondu demo', await page.title())
 {
   const links = await page.evaluate(() =>
     ['docs', 'github'].map((id) => {
@@ -242,22 +218,26 @@ ok('title on a document load', (await page.title()) === 'Overview · Fondu demo'
   )
 }
 fetches.length = 0
-await page.hover('aside a[href="/props"]')
-await sleep(600)
+docs.length = 0
 await nav('/props')
 await h1('Props')
 const propsFetches = fetches.filter((f) => f.url === '/props')
 ok(
-  'a sidebar link is prefetched on hover, and the click reuses it',
-  propsFetches.length === 1 && propsFetches[0].purpose === 'prefetch',
-  JSON.stringify(propsFetches.map((f) => f.purpose)),
+  'a sidebar link: one page object fetched, no document',
+  propsFetches.length === 1 && docs.length === 0,
+  JSON.stringify({ propsFetches, docs }),
 )
 await page
   .waitForFunction(() => document.title === 'Props · Fondu demo', { timeout: 3000 })
   .catch(() => {})
-ok('title after a visit', (await page.title()) === 'Props · Fondu demo', await page.title())
 ok(
-  'props: values, an object, a function called when sent, shared props',
+  'title after a navigation, one <title>',
+  (await page.title()) === 'Props · Fondu demo' &&
+    (await page.evaluate(() => document.querySelectorAll('title').length)) === 1,
+  await page.title(),
+)
+ok(
+  'props: values, an object, a date as JSON delivers it, shared props',
   (await text()).includes('Hello from Hono') &&
     (await text()).includes('"roles": [') &&
     /T\d\d:/.test(await testid('computed-at')) &&
@@ -267,244 +247,6 @@ ok(
 ok(
   'the badge says how the document was rendered: SSR, hydrated',
   (await testid('render-mode')) === 'SSR: hydrated',
-)
-
-// ---- partial reloads
-await nav('/partial')
-await h1('Partial reloads')
-const before = {
-  time: await testid('time'),
-  random: await testid('random'),
-  count: Number(await testid('request-count')),
-}
-await page.click('[data-testid=only-time]')
-await page.waitForFunction(
-  (t) => document.querySelector('[data-testid=time]').textContent !== t,
-  {},
-  before.time,
-)
-await sleep(200)
-let res = lastJson('/partial')
-ok(
-  'only: X-Inertia-Partial-Data: time -> time, the always prop and errors',
-  res?.req['x-inertia-partial-data'] === 'time' &&
-    JSON.stringify(Object.keys(res.body.props).sort()) === '["errors","requestCount","time"]' &&
-    (await testid('random')) === before.random,
-  JSON.stringify(res && Object.keys(res.body.props)),
-)
-ok(
-  'always: requestCount is sent with every reload',
-  Number(await testid('request-count')) > before.count,
-)
-await page.click('[data-testid=except-random]')
-await sleep(600)
-res = lastJson('/partial')
-ok(
-  'except: everything but random (an optional prop still only on request)',
-  res?.req['x-inertia-partial-except'] === 'random' &&
-    !('random' in res.body.props) &&
-    'time' in res.body.props &&
-    !('report' in res.body.props),
-  JSON.stringify(res && Object.keys(res.body.props)),
-)
-const firstHtml = await (await fetch(BASE + '/partial')).text()
-ok('optional: not in the first page', !firstHtml.includes('"report"'))
-await page.click('[data-testid=load-report]')
-await page.waitForSelector('[data-testid=report]')
-ok('optional: computed when a partial reload asks for it', /128 rows/.test(await testid('report')))
-await page.goto(BASE + '/partial', { waitUntil: 'networkidle0' })
-await page.evaluate(() =>
-  document
-    .querySelector('[data-testid=load-report]')
-    .closest('section')
-    .nextElementSibling.scrollIntoView(),
-)
-await page.waitForSelector('[data-testid=report-visible]', { timeout: 5000 }).catch(() => {})
-ok(
-  '<WhenVisible>: the prop is requested when its card scrolls into view',
-  /128 rows/.test((await testid('report-visible')) ?? ''),
-)
-const times = new Set()
-await page.click('[data-testid=poll]')
-for (let i = 0; i < 12; i++) {
-  times.add(await testid('time'))
-  await sleep(250)
-}
-await page.click('[data-testid=poll]')
-ok(
-  'usePoll: the time is reloaded every second while polling',
-  times.size >= 2,
-  `${times.size} values in 3s`,
-)
-
-// ---- deferred props
-{
-  const html = await (await fetch(BASE + '/deferred')).text()
-  ok(
-    'deferred: the first HTML has the page and deferredProps, not the values',
-    html.includes(
-      '"deferredProps":{"default":["stats","flaky"],"slow":["activity","recommendations"]}',
-    ) && !html.includes('1,284'),
-  )
-  await nav('/props')
-  await h1('Props')
-  fetches.length = 0
-  await nav('/deferred')
-  await h1('Deferred props')
-  ok(
-    'deferred: the page shows before its deferred values',
-    (await page.$('[data-testid=stats]')) === null,
-  )
-  await page.waitForSelector('[data-testid=stats]')
-  await page.waitForSelector('[data-testid=activity]')
-  await page.waitForSelector('[data-testid=recommendations]')
-  const groups = fetches
-    .filter((f) => f.url === '/deferred' && f.headers['x-inertia-partial-data'])
-    .map((f) => f.headers['x-inertia-partial-data'])
-    .sort()
-  ok(
-    'deferred: one request per group',
-    JSON.stringify(groups) === '["activity,recommendations","stats,flaky"]',
-    JSON.stringify(groups),
-  )
-  await page.waitForSelector('[data-testid=rescued]')
-  const rescued = pageJson
-    .filter((p) => p.url === '/deferred' && p.req['x-inertia-partial-data'] === 'stats,flaky')
-    .at(-1)
-  ok(
-    'deferred: a failing prop with rescue: true -> rescuedProps, the rescue slot, the rest of the group still arrives',
-    rescued?.status === 200 &&
-      JSON.stringify(rescued.body.rescuedProps) === '["flaky"]' &&
-      !('flaky' in rescued.body.props) &&
-      (await text()).includes('1,284'),
-  )
-}
-
-// ---- merging props
-await nav('/merging')
-await h1('Merging props')
-await page.click('[data-testid=more]')
-await page.waitForFunction(
-  () => document.querySelectorAll('[data-testid=messages] li').length === 6,
-)
-res = lastJson('/merging')
-ok(
-  'merge: page 2 is appended; mergeProps and matchPropsOn are announced',
-  JSON.stringify(res?.body.mergeProps) === '["messages"]' &&
-    JSON.stringify(res?.body.matchPropsOn) === '["messages.id"]' &&
-    (await path()) === '/merging',
-)
-await page.click('[data-testid=more]')
-await page.waitForFunction(
-  () => document.querySelectorAll('[data-testid=messages] li').length === 9,
-)
-await page.click('[data-testid=reset]')
-await page.waitForFunction(
-  () => document.querySelectorAll('[data-testid=messages] li').length === 3,
-)
-await sleep(200)
-ok(
-  'merge: X-Inertia-Reset replaces instead (no mergeProps)',
-  lastJson('/merging')?.req['x-inertia-reset'] === 'messages' &&
-    !lastJson('/merging')?.body.mergeProps,
-)
-const firstLog = await page.$eval('[data-testid=log] li', (e) => e.textContent)
-await page.click('[data-testid=add-log]')
-await page.waitForFunction(() => document.querySelectorAll('[data-testid=log] li').length === 2)
-ok(
-  'prepend: the new entry comes first',
-  (await page.$$eval('[data-testid=log] li', (l) => l.map((e) => e.textContent)))[1] === firstLog,
-)
-await page.click('[data-testid=count-archive]')
-await page.waitForFunction(() =>
-  document.querySelector('[data-testid=counters]').textContent.includes('archive'),
-)
-const counters = JSON.parse(await testid('counters'))
-ok(
-  'deepMerge: nested keys are merged',
-  'inbox' in counters.unread && 'archive' in counters.unread,
-  JSON.stringify(counters),
-)
-
-// ---- infinite scroll
-{
-  const html = await (await fetch(BASE + '/infinite')).text()
-  ok(
-    'scroll(): scrollProps in the page, 15 people',
-    html.includes(
-      '"scrollProps":{"people":{"pageName":"page","currentPage":1,"previousPage":null,"nextPage":2,"reset":false}}',
-    ) && html.includes('"mergeProps":["people.data"]'),
-  )
-  await nav('/infinite')
-  await h1('Infinite scroll')
-  await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight))
-  await page
-    .waitForFunction(() => document.querySelectorAll('[data-testid=people] li').length >= 30, {
-      timeout: 8000,
-    })
-    .catch(() => {})
-  await sleep(300)
-  const more = pageJson.filter((p) => p.url.startsWith('/infinite?page=2')).at(-1)
-  ok(
-    '<InfiniteScroll>: scrolling down appends page 2 (merge intent: append), the URL follows',
-    (await page.$$('[data-testid=people] li')).length >= 30 &&
-      more?.req['x-inertia-infinite-scroll-merge-intent'] === 'append' &&
-      more.body.scrollProps.people.currentPage === 2,
-    `${(await page.$$('[data-testid=people] li')).length} ${await path()}`,
-  )
-  const p3 = await (
-    await fetch(BASE + '/infinite?page=3', {
-      headers: inertia({
-        'X-Inertia-Partial-Component': 'infinite',
-        'X-Inertia-Partial-Data': 'people',
-        'X-Inertia-Infinite-Scroll-Merge-Intent': 'prepend',
-      }),
-    })
-  ).json()
-  ok(
-    'scroll(): loading the previous page prepends',
-    JSON.stringify(p3.prependProps) === '["people.data"]' &&
-      p3.scrollProps.people.previousPage === 2 &&
-      p3.props.people.data[0].id === 31,
-  )
-}
-
-// ---- once props
-await nav('/once')
-await h1('Once props')
-await page.waitForFunction(() =>
-  /\d/.test(document.querySelector('[data-testid=permissions]')?.textContent ?? ''),
-)
-const plans = await testid('plans')
-const permissions = await testid('permissions')
-await page.click('[data-testid=second]')
-await waitText("You're on the second page")
-await sleep(200)
-res = lastJson('/once?page=second')
-ok(
-  'once: the client lists what it holds, the server skips it, the page still shows it',
-  (res?.req['x-inertia-except-once-props'] ?? '').split(',').sort().join() ===
-    'permissions,plans,rates' &&
-    !('plans' in res.body.props) &&
-    (await testid('plans')) === plans,
-  JSON.stringify(res && [res.req['x-inertia-except-once-props'], Object.keys(res.body.props)]),
-)
-ok(
-  'once(defer()): deferred on the first visit only; held, it is not asked for again',
-  !res?.body.deferredProps && (await testid('permissions')) === permissions,
-  JSON.stringify(res?.body.deferredProps),
-)
-const noHeader = await (await fetch(BASE + '/once?page=second', { headers: inertia() })).json()
-ok(
-  'once: computed when the client does not hold it',
-  typeof noHeader.props.plans === 'string' && noHeader.onceProps.rates.expiresAt > Date.now(),
-)
-await page.click('[data-testid=fresh]')
-await waitText("You're on the first page")
-await sleep(200)
-ok(
-  'once: fresh sends it although the client holds it',
-  'plans' in (lastJson('/once?fresh')?.body.props ?? {}) && (await testid('plans')) !== plans,
 )
 
 // ---- forms and validation: guests see the contacts; adding, changing, deleting need an account
@@ -531,14 +273,21 @@ await page.setExtraHTTPHeaders({ 'CF-Connecting-IP': '203.0.113.30' }) // its ow
 await signIn()
 await page.setExtraHTTPHeaders({})
 await page.goto(BASE + '/contacts', { waitUntil: 'networkidle0' })
-await page.click('[data-testid=add-contact] button')
-await page.waitForSelector('[data-testid=err-email]')
-const formErrors = [await testid('err-name'), await testid('err-email')]
-ok(
-  '<Form>: an invalid submit comes back with the field errors, URL unchanged',
-  formErrors.every(Boolean) && (await path()) === '/contacts',
-  JSON.stringify(formErrors),
-)
+{
+  const entries = await page.evaluate(() => navigation.entries().length)
+  await setValue('[data-testid=add-contact] input[name=name]', 'x')
+  await page.click('[data-testid=add-contact] button')
+  await page.waitForSelector('[data-testid=err-email]')
+  const formErrors = [await testid('err-name'), await testid('err-email')]
+  ok(
+    'a form: an invalid submit comes back with the field errors, what was typed kept, URL and history unchanged',
+    formErrors.every(Boolean) &&
+      (await path()) === '/contacts' &&
+      (await page.$eval('[data-testid=add-contact] input[name=name]', (e) => e.value)) === 'x' &&
+      (await page.evaluate(() => navigation.entries().length)) === entries,
+    JSON.stringify(formErrors),
+  )
+}
 await page
   .waitForFunction(() => document.activeElement?.name === 'name', { timeout: 2000 })
   .catch(() => {})
@@ -550,67 +299,43 @@ ok(
 await setValue('[data-testid=add-contact] input[name=name]', 'Grace Hopper')
 const graceEmail = `grace-${Date.now()}@x.org`
 await setValue('[data-testid=add-contact] input[name=email]', graceEmail)
-await page.waitForFunction(
-  () => !document.querySelector('[data-testid=add-contact] button').disabled,
-)
 await page.$eval('[data-testid=add-contact] button', (b) => b.click())
 await waitText('Added Grace Hopper')
 ok(
-  '<Form>: a valid submit -> 303 back, flash, list updated, form reset',
+  'a form: a valid submit -> 303 back, flash, list updated, the form empty again',
   (await text()).includes(graceEmail) &&
     (await page.$eval('[data-testid=add-contact] input[name=name]', (e) => e.value)) === '',
 )
 {
-  // the same address again, typed in capitals: checked as the field is left (Precognition), refused on submit
-  const before = precognition.length
-  await setValue('[data-testid=add-contact] input[name=email]', graceEmail.toUpperCase())
-  const typing = precognition.length - before
-  await page.keyboard.press('Tab')
-  await page
-    .waitForSelector('[data-testid=add-contact] [data-testid=err-email]', { timeout: 6000 })
-    .catch(() => {})
-  const live = await testid('err-email')
+  // the same address again, typed in capitals: refused by the server's schema
   await setValue('[data-testid=add-contact] input[name=name]', 'Grace Again')
+  await setValue('[data-testid=add-contact] input[name=email]', graceEmail.toUpperCase())
+  await page.focus('[data-testid=add-contact] input[name=name]')
   await page.$eval('[data-testid=add-contact] button', (b) => b.click())
+  await page.waitForSelector('[data-testid=err-email]', { timeout: 6000 }).catch(() => {})
   await page
     .waitForFunction(() => document.activeElement?.name === 'email', { timeout: 4000 })
     .catch(() => {})
   ok(
-    'an address already in the contacts (any case): refused when the field is left, and on submit',
-    typing === 0 &&
-      live === 'Already in your contacts' &&
-      (await testid('err-email')) === 'Already in your contacts' &&
+    'an address already in the contacts (any case): refused, the focus on it',
+    (await testid('err-email')) === 'Already in your contacts' &&
+      (await page.evaluate(() => document.activeElement?.name)) === 'email' &&
       !(await text()).includes('Added Grace Again'),
-    JSON.stringify({ typing, live }),
   )
 }
 {
   const rows = (await page.$$('[data-testid=contacts] li')).length
-  await page.setRequestInterception(true)
-  const hold = (r) => {
-    if (r.isInterceptResolutionHandled()) return
-    if (r.method() === 'POST' && r.url().endsWith('/contacts?delete'))
-      setTimeout(() => r.continue().catch(() => {}), 1500)
-    else r.continue().catch(() => {})
-  }
-  page.on('request', hold)
   await page.$eval('[data-testid=contacts] li:last-child button', (b) => b.click())
   const asked = await page.waitForSelector('[role=alertdialog]', { timeout: 3000 }).then(
     () => true,
     () => false,
   )
   await page.click('[data-testid=confirm-delete]')
-  await sleep(300)
-  const during = (await page.$$('[data-testid=contacts] li')).length
   await waitText('Contact deleted')
-  page.off('request', hold)
-  await page.setRequestInterception(false)
   ok(
-    'delete: confirmed first, then the row is gone before the server answers (optimistic)',
-    asked &&
-      during === rows - 1 &&
-      (await page.$$('[data-testid=contacts] li')).length === rows - 1,
-    `${asked} ${rows} -> ${during}`,
+    'delete: confirmed first, then the row is gone',
+    asked && (await page.$$('[data-testid=contacts] li')).length === rows - 1,
+    `${asked} ${rows}`,
   )
 }
 const api = await fetch(BASE + '/api/contacts', {
@@ -625,24 +350,19 @@ const histBefore = await page.evaluate(() => history.length)
 await setValue('[data-testid=rename] input', 'x')
 await page.click('[data-testid=rename] button')
 await page.waitForSelector('[data-testid=err-rename]')
-// the form shows its bag's errors only (useForm with errorBag: the response's errors.rename)
 ok(
-  'error bags: the rename errors arrive in its bag and show only there',
-  fetches.filter((f) => f.method === 'POST').at(-1)?.headers['x-inertia-error-bag'] === 'rename' &&
-    (await page.$('[data-testid=err-email]')) === null &&
-    Boolean(await testid('err-rename')),
+  'two forms: the rename errors show under its field only',
+  (await page.$('[data-testid=err-email]')) === null && Boolean(await testid('err-rename')),
   await testid('err-rename'),
 )
 await page
   .waitForFunction(
     () => document.activeElement === document.querySelector('[data-testid=rename] input'),
-    {
-      timeout: 2000,
-    },
+    { timeout: 2000 },
   )
   .catch(() => {})
 ok(
-  "useForm in Base UI's form: the server's errors put the focus on the field",
+  "the server's errors put the focus on the field",
   await page.evaluate(
     () => document.activeElement === document.querySelector('[data-testid=rename] input'),
   ),
@@ -650,29 +370,13 @@ ok(
 await setValue('[data-testid=email] input', 'nope')
 await page.click('[data-testid=email] button')
 await page.waitForSelector('[data-testid=err-email]')
-await until(() => lastBody()?.body.props.errors?.email)
-{
-  const bagged = await fetchAs(BASE + '/contacts/1?email', {
-    method: 'POST',
-    redirect: 'manual',
-    headers: {
-      ...inertia(),
-      'X-Inertia-Error-Bag': 'email',
-      'Content-Type': 'application/json',
-      Origin: ORIGIN,
-      Referer: BASE + '/contacts/1',
-    },
-    body: '{"email":"nope"}',
-  })
-  ok(
-    'error bags: the other form, its own bag',
-    (await testid('err-email')) === 'Enter a valid email' &&
-      decodeURIComponent(bagged.headers.get('set-cookie') ?? '').includes(
-        '"errors":{"email":{"email":"Enter a valid email"}}',
-      ),
-  )
-}
+ok(
+  'two forms: the other form, its own field',
+  (await testid('err-email')) === 'Enter a valid email' &&
+    (await page.$('[data-testid=err-rename]')) === null,
+)
 const original = await testid('contact-name')
+await page.goto(BASE + page.url().replace(BASE, ''), { waitUntil: 'networkidle0' })
 await setValue('[data-testid=rename] input', original + ' B')
 await page.click('[data-testid=rename] button')
 await page.waitForFunction(
@@ -681,7 +385,7 @@ await page.waitForFunction(
   original + ' B',
 )
 ok(
-  'useForm: renamed in place, no extra history entries',
+  'renamed in place, no extra history entries',
   (await page.evaluate(() => history.length)) === histBefore,
 )
 await setValue('[data-testid=rename] input', original)
@@ -699,7 +403,7 @@ ok(
   await nojs.setJavaScriptEnabled(false)
   await nojs.goto(BASE + '/contacts', { waitUntil: 'load' })
   ok(
-    'no JS: <Form> is a real form (method=post, action)',
+    'no JS: the form is a real form (method=post, action)',
     await nojs.$eval(
       '[data-testid=add-contact]',
       (f) => f.method === 'post' && new URL(f.action).pathname === '/contacts',
@@ -784,33 +488,19 @@ ok(
 await page.click('[data-testid=to-props]')
 await h1('Props')
 ok(
-  'redirect to another page: an Inertia visit, flash carried',
+  'redirect to another page: a navigation, flash carried',
   (await path()) === '/props' &&
     (await text()).includes('Redirected from /redirects') &&
     docs.length === 0,
 )
 await page.goto(BASE + '/redirects', { waitUntil: 'networkidle0' })
 docs.length = 0
-await page.click('[data-testid=fragment]')
-await page.waitForFunction(() => location.hash === '#target', { timeout: 5000 }).catch(() => {})
-await sleep(500)
-const fragment = pageJson.find((p) => p.url === '/redirects?fragment')
-ok(
-  'redirect with a #fragment: 409 + X-Inertia-Redirect, the client visits it and scrolls there',
-  fragment?.status === 409 &&
-    fragment.headers['x-inertia-redirect'] === '/redirects#target' &&
-    (await page.evaluate(() => location.hash)) === '#target' &&
-    (await page.evaluate(() => scrollY)) > 300 &&
-    docs.length === 0,
-  `${fragment?.status} ${await page.evaluate(() => location.href)} ${await page.evaluate(() => scrollY)}`,
-)
-await page.evaluate(() => scrollTo(0, 0))
 await page.click('[data-testid=external]')
 await page
   .waitForFunction(() => location.pathname === '/api/health', { timeout: 5000 })
   .catch(() => {})
 ok(
-  'location(c, url): 409 + X-Inertia-Location, the browser loads it as a document',
+  'location(c, url): 409 + X-Fondu-Location, the browser loads it as a document',
   (await path()) === '/api/health' && docs.some((d) => d.endsWith('/api/health')),
 )
 await page.goBack({ waitUntil: 'load' })
@@ -826,9 +516,9 @@ await page.click('[data-testid=stale]')
 await page.waitForSelector('[data-testid=stale-answer]')
 const stale = JSON.parse(await testid('stale-answer'))
 ok(
-  'a visit from another build: 409 + X-Inertia-Location (production); dev has no version',
+  'a navigation from another build: 409 + X-Fondu-Location (production); dev has no version',
   assetVersion
-    ? stale.status === 409 && stale['X-Inertia-Location'].endsWith('/versioning')
+    ? stale.status === 409 && stale['X-Fondu-Location'].endsWith('/versioning')
     : stale.status === 200,
   JSON.stringify(stale),
 )
@@ -837,11 +527,11 @@ ok(
   let once = true
   const fake = (r) => {
     if (r.isInterceptResolutionHandled()) return
-    if (once && r.headers()['x-inertia'] && new URL(r.url()).pathname === '/props') {
+    if (once && r.headers()['x-fondu'] && new URL(r.url()).pathname === '/props') {
       once = false
       return void r.respond({
         status: 409,
-        headers: { 'X-Inertia-Location': BASE + '/props' },
+        headers: { 'X-Fondu-Location': BASE + '/props' },
         body: '',
       })
     }
@@ -860,42 +550,13 @@ ok(
   )
 }
 
-// ---- history encryption
-await nav('/history')
-await h1('History encryption')
-// Inertia writes the history entry once it is encrypted (Web Crypto: asynchronous)
-await page.waitForFunction(() => window.history.state?.page, { timeout: 3000 }).catch(() => {})
-await page.click('[data-testid=read]')
-ok(
-  'encryptHistory: the page state in history is encrypted',
-  /^encrypted: \d+ bytes$/.test(await testid('stored')),
-  await testid('stored'),
-)
-// the page object after the redirect, read from its own response (the response listener above may miss its body).
-// Matched by the response's X-Inertia: puppeteer may not give the headers of a request that followed a redirect.
-// The toast is awaited at the same time: it lasts 5 s
-const cleared = page.waitForResponse(
-  (r) => r.url() === BASE + '/history' && r.status() === 200 && r.headers()['x-inertia'] === 'true',
-  { timeout: 8000 },
-)
-await page.click('[data-testid=clear]')
-const [clearedPage] = await Promise.all([
-  cleared.then((r) => r.json()).catch(() => null),
-  waitText('History cleared'),
-])
-ok(
-  'clearHistory(c): the next page clears the history (clearHistory: true)',
-  clearedPage?.clearHistory === true,
-)
-
 // ---- server-side rendering
 {
   const ssr = await (await fetch(BASE + '/ssr')).text()
   const browserOnly = await (await fetch(BASE + '/ssr/browser')).text()
   ok(
     'SSR: a document is server-rendered',
-    ssr.includes('<div data-server-rendered="true" id="app">') &&
-      ssr.includes('Server-side rendering</h1>'),
+    /<div id="app"><\w/.test(ssr) && ssr.includes('Server-side rendering</h1>'),
   )
   ok(
     'withoutSsr(): this route is rendered in the browser only (the page data, an empty #app)',
@@ -910,25 +571,13 @@ ok(
       /\d+px/.test(await testid('mounted')),
   )
   ok(
-    '<WhenMounted>: the fallback is in the server HTML, the browser part is not',
+    'a browser-only part: the fallback is in the server HTML, the browser part is not',
     ssr.includes('Rendered on the server: no window here.') && !ssr.includes('Window width'),
   )
 }
 
 // ---- navigation
-await page.goto(BASE + '/navigation', { waitUntil: 'networkidle0' })
-await page.evaluate(() => {
-  window.__vt = 0
-})
-await nav('/routes')
-await h1('Routes & actions')
-await nav('/navigation')
-await h1('Navigation')
-ok('no view transition on ordinary visits', (await page.evaluate(() => window.__vt)) === 0)
-await page.click('[data-testid=vt]')
-await h1('Routes & actions')
-await sleep(400)
-ok('<Link viewTransition> runs one', (await page.evaluate(() => window.__vt)) === 1)
+await page.goto(BASE + '/routes', { waitUntil: 'networkidle0' })
 ok(
   'href(): the link has the filled URL',
   (await page.$eval('[data-testid=contact-1]', (e) => e.getAttribute('href'))) === '/contacts/1',
@@ -937,38 +586,61 @@ await nav('/navigation')
 await h1('Navigation')
 await page.click('[data-testid=click]')
 await page.click('[data-testid=click]')
-const served = await testid('served-at')
-await page.click('[data-testid=preserve]')
-await page.waitForFunction(
-  (s) => document.querySelector('[data-testid=served-at]').textContent !== s,
-  {},
-  served,
-)
-ok('preserveState: new props, the component state kept', (await testid('clicks')) === '2')
+{
+  const served = await testid('served-at')
+  await page.click('[data-testid=reload]')
+  await page.waitForFunction(
+    (s) => document.querySelector('[data-testid=served-at]').textContent !== s,
+    {},
+    served,
+  )
+  ok('reload(): new props, the component state kept', (await testid('clicks')) === '2')
+}
 await page.click('[data-testid=reset-state]')
 await page
   .waitForFunction(() => document.querySelector('[data-testid=clicks]').textContent === '0', {
     timeout: 5000,
   })
   .catch(() => {})
-ok('a plain visit to the same page resets it', (await testid('clicks')) === '0')
-await page.type('[data-testid=note]', 'remember me')
-await nav('/props')
-await h1('Props')
-await page.goBack()
-await h1('Navigation')
-await sleep(200)
-ok(
-  'useRemember: the input is restored by Back',
-  (await page.$eval('[data-testid=note]', (e) => e.value)) === 'remember me',
-)
+ok('a link to the same page mounts it anew', (await testid('clicks')) === '0')
+{
+  await page.click('[data-testid=slow]')
+  await sleep(300)
+  const during = await testid('navigating')
+  await page.waitForFunction(
+    () => document.querySelector('[data-testid=navigating]').textContent === 'idle',
+    { timeout: 5000 },
+  )
+  ok('useNavigating(): true while the next page is on its way', during === 'navigating')
+}
+{
+  const served = await testid('served-at')
+  await page.evaluate(() => window.scrollTo(0, 200))
+  await page.click('[data-testid=to-props]')
+  await h1('Props')
+  fetches.length = 0
+  docs.length = 0
+  await page.goBack()
+  await h1('Navigation')
+  const atOnce = await testid('served-at')
+  await page.waitForFunction(
+    (s) => document.querySelector('[data-testid=served-at]').textContent !== s,
+    { timeout: 5000 },
+    served,
+  )
+  ok(
+    "Back: the page as it was at once, then the server's, no document",
+    atOnce === served && fetches.some((f) => f.url.startsWith('/navigation')) && docs.length === 0,
+    JSON.stringify({ atOnce, served, fetches, docs }),
+  )
+}
 
 // ---- sign in, the API, the account
 docs.length = 0
 await nav('/account')
 await h1('Sign in')
 ok(
-  'a protected page: a guest is sent to /login?next=… (client visit)',
+  'a protected page: a guest is sent to /login?next=… (a navigation)',
   (await path()) === '/login?next=%2Faccount' && docs.length === 0,
   await path(),
 )
@@ -1010,13 +682,13 @@ ok(
 await nav('/http')
 await h1('HTTP requests')
 await page.click('[data-testid=load]')
-ok('useHttp: processing while the request runs', (await testid('load')) === 'Loading…')
+ok('fetch: loading while the request runs', (await testid('load')) === 'Loading…')
 await page.waitForSelector('[data-testid=api-users]')
-ok('useHttp: the response', (await page.$$('[data-testid=api-users] li')).length > 0)
+ok('fetch: the response', (await page.$$('[data-testid=api-users] li')).length > 0)
 await page.click('[data-testid=create] button')
 await page.waitForSelector('[data-testid=err-email]')
 ok(
-  'useHttp: a 422 { errors } becomes field errors',
+  'fetch: a 422 { errors } becomes field errors',
   (await testid('err-name')) === 'Name must be at least 2 characters' &&
     (await testid('err-email')) === 'Enter a valid email',
 )
@@ -1029,7 +701,7 @@ await page
   )
   .catch(() => {})
 ok(
-  "Base UI's form, given useHttp's errors: the first field to fix has the focus",
+  'the first field to fix has the focus',
   await page.evaluate(
     () => document.activeElement === document.querySelector('[data-testid=create] input'),
   ),
@@ -1048,7 +720,7 @@ await page
   )
   .catch(() => {})
 ok(
-  "<Form>: the profile saved by Better Auth, the header's user renewed with it (its session cookie)",
+  "the profile saved by Better Auth, the header's user renewed with it (its session cookie)",
   (await page.$eval('[data-testid=user]', (e) => e.ariaLabel)) === 'Demo Person',
 )
 await setValue('main form input[name=name]', 'Demo User')
@@ -1057,62 +729,7 @@ await page.waitForFunction(
   () => document.querySelector('[data-testid=user]')?.ariaLabel === 'Demo User',
 )
 
-// ---- live validation (Precognition) and the same schema in the browser
-{
-  await nav('/contacts')
-  await h1('Forms & validation')
-  await page.type('[data-testid=add-contact] input[name=email]', 'nope')
-  await page.keyboard.press('Tab')
-  await page
-    .waitForSelector('[data-testid=add-contact] [data-testid=err-email]', { timeout: 6000 })
-    .catch(() => {})
-  ok(
-    "Precognition: the field is checked by the action's schema when it is left (nothing is added)",
-    precognition.at(-1) === '/contacts' &&
-      (await testid('err-email')) === 'Enter a valid email' &&
-      !(await text()).includes('Added'),
-    `${precognition.length} requests`,
-  )
-  // then, while it is wrong, as it is typed in: the error goes once the address is valid, without a submit
-  await setValue('[data-testid=add-contact] input[name=email]', `typed-${Date.now()}@x.org`)
-  await page
-    .waitForFunction(
-      () => !document.querySelector('[data-testid=add-contact] [data-testid=err-email]'),
-      { timeout: 6000 },
-    )
-    .catch(() => {})
-  ok(
-    'Precognition: a field with an error is checked again as it is typed in, and the error goes',
-    (await page.$('[data-testid=add-contact] [data-testid=err-email]')) === null &&
-      (await page.evaluate(() => document.activeElement?.name)) === 'email' &&
-      !(await text()).includes('Added'),
-  )
-  const before = fetches.length
-  const firstQuick = () =>
-    document.activeElement === document.querySelector('[data-testid=quick-contact] input')
-  await page.click('[data-testid=quick-contact] button')
-  await page.waitForSelector('[data-testid=quick-err-name]')
-  await page.waitForFunction(firstQuick, { timeout: 2000 }).catch(() => {})
-  ok(
-    "the same schema in the browser: errors at once, no request; Base UI's form focuses the first",
-    (await testid('quick-err-email')) === 'Enter a valid email' &&
-      fetches.length === before &&
-      (await page.evaluate(firstQuick)),
-  )
-  // what is typed clears its field's error, so the form can be sent again
-  const quickName = `Quick ${Date.now()}`
-  await setValue('[data-testid=quick-contact] > :nth-child(1) input', quickName)
-  await setValue('[data-testid=quick-contact] > :nth-child(2) input', `quick-${Date.now()}@x.org`)
-  const cleared = (await page.$('[data-testid=quick-err-name]')) === null
-  await page.click('[data-testid=quick-contact] button')
-  await waitText(`Added ${quickName}`)
-  ok(
-    "useForm: typing clears the field's error, and the fixed form is sent",
-    cleared && (await text()).includes(`Added ${quickName}`),
-  )
-}
-
-// ---- errors: the error page, and the development report in Inertia's dialog
+// ---- errors: the error page, and the development report
 {
   const dev = !assetVersion
   await nav('/errors')
@@ -1120,29 +737,27 @@ await page.waitForFunction(
   await page.click('[data-testid=visit-403-forbidden]')
   await page.waitForSelector('[data-testid=error-status]')
   ok(
-    'HTTPException(403) during a visit: the error page with the status, in the layout',
+    'HTTPException(403) during a navigation: the error page with the status, in the layout',
     (await testid('error-status')) === '403' && (await page.$('aside')) !== null,
   )
   await page.goBack()
   await h1('Errors')
+  docs.length = 0
   await page.click('[data-testid=visit-500-loader]')
   if (dev) {
-    await page.waitForSelector('dialog#inertia-error-dialog iframe')
-    const report = await page.$eval('dialog#inertia-error-dialog iframe', (f) => f.srcdoc)
+    await waitText('The loader failed')
     ok(
-      "a thrown error during a visit (development): the report, in Inertia's dialog",
-      report.includes('The loader failed') && report.includes('Stack'),
+      'a thrown error during a navigation (development): the report, loaded as a document',
+      (await text()).includes('Stack') && docs.some((d) => d.endsWith('/errors/loader')),
     )
-    await page.keyboard.press('Escape')
   } else {
     await page.waitForSelector('[data-testid=error-status]')
     ok(
-      'a thrown error during a visit (production): the error page, status 500',
+      'a thrown error during a navigation (production): the error page, status 500',
       (await testid('error-status')) === '500',
     )
-    await page.goBack()
-    await h1('Errors')
   }
+  await page.goto(BASE + '/errors', { waitUntil: 'networkidle0' })
   const missingPage = await (
     await fetch(BASE + '/errors/missing', { headers: { Accept: 'text/html' } })
   ).text()
@@ -1154,7 +769,7 @@ await page.waitForFunction(
   )
   const failed = await fetchAs(BASE + '/errors?fail', {
     method: 'POST',
-    headers: { ...inertia(), Origin: ORIGIN },
+    headers: { ...fondu(), Origin: ORIGIN },
   })
   ok(
     'an action that throws: 500, a report or the error page',
@@ -1168,79 +783,31 @@ await page.waitForFunction(
     '… for an API client: plain text',
     api500.status === 500 && (await api500.text()) === 'Internal Server Error',
   )
-  // a proxy's own page (here, the app's route standing in for one), during a visit
+  // a proxy's own page (here, the app's route standing in for one): what the browser would show
+  docs.length = 0
   await page.click('[data-testid=visit-502-proxy]')
-  if (dev) {
-    await page
-      .waitForSelector('dialog#inertia-error-dialog iframe', { timeout: 8000 })
-      .catch(() => {})
-    const shown = await page
-      .$eval('dialog#inertia-error-dialog iframe', (f) => f.srcdoc)
-      .catch(() => '')
-    ok(
-      "an answer that isn't a page (development): in Inertia's dialog",
-      shown.includes('Bad gateway'),
-    )
-    await page.keyboard.press('Escape')
-  } else {
-    await page
-      .waitForFunction(() => location.pathname === '/errors/proxy', { timeout: 8000 })
-      .catch(() => {})
-    const loaded = await page.evaluate(() => [
-      location.pathname,
-      document.querySelector('h1')?.textContent,
-      Boolean(document.querySelector('#inertia-error-dialog')),
-    ])
-    ok(
-      "an answer that isn't a page (production): loaded as a document, not in Inertia's dialog",
-      JSON.stringify(loaded) === '["/errors/proxy","Bad gateway",false]' &&
-        docs.includes(BASE + '/errors/proxy'),
-      JSON.stringify(loaded),
-    )
-    await page.goBack()
-    await h1('Errors')
-  }
-  // the same page after a form (a POST): the form as it was, the answer in Inertia's dialog (development) or, as
-  // this app handles it in production, a toast
-  await page.type('[data-testid=proxy-message]', 'kept')
-  await page.click('[data-testid=action-proxy]')
-  let afterForm = ''
-  if (dev) {
-    await page
-      .waitForSelector('dialog#inertia-error-dialog iframe', { timeout: 8000 })
-      .catch(() => {})
-    afterForm = await page
-      .$eval('dialog#inertia-error-dialog iframe', (f) => f.srcdoc)
-      .catch(() => '')
-    await page.keyboard.press('Escape')
-    await page.waitForFunction(() => !document.querySelector('dialog#inertia-error-dialog[open]'), {
-      timeout: 3000,
+  await page
+    .waitForFunction(() => document.querySelector('h1')?.textContent === 'Bad gateway', {
+      timeout: 8000,
     })
-  } else {
-    afterForm = await page
-      .waitForFunction(
-        () =>
-          [...document.querySelectorAll('[data-slot=toast-title]')].find((t) =>
-            t.textContent.includes('did not answer'),
-          )?.textContent,
-        { timeout: 8000 },
-      )
-      .then((h) => h.jsonValue())
-      .catch(() => '')
-  }
-  const form = await page.evaluate(() => [
-    location.pathname,
-    document.querySelector('[data-testid=proxy-message]')?.value,
-    Boolean(document.querySelector('dialog#inertia-error-dialog')),
-  ])
+    .catch(() => {})
   ok(
-    dev
-      ? "an answer that isn't a page, after a form (development): in Inertia's dialog, the form kept"
-      : "an answer that isn't a page, after a form (production): the app's toast, no dialog, the form kept",
-    (dev ? afterForm.includes('Bad gateway') : afterForm === 'The server did not answer (502)') &&
-      JSON.stringify(form) === '["/errors","kept",false]',
-    JSON.stringify([afterForm.slice(0, 40), form]),
+    "an answer that isn't a page, to a link: loaded as a document",
+    (await path()) === '/errors/proxy' && docs.some((d) => d.endsWith('/errors/proxy')),
+    JSON.stringify(docs),
   )
+  await page.goto(BASE + '/errors', { waitUntil: 'networkidle0' })
+  await page.click('[data-testid=action-proxy]')
+  await page
+    .waitForFunction(() => document.querySelector('h1')?.textContent === 'Bad gateway', {
+      timeout: 8000,
+    })
+    .catch(() => {})
+  ok(
+    "an answer that isn't a page, to a form: it replaces the page, as without JavaScript",
+    (await page.evaluate(() => document.querySelector('h1')?.textContent)) === 'Bad gateway',
+  )
+  await page.goto(BASE + '/errors', { waitUntil: 'networkidle0' })
 }
 
 // ---- flash data: toasts, data of the app's own, once
@@ -1280,9 +847,9 @@ await page.waitForFunction(
     )
     .catch(() => {})
   ok(
-    'flash: data of its own for the next page, gone on the next visit',
-    picked === 'Picked teal, on this visit only' &&
-      (await testid('picked')) === 'Nothing picked on this visit' &&
+    'flash: data of its own for the next page, gone on the next one',
+    picked === 'Picked teal, on this page only' &&
+      (await testid('picked')) === 'Nothing picked on this page' &&
       (await testid('flash-json')) === '{}',
     JSON.stringify([picked, await testid('flash-json')]),
   )
@@ -1364,7 +931,7 @@ await page.waitForFunction(
   )
   await waitText('Role changed to user')
   ok("an admin action (Better Auth's setRole), there and back", true)
-  // signed out from here, Back: the admin page is not shown again (encrypted in history, cleared)
+  // signed out from here, Back: the admin page is not shown again (clearHistory(): the kept pages forgotten)
   await page.click('[data-testid=user]')
   await (await page.waitForSelector('[data-testid=sign-out]')).click()
   await page.waitForSelector('[data-testid=sign-in]')
@@ -1384,7 +951,7 @@ await page.waitForFunction(
   await sleep(400)
   const seen = await page.evaluate(() => window.__headings ?? [])
   ok(
-    'signed out on /admin: Back never shows it (history cleared; asked again: the sign-in page)',
+    'signed out on /admin: Back never shows it (the kept pages forgotten; asked again: the sign-in page)',
     !seen.includes('Accounts') && (await path()).startsWith('/login'),
     JSON.stringify([...new Set(seen)]),
   )
@@ -1426,15 +993,15 @@ await page.waitForFunction(
   const shown = () => mp.evaluate(() => Boolean(document.querySelector('#menu')?.checkVisibility()))
   const closed = await shown()
   await mp.click('[data-testid=menu]')
-  await mp.waitForSelector('#menu a[href="/partial"]', { visible: true }).catch(() => {})
+  await mp.waitForSelector('#menu a[href="/flash"]', { visible: true }).catch(() => {})
   const opened = await shown()
-  await mp.evaluate(() => document.querySelector('#menu a[href="/partial"]').click())
-  await h1('Partial reloads', mp)
+  await mp.evaluate(() => document.querySelector('#menu a[href="/flash"]').click())
+  await h1('Flash data', mp)
   await mp
     .waitForFunction(() => !document.querySelector('#menu')?.checkVisibility(), { timeout: 3000 })
     .catch(() => {})
   ok(
-    'mobile: the menu opens in a drawer from its button and closes after a visit',
+    'mobile: the menu opens in a drawer from its button and closes after a navigation',
     !closed && opened && !(await shown()),
     JSON.stringify([closed, opened]),
   )
@@ -1491,7 +1058,7 @@ await page.waitForFunction(
     .then((e) => e.evaluate((n) => n.textContent))
     .catch(() => null)
   ok(
-    'flash on a full page load: a toast (Inertia fires `flash` for the first page too)',
+    'flash on a full page load: a toast (the first page brings its flash too)',
     toast === 'Redirected back with a flash message',
     toast,
   )
@@ -1534,7 +1101,7 @@ await page.waitForFunction(
     .waitForFunction(() => location.pathname === '/de/i18n', { timeout: 4000 })
     .catch(() => {})
   ok(
-    'languages: away and back from the menu (/i18n, a visit): the language picked, /de/i18n',
+    'languages: away and back from the menu (/i18n, a navigation): the language picked, /de/i18n',
     (await path(lp)) === '/de/i18n' && (await testid('greeting', lp)) === 'Hallo, Ada!',
     await path(lp),
   )
@@ -1600,10 +1167,10 @@ await page.waitForFunction(
 
 // ---- 404
 {
-  const inertiaNope = await fetchAs(BASE + '/nope', { headers: inertia() })
+  const pageNope = await fetchAs(BASE + '/nope', { headers: fondu() })
   ok(
-    'a missing URL, as a visit: the 404 page object, status 404',
-    inertiaNope.status === 404 && (await inertiaNope.json()).component === 'error',
+    'a missing URL, as a navigation: the 404 page object, status 404',
+    pageNope.status === 404 && (await pageNope.json()).component === 'error',
   )
   const doc404 = await fetch(BASE + '/nope', { headers: { Accept: 'text/html' } })
   ok(
@@ -1694,7 +1261,7 @@ await page.waitForFunction(
     fetch(
       BASE + '/login',
       manual(
-        { ...json, ...sameSite, 'X-Inertia': 'true', ...headers },
+        { ...json, ...sameSite, 'X-Fondu': 'true', ...headers },
         { method: 'POST', body: JSON.stringify(body) },
       ),
     )
@@ -1767,7 +1334,7 @@ await page.waitForFunction(
         (
           await fetchAs(BASE + `/contacts?${name}`, {
             method: 'POST',
-            headers: { ...json, ...sameSite, 'X-Inertia': 'true' },
+            headers: { ...json, ...sameSite, 'X-Fondu': 'true' },
             body: '{}',
             redirect: 'manual',
           })
@@ -1814,7 +1381,7 @@ await page.waitForFunction(
     flashCookie.startsWith('__Host-fondu-flash=') && /;\s*Secure/i.test(flashCookie),
     flashCookie.slice(0, 60),
   )
-  // what Inertia's client reads when the content has a page-data element of its own (it takes the first one)
+  // what fondu/client reads when the content has a page-data element of its own (it takes the first one)
   const fp = await browser.newPage()
   await fp.setRequestInterception(true)
   const real = await (await fetch(BASE + '/props')).text()
@@ -1842,39 +1409,33 @@ await page.waitForFunction(
   watchProblems(hp)
   const requests = []
   hp.on('request', (r) => {
-    if (r.headers()['x-inertia']) requests.push(new URL(r.url()).pathname)
+    if (r.headers()['x-fondu']) requests.push(new URL(r.url()).pathname)
   })
   const at = (p) => hp.waitForFunction((x) => location.pathname === x, {}, p)
-  hp.on('request', (r) => {
-    if (r.headers()['x-inertia-partial-data']) requests.push(r.headers()['x-inertia-partial-data'])
-  })
-  await hp.goto(BASE + '/deferred', { waitUntil: 'networkidle0' })
-  await hp.waitForSelector('[data-testid=recommendations]')
+  await hp.goto(BASE + '/flash', { waitUntil: 'networkidle0' })
   await nav('/contacts', hp)
   await at('/contacts')
   await hp.waitForSelector('[data-testid=contacts] li')
+  await hp.evaluate(() => window.scrollTo(0, 300))
+  await nav('/props', hp)
+  await at('/props')
   requests.length = 0
   await hp.goBack()
-  await at('/deferred')
-  const restored =
-    (await hp.$('[data-testid=recommendations]')) !== null &&
-    (await hp.$('[data-testid=stats]')) !== null
+  await at('/contacts')
   await sleep(500)
-  // Inertia asks again only for the group of the rescued prop (it is missing from the page)
   ok(
-    'Back renders the page as it was left, deferred values included, without asking for them again',
-    restored && requests.every((r) => r === '/deferred' || r === 'flaky'),
+    "Back: the page as it was left, the scroll position too, then the server's",
+    (await hp.$('[data-testid=contacts] li')) !== null &&
+      (await hp.evaluate(() => Math.round(scrollY))) === 300 &&
+      requests.includes('/contacts'),
     JSON.stringify(requests),
   )
-  requests.length = 0
   await hp.goForward()
-  await at('/contacts')
+  await at('/props')
   await sleep(300)
   ok(
     'Forward too',
-    (await hp.$('[data-testid=add-contact]')) !== null &&
-      !requests.some((r) => r.startsWith('/contacts')),
-    JSON.stringify(requests),
+    (await hp.evaluate(() => document.querySelector('h1')?.textContent)) === 'Props',
   )
   await nav('/account', hp)
   await at('/account')
@@ -1901,7 +1462,7 @@ await page.waitForFunction(
   await sleep(400)
   const seen = await hp.evaluate(() => window.__headings ?? [])
   ok(
-    'signed out: Back to a private page never shows it (history cleared; asked again: the sign-in page)',
+    'signed out: Back to a private page never shows it (the kept pages forgotten; asked again: the sign-in page)',
     !seen.includes('Account') && (await hp.evaluate(() => location.pathname)) === '/login',
     JSON.stringify([...new Set(seen)]),
   )
@@ -1928,8 +1489,8 @@ if ((await fetch(BASE + '/@vite/client').catch(() => null))?.ok) {
     writeFileSync(file, source)
     await hp.close()
   }
-  // a route that throws as it is imported: the app doesn't load. Vite's overlay shows it, as a whole page (its error
-  // page in Inertia's dialog would be blank); fixed, the page is back
+  // a route that throws as it is imported: the app doesn't load. Vite's overlay shows it, as a whole page; fixed, the
+  // page is back
   const broken = await browser.newPage()
   try {
     await broken.goto(BASE + '/props', { waitUntil: 'networkidle0' })
@@ -1939,13 +1500,11 @@ if ((await fetch(BASE + '/@vite/client').catch(() => null))?.ok) {
       .catch(() => {})
     await sleep(500)
     ok(
-      "dev: an app that fails to load, Vite's overlay as a whole page (no blank Inertia dialog)",
-      await broken.evaluate(
-        () =>
-          !document.querySelector('#inertia-error-dialog') &&
-          document
-            .querySelector('vite-error-overlay')
-            ?.shadowRoot?.textContent?.includes('a route that fails to load'),
+      "dev: an app that fails to load, Vite's overlay as a whole page",
+      await broken.evaluate(() =>
+        document
+          .querySelector('vite-error-overlay')
+          ?.shadowRoot?.textContent?.includes('a route that fails to load'),
       ),
     )
     writeFileSync(file, source)
@@ -1971,7 +1530,7 @@ if (problems.length) console.log(problems.join('\n'))
 {
   const reset = await fetch(BASE + '/cdn-cgi/handler/scheduled')
   const names = (
-    await (await fetch(BASE + '/contacts', { headers: inertia() })).json()
+    await (await fetch(BASE + '/contacts', { headers: fondu() })).json()
   ).props.contacts.map((c) => c.name)
   ok(
     'the scheduled reset: the contacts are the seed again',

@@ -5,13 +5,8 @@ import { callAuth, requireUser } from '#/modules/auth/auth.server.ts'
 
 export const loader = defineHandler(requireUser, (c) => {
   const { name, email, role } = c.get('user')!
-  // private: Inertia keeps it in the browser history encrypted; signing out makes it unreadable
-  return render(
-    c,
-    'account',
-    { account: { name, email, role: role ?? 'user' } },
-    { encryptHistory: true },
-  )
+  // private: signing out forgets the pages kept for Back (clearHistory() in routes/logout.ts)
+  return render(c, 'account', { account: { name, email, role: role ?? 'user' } })
 })
 
 export const action = defineHandler.withValidator({

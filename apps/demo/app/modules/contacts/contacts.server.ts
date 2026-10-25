@@ -19,7 +19,7 @@ export async function emailFree(email: string, except?: number) {
   return !taken
 }
 
-/** A new contact: the shared schema, and on the server a new address (live validation checks it too) */
+/** A new contact: the shared schema, and on the server a new address */
 export const newContactSchema = z.extend(contactSchema, {
   email: contactSchema.shape.email.check(z.refine((email) => emailFree(email), EMAIL_TAKEN)),
 })

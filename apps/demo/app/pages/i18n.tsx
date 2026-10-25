@@ -1,36 +1,37 @@
-import { Form, Head } from '@inertiajs/react'
+import { href, navigate, type Errors } from 'fondu/client'
 
-import { DemoCard, SubmitButton, TextField } from '#/components/demo.tsx'
+import { DemoCard, SubmitButton, TextField, Title } from '#/components/demo.tsx'
 import { Button } from '#/components/ui/button.tsx'
 import { localizedHref } from '#/lib/i18n.ts'
 import { m } from '#/paraglide/messages.js'
-import { getLocale, locales, setLocale, type Locale } from '#/paraglide/runtime.js'
+import { getLocale, localizeHref, locales, setLocale, type Locale } from '#/paraglide/runtime.js'
 
 interface Props {
   rendered: Locale
   date: string
   price: string
   alternates: Record<string, string>
+  errors: Errors
 }
 
 // each language in its own words
 const names: Record<Locale, string> = { en: 'English', de: 'Deutsch', zh: '中文' }
 
-export default function I18n({ rendered, date, price, alternates }: Props) {
+// another language: remembered (setLocale's cookie), then the page in its URL, loaded as a document (its <html lang>)
+const pick = (locale: Locale) => {
+  setLocale(locale, { reload: false })
+  navigate(localizeHref(href('/i18n'), { locale }), { document: true })
+}
+
+export default function I18n({ rendered, date, price, alternates, errors }: Props) {
   const locale = getLocale() // the URL's, in the browser as on the server
   return (
     <>
-      <Head title="Languages">
-        {Object.entries(alternates).map(([lang, url]) => (
-          <link
-            key={lang}
-            head-key={`alternate-${lang}`}
-            rel="alternate"
-            hrefLang={lang}
-            href={url}
-          />
-        ))}
-      </Head>
+      <Title>Languages</Title>
+      {/* React puts them in <head> */}
+      {Object.entries(alternates).map(([lang, url]) => (
+        <link key={lang} rel="alternate" hrefLang={lang} href={url} />
+      ))}
       <h1>Languages</h1>
       <p className="lede">
         One route file, a URL per language: <code>routes/[[locale]]/i18n.ts</code> answers{' '}
@@ -62,7 +63,7 @@ export default function I18n({ rendered, date, price, alternates }: Props) {
                 lang={l}
                 variant={l === locale ? 'default' : 'outline'}
                 aria-pressed={l === locale}
-                onClick={() => setLocale(l)}
+                onClick={() => pick(l)}
                 data-testid={`locale-${l}`}
               >
                 {names[l]}
@@ -75,24 +76,10 @@ export default function I18n({ rendered, date, price, alternates }: Props) {
           </p>
         </DemoCard>
         <DemoCard title="From the server" tag="flash(c, { message: m.said_hello({ name }) })">
-          <Form
-            action={localizedHref('/i18n')}
-            method="post"
-            showProgress={false}
-            className="grid gap-4"
-          >
-            {({ errors }) => (
-              <>
-                <TextField
-                  label={m.name_label()}
-                  name="name"
-                  error={errors.name}
-                  testid="err-name"
-                />
-                <SubmitButton data-testid="say-hello">{m.say_hello()}</SubmitButton>
-              </>
-            )}
-          </Form>
+          <form action={localizedHref('/i18n')} method="post" className="grid gap-4">
+            <TextField label={m.name_label()} name="name" error={errors.name} testid="err-name" />
+            <SubmitButton data-testid="say-hello">{m.say_hello()}</SubmitButton>
+          </form>
         </DemoCard>
       </div>
     </>

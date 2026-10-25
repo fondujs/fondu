@@ -1,34 +1,58 @@
-import { Head, useHttp, usePage } from '@inertiajs/react'
-import { href } from 'fondu/client'
-import { useState } from 'react'
+import { href, usePage, type Errors } from 'fondu/client'
+import { useState, type FormEvent } from 'react'
+import { flushSync } from 'react-dom'
 
-import { DemoCard, Json, SignInFirst, SubmitButton, TextField } from '#/components/demo.tsx'
+import { DemoCard, Json, SignInFirst, SubmitButton, TextField, Title } from '#/components/demo.tsx'
 import { Button } from '#/components/ui/button.tsx'
-import { Form as BaseForm } from '#/components/ui/form.tsx'
 
 type Contact = { id: number; name: string; email: string }
 
-// No props: the page calls the JSON API (plain Hono handlers in routes/api/) with Inertia's useHttp.
+// No props: the page calls the JSON API (plain Hono handlers in routes/api/) with fetch.
 export default function Http() {
   const signedIn = usePage().props.auth.user !== null
-  const list = useHttp<Record<string, never>, { contacts: Contact[] }>({})
-  const create = useHttp<{ name: string; email: string }, { contact: Contact }>({
-    name: '',
-    email: '',
-  })
+  const [contacts, setContacts] = useState<Contact[] | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [created, setCreated] = useState<{ contact: Contact } | null>(null)
+  const [errors, setErrors] = useState<Errors>({})
+  const [creating, setCreating] = useState(false)
   const [status, setStatus] = useState<number | null>(null)
-  const onHttpException = (r: { status: number }) => {
-    setStatus(r.status)
-    return false
+  const load = async () => {
+    setLoading(true)
+    const response = await fetch(href('/api/contacts'))
+    setLoading(false)
+    if (!response.ok) return setStatus(response.status)
+    setStatus(null)
+    setContacts(((await response.json()) as { contacts: Contact[] }).contacts)
+  }
+  const create = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    const form = e.currentTarget
+    setCreating(true)
+    const response = await fetch(href('/api/contacts'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(Object.fromEntries(new FormData(form))),
+    })
+    setCreating(false)
+    if (response.status === 422) {
+      const { errors } = (await response.json()) as { errors: Errors }
+      flushSync(() => setErrors(errors))
+      form.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus()
+      return
+    }
+    if (!response.ok) return setStatus(response.status)
+    setErrors({})
+    setCreated((await response.json()) as { contact: Contact })
+    form.reset()
   }
   return (
     <>
-      <Head title="HTTP requests" />
+      <Title>HTTP requests</Title>
       <h1>HTTP requests</h1>
       <p className="lede">
-        Not every request is a page visit. <code>useHttp</code> calls JSON endpoints with the same
-        form helpers: processing state, the response, and validation errors from a{' '}
-        <code>422 {'{ errors }'}</code>.
+        Not every request is a page. The page calls JSON endpoints with <code>fetch</code>; invalid
+        input is a <code>422 {'{ errors }'}</code>, as <code>withValidator</code> answers what
+        isn&apos;t a page.
       </p>
       {signedIn ? null : (
         <div className="mb-4">
@@ -37,17 +61,12 @@ export default function Http() {
       )}
       <div className="grid gap-4 sm:grid-cols-2">
         <DemoCard title="GET /api/contacts">
-          <Button
-            className="mb-3"
-            onClick={() => list.get(href('/api/contacts'), { onHttpException })}
-            disabled={list.processing}
-            data-testid="load"
-          >
-            {list.processing ? 'Loading…' : 'Load contacts'}
+          <Button className="mb-3" onClick={load} disabled={loading} data-testid="load">
+            {loading ? 'Loading…' : 'Load contacts'}
           </Button>
-          {list.response ? (
+          {contacts ? (
             <ul data-testid="api-users">
-              {list.response.contacts.map((u) => (
+              {contacts.map((u) => (
                 <li key={u.id}>{u.name}</li>
               ))}
             </ul>
@@ -59,37 +78,12 @@ export default function Http() {
           ) : null}
         </DemoCard>
         <DemoCard title="POST /api/contacts">
-          <BaseForm
-            className="grid gap-4"
-            onSubmit={(e) => {
-              e.preventDefault()
-              create.post(href('/api/contacts'), { onHttpException })
-            }}
-            errors={create.errors}
-            data-testid="create"
-          >
-            <TextField
-              label="Name"
-              value={create.data.name}
-              onChange={(e) => (create.setData('name', e.target.value), create.clearErrors('name'))}
-              error={create.errors.name}
-              testid="err-name"
-            />
-            <TextField
-              label="Email"
-              value={create.data.email}
-              onChange={(e) => (
-                create.setData('email', e.target.value),
-                create.clearErrors('email')
-              )}
-              error={create.errors.email}
-              testid="err-email"
-            />
-            <SubmitButton processing={create.processing}>Create</SubmitButton>
-          </BaseForm>
-          {create.response ? (
-            <Json value={create.response} className="mt-4" data-testid="created" />
-          ) : null}
+          <form className="grid gap-4" onSubmit={create} noValidate data-testid="create">
+            <TextField label="Name" name="name" error={errors.name} testid="err-name" />
+            <TextField label="Email" name="email" error={errors.email} testid="err-email" />
+            <SubmitButton processing={creating}>Create</SubmitButton>
+          </form>
+          {created ? <Json value={created} className="mt-4" data-testid="created" /> : null}
         </DemoCard>
       </div>
     </>

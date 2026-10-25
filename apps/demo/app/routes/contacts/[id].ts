@@ -20,7 +20,7 @@ export const loader = defineHandler.withValidator({ params })(async (c, { params
 
 // the changes are for signed-in users, like adding and deleting
 export const actions = {
-  // POST /contacts/:id?rename — its errors arrive in the `rename` error bag (the form sends X-Inertia-Error-Bag)
+  // POST /contacts/:id?rename
   rename: defineHandler.withValidator({
     params,
     body: z.object({
@@ -31,7 +31,7 @@ export const actions = {
     flash(c, { message: 'Renamed' })
     return back(c)
   }),
-  // POST /contacts/:id?email — the `email` bag
+  // POST /contacts/:id?email
   email: defineHandler.withValidator({
     params,
     body: z.object({ email: contactSchema.shape.email }),

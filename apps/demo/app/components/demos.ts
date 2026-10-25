@@ -2,8 +2,8 @@ import { href } from 'fondu/client'
 
 export type Demo = [url: string, title: string, text: string]
 
-// The demos, grouped by what you would be doing (the menu and the overview). Which part is Fondu's, Inertia's or
-// Hono's, each page says.
+// The demos, grouped by what you would be doing (the menu and the overview). Which part is Fondu's or Hono's,
+// each page says.
 export const groups: Array<[group: string, demos: Demo[]]> = [
   [
     'Routing',
@@ -13,11 +13,7 @@ export const groups: Array<[group: string, demos: Demo[]]> = [
         'Routes & actions',
         'Files in routes/ are URLs: loader, action and actions, typed href().',
       ],
-      [
-        href('/redirects'),
-        'Redirects',
-        'Back, to another page, to an external URL (409), to a #fragment.',
-      ],
+      [href('/redirects'), 'Redirects', 'Back, to another page, to what isn’t a page (409).'],
       [
         href('/i18n'),
         'Languages',
@@ -36,19 +32,15 @@ export const groups: Array<[group: string, demos: Demo[]]> = [
       [
         href('/contacts'),
         'Forms & validation',
-        'One schema on both sides, live validation (Precognition), error bags, 303 redirects.',
+        'Plain forms, validated on the server, the errors back on the page, 303 redirects.',
       ],
-      [
-        href('/uploads'),
-        'File uploads',
-        'A file in a form: checked by the schema on the server, with the upload’s progress.',
-      ],
+      [href('/uploads'), 'File uploads', 'A file in a form: checked by the schema on the server.'],
       [
         href('/flash'),
         'Flash data',
         'flash(c, …) in an action, read once by the next page: toasts and data of your own.',
       ],
-      [href('/http'), 'HTTP requests', 'useHttp against plain Hono handlers in routes/api/.'],
+      [href('/http'), 'HTTP requests', 'fetch against plain Hono handlers in routes/api/.'],
     ],
   ],
   [
@@ -57,32 +49,7 @@ export const groups: Array<[group: string, demos: Demo[]]> = [
       [
         href('/props'),
         'Props',
-        'Values, lists, objects, lazy functions and shared props, typed by the page component.',
-      ],
-      [
-        href('/partial'),
-        'Partial reloads',
-        'Reload only some props, optional props, always props, polling and WhenVisible.',
-      ],
-      [
-        href('/deferred'),
-        'Deferred props',
-        'Props loaded after the first render, in parallel groups, with rescued failures.',
-      ],
-      [
-        href('/once'),
-        'Once props',
-        'Props resolved once and remembered by the client across visits, with expiry.',
-      ],
-      [
-        href('/merging'),
-        'Merging props',
-        'Append, prepend and deep merge props across partial reloads, matching on ids.',
-      ],
-      [
-        href('/infinite'),
-        'Infinite scroll',
-        'Scroll props with pagination metadata and <InfiniteScroll>.',
+        'Values, lists, objects and shared props, typed by the page component.',
       ],
     ],
   ],
@@ -92,12 +59,7 @@ export const groups: Array<[group: string, demos: Demo[]]> = [
       [
         href('/navigation'),
         'Navigation',
-        'Prefetching, view transitions, scroll and state preservation.',
-      ],
-      [
-        href('/history'),
-        'History encryption',
-        'Encrypt sensitive pages in browser history, then clear it.',
+        'Links and forms through the Navigation API: Back at once, pending state.',
       ],
       [href('/versioning'), 'Asset versioning', 'A version mismatch forces a full page reload.'],
     ],

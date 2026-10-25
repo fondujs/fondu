@@ -1,7 +1,6 @@
-import { Head, Link } from '@inertiajs/react'
 import { href } from 'fondu/client'
 
-import { DemoCard } from '#/components/demo.tsx'
+import { DemoCard, Title } from '#/components/demo.tsx'
 import {
   Table,
   TableBody,
@@ -30,7 +29,7 @@ const Code = ({ children }: { children: string }) => (
 export default function Routes() {
   return (
     <>
-      <Head title="Routes & actions" />
+      <Title>Routes & actions</Title>
       <h1>Routes & actions</h1>
       <p className="lede">
         Each file in <code>app/routes/</code> is a URL, handled by Hono. A page route exports a{' '}
@@ -67,9 +66,9 @@ export default function Routes() {
           </p>
           <Code>{`href('/contacts/:id', { id: 1 })  // '${href('/contacts/:id', { id: 1 })}'\nhref('/contacts?delete')          // '${href('/contacts?delete')}'`}</Code>
           <p className="mt-3">
-            <Link href={href('/contacts/:id', { id: 1 })} data-testid="contact-1">
+            <a href={href('/contacts/:id', { id: 1 })} data-testid="contact-1">
               Open contact 1
-            </Link>
+            </a>
           </p>
         </DemoCard>
         <DemoCard title="Validated input" tag="withValidator">
@@ -78,8 +77,11 @@ export default function Routes() {
             The guard runs first, then the schemas; <code>params.id</code> is a number.
           </p>
         </DemoCard>
-        <DemoCard title="The method is Inertia's">
-          <Code>{`<Link href={href('/logout')}\n      method="post" as="button">\n<Form action={href('/contacts')}\n      method="post">`}</Code>
+        <DemoCard title="Links and forms are HTML's" tag="<a> · <form>">
+          <Code>{`<a href={href('/contacts')}>\n<form action={href('/contacts?delete')}\n      method="post">`}</Code>
+          <p className="mt-3 text-muted-foreground">
+            Fondu's client swaps the page in place; without JavaScript, they work as they are.
+          </p>
         </DemoCard>
       </div>
     </>

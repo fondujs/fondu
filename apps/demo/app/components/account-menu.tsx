@@ -1,6 +1,6 @@
-import { Link, router, usePage } from '@inertiajs/react'
-import { href } from 'fondu/client'
+import { href, usePage } from 'fondu/client'
 import { LogOut } from 'lucide-react'
+import { useRef } from 'react'
 
 import { ThemeMenu } from '#/components/theme-menu.tsx'
 import { Avatar, AvatarFallback } from '#/components/ui/avatar.tsx'
@@ -10,6 +10,7 @@ import { Menu, MenuItem, MenuPopup, MenuSeparator, MenuTrigger } from '#/compone
 /** The theme, and who is signed in (a shared prop: in the server-rendered HTML, never loading) or the way in */
 export function AccountMenu() {
   const { user } = usePage().props.auth
+  const signOut = useRef<HTMLFormElement>(null)
   return (
     <>
       <ThemeMenu />
@@ -38,17 +39,18 @@ export function AccountMenu() {
               <span className="truncate text-xs text-muted-foreground">{user.email}</span>
             </div>
             <MenuSeparator />
-            {/* POST /logout */}
-            <MenuItem onClick={() => router.post(href('/logout'))} data-testid="sign-out">
+            {/* POST /logout: the form below, sent by the menu item */}
+            <MenuItem onClick={() => signOut.current?.requestSubmit()} data-testid="sign-out">
               <LogOut /> Sign out
             </MenuItem>
           </MenuPopup>
+          <form ref={signOut} method="post" action={href('/logout')} hidden />
         </Menu>
       ) : (
         <Button
           variant="outline"
           size="sm"
-          render={<Link href={href('/login')} />}
+          render={<a href={href('/login')} />}
           data-testid="sign-in"
         >
           Sign in

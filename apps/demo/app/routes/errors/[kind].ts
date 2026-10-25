@@ -1,7 +1,7 @@
 import { defineHandler, render } from 'fondu'
 import { HTTPException } from 'hono/http-exception'
 
-// what a proxy in front of the app sends when the app doesn't answer: a page of its own, not Inertia's (so its
+// what a proxy in front of the app sends when the app doesn't answer: a page of its own, not the app's (so its
 // styles are its own too, here in the demo's colors)
 const proxyPage = `<!doctype html>
 <html lang="en">

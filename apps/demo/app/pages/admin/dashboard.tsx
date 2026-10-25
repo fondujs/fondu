@@ -1,7 +1,6 @@
-import { Form, Head, Link, usePage } from '@inertiajs/react'
-import { href } from 'fondu/client'
+import { href, usePage } from 'fondu/client'
 
-import { SubmitButton } from '#/components/demo.tsx'
+import { SubmitButton, Title } from '#/components/demo.tsx'
 import { Badge } from '#/components/ui/badge.tsx'
 import {
   Table,
@@ -21,9 +20,9 @@ export default function Dashboard({ accounts }: Props) {
   const me = usePage().props.auth.user
   return (
     <>
-      <Head title="Admin" />
+      <Title>Admin</Title>
       <p className="mb-2 text-sm">
-        <Link href={href('/')}>← Back to the demos</Link>
+        <a href={href('/')}>← Back to the demos</a>
       </p>
       <h1>Accounts</h1>
       <p className="lede">
@@ -49,12 +48,7 @@ export default function Dashboard({ accounts }: Props) {
               </TableCell>
               <TableCell className="text-right">
                 {a.email === me?.email ? null : (
-                  <Form
-                    action={href('/admin/dashboard?role')}
-                    method="post"
-                    showProgress={false}
-                    options={{ preserveScroll: true }}
-                  >
+                  <form action={href('/admin/dashboard?role')} method="post">
                     <input type="hidden" name="userId" value={a.id} />
                     <input
                       type="hidden"
@@ -64,7 +58,7 @@ export default function Dashboard({ accounts }: Props) {
                     <SubmitButton variant="outline" size="sm">
                       {a.role === 'admin' ? 'Make user' : 'Make admin'}
                     </SubmitButton>
-                  </Form>
+                  </form>
                 )}
               </TableCell>
             </TableRow>

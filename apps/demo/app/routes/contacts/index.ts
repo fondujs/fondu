@@ -7,14 +7,13 @@ import { contacts } from '#/db/schema/index.ts'
 import { requireUser } from '#/modules/auth/auth.server.ts'
 import { newContactSchema } from '#/modules/contacts/contacts.server.ts'
 
-export const loader = defineHandler((c) =>
+export const loader = defineHandler(async (c) =>
   render(c, 'contacts/index', {
-    contacts: () => db.select().from(contacts).orderBy(desc(contacts.id)),
+    contacts: await db.select().from(contacts).orderBy(desc(contacts.id)),
   }),
 )
 
-// POST /contacts — signed in only; invalid: 303 back with the errors; with `Precognition: true` (live validation)
-// only validated
+// POST /contacts — signed in only; invalid: 303 back with the errors
 export const action = defineHandler.withValidator({ body: newContactSchema })(
   requireUser,
   async (c, { body }) => {

@@ -1,12 +1,11 @@
-import { Form, Head } from '@inertiajs/react'
-import { href } from 'fondu/client'
+import { href, type Errors } from 'fondu/client'
 
-import { DemoCard, SubmitButton, TextField } from '#/components/demo.tsx'
+import { DemoCard, SubmitButton, TextField, Title } from '#/components/demo.tsx'
 
-export default function Uploads() {
+export default function Uploads({ errors }: { errors: Errors }) {
   return (
     <>
-      <Head title="File uploads" />
+      <Title>File uploads</Title>
       <h1>File uploads</h1>
       <p className="lede">
         A form with a file is sent as multipart data. On the server the file is a <code>File</code>{' '}
@@ -14,38 +13,24 @@ export default function Uploads() {
         or text); an invalid one comes back to the page with its error. Nothing is kept.
       </p>
       <div className="grid gap-4 md:grid-cols-2">
-        <DemoCard title="A file" tag="z.file(), <Form> progress">
-          <Form
+        <DemoCard title="A file" tag="z.file(), enctype=multipart/form-data">
+          <form
             action={href('/uploads')}
             method="post"
-            resetOnSuccess
-            showProgress={false}
-            options={{ preserveScroll: true }}
+            encType="multipart/form-data"
             className="grid gap-4"
             data-testid="upload"
           >
-            {({ errors, progress }) => (
-              <>
-                <TextField
-                  label="File"
-                  type="file"
-                  name="file"
-                  accept="image/png,image/jpeg,image/webp,text/plain"
-                  error={errors.file}
-                  testid="err-file"
-                />
-                {progress && (
-                  <progress
-                    value={progress.percentage}
-                    max={100}
-                    className="h-1.5 w-full overflow-hidden rounded-full accent-brand"
-                    aria-label="Upload"
-                  />
-                )}
-                <SubmitButton data-testid="upload-send">Upload</SubmitButton>
-              </>
-            )}
-          </Form>
+            <TextField
+              label="File"
+              type="file"
+              name="file"
+              accept="image/png,image/jpeg,image/webp,text/plain"
+              error={errors.file}
+              testid="err-file"
+            />
+            <SubmitButton data-testid="upload-send">Upload</SubmitButton>
+          </form>
         </DemoCard>
         <DemoCard title="The schema" tag="routes/uploads.ts">
           <pre className="overflow-x-auto rounded-lg bg-muted p-3 font-mono text-xs/relaxed">{`z.object({

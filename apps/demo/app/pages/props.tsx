@@ -1,6 +1,6 @@
-import { Head, usePage } from '@inertiajs/react'
+import { usePage } from 'fondu/client'
 
-import { DemoCard, Json } from '#/components/demo.tsx'
+import { DemoCard, Json, Title } from '#/components/demo.tsx'
 
 interface Props {
   text: string
@@ -34,12 +34,12 @@ export default function PropsDemo({
   ]
   return (
     <>
-      <Head title="Props" />
+      <Title>Props</Title>
       <h1>Props</h1>
       <p className="lede">
         Anything JSON can carry is a prop. The page component's parameters are the props' types, and{' '}
-        <code>render()</code> checks the loader against them. A function prop is called only when
-        it's included in the response.
+        <code>render()</code> checks the loader against them: a <code>Date</code> for a{' '}
+        <code>string</code> prop is fine (it arrives as one), a <code>Map</code> is a type error.
       </p>
       <div className="grid gap-4 sm:grid-cols-2">
         <DemoCard title="Scalars & lists">
@@ -55,9 +55,9 @@ export default function PropsDemo({
         <DemoCard title="An object">
           <Json value={profile} />
         </DemoCard>
-        <DemoCard title="A function" tag="computed when sent">
+        <DemoCard title="A date" tag="as JSON delivers it">
           <p>
-            <code>computedAt: () =&gt; new Date().toISOString()</code> ran at{' '}
+            <code>computedAt: new Date()</code> arrives as{' '}
             <span className="font-mono" data-testid="computed-at">
               {computedAt}
             </span>
@@ -66,8 +66,8 @@ export default function PropsDemo({
         </DemoCard>
         <DemoCard title="Shared props" tag="share()">
           <p className="mb-3 text-muted-foreground">
-            Set for every page by <code>routes/_middleware.ts</code>, typed by Inertia's{' '}
-            <code>InertiaConfig</code>.
+            Set for every page by <code>routes/_middleware.ts</code>, typed by Fondu&apos;s{' '}
+            <code>Register</code>.
           </p>
           <Json value={{ auth }} />
         </DemoCard>

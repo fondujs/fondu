@@ -1,83 +1,62 @@
-import { Form, Head, Link, useForm, usePage } from '@inertiajs/react'
-import { href } from 'fondu/client'
-import type { FormEvent } from 'react'
+import { href, usePage, type Errors } from 'fondu/client'
 
-import { DemoCard, SignInFirst, SubmitButton, TextField } from '#/components/demo.tsx'
-import { Form as BaseForm } from '#/components/ui/form.tsx'
+import { DemoCard, SignInFirst, SubmitButton, TextField, Title } from '#/components/demo.tsx'
 
 export default function Show({
   contact,
+  errors,
 }: {
   contact: { id: number; name: string; email: string }
+  errors: Errors
 }) {
-  // useForm: the form's state in React; errors of this form come back in its own error bag
-  const rename = useForm({ name: contact.name })
   const { user } = usePage().props.auth
-  const submit = (e: FormEvent) => {
-    e.preventDefault()
-    rename.post(href('/contacts/:id?rename', { id: contact.id }), {
-      errorBag: 'rename',
-      preserveScroll: true,
-      showProgress: false,
-    })
-  }
   return (
     <>
-      <Head title={contact.name} />
+      <Title>{contact.name}</Title>
       <p className="mb-2 text-sm text-muted-foreground">
-        <Link href={href('/contacts')}>← Contacts</Link>
+        <a href={href('/contacts')}>← Contacts</a>
       </p>
       <h1 data-testid="contact-name">{contact.name}</h1>
       <p className="lede">
-        Two forms on one page, each with its own error bag: the server puts each form's errors under
-        its name.
+        Two forms on one page, each posting to an action of its own (<code>?rename</code>,{' '}
+        <code>?email</code>): each shows the errors of its own fields.
       </p>
       {/* the changes are for signed-in users (the actions use requireUser) */}
       {user ? (
         <div className="grid gap-4 sm:grid-cols-2">
-          <DemoCard title="Rename" tag="useForm · bag: rename">
-            <BaseForm
-              onSubmit={submit}
-              errors={rename.errors}
+          <DemoCard title="Rename" tag="actions.rename">
+            <form
+              action={href('/contacts/:id?rename', { id: contact.id })}
+              method="post"
               className="grid gap-4"
               data-testid="rename"
             >
               <TextField
                 label="Name"
-                value={rename.data.name}
-                onChange={(e) => (
-                  rename.setData('name', e.target.value),
-                  rename.clearErrors('name')
-                )}
-                error={rename.errors.name}
+                name="name"
+                defaultValue={contact.name}
+                error={errors.name}
                 testid="err-rename"
               />
-              <SubmitButton processing={rename.processing}>Rename</SubmitButton>
-            </BaseForm>
+              <SubmitButton>Rename</SubmitButton>
+            </form>
           </DemoCard>
-          <DemoCard title="Email" tag="<Form> · bag: email">
-            <Form
+          <DemoCard title="Email" tag="actions.email">
+            <form
               action={href('/contacts/:id?email', { id: contact.id })}
               method="post"
-              errorBag="email"
-              showProgress={false}
-              options={{ preserveScroll: true }}
               className="grid gap-4"
               data-testid="email"
             >
-              {({ errors }) => (
-                <>
-                  <TextField
-                    label="Email"
-                    name="email"
-                    defaultValue={contact.email}
-                    error={errors.email}
-                    testid="err-email"
-                  />
-                  <SubmitButton>Change email</SubmitButton>
-                </>
-              )}
-            </Form>
+              <TextField
+                label="Email"
+                name="email"
+                defaultValue={contact.email}
+                error={errors.email}
+                testid="err-email"
+              />
+              <SubmitButton>Change email</SubmitButton>
+            </form>
           </DemoCard>
         </div>
       ) : (
