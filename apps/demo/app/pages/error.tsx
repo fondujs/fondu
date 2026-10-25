@@ -1,5 +1,6 @@
-import { Head, Link } from '@inertiajs/react'
 import { href } from 'fondu/client'
+
+import { Title } from '#/components/demo.tsx'
 
 const messages: Record<number, [title: string, text: string]> = {
   403: ['Not allowed', 'This page is for other accounts.'],
@@ -13,13 +14,13 @@ export default function ErrorPage({ status }: { status: number }) {
   const [title, text] = messages[status] ?? ['Something went wrong', 'Try again in a moment.']
   return (
     <>
-      <Head title={title} />
+      <Title>{title}</Title>
       <p className="mb-2 font-mono text-sm text-muted-foreground" data-testid="error-status">
         {status}
       </p>
       <h1>{title}</h1>
       <p className="lede">
-        {text} <Link href={href('/')}>Go to the overview</Link>.
+        {text} <a href={href('/')}>Go to the overview</a>.
       </p>
     </>
   )

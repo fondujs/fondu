@@ -1,7 +1,7 @@
 import { defineHandler, render } from 'fondu'
 
 // Props are checked against the page component's own props (pages/props.tsx): a missing or misspelled prop is a
-// type error here. A function is called only when its prop is sent.
+// type error here, as is one JSON can't deliver as the page types it (a Date is fine for a string).
 export const loader = defineHandler((c) =>
   render(c, 'props', {
     text: 'Hello from Hono',
@@ -9,7 +9,7 @@ export const loader = defineHandler((c) =>
     float: 2.5,
     boolean: true,
     nothing: null,
-    list: ['Hono', 'Inertia', 'React'],
+    list: ['Hono', 'Vite', 'React'],
     profile: {
       id: 7,
       name: 'Ada',
@@ -17,6 +17,6 @@ export const loader = defineHandler((c) =>
       roles: ['editor', 'reviewer'],
       isAdmin: false,
     },
-    computedAt: () => new Date().toISOString(),
+    computedAt: new Date(),
   }),
 )

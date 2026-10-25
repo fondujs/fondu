@@ -29,7 +29,9 @@ href('/props', { id: 1 })
 // ---- render(): only pages of app/pages/, props checked against the component's own
 void render(c, 'contacts/show', { contact: { id: 1, name: 'Ada', email: 'a@x.org' } })
 void render(c, 'routes')
-void render(c, 'contacts/index', { contacts: () => Promise.resolve([]) }) // a function: called only when sent
+void render(c, 'contacts/index', { contacts: [] })
+// @ts-expect-error a value, not a function (share() takes those)
+void render(c, 'contacts/index', { contacts: () => Promise.resolve([]) })
 // @ts-expect-error no such page
 void render(c, 'nope')
 // @ts-expect-error a required prop is missing
@@ -39,7 +41,7 @@ void render(c, 'contacts/show', { contact: { id: 'x', name: 'Ada', email: 'a@x.o
 // @ts-expect-error a prop the page does not take
 void render(c, 'routes', { extra: 1 })
 
-// ---- shared props and flash: typed by Inertia's own InertiaConfig (routes/_middleware.ts)
+// ---- shared props and flash: typed by Fondu's Register (routes/_middleware.ts)
 share(c, { auth: { user: { name: 'Ada', email: 'ada@x.org', role: 'user' } } })
 // @ts-expect-error name is a string
 share(c, { auth: { user: { name: 1, email: 'ada@x.org', role: 'user' } } })

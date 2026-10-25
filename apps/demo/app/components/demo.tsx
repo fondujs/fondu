@@ -1,7 +1,13 @@
-import { Link, useFormContext, usePage } from '@inertiajs/react'
-import { href } from 'fondu/client'
+import { href, useNavigating, usePage } from 'fondu/client'
 import { InfoIcon } from 'lucide-react'
-import { useEffect, useRef, useSyncExternalStore, type HTMLAttributes, type ReactNode } from 'react'
+import {
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type HTMLAttributes,
+  type ReactNode,
+} from 'react'
 
 import { Alert, AlertDescription } from '#/components/ui/alert.tsx'
 import { Badge } from '#/components/ui/badge.tsx'
@@ -11,6 +17,11 @@ import { Field, FieldError, FieldLabel } from '#/components/ui/field.tsx'
 import { Input, type InputProps } from '#/components/ui/input.tsx'
 import { Skeleton } from '#/components/ui/skeleton.tsx'
 import { cn } from '#/lib/utils.ts'
+
+/** The page's title, after the demo's name (React puts it in <head>) */
+export const Title = ({ children }: { children: string }) => (
+  <title>{`${children} · Fondu demo`}</title>
+)
 
 /** A card of the demo: what it shows, and the API it uses (`tag`) */
 export function DemoCard({
@@ -60,9 +71,9 @@ export const Loading = () => (
 )
 
 // How this document was rendered: the server snapshot is used while hydrating (so the markup matches), then the
-// browser's: whether the first page came server-rendered (`data-server-rendered`) and React hydrated it.
+// browser's: whether the first page came server-rendered (#app had the page before React ran) and React hydrated it.
 const ssrAtLoad =
-  typeof document !== 'undefined' && document.querySelector('[data-server-rendered]') !== null
+  typeof document !== 'undefined' && document.getElementById('app')?.hasChildNodes() === true
 const noop = () => () => {}
 export function RenderBadge() {
   const mode = useSyncExternalStore(
@@ -100,32 +111,28 @@ export function TextField({
   )
 }
 
-const noErrors = {}
-
 /**
- * A form's submit button, busy while the form is sent (so the form turns off Inertia's progress bar). In an
- * Inertia <Form> it reads the form's state, and when the submit comes back with errors, the first field to fix
- * gets the focus. For useForm or useHttp, pass `processing`, in Base UI's form (`ui/form.tsx`, given the
- * `errors`), which moves the focus itself.
+ * A form's submit button, busy while its form is sent (`useNavigating()`, from its click: Enter in a field clicks it
+ * too). When the answer comes back with errors, the first field to fix gets the focus. For a request of the page's
+ * own (fetch), pass `processing`.
  */
 export function SubmitButton({ processing, ...props }: ButtonProps & { processing?: boolean }) {
-  const form = useFormContext()
-  processing ??= form?.processing ?? false
-  const errors = form?.errors ?? noErrors
+  const navigating = useNavigating()
+  const { errors } = usePage().props
+  const [sent, setSent] = useState(false)
   const ref = useRef<HTMLButtonElement>(null)
-  const sent = useRef(false) // clicked: Enter in a field clicks it too
+  // the answer is on the screen: the focus to the first field to fix
   useEffect(() => {
-    if (!sent.current || processing) return // live validation's errors move nothing
-    sent.current = false
-    if (Object.keys(errors).length)
-      ref.current?.form?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus()
-  }, [processing, errors])
+    if (navigating || !sent || !Object.keys(errors).length) return
+    ref.current?.form?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus()
+  }, [sent, navigating, errors])
   return (
     <Button
       ref={ref}
       type="submit"
-      loading={processing}
-      onClick={() => (sent.current = true)}
+      loading={processing ?? (sent && navigating)}
+      onClick={() => setSent(true)}
+      onBlur={() => setSent(false)}
       {...props}
     />
   )
@@ -139,7 +146,7 @@ export function SignInFirst({ children }: { children: ReactNode }) {
       <InfoIcon />
       <AlertDescription>
         <p>
-          <Link href={`${href('/login')}?next=${encodeURIComponent(url)}`}>Sign in</Link> {children}
+          <a href={`${href('/login')}?next=${encodeURIComponent(url)}`}>Sign in</a> {children}
         </p>
       </AlertDescription>
     </Alert>

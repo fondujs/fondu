@@ -1,7 +1,7 @@
-import { Head, Link, WhenMounted } from '@inertiajs/react'
 import { href } from 'fondu/client'
+import { useSyncExternalStore } from 'react'
 
-import { DemoCard } from '#/components/demo.tsx'
+import { DemoCard, Title } from '#/components/demo.tsx'
 import { Button } from '#/components/ui/button.tsx'
 
 const code = (lines: string[]) => (
@@ -10,30 +10,37 @@ const code = (lines: string[]) => (
   </pre>
 )
 
+const noop = () => () => {}
+/** the server's snapshot while it renders and hydrates (no window there), the browser's once mounted */
+function Mounted() {
+  const width = useSyncExternalStore(
+    noop,
+    () => window.innerWidth,
+    () => null,
+  )
+  return width === null ? (
+    <p className="text-muted-foreground">Rendered on the server: no window here.</p>
+  ) : (
+    <p data-testid="mounted">Window width: {width}px</p>
+  )
+}
+
 export default function Ssr({ ssr }: { ssr: boolean }) {
   return (
     <>
-      <Head title="Server-side rendering" />
+      <Title>Server-side rendering</Title>
       <h1>Server-side rendering</h1>
       <p className="lede">
-        A page loaded as a document is rendered on the server (Inertia's own server render of{' '}
-        <code>app/app.tsx</code>, in the same process), then hydrated. Visits after that render in
-        the browser. Reload this page to see it: the badge at the top says how the document was
-        rendered.
+        A page loaded as a document is rendered on the server (<code>app/app.tsx</code>, in the same
+        process), then hydrated. Navigations after that render in the browser. Reload this page to
+        see it (on either route below): the badge at the top says how the document was rendered.
       </p>
       <div className="mb-4 flex flex-wrap gap-2">
-        <Button variant="outline" render={<a href={href('/ssr')} />} data-testid="doc-ssr">
-          Load with SSR
+        <Button variant="outline" render={<a href={href('/ssr')} />}>
+          With SSR
         </Button>
-        <Button
-          variant="outline"
-          render={<a href={href('/ssr/browser')} />}
-          data-testid="doc-browser"
-        >
-          Load without SSR
-        </Button>
-        <Button variant="outline" render={<Link href={href('/ssr/browser')} />}>
-          Visit (no document load)
+        <Button variant="outline" render={<a href={href('/ssr/browser')} />}>
+          Without SSR
         </Button>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
@@ -44,14 +51,8 @@ export default function Ssr({ ssr }: { ssr: boolean }) {
               : 'Never server-rendered: withoutSsr().'}
           </p>
         </DemoCard>
-        <DemoCard title="Browser-only parts" tag="<WhenMounted>">
-          <WhenMounted
-            fallback={
-              <p className="text-muted-foreground">Rendered on the server: no window here.</p>
-            }
-          >
-            {() => <p data-testid="mounted">Window width: {window.innerWidth}px</p>}
-          </WhenMounted>
+        <DemoCard title="Browser-only parts" tag="useSyncExternalStore">
+          <Mounted />
         </DemoCard>
         <DemoCard title="Some routes without SSR" className="sm:col-span-2">
           <p className="mb-3 text-muted-foreground">

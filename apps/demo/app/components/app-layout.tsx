@@ -1,5 +1,4 @@
-import { Link, usePage } from '@inertiajs/react'
-import { href } from 'fondu/client'
+import { href, usePage } from 'fondu/client'
 import { ArrowUpRight, Menu } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 
@@ -33,7 +32,7 @@ const sections: Array<[group: string | null, links: Array<[url: string, label: s
   ]),
 ]
 
-// The default layout (app.tsx): Inertia keeps it mounted while pages change. Below md the menu is a drawer from the
+// The default layout (app.tsx): it stays mounted while pages change. Below md the menu is a drawer from the
 // left, as on fondu.dev's docs.
 export default function AppLayout({ children }: { children: ReactNode }) {
   const { url, component } = usePage()
@@ -86,17 +85,17 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           </span>
         </header>
         <Toasts />
-        <main className="mx-auto max-w-5xl px-5 py-10 [view-transition-name:main]">{children}</main>
+        <main className="mx-auto max-w-5xl px-5 py-10">{children}</main>
       </div>
     </div>
   )
 }
 
 const Home = () => (
-  <Link href={href('/')} className="flex items-center gap-2 px-2 font-heading font-semibold">
+  <a href={href('/')} className="flex items-center gap-2 px-2 font-heading font-semibold">
     <Logo className="size-6" /> Fondu{' '}
     <span className="font-normal text-muted-foreground">demo</span>
-  </Link>
+  </a>
 )
 
 /** The demos, by group; where you are: a bar of the brand's gold */
@@ -131,15 +130,15 @@ function Nav({
                     )}
                   </a>
                 ) : (
-                  <Link
+                  <a
                     href={to}
-                    prefetch
+
                     onClick={onPick}
                     aria-current={active(to) ? 'page' : undefined}
                     className="relative block rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-accent aria-[current=page]:bg-accent aria-[current=page]:font-medium aria-[current=page]:before:absolute aria-[current=page]:before:inset-y-1.5 aria-[current=page]:before:-left-3 aria-[current=page]:before:w-0.5 aria-[current=page]:before:rounded-full aria-[current=page]:before:bg-brand"
                   >
                     {label}
-                  </Link>
+                  </a>
                 )}
               </li>
             ))}
