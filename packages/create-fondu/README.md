@@ -1,6 +1,6 @@
 # create-fondu
 
-Create a [Fondu](https://fondu.dev) app: full-stack React on Hono, Vite and Inertia, with Tailwind CSS, for Bun,
+Create a [Fondu](https://fondu.dev) app: full-stack React on Hono and Vite, with Tailwind CSS, for Bun,
 Cloudflare Workers or Node.
 
 ```bash

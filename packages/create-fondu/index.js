@@ -32,7 +32,7 @@ const SCRIPTS = {
   lint: 'lint (oxlint)',
   check: 'format, lint and typecheck: before a commit',
 }
-const HELP = `Create a Fondu app: full-stack React on Hono, Vite and Inertia.
+const HELP = `Create a Fondu app: full-stack React on Hono and Vite.
 
   create-fondu [dir] [options]
 
