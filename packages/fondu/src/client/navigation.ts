@@ -10,12 +10,15 @@ export interface Page {
   clearHistory?: true
 }
 
-type Info = { fondu?: { page: Page; scroll: boolean } | 'document' | 'reload' }
+type Info = { fondu?: { page: Page; scroll: boolean; fresh: boolean } | 'document' | 'reload' }
 
 interface Options {
   initial: Page
-  /** puts the page on the screen (in the DOM once it resolves) */
-  show: (page: Page) => Promise<void>
+  /**
+   * puts the page on the screen (in the DOM once it resolves); `fresh`: mounted anew, else it keeps its state (a form
+   * back with its errors, reload(), the server's page after the one kept for Back)
+   */
+  show: (page: Page, fresh: boolean) => Promise<void>
   /** `fondu({ prerender: true })`: GET navigations read `/_fondu/pages/<path>.json` */
   prerender: boolean
   /** a navigation or a form submission started (true) or ended (false) */
@@ -49,8 +52,8 @@ export function startNavigation({ initial, show, prerender, pending }: Options) 
   }
 
   const here = () => location.pathname + location.search
-  const display = (page: Page, scroll: boolean, history: 'push' | 'replace') =>
-    nav.navigate(page.url, { history, info: { fondu: { page, scroll } } satisfies Info })
+  const display = (page: Page, scroll: boolean, fresh: boolean, history: 'push' | 'replace') =>
+    nav.navigate(page.url, { history, info: { fondu: { page, scroll, fresh } } satisfies Info })
   const documentLoad = (url: string) =>
     nav.navigate(url, { history: 'replace', info: { fondu: 'document' } satisfies Info })
 
@@ -93,13 +96,13 @@ export function startNavigation({ initial, show, prerender, pending }: Options) 
 
     // a page already fetched (a form's answer, a redirect's target): shown by this navigation
     if (typeof info?.fondu === 'object') {
-      const { page, scroll } = info.fondu
+      const { page, scroll, fresh } = info.fondu
       event.intercept({
         scroll: 'manual',
         // the same page (a form back with its errors): the focus stays where it was, as the scroll position does
-        focusReset: scroll ? 'after-transition' : 'manual',
+        focusReset: fresh ? 'after-transition' : 'manual',
         async handler() {
-          await show(page)
+          await show(page, fresh)
           remember(page)
           if (scroll) scrollAfter(event)
         },
@@ -121,9 +124,10 @@ export function startNavigation({ initial, show, prerender, pending }: Options) 
         .then(async (response) => {
           const page = await read(response, response.url, true)
           if (!page || controller.signal.aborted) return
-          // the same URL (back with the errors): the form, its values and the scroll position stay
+          // the same URL: in place, at the same scroll position; back with errors, the form and its values stay too
           const same = page.url === here()
-          display(page, !same, same ? 'replace' : 'push')
+          const errors = Object.keys((page.props.errors as object | undefined) ?? {}).length > 0
+          display(page, !same, !(same && errors), same ? 'replace' : 'push')
         })
         .catch((error: Error) => {
           if (error.name !== 'AbortError') throw error // the form stays, to send again
@@ -141,7 +145,7 @@ export function startNavigation({ initial, show, prerender, pending }: Options) 
           const back = event.navigationType === 'traverse'
           const kept = back ? saved.get(event.destination.key) : undefined
           if (kept) {
-            await show(kept)
+            await show(kept, true)
             scrollAfter(event)
           }
           const path = url.pathname + url.search
@@ -150,8 +154,8 @@ export function startNavigation({ initial, show, prerender, pending }: Options) 
           const page = await read(response, url.href, false)
           if (!page || event.signal.aborted) return
           // redirected: the page at its own URL, in place of this entry
-          if (page.url !== path) return void display(page, !kept, 'replace')
-          await show(page)
+          if (page.url !== path) return void display(page, !kept, true, 'replace')
+          await show(page, !kept && event.navigationType !== 'reload')
           remember(page)
           if (!kept && event.navigationType !== 'reload') scrollAfter(event)
         } catch (error) {
