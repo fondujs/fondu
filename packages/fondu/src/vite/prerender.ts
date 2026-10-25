@@ -59,15 +59,15 @@ export function staticPolicy(policy: string, hashes: string[] = []): string {
 }
 
 /**
- * `_headers` with Fondu's rules in it: the documents' security headers (`/*`), and the page objects' X-Inertia
- * (Inertia requires it). A path the file has a rule for gets the headers it doesn't set there, so the app's own stay
+ * `_headers` with Fondu's rules in it: the documents' security headers (`/*`), and the page objects' X-Fondu
+ * (the client reads a page by it). A path the file has a rule for gets the headers it doesn't set there, so the app's own stay
  * (Workers keep one rule per path: a second `/*` would replace the first); any other, a rule at the end.
  */
 export function withHeaderRules(file: string, headers: Record<string, string>): string {
   const lines = file.replace(/\n+$/, '').split('\n')
   const rules: Array<[string, Record<string, string>]> = [
     ['/*', headers],
-    [`${PAGE_DATA}/*`, { 'X-Inertia': 'true' }],
+    [`${PAGE_DATA}/*`, { 'X-Fondu': 'true' }],
   ]
   for (const [path, set] of rules) {
     const start = lines.findIndex((line) => line.trimEnd() === path)
@@ -97,7 +97,7 @@ interface Server {
 /**
  * After the build: the built server (the Worker in wrangler, or `node` / `bun dist/server/index.js`), started with
  * `FONDU_PRERENDER` set, lists the pages to prerender (`/__fondu/prerender`); each is asked for as a document and as
- * a visit, and both are written to the client build. Cloudflare serves them before the Worker, with the security
+ * a navigation, and both are written to the client build. Cloudflare serves them before the Worker, with the security
  * headers written to `_headers`; Node and Bun before the routes, behind the app's own headers.
  */
 export async function prerender(
@@ -133,8 +133,8 @@ export async function prerender(
     for (const path of paths) {
       const doc = await get(path, { Accept: 'text/html' })
       const visit = await get(path, {
-        'X-Inertia': 'true',
-        ...(version && { 'X-Inertia-Version': version }),
+        'X-Fondu': 'true',
+        ...(version && { 'X-Fondu-Version': version }),
       })
       if (doc.status !== 200 || visit.status !== 200) {
         const to = doc.headers.get('location')
@@ -144,11 +144,6 @@ export async function prerender(
         continue
       }
       const page = (await visit.json()) as Record<string, unknown>
-      const later = (['deferredProps', 'scrollProps'] as const).filter((key) => page[key])
-      if (later.length) {
-        errors.push(`${path}: ${later.join(', ')} ask the server again; not for a prerendered page`)
-        continue
-      }
       const { html, hashes } = ownScripts(
         await doc.text(),
         doc.headers.get('content-security-policy') ?? undefined,

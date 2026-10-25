@@ -1,9 +1,10 @@
-import type { Page } from '@inertiajs/core'
 /// <reference path="../virtual.d.ts" />
 import type { Context, MiddlewareHandler } from 'hono'
 import type { ReactElement } from 'react'
 import { assetTags } from 'virtual:fondu/assets'
 import { renderMarkup, renderPage } from 'virtual:fondu/ssr'
+
+import type { Page } from '../client/navigation.js'
 
 /**
  * The HTML document around a page: `{head}` and `{body}` (in JSX, or `${head}` in a string) are where the page goes.
@@ -11,7 +12,7 @@ import { renderMarkup, renderPage } from 'virtual:fondu/ssr'
  * writes it: `<script nonce="${nonce}">`.
  */
 export interface DocumentParts {
-  /** the page's `<Head>` tags (server render), then the client's styles and scripts */
+  /** the tags the page renders (`<title>`, `<meta>`: server render), then the client's styles and scripts */
   head: string
   /** the page data (`<script data-page>`) and the rendered page (`<div id="app">`) */
   body: string
@@ -43,7 +44,7 @@ export const withoutSsr = (): MiddlewareHandler => async (c, next) => {
   await next()
 }
 
-/** Inertia's own encoding of the page data (`buildSSRBody`): `/` and `<` escaped, no HTML entities. */
+/** the page data, `/` and `<` escaped (no `</script>` in it), no HTML entities */
 const pageScript = (page: Page) =>
   `<script data-page="app" type="application/json">${JSON.stringify(page).replace(/\//g, '\\/').replace(/</g, '\\u003c')}</script>`
 
@@ -70,7 +71,7 @@ async function shell(
 
 export async function renderDocument(c: Context, page: Page): Promise<string> {
   const nonce = (c.get as (key: string) => unknown)('secureHeadersNonce') as string | undefined
-  let ssr: { head: string[]; body: string } | null = null
+  let ssr: { head: string; body: string } | null = null
   try {
     if (renderPage && !browserOnly.has(c)) ssr = await renderPage(page)
   } catch (error) {
@@ -80,9 +81,9 @@ export async function renderDocument(c: Context, page: Page): Promise<string> {
       error,
     )
   }
-  // the page data first, as Inertia writes it: its client reads the first `script[data-page]` in the document, so
-  // nothing in the page's content can come before it
-  const body = ssr?.body ?? `${pageScript(page)}<div id="app"></div>`
+  // the page data first: the client reads the first `script[data-page]` in the document, so nothing in the page's
+  // content can come before it
+  const body = pageScript(page) + (ssr?.body ?? '<div id="app"></div>')
   const template = settings.get(c)?.document ?? defaultTemplate
   const html = await shell(template, c, nonce)
   const [before, between, after, ...more] = html.split(new RegExp(`${HEAD}|${BODY}`))
@@ -90,7 +91,5 @@ export async function renderDocument(c: Context, page: Page): Promise<string> {
     throw new Error(
       'fondu: the document must have `head` once, in <head>, and `body` once, in <body>',
     )
-  return (
-    before + (ssr?.head.join('') ?? '') + assetTags(page.component, nonce) + between + body + after
-  )
+  return before + (ssr?.head ?? '') + assetTags(page.component, nonce) + between + body + after
 }

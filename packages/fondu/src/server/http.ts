@@ -1,10 +1,11 @@
 import type { Context } from 'hono'
 
-export const isInertia = (c: Context) => c.req.header('x-inertia') === 'true'
+/** a navigation of fondu/client: it wants the page as JSON */
+export const isPageRequest = (c: Context) => c.req.header('x-fondu') === 'true'
 
-/** a visit or a document load (gets a page), not an API client (gets data) */
+/** a navigation or a document load (gets a page), not an API client (gets data) */
 export const wantsPage = (c: Context) =>
-  isInertia(c) || (c.req.header('accept') ?? '').includes('text/html')
+  isPageRequest(c) || (c.req.header('accept') ?? '').includes('text/html')
 
 /** `url` as a URL of this site, or null (another site, unparsable) */
 export function sameOrigin(c: Context, url: string | undefined): URL | null {
@@ -24,8 +25,8 @@ export const back = (c: Context, fallback = '/') => {
 }
 
 /**
- * A full page load of `url` (another site, a non-Inertia page): Inertia's requests get 409 + `X-Inertia-Location`
- * (the client then sets `window.location`), others a plain redirect.
+ * A document load of `url` (another site, a file): a navigation gets 409 + `X-Fondu-Location` (the client then loads
+ * it), a document a plain redirect.
  */
 export const location = (c: Context, url: string) =>
-  isInertia(c) ? c.body(null, 409, { 'X-Inertia-Location': url }) : c.redirect(url, 302)
+  isPageRequest(c) ? c.body(null, 409, { 'X-Fondu-Location': url }) : c.redirect(url, 302)

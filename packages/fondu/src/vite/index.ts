@@ -6,13 +6,12 @@ import { dirname, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
 import devServer, { defaultOptions as devServerDefaults } from '@hono/vite-dev-server'
-import inertia from '@inertiajs/vite'
 import react, { type Options as ReactOptions } from '@vitejs/plugin-react'
 import type { Plugin, PluginOption, ResolvedConfig, UserConfig } from 'vite'
 
-import { isPageFile } from '../paths.js'
+import { isPageFile, layoutsOf } from '../paths.js'
 import { hmr, PAGE_EXPORTS, PROPS_EVENT } from './hmr.js'
-import { layouts } from './layouts.js'
+import { pages } from './pages.js'
 import { nodeServer, prerender, worker } from './prerender.js'
 import { typegen } from './typegen.js'
 import { vitestCache } from './vitest-cache.js'
@@ -20,10 +19,11 @@ import { vitestCache } from './vitest-cache.js'
 /**
  * `vite.config.ts`: `plugins: [fondu({ target: 'node' })]` (or `'bun'`; for Cloudflare: `cloudflare()` and
  * `fondu({ target: 'cloudflare' })`). Composes the packages that do the work:
- * - `@vitejs/plugin-react`, and `@inertiajs/vite` (pages from `app/pages/`, the server render of `app/app.tsx`)
+ * - `@vitejs/plugin-react`
  * - Node / Bun: `@hono/vite-dev-server` (dev); the build is Vite's own, of two environments (`serverEntry()`)
  * - Cloudflare: `@cloudflare/vite-plugin` (yours: dev in workerd, the Worker's build)
- * and adds what none of them does: the document's asset tags, the generated types, the server-only guard. One
+ * and adds what none of them does: the pages for `app/app.tsx`, the document's asset tags, the generated types, the
+ * server-only guard. One
  * `vite build` builds the client, then the server, then the pages to prerender.
  */
 export interface FonduOptions {
@@ -35,7 +35,7 @@ export interface FonduOptions {
   react?: ReactOptions
   /**
    * Routes with `export const prerender` (or under a `_middleware.ts` with it) are written as static files at build
-   * time, and visits read them; the server (the Worker) answers the other pages
+   * time, and navigations read them; the server (the Worker) answers the other pages
    */
   prerender?: boolean
 }
@@ -61,23 +61,15 @@ const V = {
 }
 const resolved = (id: string) => '\0' + id
 
-/**
- * `@inertiajs/vite` wraps `createInertiaApp(...)` for the server; its React template also starts a standalone
- * SSR server (Laravel's model). Same wrap, rendering in this process: the template only exports the render.
- */
-const inertiaInProcess = {
-  package: '@inertiajs/react',
-  extensions: ['.tsx', '.jsx', '.mdx'],
-  extractDefault: true,
-  ssr: (configureCall: string) => `
-import { renderToString } from 'react-dom/server'
-const renderPromise = ${configureCall}
-renderPromise.catch((error) => console.error(error))
-export default async function renderPage(page) {
-  return (await renderPromise)(page, renderToString)
-}
-`,
-}
+/** the page modules, for the app entry: `app/pages/`, but what isn't a page (`_layout.tsx`, `_parts/`, tests) */
+const PAGES_GLOB = [
+  '/app/pages/**/*.{tsx,jsx,mdx}',
+  '!/app/pages/**/_*',
+  '!/app/pages/**/_*/**',
+  '!/app/pages/**/*.{test,spec}.{tsx,jsx}',
+]
+/** and the layouts (`_layout.tsx`): the client puts a page in those of its directories */
+const LAYOUTS_GLOB = ['/app/pages/**/_layout.{tsx,jsx}', '!/app/pages/**/_*/**']
 
 /** For the dependency scan: an MDX page as the JavaScript @mdx-js/rollup makes of it (nothing without it) */
 function scanMdx(config: () => ResolvedConfig): Plugin {
@@ -96,7 +88,7 @@ function scanMdx(config: () => ResolvedConfig): Plugin {
 }
 
 /**
- * The Worker never mounts or hydrates a page, but @inertiajs/react imports `react-dom/client` (createRoot,
+ * The Worker never mounts or hydrates a page, but fondu/client imports `react-dom/client` (createRoot,
  * hydrateRoot) at its top: the whole of React's browser renderer in the Worker, evaluated at every start. There, it
  * is a module that says so if called (about a third of the Worker, and of its start in dev)
  */
@@ -125,10 +117,8 @@ export default function fondu(options: FonduOptions): PluginOption[] {
   return [
     // .mdx too: MDX pages and components get Fast Refresh (as MDX's own docs set it up)
     react({ include: /\.(?:[jt]sx?|mdx)$/, ...options.react }),
-    // `ssr: {}`: the server transform without an entry, so without @inertiajs/vite's dev SSR endpoint (Laravel's model)
-    inertia({ ssr: options.ssr === false ? false : {}, frameworks: inertiaInProcess }),
     core(options),
-    layouts(),
+    pages(),
     vitestCache(ENTRY),
     hmr(),
     loadFailure(),
@@ -242,10 +232,9 @@ function runtimePlugins(options: FonduOptions): PluginOption[] {
 }
 
 /**
- * Dev: the app that fails to load (a route that throws as it is imported) is Vite's error page, which an Inertia
- * visit can't show: its dialog's frame keeps the page's Content Security Policy, which stops the page's script. The
- * visit loads the URL as a whole page instead (Inertia's 409), where Vite's overlay shows the error; the next change
- * reloads it.
+ * Dev: the app that fails to load (a route that throws as it is imported) is Vite's error page, which a navigation
+ * can't show as a page: it loads the URL as a document instead (409), where Vite's overlay shows the error; the next
+ * change reloads it.
  */
 function loadFailure(): Plugin {
   let failed = false
@@ -262,12 +251,12 @@ function loadFailure(): Plugin {
             res: ServerResponse,
             next: (e: unknown) => void,
           ) => {
-            const visit = Boolean(req.headers['x-inertia'])
+            const navigation = req.headers['x-fondu'] === 'true'
             // a page failed (not a module of the browser's): the next change reloads it
-            if (visit || req.headers.accept?.includes('text/html')) failed = true
-            if (!visit) return next(error)
+            if (navigation || req.headers.accept?.includes('text/html')) failed = true
+            if (!navigation) return next(error)
             res.writeHead(409, {
-              'X-Inertia-Location': (req as { originalUrl?: string }).originalUrl ?? req.url,
+              'X-Fondu-Location': (req as { originalUrl?: string }).originalUrl ?? req.url,
             })
             res.end()
           },
@@ -366,16 +355,20 @@ function core(options: FonduOptions): Plugin {
       if (name === 'client') return { optimizeDeps: { entries: [ENTRY, ...pages], ...mdx } }
       if (options.target !== 'cloudflare') return
       // the Worker: fondu is not pre-bundled (its routes import it back: a bundle would hand them a half-loaded
-      // module), so the scan does not see what it imports (HONO); nor react-dom/server, imported by @inertiajs/vite's
-      // generated render. Found late, they would restart the Worker in the middle of requests.
+      // module), so the scan does not see what it imports (HONO, react, react-dom); nor react-dom/server, imported by
+      // the server render (virtual:fondu/ssr). Found late, they would restart the Worker in the middle of requests.
       // The build is minified, as Workers start faster with less code to parse
       return {
         optimizeDeps: {
           exclude: ['fondu'],
-          include: [...HONO, ...(options.ssr === false ? [] : ['react-dom/server'])],
+          include: [
+            ...HONO,
+            'react',
+            'react-dom',
+            ...(options.ssr === false ? [] : ['react-dom/server']),
+          ],
           entries: [SERVER.slice(2), 'app/routes/**/*.ts', ENTRY, ...pages],
           ...mdx,
-          // the pre-bundled @inertiajs/react too
           rolldownOptions: { plugins: [...mdx.rolldownOptions.plugins, serverReactDomClient()] },
         },
         ...(env.build?.minify === undefined && { build: { minify: true } }),
@@ -435,30 +428,33 @@ function core(options: FonduOptions): Plugin {
     resolveId(id) {
       if (id === V.assets || id === V.ssr) return resolved(id)
     },
-    // the client entry: with prerender, page objects read from the prerendered files (fondu/client's `prerendered`);
-    // in production, an answer to a visit that isn't a page loaded as a document (`documentFallback`); in dev,
-    // Inertia's dialog (the error report is shown there), and the page's props asked for again when what its route
-    // depends on changed (hmr.ts)
+    // the app entry, in the browser and for the server render: the page and layout modules, and whether pages are prerendered
+    // (navigations read their page objects from the static files); in dev, the page's props asked for again when
+    // what its route depends on changed (hmr.ts). Within the first line: the lines stay where they were
     transform(code, id) {
-      if (this.environment.config.consumer !== 'client' || id !== resolve(config.root, ENTRY))
-        return
+      if (id !== resolve(config.root, ENTRY)) return
+      const client = this.environment.config.consumer === 'client'
       const before = [
-        ...(options.prerender ? [`import { prerendered } from 'fondu/client';prerendered();`] : []),
-        ...(isBuild
-          ? [`import { documentFallback } from 'fondu/client';documentFallback();`]
-          : [
-              `import { router as __fondu_router } from '@inertiajs/react';`,
-              `import.meta.hot?.on(${JSON.stringify(PROPS_EVENT)}, () => __fondu_router.reload());`,
-            ]),
+        `import { __entry as __fondu_entry${client && !isBuild ? ', reload as __fondu_reload' : ''} } from 'fondu/client';`,
+        `__fondu_entry(import.meta.glob(${JSON.stringify(PAGES_GLOB)}), import.meta.glob(${JSON.stringify(LAYOUTS_GLOB)}), { prerender: ${Boolean(options.prerender)} });`,
+        ...(client && !isBuild
+          ? [`import.meta.hot?.on(${JSON.stringify(PROPS_EVENT)}, () => __fondu_reload());`]
+          : []),
       ]
-      if (before.length) return { code: before.join('') + code, map: null }
+      return { code: before.join('') + code, map: null }
     },
     load(id) {
       // and React's static markup for a JSX document (react-dom/server: the server render's, or loaded for it)
       if (id === resolved(V.ssr))
         return options.ssr === false
           ? `export const renderPage = null\nexport const renderMarkup = async (el) => (await import('react-dom/server')).renderToStaticMarkup(el)`
-          : `export { default as renderPage } from '/${ENTRY}'\nexport { renderToStaticMarkup as renderMarkup } from 'react-dom/server'`
+          : [
+              `import '/${ENTRY}'`,
+              `import { renderToString, renderToStaticMarkup } from 'react-dom/server'`,
+              `import { renderPage as render } from 'fondu/client'`,
+              `export const renderPage = (page) => render(page, renderToString)`,
+              `export { renderToStaticMarkup as renderMarkup }`,
+            ].join('\n')
       if (id === resolved(V.assets))
         return (
           (isBuild ? productionAssets(config, options) : devAssets(config.base)) +
@@ -532,7 +528,15 @@ function productionAssets(config: ResolvedConfig, options: FonduOptions): string
   const pages: Record<string, { css: string[]; js: string[] }> = {}
   for (const key of Object.keys(manifest)) {
     const m = key.match(/^app\/pages\/(.+)\.(?:[jt]sx|mdx)$/)
-    if (m && isPageFile(key)) pages[m[1]!] = tags(key)
+    if (!m || !isPageFile(key)) continue
+    // the page's chunk, and its layouts' (loaded with it)
+    const around = layoutsOf(m[1]!)
+      .flatMap((dir) =>
+        ['tsx', 'jsx'].map((ext) => `app/pages/${dir ? `${dir}/` : ''}_layout.${ext}`),
+      )
+      .filter((k) => k in manifest)
+    const all = [...around, key].map(tags)
+    pages[m[1]!] = { css: all.flatMap((t) => t.css), js: all.flatMap((t) => t.js) }
   }
   const version = createHash('sha256').update(text).digest('hex').slice(0, 16)
   return `const base = ${JSON.stringify(config.base)}

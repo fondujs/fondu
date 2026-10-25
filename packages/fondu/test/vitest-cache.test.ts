@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -19,21 +19,14 @@ function generatorFor(root: string, hook = 'defineCacheKeyGenerator') {
 
 describe("Vitest's file cache", () => {
   const root = mkdtempSync(join(tmpdir(), 'fondu-vitest-cache-'))
-  mkdirSync(join(root, 'app/pages/admin'), { recursive: true })
   const generate = generatorFor(root)
 
-  test("a page's key has its layout chain: a _layout.tsx added above it is a new key", () => {
-    const page = { id: join(root, 'app/pages/admin/users.tsx') }
-    const before = generate(page)
-    writeFileSync(join(root, 'app/pages/admin/_layout.tsx'), 'export default () => null')
-    expect(generate(page)).not.toBe(before)
-    expect(generate({ id: `${page.id}?v=1` })).toBe(generate(page))
-  })
-  test('the entry is not cached: its transform lists the pages', () => {
+  test('the entry is not cached: its transform lists the pages and layouts', () => {
     expect(generate({ id: join(root, 'app/app.tsx') })).toBe(false)
     expect(generate({ id: `${join(root, 'app/app.tsx')}?v=1` })).toBe(false)
   })
   test("anything else: Vitest's key", () => {
+    expect(generate({ id: join(root, 'app/pages/admin/users.tsx') })).toBeUndefined()
     expect(generate({ id: join(root, 'app/pages/admin/_layout.tsx') })).toBeUndefined()
     expect(generate({ id: join(root, 'app/components/badge.tsx') })).toBeUndefined()
     expect(generate({ id: join(root, 'app/routes/index.ts') })).toBeUndefined()

@@ -1,6 +1,7 @@
-import type { FlashData } from '@inertiajs/core'
 import type { Context, MiddlewareHandler } from 'hono'
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
+
+import type { Flash } from '../types.js'
 
 /**
  * Flash data and validation errors for the next page, the way Laravel keeps them in the session: here a short
@@ -31,8 +32,8 @@ export const isSecure = (c: Context) =>
   c.req.header('x-forwarded-proto')?.split(',')[0]?.trim() === 'https'
 const cookieName = (c: Context) => (isSecure(c) ? '__Host-fondu-flash' : 'fondu-flash')
 
-/** Flash data for the next page (`page.flash` / `usePage().flash`, Inertia's `flash` event). */
-export function flash(c: Context, data: Partial<FlashData>) {
+/** Flash data for the next page (`usePage().flash`), typed by `Register['flash']`. */
+export function flash(c: Context, data: Partial<Flash>) {
   const out = state(c).outgoing
   out.flash = { ...out.flash, ...data }
 }
@@ -42,18 +43,19 @@ export function flashErrors(c: Context, errors: Record<string, unknown>) {
   state(c).outgoing.errors = errors
 }
 
-/** The next page clears the browser history Inertia kept (and encrypted): after signing out, for example. */
+/** The next page forgets the pages kept for Back: after signing out, for example. */
 export function clearHistory(c: Context) {
   state(c).outgoing.clearHistory = true
 }
 
 /** What this page shows: carried over from the previous request (read once), plus what this request set. */
-export function takeCarried(
-  c: Context,
-  consume: boolean,
-): { flash: Record<string, unknown>; errors: Record<string, unknown>; clearHistory: boolean } {
+export function takeCarried(c: Context): {
+  flash: Record<string, unknown>
+  errors: Record<string, unknown>
+  clearHistory: boolean
+} {
   const s = state(c)
-  if (consume && !s.read) {
+  if (!s.read) {
     s.read = true
     try {
       s.incoming = JSON.parse(getCookie(c, cookieName(c)) ?? 'null') ?? undefined
@@ -66,7 +68,7 @@ export function takeCarried(
     errors: { ...s.incoming?.errors, ...s.outgoing.errors },
     clearHistory: Boolean(s.incoming?.clearHistory || s.outgoing.clearHistory),
   }
-  if (consume) s.outgoing = {}
+  s.outgoing = {}
   return carried
 }
 

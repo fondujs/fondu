@@ -1,7 +1,7 @@
 import type { ExecutionContext, Hono } from 'hono'
 
 import { fillPattern, PAGE_DATA, pathOfPageData, staticFiles } from '../paths.js'
-import { isInertia } from './http.js'
+import { isPageRequest } from './http.js'
 
 /** `export const prerender` of a route or a `_middleware.ts`: the params of a dynamic route's pages, or on / off */
 export type Prerender =
@@ -62,7 +62,7 @@ export async function prerenderPaths(
 
 /**
  * `fondu({ prerender: true })`: the page object of a page without a static file (`/_fondu/pages/x.json` → `/x`, as
- * a visit), and, while the build prerenders (`FONDU_PRERENDER` set), the paths to write.
+ * a navigation), and, while the build prerenders (`FONDU_PRERENDER` set), the paths to write.
  */
 export function prerenderRoutes(app: Hono, routes: () => PrerenderRoute[], version: string | null) {
   // Node / Bun: a prerendered page from its file, before the routes and behind the app's security headers (on
@@ -70,8 +70,8 @@ export function prerenderRoutes(app: Hono, routes: () => PrerenderRoute[], versi
   app.use(async (c, next) => {
     const read = (globalThis as Record<symbol, unknown>)[STATIC_FILES] as StaticFiles | undefined
     if (!read || (c.req.method !== 'GET' && c.req.method !== 'HEAD')) return next()
-    const data = pathOfPageData(c.req.path) !== null // a visit, rewritten to the page object by fondu/client
-    if (!data && (isInertia(c) || !(c.req.header('accept') ?? '').includes('text/html')))
+    const data = pathOfPageData(c.req.path) !== null // a navigation, rewritten to the page object by fondu/client
+    if (!data && (isPageRequest(c) || !(c.req.header('accept') ?? '').includes('text/html')))
       return next()
     let file: string
     try {
@@ -83,7 +83,7 @@ export function prerenderRoutes(app: Hono, routes: () => PrerenderRoute[], versi
     const body = await read(file)
     if (!body) return next()
     c.header('Cache-Control', 'private, no-cache')
-    if (data) c.header('X-Inertia', 'true')
+    if (data) c.header('X-Fondu', 'true')
     // the document's own tags have the build's nonce (the build dropped any other): this response's instead, as the
     // security headers give it a new one
     const nonce = (c.get as (key: string) => unknown)('secureHeadersNonce') as string | undefined
@@ -104,7 +104,7 @@ export function prerenderRoutes(app: Hono, routes: () => PrerenderRoute[], versi
     const url = new URL(c.req.url)
     url.pathname = path
     const headers = new Headers(c.req.raw.headers)
-    headers.set('X-Inertia', 'true')
+    headers.set('X-Fondu', 'true')
     let ctx: ExecutionContext | undefined
     try {
       ctx = c.executionCtx
