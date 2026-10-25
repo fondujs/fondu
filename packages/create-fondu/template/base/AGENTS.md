@@ -26,7 +26,8 @@ swaps the page in place (the browser's Navigation API; without it, a page load).
 - Editor snippets (VS Code): `.vscode/fondu.code-snippets`, `/route`, `/loader`, `/action`, `/page`…
 - Links and forms: `<a href>` and `<form method="post">`, URLs from `href('/users/:id', { id })` (`fondu/client`,
   typed after `app/routes/`). A form's errors: the page's `errors` prop. From `fondu/client` too: `usePage()` (props,
-  shared props, `url`, `flash`), `useNavigating()` (pending UI), `navigate(href)`, `reload()` (the props again).
+  shared props, `url`, `flash`), `useNavigating()` (pending UI), `reload()` (the props again). In code, `location.assign(href(…))` navigates as a link
+  would; `loadDocument(href(…))` loads a document instead.
 - The head: a page renders `<title>` and `<meta>` where it likes; React puts them in `<head>`. A title is one string:
   ``<title>{`${user.name} · Fondu`}</title>``.
 - Server-only code: `app/routes/`, `app/server.ts`, and files named `*.server.ts`. Browser code (pages, components)

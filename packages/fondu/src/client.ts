@@ -33,11 +33,10 @@ export {
   startApp,
   usePage,
   useNavigating,
-  navigate,
   reload,
   __entry,
   renderPage,
   type AppOptions,
   type Errors,
 } from './client/app.js'
-export type { Page } from './client/navigation.js'
+export { loadDocument, type Page } from './client/navigation.js'
