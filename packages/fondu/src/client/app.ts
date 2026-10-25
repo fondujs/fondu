@@ -16,7 +16,7 @@ import { createRoot, hydrateRoot } from 'react-dom/client'
 
 import { layoutsOf } from '../paths.js'
 import type { Flash, Shared } from '../types.js'
-import { again, go, startNavigation, type Page } from './navigation.js'
+import { again, startNavigation, type Page } from './navigation.js'
 
 type Layout = ComponentType<{ children: ReactNode }>
 type PageComponent = ComponentType<Record<string, unknown>> & { layout?: Layout | Layout[] }
@@ -172,17 +172,6 @@ export function useNavigating(): boolean {
     () => navigating,
     () => false,
   )
-}
-
-/**
- * To a page of the app, as a link would (`history: 'replace'`: in place of this one). Every navigation is the client's,
- * `location.href = …` too: `document: true` loads the URL as a document (what changes `<html>`, a language).
- */
-export function navigate(
-  href: string,
-  options: { history?: 'auto' | 'push' | 'replace'; document?: boolean } = {},
-) {
-  go(href, options.history, options.document)
 }
 
 /** this page's props asked for again: the page keeps its state and the scroll position */

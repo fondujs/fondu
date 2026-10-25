@@ -1,4 +1,4 @@
-import { href, navigate, type Errors } from 'fondu/client'
+import { href, loadDocument, type Errors } from 'fondu/client'
 
 import { DemoCard, SubmitButton, TextField, Title } from '#/components/demo.tsx'
 import { Button } from '#/components/ui/button.tsx'
@@ -20,7 +20,7 @@ const names: Record<Locale, string> = { en: 'English', de: 'Deutsch', zh: 'ä¸­æ–
 // another language: remembered (setLocale's cookie), then the page in its URL, loaded as a document (its <html lang>)
 const pick = (locale: Locale) => {
   setLocale(locale, { reload: false })
-  navigate(localizeHref(href('/i18n'), { locale }), { document: true })
+  loadDocument(localizeHref(href('/i18n'), { locale }))
 }
 
 export default function I18n({ rendered, date, price, alternates, errors }: Props) {

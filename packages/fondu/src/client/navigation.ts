@@ -178,13 +178,14 @@ export function startNavigation({ initial, show, prerender, pending }: Options) 
   })
 }
 
-/** a navigation of the app's own, as a link would be; with no Navigation API, a document */
-export function go(url: string, history: 'auto' | 'push' | 'replace' = 'auto', document = false) {
+/**
+ * `href` loaded as a document. Every other navigation is the client's, `location.assign()` and `location.href = …`
+ * too: this is for what a page can't change in place (`<html lang>`: another language).
+ */
+export function loadDocument(href: string) {
   const nav = navigation()
-  const info: Info | undefined = document ? { fondu: 'document' } : undefined
-  if (nav) nav.navigate(url, { history, info })
-  else if (history === 'replace') location.replace(url)
-  else location.assign(url)
+  if (nav) nav.navigate(href, { info: { fondu: 'document' } satisfies Info })
+  else location.assign(href)
 }
 
 /** the page asked for again, its state and the scroll position kept */
