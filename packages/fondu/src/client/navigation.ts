@@ -25,6 +25,7 @@ interface Options {
   pending: (pending: boolean) => void
 }
 
+const noop = () => {}
 const navigation = () =>
   (globalThis as unknown as { navigation?: Navigation }).navigation as Navigation | undefined
 
@@ -42,7 +43,8 @@ export function startNavigation({ initial, show, prerender, pending }: Options) 
   const saved = new Map<string, Page>()
   const remember = (page: Page) => {
     if (page.clearHistory) saved.clear()
-    if (nav.currentEntry) saved.set(nav.currentEntry.key, page)
+    // its flash data was shown once: not again on Back
+    if (nav.currentEntry) saved.set(nav.currentEntry.key, { ...page, flash: {} })
   }
   remember(initial)
   const begin = () => {
@@ -54,8 +56,12 @@ export function startNavigation({ initial, show, prerender, pending }: Options) 
   const here = () => location.pathname + location.search
   const display = (page: Page, scroll: boolean, fresh: boolean, history: 'push' | 'replace') =>
     nav.navigate(page.url, { history, info: { fondu: { page, scroll, fresh } } satisfies Info })
-  const documentLoad = (url: string) =>
-    nav.navigate(url, { history: 'replace', info: { fondu: 'document' } satisfies Info })
+  // a GET's in place of the entry it committed; a POST's after the page it was sent from
+  const documentLoad = (url: string, post = false) =>
+    nav.navigate(url, {
+      history: post ? 'push' : 'replace',
+      info: { fondu: 'document' } satisfies Info,
+    })
 
   /** the page a response is, or undefined when it's handled here (a new build, not a page) */
   const read = async (
@@ -64,11 +70,11 @@ export function startNavigation({ initial, show, prerender, pending }: Options) 
     post: boolean,
   ): Promise<Page | undefined> => {
     const to = response.headers.get('X-Fondu-Location')
-    if (response.status === 409 && to) return void documentLoad(to)
+    if (response.status === 409 && to) return void documentLoad(to, post)
     if (!response.headers.has('X-Fondu')) {
       // a proxy's error page, a file: the URL as a document (a POST's redirect: its target); the answer to a POST
       // itself can't be asked for again
-      if (!post || response.redirected) return void documentLoad(url)
+      if (!post || response.redirected) return void documentLoad(url, post)
       const html = await response.text()
       document.open()
       document.write(html)
@@ -76,7 +82,8 @@ export function startNavigation({ initial, show, prerender, pending }: Options) 
       return
     }
     const page = (await response.json()) as Page
-    if (version && page.version && page.version !== version) return void documentLoad(page.url)
+    if (version && page.version && page.version !== version)
+      return void documentLoad(page.url, post)
     version = page.version
     return page
   }
@@ -127,7 +134,9 @@ export function startNavigation({ initial, show, prerender, pending }: Options) 
           // the same URL: in place, at the same scroll position; back with errors, the form and its values stay too
           const same = page.url === here()
           const errors = Object.keys((page.props.errors as object | undefined) ?? {}).length > 0
-          display(page, !same, !(same && errors), same ? 'replace' : 'push')
+          // pending until the page is on the screen
+          const shown = display(page, !same, !(same && errors), same ? 'replace' : 'push')
+          await shown.finished?.catch(noop)
         })
         .catch((error: Error) => {
           if (error.name !== 'AbortError') throw error // the form stays, to send again
@@ -154,7 +163,8 @@ export function startNavigation({ initial, show, prerender, pending }: Options) 
           const page = await read(response, url.href, false)
           if (!page || event.signal.aborted) return
           // redirected: the page at its own URL, in place of this entry
-          if (page.url !== path) return void display(page, !kept, true, 'replace')
+          if (page.url !== path)
+            return void (await display(page, !kept, true, 'replace').finished?.catch(noop))
           await show(page, !kept && event.navigationType !== 'reload')
           remember(page)
           if (!kept && event.navigationType !== 'reload') scrollAfter(event)
@@ -169,9 +179,10 @@ export function startNavigation({ initial, show, prerender, pending }: Options) 
 }
 
 /** a navigation of the app's own, as a link would be; with no Navigation API, a document */
-export function go(url: string, history: 'auto' | 'push' | 'replace' = 'auto') {
+export function go(url: string, history: 'auto' | 'push' | 'replace' = 'auto', document = false) {
   const nav = navigation()
-  if (nav) nav.navigate(url, { history })
+  const info: Info | undefined = document ? { fondu: 'document' } : undefined
+  if (nav) nav.navigate(url, { history, info })
   else if (history === 'replace') location.replace(url)
   else location.assign(url)
 }

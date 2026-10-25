@@ -150,10 +150,13 @@ export async function renderPage(
   return { head: html.slice(0, at), body: html.slice(at) }
 }
 
+/** a form's field errors, as a page gets them (its `errors` prop): field name → message */
+export type Errors = Record<string, string>
+
 /** the page on screen: its props (the shared ones, `errors`), its URL, its flash data */
 export function usePage<P = Shared>(): {
   component: string
-  props: P & { errors: Record<string, string> }
+  props: P & { errors: Errors }
   url: string
   flash: Partial<Flash>
 } {
@@ -171,9 +174,15 @@ export function useNavigating(): boolean {
   )
 }
 
-/** to a page of the app, as a link would (`history: 'replace'`: in place of this one) */
-export function navigate(href: string, options: { history?: 'auto' | 'push' | 'replace' } = {}) {
-  go(href, options.history)
+/**
+ * To a page of the app, as a link would (`history: 'replace'`: in place of this one). Every navigation is the client's,
+ * `location.href = …` too: `document: true` loads the URL as a document (what changes `<html>`, a language).
+ */
+export function navigate(
+  href: string,
+  options: { history?: 'auto' | 'push' | 'replace'; document?: boolean } = {},
+) {
+  go(href, options.history, options.document)
 }
 
 /** this page's props asked for again: the page keeps its state and the scroll position */

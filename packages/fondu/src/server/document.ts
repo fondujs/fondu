@@ -73,7 +73,8 @@ export async function renderDocument(c: Context, page: Page): Promise<string> {
   const nonce = (c.get as (key: string) => unknown)('secureHeadersNonce') as string | undefined
   let ssr: { head: string; body: string } | null = null
   try {
-    if (renderPage && !browserOnly.has(c)) ssr = await renderPage(page)
+    // the page as the browser gets it, through JSON (a Date a string): the markup is the same on both sides
+    if (renderPage && !browserOnly.has(c)) ssr = await renderPage(JSON.parse(JSON.stringify(page)))
   } catch (error) {
     // like Laravel: a page that fails to render on the server is still sent, and rendered in the browser
     console.error(
