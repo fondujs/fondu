@@ -6,8 +6,10 @@ import {
   useState,
   useSyncExternalStore,
   type ComponentType,
+  type Dispatch,
   type ReactElement,
   type ReactNode,
+  type SetStateAction,
 } from 'react'
 import { flushSync } from 'react-dom'
 import { createRoot, hydrateRoot } from 'react-dom/client'
@@ -71,18 +73,18 @@ async function load(component: string): Promise<Shown['view']> {
 // ---- the page on screen, for usePage()
 
 const PageContext = createContext<Page | null>(null)
-type Shown = { page: Page; view: { Component: PageComponent; layouts: Layout[] } }
+type Shown = { page: Page; view: { Component: PageComponent; layouts: Layout[] }; mounts: number }
 /** the browser's: called once the app is on the screen, with what puts another page there */
-let mounted: ((show: (shown: Shown) => void) => void) | undefined
+let mounted: ((show: Dispatch<SetStateAction<Shown>>) => void) | undefined
 
 function App({ initial }: { initial: Shown }): ReactElement {
-  const [{ page, view }, set] = useState(initial)
+  const [{ page, view, mounts }, set] = useState(initial)
   useLayoutEffect(() => mounted?.(set), [set])
   const { Component, layouts } = view
-  // a page of another URL is mounted anew; at the same URL (a form back with its errors, reload()) it keeps its state
+  // the page mounted anew by each navigation, its layouts kept (the same components: React keeps them)
   const content = layouts.reduceRight<ReactElement>(
     (children, L) => createElement(L, null, children),
-    createElement(Component, { key: page.url, ...page.props }),
+    createElement(Component, { key: mounts, ...page.props }),
   )
   return createElement(PageContext.Provider, { value: page }, content)
 }
@@ -115,7 +117,7 @@ export function startApp(app: AppOptions = {}) {
     throw new Error('fondu: the document has no page (script[data-page="app"], #app)')
   const initial = JSON.parse(data) as Page
   void load(initial.component).then((view) => {
-    const app = createElement(App, { initial: { page: initial, view } })
+    const app = createElement(App, { initial: { page: initial, view, mounts: 0 } })
     // navigations start once the page is on the screen (hydrated)
     mounted = (set) => {
       mounted = undefined
@@ -123,9 +125,9 @@ export function startApp(app: AppOptions = {}) {
         initial,
         prerender: settings.prerender,
         pending: setNavigating,
-        async show(page) {
+        async show(page, fresh) {
           const view = await load(page.component)
-          flushSync(() => set({ page, view }))
+          flushSync(() => set((now) => ({ page, view, mounts: now.mounts + Number(fresh) })))
         },
       })
     }
@@ -141,7 +143,7 @@ export async function renderPage(
 ): Promise<{ head: string; body: string }> {
   const view = await load(page.component)
   const html = renderToString(
-    createElement('div', { id: 'app' }, createElement(App, { initial: { page, view } })),
+    createElement('div', { id: 'app' }, createElement(App, { initial: { page, view, mounts: 0 } })),
   )
   // React puts the tags it hoists (`<title>`, `<meta>`, `<link>`) before the root's markup
   const at = html.indexOf('<div id="app"')
