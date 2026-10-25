@@ -1,7 +1,7 @@
 # Contributing
 
-Fondu is built on Hono, Vite and Inertia, and writes only what none of them does: a change that lets
-the platform (Hono, Vite, Inertia, the runtime) do the work is preferred to one that adds code.
+Fondu is built on Hono and Vite, and writes only what none of them does: a change that lets the platform (Hono, Vite,
+the browser, the runtime) do the work is preferred to one that adds code.
 
 Pull requests are opened by the repository's collaborators. To report a bug or propose a change, open an
 [issue](https://github.com/fondujs/fondu/issues): a reproduction for a bug, the case for a feature. Once the approach is
@@ -62,21 +62,15 @@ updated when the API does.
 
 A pull request says which of these it checked.
 
-## Inertia's server side
+## The protocol
 
-Most of Fondu's own code is Inertia's server side for Hono: the protocol (`server/protocol.ts`, `server/props.ts`),
-validation errors and flash data (`server/flash.ts`), redirects (`server/http.ts`) and Precognition
-(`server/validate.ts`). Inertia's protocol page describes it; what a server does in each case is what
-[inertia-laravel](https://github.com/inertiajs/inertia-laravel) does. So a change to how Fondu answers Inertia's
-requests:
+A page is answered as a document, or as JSON to Fondu's client: the server side is `server/protocol.ts` (with
+`server/flash.ts`, `server/http.ts`, `server/validate.ts`), the browser side `client/navigation.ts`, on the Navigation
+API. A change to it:
 
-- says what inertia-laravel does in the same case (its code or its tests), and does the same, or says why not;
-- has its case tested in `packages/fondu/test/protocol.test.ts`;
-- can be compared with [@adonisjs/inertia](https://github.com/adonisjs/inertia) (TypeScript, the same Inertia) and
-  [@hono/inertia](https://github.com/honojs/middleware/tree/main/packages/inertia) (Hono's middleware).
-
-When Inertia is updated, read what changed on the server side in its release notes and inertia-laravel's.
-What inertia-laravel does and Fondu doesn't yet is listed in [#53](https://github.com/fondujs/fondu/issues/53).
+- has its server case tested in `packages/fondu/test/protocol.test.ts`;
+- is checked in a browser: links, forms, Back and Forward, a redirect, a new build. A change to `client/navigation.ts`
+  in Chromium, Firefox and Safari.
 
 ## Describing Fondu
 
@@ -84,11 +78,10 @@ One wording everywhere: the READMEs, both `package.json` descriptions, the GitHu
 `llms.txt`.
 
 - The tagline: Server routes. React pages. No API in between.
-- What Fondu is: A small meta-framework for full-stack React apps, built on Hono, Vite and Inertia. It runs on Bun,
-  Cloudflare Workers and Node.
-- What an app is: a Fondu app: full-stack React on Hono, Vite and Inertia.
-- Hono, Vite and Inertia, in that order; the targets in alphabetical order (Bun, Cloudflare Workers, Node); Inertia
-  without a version (the template's `AGENTS.md` names "its v3 API", for coding agents).
+- What Fondu is: A small meta-framework for full-stack React apps, built on Hono and Vite. It runs on Bun, Cloudflare
+  Workers and Node.
+- What an app is: a Fondu app: full-stack React on Hono and Vite.
+- Hono and Vite, in that order; the targets in alphabetical order (Bun, Cloudflare Workers, Node).
 
 ## Releases
 

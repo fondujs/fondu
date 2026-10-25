@@ -13,4 +13,4 @@ body:
     id: proposal
     attributes:
       label: A proposal
-      description: How it could work. Can Hono, Inertia or Vite already do it, with Fondu only passing it on?
+      description: How it could work. Can Hono, Vite or the browser already do it, with Fondu only passing it on?

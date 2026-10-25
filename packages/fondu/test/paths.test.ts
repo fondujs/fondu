@@ -60,7 +60,7 @@ describe('form bodies', () => {
       })
     ).json()
   }
-  test('PHP-style names, as Inertia sends files and as plain forms write lists', async () => {
+  test('PHP-style names, as forms write nested fields and lists', async () => {
     expect(
       await read(
         'notify%5B%5D=email&notify%5B%5D=push&name=Ada',
