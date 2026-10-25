@@ -20,7 +20,6 @@ export const action = defineHandler.withValidator({ body: todo })(
 ```
 
 ```tsx title="app/pages/todos.tsx" /items/
-import { Form } from '@inertiajs/react'
 import { href } from 'fondu/client'
 
 export default function Todos({ items }: { items: Todo[] }) {
@@ -31,10 +30,10 @@ export default function Todos({ items }: { items: Todo[] }) {
           <li key={t.id}>{t.text}</li>
         ))}
       </ul>
-      <Form action={href('/todos')} method="post" resetOnSuccess>
+      <form action={href('/todos')} method="post">
         <input name="text" />
         <button>Add</button>
-      </Form>
+      </form>
     </>
   )
 }

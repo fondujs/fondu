@@ -28,10 +28,7 @@ export default function Show({ user, canEdit }: { user: User; canEdit: boolean }
 // app/routes/users/[id].ts
 render(c, 'users/show', { user }) // error: canEdit is missing
 render(c, 'users/sho', { user, canEdit }) // error: no such page
-render(c, 'users/show', { user, canEdit: () => isOwner(c, user) }) // a function returning the prop's type: fine
 ```
-
-The kinds of props keep the type of their value: `defer(() => stats())` fits a prop typed like `stats()`'s result.
 
 ## URLs
 
@@ -57,12 +54,11 @@ export const loader = defineHandler.withValidator({ params })(async (c, { params
 })
 ```
 
-Any [Standard Schema](https://standardschema.dev) library works. Export the schema from a file that isn't server code
-and the page can check the same rules before sending: [Forms and validation](/docs/forms).
+Any [Standard Schema](https://standardschema.dev) library works: [Forms and validation](/docs/forms).
 
 ## Shared props, flash data and context values
 
-What a middleware sets is typed where it is set, by declaring Hono's and Inertia's own interfaces:
+What a middleware sets is typed where it is set, by declaring Hono's and Fondu's own interfaces:
 
 ```ts
 // app/routes/_middleware.ts
@@ -71,17 +67,16 @@ declare module 'hono' {
     user: User | null // c.set('user', …), c.get('user')
   }
 }
-declare module '@inertiajs/core' {
-  interface InertiaConfig {
-    sharedPageProps: { auth: { user: { name: string } | null } } // share(), usePage().props
-    flashDataType: { message?: string } // flash(), usePage().flash
+declare module 'fondu' {
+  interface Register {
+    shared: { auth: { user: { name: string } | null } } // share(), usePage().props
+    flash: { message?: string } // flash(), usePage().flash
   }
 }
 ```
 
-`share()` and `flash()` then take only those, and `usePage()` returns them. `@inertiajs/core` is a dependency of the
-app for this (a new app has it): with pnpm, a package the app doesn't list can't be declared into. A page prop named like a shared prop but of
-another type is an error, as it would hide the shared one from the layout.
+`share()` and `flash()` then take only those, and `usePage()` returns them. A page prop named like a shared prop but
+of another type is an error, as it would hide the shared one from the layout.
 
 ## What crosses as JSON
 

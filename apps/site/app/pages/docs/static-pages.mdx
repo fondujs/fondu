@@ -1,5 +1,5 @@
 Fondu can write pages as static files at build time: static site generation (SSG). They are served without rendering
-them again, and Inertia's visits keep working. On Bun, Cloudflare Workers and Node; this site is built that way.
+them again, and navigations keep working. On Bun, Cloudflare Workers and Node; this site is built that way.
 
 ```ts
 // vite.config.ts
@@ -30,7 +30,7 @@ The build starts the server it built (`node` or `bun dist/server/index.js`, or t
 to prerender, and writes each twice in the client build:
 
 - as a document, `docs/intro.html`, for a first visit;
-- as its page object, `_fondu/pages/docs/intro.json`, for Inertia's visits: Fondu's client reads it instead of asking
+- as its page object, `_fondu/pages/docs/intro.json`, for navigations: Fondu's client reads it instead of asking
   the Worker.
 
 Then:
@@ -66,5 +66,5 @@ allowed by their hashes instead, so an inline script of [the document](/docs/doc
 
 ## A new deploy
 
-Each page records the build it belongs to. After a deploy, a visit from a tab opened before it reloads the page, as
-Inertia does for a new version of the assets.
+Each page records the build it belongs to. After a deploy, a navigation from a tab opened before it loads the page as
+a document, with the new assets.

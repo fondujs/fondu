@@ -10,7 +10,7 @@ document is the HTML around React.
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <!-- head: the page's <Head> tags, then the styles and scripts -->
+    <!-- head: the page's own tags (<title>…), then the styles and scripts -->
   </head>
   <body>
     <!-- body: the page data and the rendered page -->
@@ -51,7 +51,7 @@ import Document from '#/document.tsx'
 export default createApp({ document: Document })
 ```
 
-- `head`: the tags of the page's `<Head>` (title, meta), then its styles and scripts. Put it last in `<head>`.
+- `head`: the tags the page renders (`<title>`, `<meta>`), then its styles and scripts. Put it last in `<head>`.
 - `body`: the page data (`<script data-page>`) and the rendered page (`<div id="app">`). Put it alone in `<body>`.
 - `c`: the request's Hono context: a cookie, a header, the user. Above, `theme(c)` reads the theme a visitor chose,
   so the first paint has it.
@@ -60,8 +60,8 @@ export default createApp({ document: Document })
 The document is rendered without the whitespace you indent it with. It may return a string instead of JSX: put
 `${head}` and `${body}` in it.
 
-The page's own tags come from Inertia's `<Head>`, in the page or the layout; the document is for what every page
-shares: `<html>` attributes, the charset and viewport, icons, fonts.
+The page's own tags are rendered by the page or its layout (`<title>`, `<meta>`: React puts them in `<head>`); the
+document is for what every page shares: `<html>` attributes, the charset and viewport, icons, fonts.
 
 ## Fonts
 

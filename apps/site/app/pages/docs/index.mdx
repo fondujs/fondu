@@ -1,5 +1,5 @@
-Fondu is a small meta-framework for full-stack React apps, built on [Hono](https://hono.dev),
-[Vite](https://vite.dev) and [Inertia](https://inertiajs.com). It runs on Bun, Cloudflare Workers and Node.
+Fondu is a small meta-framework for full-stack React apps, built on [Hono](https://hono.dev) and
+[Vite](https://vite.dev). It runs on Bun, Cloudflare Workers and Node.
 
 ## Routes and pages
 
@@ -20,45 +20,24 @@ export default function Show({ user }: { user: User }) {
 }
 ```
 
-The first request gets the page rendered on the server. From then on, Inertia takes over in the browser: a link or a
-form makes a request to the same route, which answers with the next page's name and props as JSON, and React swaps the
-page without a full reload. There is no API to write for your pages and no client-side router to keep in sync with the
-server: the routes are the only router.
+The first request gets the page rendered on the server. From then on, links and forms are plain `<a>` and `<form>`:
+Fondu's client, on the browser's [Navigation API](https://developer.mozilla.org/en-US/docs/Web/API/Navigation_API),
+asks the same route for the next page's name and props as JSON, and React swaps the page in place. There is no API to
+write for your pages and no client-side router to keep in sync with the server: the routes are the only router.
+Without the Navigation API, links and forms load documents, and everything still works.
 
 ## Who does what
 
-Fondu writes only what none of them does: Inertia's server side for Hono, which no official adapter covers, and what
-holds the parts together.
+| Part                                                                                                                               | Done by                                                         |
+| ---------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| HTTP, middleware, CSRF protection, security headers                                                                                | Hono and its middleware                                         |
+| Dev server and production build                                                                                                    | Vite, with `@hono/vite-dev-server` or `@cloudflare/vite-plugin` |
+| `routes/`, pages and layouts, the client, forms' errors and flash data, typed pages and URLs, the document, error and static pages | Fondu                                                           |
 
-| Part                                                                                                                                         | Done by                                                         |
-| -------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
-| Visits, history, prefetching, forms, `<Head>`, deferred and merged props, infinite scroll                                                    | `@inertiajs/react`                                              |
-| HTTP, middleware, CSRF protection, security headers                                                                                          | Hono and its middleware                                         |
-| Dev server and production build                                                                                                              | Vite, with `@hono/vite-dev-server` or `@cloudflare/vite-plugin` |
-| Finding the page component, the entry of the server render                                                                                   | `@inertiajs/vite`                                               |
-| Inertia's server side (the protocol, forms' errors and flash data), `routes/`, typed pages and URLs, the document, error pages, static pages | Fondu                                                           |
-
-So most of what you write is Hono's API on the server and Inertia's in the browser, and their docs apply as they are.
-The pages here cover what Fondu adds.
-
-## Fondu and @hono/inertia
-
-[@hono/inertia](https://github.com/honojs/middleware/tree/main/packages/inertia) is Hono's middleware for Inertia:
-your Hono routes answer with Inertia's pages, and the rest is yours to set up: the document, the client entry, how
-pages are found and built, React, Vue or Svelte. It is the way to add Inertia pages to a Hono app you already have.
-
-Fondu is a framework on the same parts, for a new React app. Besides the protocol, which it implements with what forms
-and private pages need (validation errors and flash data, once props, history encryption), it makes the decisions an
-app around it needs:
-
-- routes and pages as files, with layouts;
-- the server render, in the same process on every target;
-- forms: invalid input back to the page with its errors, flash data, Precognition;
-- the document, with a Content Security Policy;
-- types between them: `render()` checked against the page, `href()` against the routes;
-- static pages, and an app to start from.
+So most of what you write on the server is Hono's API, and its docs apply as they are. The pages here cover what Fondu
+adds.
 
 ## Next
 
 - [Quick start](/docs/quick-start): create an app and run it.
-- [The demo](https://demo.fondu.dev) shows Fondu's and Inertia's features, one page each, on Cloudflare Workers.
+- [The demo](https://demo.fondu.dev) shows Fondu's features, one page each, on Cloudflare Workers.

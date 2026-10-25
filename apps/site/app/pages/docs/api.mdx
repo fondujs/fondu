@@ -34,35 +34,19 @@ createApp({
 | `defineHandler.withValidator({ body, query, params })` | the same, with input checked by Standard Schemas: `(c, input) => …`     |
 | `defineMiddleware(fn)`                                 | a middleware: Hono's `createMiddleware`                                 |
 | `withoutSsr()`                                         | a middleware: these pages render in the browser only                    |
-| `encryptHistory()`                                     | a middleware: these pages are encrypted in the browser's history        |
 | `ValidationError`                                      | `throw new ValidationError({ field: 'message' })`: back with the errors |
 
 ### Responses
 
-| Export                              |                                                                                        |
-| ----------------------------------- | -------------------------------------------------------------------------------------- |
-| `render(c, page, props?, options?)` | a page; options: `status`, `encryptHistory`, `clearHistory`, `preserveFragment`        |
-| `share(c, props)`                   | props every page of this request gets                                                  |
-| `flash(c, data)`                    | data for the next page (`usePage().flash`)                                             |
-| `back(c, fallback?)`                | a redirect to the page the request came from                                           |
-| `location(c, url)`                  | a full page load of `url`                                                              |
-| `clearHistory(c)`                   | clears the encrypted history on the next page                                          |
-| `isInertia(c)`, `wantsPage(c)`      | whether the request is an Inertia visit; whether it wants a page (or is an API client) |
-
-### Props
-
-| Export                                            |                                                       |
-| ------------------------------------------------- | ----------------------------------------------------- |
-| `optional(fn)`                                    | only when a partial reload asks for it                |
-| `always(value)`                                   | on every partial reload                               |
-| `defer(fn, { group?, rescue? })`                  | after the page renders                                |
-| `merge(value, { path?, matchOn? })`, `prepend(…)` | appended to, or prepended to, the list the page holds |
-| `deepMerge(value, { matchOn? })`                  | merged into the object the page holds                 |
-| `once(fn, { key?, ttl?, fresh? })`                | when the browser doesn't hold it already              |
-| `scroll(fn, { pageName? })`                       | a page of a list, for `<InfiniteScroll>`              |
-
-They combine by wrapping: `once(defer(fn))`, `once(optional(fn))`, `once(merge(fn))`, `merge(defer(fn))`,
-`defer(scroll(fn))`. [Pages and props](/docs/pages#kinds-of-props) shows them in use.
+| Export                              |                                                        |
+| ----------------------------------- | ------------------------------------------------------ |
+| `render(c, page, props?, options?)` | a page; options: `status`                              |
+| `share(c, props)`                   | props every page of this request gets                  |
+| `flash(c, data)`                    | data for the next page (`usePage().flash`)             |
+| `back(c, fallback?)`                | a redirect to the page the request came from           |
+| `location(c, url)`                  | a document load of `url`                               |
+| `clearHistory(c)`                   | the next page forgets the pages kept for Back          |
+| `wantsPage(c)`                      | whether the request wants a page (or is an API client) |
 
 ### Route exports
 
@@ -89,13 +73,15 @@ They combine by wrapping: `once(defer(fn))`, `once(optional(fn))`, `once(merge(f
 
 For the browser.
 
-| Export                |                                                                |
-| --------------------- | -------------------------------------------------------------- |
-| `href(path, params?)` | a URL of `app/routes/`, typed: `href('/users/:id', { id: 7 })` |
-
-`prerendered()` (static pages) and `documentFallback()` (in production, a GET visit answered by something other than
-a page loads as a document) are exported for the build, which adds them to the client entry: an app doesn't call
-them.
+| Export                |                                                                      |
+| --------------------- | -------------------------------------------------------------------- |
+| `startApp(options?)`  | in `app/app.tsx`: the app; `layout`, the pages' default layout       |
+| `href(path, params?)` | a URL of `app/routes/`, typed: `href('/users/:id', { id: 7 })`       |
+| `usePage()`           | the page on screen: `component`, `props`, `url`, `flash`             |
+| `useNavigating()`     | `true` from a click or a submit until the next page is on the screen |
+| `reload()`            | the page's props again, its state and scroll position kept           |
+| `loadDocument(href)`  | a document load, for what a page can't change in place               |
+| `Errors`              | the type of a page's `errors` prop                                   |
 
 ## `fondu/vite`
 

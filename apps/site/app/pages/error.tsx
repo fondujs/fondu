@@ -1,5 +1,3 @@
-import { Link } from '@inertiajs/react'
-
 import { Meta } from '#/components/meta.tsx'
 
 const messages: Record<number, [title: string, text: string]> = {
@@ -16,7 +14,7 @@ export default function ErrorPage({ status }: { status: number }) {
       <p className="mb-2 font-mono text-sm text-muted-foreground">{status}</p>
       <h1>{title}</h1>
       <p className="lede">
-        {text} <Link href="/docs">Read the docs</Link> or go to the <Link href="/">home page</Link>.
+        {text} <a href="/docs">Read the docs</a> or go to the <a href="/">home page</a>.
       </p>
     </div>
   )

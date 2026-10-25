@@ -37,7 +37,7 @@ Write the whole import as `import type`. With `verbatimModuleSyntax`, which a ne
 ## Code for both
 
 Pages and their components run twice: on the server for the first render, then in the browser. So they must not touch
-`window` or `document` while rendering (do it in an effect, or inside Inertia's `<WhenMounted>`), and they can't reach
+`window` or `document` while rendering (do it in an effect), and they can't reach
 the server's resources: what they need comes as props.
 
 A module with no secrets, such as a validation schema, can be shared: a route validates with it, a page checks the
@@ -61,7 +61,7 @@ export const GET = defineHandler(async (c) => {
 The dev server updates what an edit changes, without reloading the page where it can:
 
 - A page or a component (`.tsx`, `.mdx`): React Fast Refresh, the page's state kept.
-- A route, or code a route imports: the page asks for its props again (Inertia's `router.reload()`), its state and
+- A route, or code a route imports: the page asks for its props again (`reload()`), its state and
   scroll kept. A route that now renders another page shows it.
 - `app/server.ts`, or code only it imports: the page reloads, as the document around it changed.
 - An app that fails to load (a route that throws as it is imported): Vite's overlay shows the error, as a whole page;

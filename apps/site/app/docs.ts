@@ -28,7 +28,7 @@ export const sections: Array<{ title: string; docs: Doc[] }> = [
       {
         slug: 'demo',
         title: 'Demo application',
-        description: 'Every Inertia feature in a Fondu app, one page each.',
+        description: 'Every Fondu feature in an app, one page each.',
       },
     ],
   },
@@ -43,7 +43,7 @@ export const sections: Array<{ title: string; docs: Doc[] }> = [
       {
         slug: 'pages',
         title: 'Pages and props',
-        description: 'React pages, and the kinds of props a route sends.',
+        description: 'React pages, their props, links and forms.',
       },
       {
         slug: 'layouts',
@@ -53,7 +53,7 @@ export const sections: Array<{ title: string; docs: Doc[] }> = [
       {
         slug: 'forms',
         title: 'Forms and validation',
-        description: 'One schema for the server and the browser.',
+        description: 'Plain forms, validated on the server.',
       },
       { slug: 'errors', title: 'Errors', description: 'Error pages, and what API clients get.' },
       {

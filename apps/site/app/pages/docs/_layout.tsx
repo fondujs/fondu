@@ -1,5 +1,5 @@
-import { Link, usePage } from '@inertiajs/react'
 import { MDXProvider } from '@mdx-js/react'
+import { usePage } from 'fondu/client'
 import { ChevronDown, ChevronLeft, ChevronRight, Menu } from 'lucide-react'
 import { useEffect, useState, type ComponentProps, type ReactNode } from 'react'
 
@@ -17,7 +17,7 @@ import {
 import { Menu as Dropdown, MenuItem, MenuPopup, MenuTrigger } from '#/components/ui/menu.tsx'
 import { docOf, docs, docUrl, markdownUrl, sections, type Doc, type TocItem } from '#/docs.ts'
 
-// What the Markdown becomes: links within the site are Inertia visits, others open in a new tab; headings link to
+// What the Markdown becomes: links within the site are navigations, others open in a new tab; headings link to
 // themselves; code blocks get a copy button, and <CodeTabs> groups them
 const heading =
   (Tag: 'h2' | 'h3') =>
@@ -30,12 +30,10 @@ const heading =
   )
 const components = {
   a: ({ href = '', children }: ComponentProps<'a'>) =>
-    !href.startsWith('/') ? (
-      <External href={href}>{children}</External>
-    ) : href.includes('.') ? (
+    href.startsWith('/') ? (
       <a href={href}>{children}</a>
     ) : (
-      <Link href={href}>{children}</Link>
+      <External href={href}>{children}</External>
     ),
   h2: heading('h2'),
   h3: heading('h3'),
@@ -110,7 +108,7 @@ export default function DocsLayout({ children }: { children: ReactNode }) {
             data-pagefind-ignore
           >
             {prev && (
-              <Link
+              <a
                 href={docUrl(prev)}
                 className="rounded-lg border px-4 py-3 transition-colors hover:bg-accent"
               >
@@ -118,10 +116,10 @@ export default function DocsLayout({ children }: { children: ReactNode }) {
                   <ChevronLeft className="size-3.5" /> Previous
                 </span>
                 <span className="font-medium">{prev.title}</span>
-              </Link>
+              </a>
             )}
             {next && (
-              <Link
+              <a
                 href={docUrl(next)}
                 className="rounded-lg border px-4 py-3 text-right transition-colors hover:bg-accent sm:col-start-2"
               >
@@ -129,7 +127,7 @@ export default function DocsLayout({ children }: { children: ReactNode }) {
                   Next <ChevronRight className="size-3.5" />
                 </span>
                 <span className="font-medium">{next.title}</span>
-              </Link>
+              </a>
             )}
           </nav>
         </div>
@@ -194,15 +192,14 @@ function Sidebar({ doc, onPick }: { doc: Doc; onPick?: () => void }) {
           <ul className="grid gap-px border-l">
             {section.docs.map((d) => (
               <li key={d.slug}>
-                <Link
+                <a
                   href={docUrl(d)}
-                  prefetch
                   onClick={onPick}
                   aria-current={d === doc ? 'page' : undefined}
                   className="-ml-px block border-l border-transparent py-1 pl-3 text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground aria-[current=page]:border-brand aria-[current=page]:font-medium aria-[current=page]:text-foreground"
                 >
                   {d.title}
-                </Link>
+                </a>
               </li>
             ))}
           </ul>

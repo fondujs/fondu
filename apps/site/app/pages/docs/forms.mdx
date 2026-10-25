@@ -1,24 +1,19 @@
 ## A form
 
-Inertia's `<Form>` sends the form to an action without a full reload. Fondu's part is on the server: the action
-validates the input and answers.
+A form is a plain `<form>`. It posts to an action, which validates the input and answers, usually with a redirect
+back:
 
 ```tsx
 // app/pages/contacts/new.tsx
-import { Form } from '@inertiajs/react'
-import { href } from 'fondu/client'
+import { href, type Errors } from 'fondu/client'
 
-export default function NewContact() {
+export default function NewContact({ errors }: { errors: Errors }) {
   return (
-    <Form action={href('/contacts')} method="post">
-      {({ errors, processing }) => (
-        <>
-          <input name="email" />
-          {errors.email && <p>{errors.email}</p>}
-          <button disabled={processing}>Add</button>
-        </>
-      )}
-    </Form>
+    <form action={href('/contacts')} method="post">
+      <input name="email" aria-invalid={!!errors.email} />
+      {errors.email && <p>{errors.email}</p>}
+      <button>Add</button>
+    </form>
   )
 }
 ```
@@ -36,17 +31,16 @@ export const action = defineHandler.withValidator({ body: contactSchema })(async
 })
 ```
 
+With JavaScript, Fondu's client sends it without a page load: back at the same URL, the page is updated where it is.
+Without, it is an ordinary form post, with the same result.
+
 ## Invalid input
 
 When the body or the query doesn't fit its schema, the handler doesn't run:
 
-- an Inertia visit or a plain HTML form gets a redirect back to the page it came from, and that page gets the errors
-  in its `errors` prop, one message per field (`{ email: 'Invalid email' }`). `<Form>` and `useForm()` show them.
-- a form with an error bag (`errorBag="signup"`) gets them under its name, so two forms on a page keep theirs apart.
+- a page's form gets a redirect back to the page it came from, and that page gets the errors in its `errors` prop, one
+  message per field (`{ email: 'Invalid email' }`). What was typed stays in the form.
 - an API client gets 422 and `{ errors }`.
-
-The page after the redirect gets the errors and the flash data even as a partial reload, as a form sent with
-`only: ['comments']` is: they are always sent, so `only` doesn't list them.
 
 Params that don't fit are a 404: the URL names nothing.
 
@@ -59,100 +53,27 @@ import { ValidationError } from 'fondu'
 if (await emailTaken(body.email)) throw new ValidationError({ email: 'This address is taken' })
 ```
 
-## The same schema in the browser
+The errors are one object for the page: two forms on a page keep theirs apart by their fields' names.
 
-The schema is plain code: a page can import it (from any file that is not [server code](/docs/project-structure#server-code))
-and check before sending:
+## While it is sent
 
-```tsx
-// the form's fields are the schema's input
-const form = useForm<z.input<typeof contactSchema>>({ name: '', email: '' })
-
-const submit = (e: FormEvent) => {
-  e.preventDefault()
-  const result = contactSchema.safeParse(form.data)
-  if (!result.success) {
-    const fields = z.flattenError(result.error).fieldErrors
-    return form.setError({ name: fields.name?.[0] ?? '', email: fields.email?.[0] ?? '' })
-  }
-  form.post(href('/contacts'))
-}
-```
-
-## Precognition
-
-With [Precognition](https://inertiajs.com/forms#precognition), the server checks each field as the user leaves it,
-with the action's own schema: `<Form>`'s `validate('email')`, or `useForm().withPrecognition()`. Fondu answers those
-requests itself, from the validator: 204 when the fields are valid, 422 with their errors otherwise. The action runs
-only when the form is sent.
+`useNavigating()` is `true` from the submit until the answer is on the screen: a button can show it.
 
 ```tsx
-<Form action={href('/contacts')} method="post" validationTimeout={500}>
-  {({ errors, validate, invalid }) => (
-    <input
-      name="email"
-      onBlur={() => validate('email')}
-      onChange={() => invalid('email') && validate('email')}
-    />
-  )}
-</Form>
-```
-
-A field is checked when it is left, then again as it is typed in while it has an error, so the error goes as soon as
-the value is right. The checks wait for a pause in typing: `validationTimeout` (1500 ms by default), or `useForm()`'s
-`setValidationTimeout()`.
-
-## Focus on the first error
-
-A form that comes back with errors leaves the focus on its button. Move it to the first field to fix, so a keyboard
-or screen reader user lands there. Your UI library may do it already: Base UI's `<Form errors={form.errors}>` (coss
-ui's `Form`, for one) focuses the first field with an error after a submit, for `useForm()` and `useHttp()`. It
-doesn't send while a field has an error, so clear the field's error as it changes:
-`onChange={(e) => (form.setData('email', e.target.value), form.clearErrors('email'))}`.
-
-Otherwise, mark each invalid field with `aria-invalid`, and its message with `aria-describedby`. Then a submit button
-can do it for any `<Form>` it is in:
-
-```tsx
-// app/components/submit-button.tsx
-import { useFormContext } from '@inertiajs/react'
-import { useEffect, useRef, type ComponentProps } from 'react'
+import { useNavigating } from 'fondu/client'
 
 export function SubmitButton(props: ComponentProps<'button'>) {
-  const form = useFormContext()!
-  const ref = useRef<HTMLButtonElement>(null)
-  const sent = useRef(false) // clicked: Enter in a field clicks it too
-  useEffect(() => {
-    if (!sent.current || form.processing) return
-    sent.current = false
-    if (form.hasErrors) ref.current?.form?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus()
-  }, [form.processing, form.errors])
-  return <button ref={ref} disabled={form.processing} onClick={() => (sent.current = true)} {...props} />
+  const navigating = useNavigating()
+  return <button aria-busy={navigating} {...props} />
 }
 ```
-
-```tsx
-<Form action={href('/contacts')} method="post">
-  {({ errors }) => (
-    <>
-      <input name="email" aria-invalid={!!errors.email} aria-describedby="email-error" />
-      {errors.email && <p id="email-error">{errors.email}</p>}
-      <SubmitButton>Add</SubmitButton>
-    </>
-  )}
-</Form>
-```
-
-The focus moves after a submit only: Precognition's errors come as the user leaves a field or types in it, and leave
-the focus where it is. The [demo's forms](https://github.com/fondujs/fondu/blob/main/apps/demo/app/pages/contacts/index.tsx)
-do both: this button in `<Form>`, Base UI's form with `useForm()`.
 
 ## Files and nested fields
 
 The body is one object whether it comes as JSON or as form fields. Form fields named like `user[name]` or `tags[]`
-become nested objects and arrays, files are `File` objects, and empty file inputs are left out, so `useForm()` with a
-file and a plain form read the same way. A body that can't be one object is a 400: JSON that doesn't parse, a name
-that is both a value and an object (`a` and `a[b]`), names nested deeper than 32.
+become nested objects and arrays, files are `File` objects, and empty file inputs are left out. A body that can't be
+one object is a 400: JSON that doesn't parse, a name that is both a value and an object (`a` and `a[b]`), names nested
+deeper than 32.
 
 The body is read whole, in memory, files too. Bun and Node take a body of any size; cap it with Hono's `bodyLimit`,
 for every route or for those that take files:
@@ -167,4 +88,4 @@ export default bodyLimit({ maxSize: 10 * 1024 * 1024 }) // 10 MB, then 413
 ## CSRF
 
 `createApp()` turns on Hono's CSRF protection: a request that changes something (a POST, a form) must come from the
-app's own origin. Inertia's requests and the app's forms do; nothing else is needed.
+app's own origin. The app's own forms do; nothing else is needed.

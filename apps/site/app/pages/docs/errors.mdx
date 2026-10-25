@@ -16,37 +16,19 @@ Another page: `createApp({ errorPage: 'errors/show' })`. None, plain text for ev
 
 ## In development
 
-A 500 is a report of the error instead: the message, and the stack with your files first. During a visit, Inertia
-shows it in its dialog. And `render()` of a page that doesn't exist says which file to create.
+A 500 is a report of the error instead: the message, and the stack with your files first; a navigation loads it as a
+document. And `render()` of a page that doesn't exist says which file to create.
 
 An error before any handler runs, in a route that throws as it is imported, is Vite's: its overlay shows it, as a
 whole page, and the next edit reloads the page.
 
 ## Answers from outside the app
 
-During a visit, an answer that isn't an Inertia page, such as a proxy's 502 or a CDN's 524 timeout page, comes from
-what stands in front of the app: in production, Fondu answers visits with pages, errors included. Then a GET visit
-that gets one loads the URL as a document, as a site without Inertia would: the browser shows that page, or the app's
-if the failure has passed. Other methods, and development, show it in Inertia's dialog (a form isn't lost, and the
-development report is read there). A visit's own `onHttpException` comes first.
+An answer that isn't a page, such as a proxy's 502 or a CDN's timeout page, comes from what stands in front of the
+app: Fondu answers navigations with pages, errors included. The browser shows it as it would without JavaScript: a
+link's loads the URL as a document, a form's replaces the page.
 
 ## Your own handling
-
-After a form, an answer from outside the app is shown in Inertia's dialog, which is made for development. In
-production, an app can say it in its own way, a toast for one, with Inertia's `httpException` event:
-
-```tsx
-// app/app.tsx, or a component of the layout
-let method = 'get'
-router.on('start', (event) => void (method = event.detail.visit.method))
-router.on('httpException', (event) => {
-  if (!import.meta.env.PROD || method === 'get') return // a GET loads as a document
-  event.preventDefault() // no dialog: the page and its form stay as they are
-  showToast(`The server did not answer (${event.detail.response.status}). Try again.`)
-})
-```
-
-On the server:
 
 `createApp()` returns a Hono app: its `notFound()` and `onError()` replace Fondu's.
 

@@ -1,8 +1,8 @@
-import { Head, usePage } from '@inertiajs/react'
+import { usePage } from 'fondu/client'
 
 export const SITE = 'https://fondu.dev'
 
-/** a page's <title> (app.tsx); the home page's is the site's own */
+/** a page's <title>; the home page's is the site's own */
 export const fullTitle = (title?: string) =>
   title ? `${title} · Fondu` : 'Fondu · Server routes. React pages. No API in between.'
 
@@ -23,25 +23,25 @@ export function Meta({
   const { url } = usePage()
   const canonical = SITE + url.split(/[?#]/)[0]
   return (
-    <Head title={title ?? ''}>
-      {description && <meta head-key="description" name="description" content={description} />}
+    // React puts them in <head>
+    <>
+      <title>{fullTitle(title)}</title>
+      {description && <meta name="description" content={description} />}
       {noindex ? (
-        <meta head-key="robots" name="robots" content="noindex" />
+        <meta name="robots" content="noindex" />
       ) : (
-        <link head-key="canonical" rel="canonical" href={canonical} />
+        <link rel="canonical" href={canonical} />
       )}
-      <meta head-key="og:type" property="og:type" content="website" />
-      <meta head-key="og:site_name" property="og:site_name" content="Fondu" />
-      <meta head-key="og:title" property="og:title" content={fullTitle(title)} />
-      {description && (
-        <meta head-key="og:description" property="og:description" content={description} />
-      )}
-      <meta head-key="og:url" property="og:url" content={canonical} />
-      <meta head-key="og:image" property="og:image" content={`${SITE}/og.png`} />
-      <meta head-key="og:image:width" property="og:image:width" content="1200" />
-      <meta head-key="og:image:height" property="og:image:height" content="630" />
-      <meta head-key="og:image:alt" property="og:image:alt" content={fullTitle()} />
-      <meta head-key="twitter:card" name="twitter:card" content="summary_large_image" />
-    </Head>
+      <meta property="og:type" content="website" />
+      <meta property="og:site_name" content="Fondu" />
+      <meta property="og:title" content={fullTitle(title)} />
+      {description && <meta property="og:description" content={description} />}
+      <meta property="og:url" content={canonical} />
+      <meta property="og:image" content={`${SITE}/og.png`} />
+      <meta property="og:image:width" content="1200" />
+      <meta property="og:image:height" content="630" />
+      <meta property="og:image:alt" content={fullTitle()} />
+      <meta name="twitter:card" content="summary_large_image" />
+    </>
   )
 }

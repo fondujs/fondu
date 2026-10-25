@@ -5,20 +5,19 @@ A page is a React component, the default export of a file in `app/pages/`. Its n
 
 ```tsx
 // app/pages/users/show.tsx
-import { Head } from '@inertiajs/react'
-
 export default function Show({ user }: { user: User }) {
   return (
     <>
-      <Head title={user.name} />
+      <title>{`${user.name} · My app`}</title>
       <h1>{user.name}</h1>
     </>
   )
 }
 ```
 
-A page can also be [MDX](/docs/mdx). [Layouts](/docs/layouts) are `_layout.tsx` files in the directories of
-`app/pages/`. `<Head>`, `<Link>`, forms and the rest are Inertia's: see [its docs](https://inertiajs.com/pages).
+A page renders its own `<title>`, `<meta>` and `<link>` where it likes: React puts them in `<head>`, on the server too.
+A title is one string, hence the template literal. A page can also be [MDX](/docs/mdx); [layouts](/docs/layouts) are
+`_layout.tsx` files in the directories of `app/pages/`.
 
 ## `render()`
 
@@ -30,97 +29,30 @@ render(c, 'users/show', { user }, { status: 201 })
 ```
 
 It takes only pages that exist, with the props their component takes: a missing prop, one of the wrong type or a page
-name with a typo is a type error. A prop can be a function, called only when the prop is sent:
+name with a typo is a type error. The props arrive as JSON: a `Date` for a `string` prop is fine, a `Map` is a type
+error.
 
-```ts
-render(c, 'users/index', { users: () => db.users.all() })
-```
+## Links and forms
 
-The options: `status`, `encryptHistory` and `clearHistory` (Inertia's
-[history encryption](https://inertiajs.com/history-encryption)), `preserveFragment`.
+Links are `<a href>`, forms `<form method="post">`, with URLs from [`href()`](/docs/type-safety). In the browser:
 
-## Private pages
+- A link fetches the next page; the layouts stay mounted, with their state. The page starts at the top, or at its
+  `#fragment`.
+- A form's answer at the same URL (back with errors, `back(c)`) replaces the page where it is, the scroll position kept;
+  with errors, the page keeps its state too, what was typed included. Elsewhere, it's a new page in the history.
+- Back and Forward show the page as it was left, at once, where it was scrolled, then the server's fresh one.
+- An answer that isn't a page (a file, a proxy's error) is shown as the browser would show it.
 
-A page with private data should be encrypted in the browser's history, so Back after signing out can't show it again.
-For a whole directory, `encryptHistory()` in its `_middleware.ts` does it for every page below:
+From `fondu/client`:
 
-```ts
-// app/routes/account/_middleware.ts
-import { encryptHistory } from 'fondu'
+|                      |                                                                                 |
+| -------------------- | ------------------------------------------------------------------------------- |
+| `usePage()`          | the page on screen: `props` (shared ones and `errors` included), `url`, `flash` |
+| `useNavigating()`    | `true` from a click or a submit until the next page is on the screen            |
+| `reload()`           | the page's props again, its state and scroll position kept                      |
+| `loadDocument(href)` | a document load: for what a page can't change in place (`<html lang>`)          |
 
-export default [requireUser, encryptHistory()]
-```
-
-A route can still opt out with `render(c, page, props, { encryptHistory: false })`. Signing out calls `clearHistory(c)`,
-so the key of the encrypted pages is gone.
-
-## Back and Forward
-
-Back and Forward show a page from the browser's history, with the props it had when it was left: Inertia doesn't ask
-the server again. So after a form adds a record, Back to a list seen before shows it without the record.
-
-Where a page should be fresh, reload it when it comes back. Inertia's `navigate` event says where a page came from:
-
-```tsx
-// app/app.tsx
-import { createInertiaApp, router } from '@inertiajs/react'
-
-router.on('navigate', (event) => {
-  if (event.detail.type === 'history' && event.detail.page.url.startsWith('/admin')) router.reload()
-})
-```
-
-The page shows its old props first, then the new ones. `router.reload()` keeps the page's state and scroll, so only
-the props change. In the server render, `router.on()` does nothing.
-
-## Kinds of props
-
-Wrap a prop to change when it is sent. Each is an Inertia feature, and the page uses it with Inertia's API:
-
-| Prop                                              | Sent                                                                                           |
-| ------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `optional(fn)`                                    | only when a partial reload asks for it                                                         |
-| `always(value)`                                   | on partial reloads too, asked for or not                                                       |
-| `defer(fn, { group?, rescue? })`                  | after the page renders, one request per group; `rescue`: a failure is listed in `rescuedProps` |
-| `merge(value, { path?, matchOn? })`, `prepend(…)` | added to the end, or the start, of the list the page holds                                     |
-| `deepMerge(value, { matchOn? })`                  | merged into the object the page holds                                                          |
-| `once(fn, { key?, ttl?, fresh? })`                | only when the browser doesn't hold it already                                                  |
-| `scroll(fn, { pageName? })`                       | a page of a list for `<InfiniteScroll>`: `{ data, currentPage, previousPage, nextPage }`       |
-
-```ts
-import { defer, merge, render } from 'fondu'
-
-render(c, 'dashboard', {
-  user,
-  stats: defer(() => slowStats()), // the page shows a placeholder, then the stats
-  activity: merge(await activityPage(page)), // "Load more" adds to the list
-})
-```
-
-A list inside a prop, such as a paginator's `data`, is merged with `path`; `matchOn` names the field, from the prop,
-that finds an item the page holds already, which the new one replaces:
-
-```ts
-users: merge(() => paginate(page), { path: 'data', matchOn: 'data.id' }) // the rest of the prop is replaced
-```
-
-They combine as in Inertia's docs, by wrapping one in another:
-
-| Combined                                                         | Inertia's (Laravel's)                          |
-| ---------------------------------------------------------------- | ---------------------------------------------- |
-| `once(defer(fn))`                                                | `Inertia::defer(fn)->once()`                   |
-| `once(optional(fn))`                                             | `Inertia::optional(fn)->once()`                |
-| `once(merge(fn))`                                                | `Inertia::merge(fn)->once()`                   |
-| `merge(defer(fn))`, `deepMerge(defer(fn))`, `prepend(defer(fn))` | `Inertia::defer(fn)->merge()`, `->deepMerge()` |
-| `defer(scroll(fn))`                                              | `Inertia::scroll(fn)->defer()`                 |
-
-`once(defer(fn))` is deferred on the first visit only: once the browser holds it, it is neither sent nor asked for
-again. A combination Inertia doesn't have is an error.
-
-A deferred prop's loading state is the page's to show, with Inertia's
-[`<Deferred fallback>`](https://inertiajs.com/docs/v3/data-props/deferred-props). The progress bar is Inertia's too,
-and it is the visit's, not the deferred props': their requests don't show it, and its `delay` only holds it back on
-short visits ([progress indicators](https://inertiajs.com/docs/v3/advanced/progress-indicators)).
+In code, `location.assign(url)` navigates as a link would.
 
 ## Shared props
 
@@ -137,13 +69,12 @@ export default defineMiddleware(async (c, next) => {
 })
 ```
 
-The page reads them with `usePage().props`. [Type safety](/docs/type-safety) shows how to type them.
+A value can be a function: it runs when a page renders, not for the other requests. The page reads them with
+`usePage().props`. [Type safety](/docs/type-safety) shows how to type them.
 
 ## After an action
 
 - `back(c)`: a redirect to the page the request came from.
 - `flash(c, { message: 'Saved' })`: data for the next page only, in `usePage().flash`.
-- `location(c, url)`: a full page load of `url`, for a page outside the app.
-- `clearHistory(c)`: the history Inertia encrypted is cleared on the next page (after signing out).
-
-A redirect to a URL with a `#fragment` keeps the fragment.
+- `location(c, url)`: a document load of `url`, for a page outside the app.
+- `clearHistory(c)`: the pages kept for Back are forgotten (after signing out).
