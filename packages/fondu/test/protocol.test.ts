@@ -1,14 +1,13 @@
-import { always, createApp, defer, merge, once } from 'fondu'
+import { createApp } from 'fondu'
 import { createElement as h } from 'react'
-// Inertia's protocol and the app conventions, on test/app/ with `app.request()`. Inertia's cases are answered as
-// inertia-laravel answers them (CONTRIBUTING: Inertia's server side).
+// Fondu's protocol and the app conventions, on test/app/ with `app.request()`
 import { afterEach, describe, expect, test, vi } from 'vitest'
 
 const app = createApp()
 const ORIGIN = 'http://localhost'
-const inertia = (extra: Record<string, string> = {}) => ({
-  'X-Inertia': 'true',
-  'X-Inertia-Version': 'v1',
+const fondu = (extra: Record<string, string> = {}) => ({
+  'X-Fondu': 'true',
+  'X-Fondu-Version': 'v1',
   ...extra,
 })
 const page = async (res: Response) =>
@@ -17,14 +16,12 @@ const page = async (res: Response) =>
     props: Record<string, unknown>
     [key: string]: unknown
   }
-const partial = (data: string, extra: Record<string, string> = {}) =>
-  inertia({ 'X-Inertia-Partial-Component': 'home', 'X-Inertia-Partial-Data': data, ...extra })
 const html = { Accept: 'text/html' }
 
 afterEach(() => vi.unstubAllEnvs())
 
 describe('pages', () => {
-  test('a document: the page data in the HTML, props by kind, headers', async () => {
+  test('a document: the page data in the HTML, the shared props, headers', async () => {
     const res = await app.request('/')
     const body = await res.text()
     const data = JSON.parse(
@@ -33,49 +30,37 @@ describe('pages', () => {
         .replace(/\\\//g, '/'),
     )
     expect(res.headers.get('content-type')).toContain('text/html')
-    expect(data.component).toBe('home')
-    expect(Object.keys(data.props).sort()).toEqual([
-      'app',
-      'count',
-      'errors',
-      'fn',
-      'items',
-      'people',
-      'plain',
-      'plan',
-      'tree',
-    ])
-    expect(data.deferredProps).toEqual({ default: ['stats', 'flaky'], slow: ['slow'] })
-    expect(data.onceProps.plan).toEqual({ prop: 'plan', expiresAt: null })
-    expect(data.mergeProps).toEqual(['items', 'people.data'])
-    expect(data.matchPropsOn).toEqual(['items.id'])
-    expect(data.deepMergeProps).toEqual(['tree'])
-    expect(data.scrollProps).toEqual({
-      people: { pageName: 'page', currentPage: 1, previousPage: null, nextPage: 2, reset: false },
+    expect(data).toEqual({
+      component: 'home',
+      props: { app: 'test', lazy: 'computed', plain: 'value', errors: {} },
+      url: '/',
+      version: 'v1',
+      flash: {},
     })
-    expect(data.sharedProps).toEqual(['app'])
-    expect(res.headers.get('vary')).toContain('X-Inertia')
+    expect(body).toMatch(
+      /<script data-page="app" type="application\/json">.*<\/script><div id="app"><\/div>/,
+    )
+    expect(res.headers.get('vary')).toContain('X-Fondu')
     expect(res.headers.get('cache-control')).toBe('private, no-cache')
     expect(res.headers.get('referrer-policy')).toBe('same-origin')
   })
   test('a page in MDX: found like a .tsx one', async () => {
-    expect(await page(await app.request('/notes', { headers: inertia() }))).toMatchObject({
+    expect(await page(await app.request('/notes', { headers: fondu() }))).toMatchObject({
       component: 'notes',
     })
   })
-  test('a visit: the page object as JSON', async () => {
-    const res = await app.request('/', { headers: inertia() })
-    expect(res.headers.get('x-inertia')).toBe('true')
+  test('a navigation: the page object as JSON', async () => {
+    const res = await app.request('/', { headers: fondu() })
+    expect(res.headers.get('x-fondu')).toBe('true')
     expect((await page(res)).props.plain).toBe('value')
   })
-  test('a visit from other assets: 409, X-Inertia-Location, the current version', async () => {
-    const res = await app.request('/', { headers: inertia({ 'X-Inertia-Version': 'old' }) })
+  test('a navigation from other assets: 409, X-Fondu-Location', async () => {
+    const res = await app.request('/', { headers: fondu({ 'X-Fondu-Version': 'old' }) })
     expect(res.status).toBe(409)
-    expect(res.headers.get('x-inertia-location')).toBe(`${ORIGIN}/`)
-    expect(res.headers.get('x-inertia-version')).toBe('v1')
+    expect(res.headers.get('x-fondu-location')).toBe(`${ORIGIN}/`)
   })
   test('other assets: not a 409 for a POST; the errors and flash wait for the reloaded page', async () => {
-    const stale = inertia({ 'X-Inertia-Version': 'old' })
+    const stale = fondu({ 'X-Fondu-Version': 'old' })
     const post = await app.request('/items', {
       method: 'POST',
       headers: {
@@ -90,171 +75,27 @@ describe('pages', () => {
     const cookie = post.headers.get('set-cookie')!.split(';')[0]!
     const reload = await app.request('/', { headers: { ...stale, Cookie: cookie } })
     expect([reload.status, reload.headers.get('set-cookie')]).toEqual([409, null])
-    const next = await page(await app.request('/', { headers: { ...inertia(), Cookie: cookie } }))
+    const next = await page(await app.request('/', { headers: { ...fondu(), Cookie: cookie } }))
     expect(next.props.errors).toEqual({ name: 'Too short' })
   })
-  test('Vary: X-Inertia on every answer (a page, a redirect, a 409)', async () => {
+  test('Vary: X-Fondu on every answer (a page, a redirect, a 409)', async () => {
     const answers = [
       await app.request('/', { headers: html }),
-      await app.request('/', { headers: inertia() }),
+      await app.request('/', { headers: fondu() }),
       await app.request('/redirect'),
-      await app.request('/', { headers: inertia({ 'X-Inertia-Version': 'old' }) }),
+      await app.request('/', { headers: fondu({ 'X-Fondu-Version': 'old' }) }),
     ]
-    for (const res of answers) expect(res.headers.get('vary')).toBe('X-Inertia')
+    for (const res of answers) expect(res.headers.get('vary')).toBe('X-Fondu')
   })
-})
-
-describe('partial reloads', () => {
-  test('only: the named props, always props and errors', async () => {
-    expect(
-      Object.keys((await page(await app.request('/', { headers: partial('fn') }))).props).sort(),
-    ).toEqual(['count', 'errors', 'fn'])
-  })
-  test('except', async () => {
-    const res = await app.request('/', {
-      headers: inertia({
-        'X-Inertia-Partial-Component': 'home',
-        'X-Inertia-Partial-Except': 'plain',
-      }),
+  test('clearHistory(): the next page says so', async () => {
+    const res = await app.request('/redirect?signout', {
+      method: 'POST',
+      headers: { ...fondu(), Origin: ORIGIN },
     })
-    const props = (await page(res)).props
-    expect(props).not.toHaveProperty('plain')
-    expect(props).toHaveProperty('fn')
-    expect(props).not.toHaveProperty('report') // optional: only when named in `only`, as Inertia's docs say
-  })
-  test("another page's partial reload: a visit to this one, every prop", async () => {
-    const res = await page(
-      await app.request('/', {
-        headers: inertia({
-          'X-Inertia-Partial-Component': 'other',
-          'X-Inertia-Partial-Data': 'fn',
-        }),
-      }),
-    )
-    expect(res.props).toHaveProperty('plain')
-    expect(res.deferredProps).toBeDefined()
-  })
-  test('optional: computed when named', async () => {
-    expect((await page(await app.request('/', { headers: partial('report') }))).props.report).toBe(
-      'report',
-    )
-  })
-  test('deferred: a group; a rescued failure is left out and listed', async () => {
-    const res = await page(await app.request('/', { headers: partial('stats,flaky') }))
-    expect(res.props.stats).toEqual({ n: 1 })
-    expect(res.props).not.toHaveProperty('flaky')
-    expect(res.rescuedProps).toEqual(['flaky'])
-  })
-  test('once: skipped when the client holds it, sent when fresh', async () => {
-    const held = { 'X-Inertia-Except-Once-Props': 'plan' }
-    expect(
-      (await page(await app.request('/', { headers: inertia(held) }))).props,
-    ).not.toHaveProperty('plan')
-    expect((await page(await app.request('/?fresh', { headers: inertia(held) }))).props.plan).toBe(
-      'plan',
-    )
-  })
-  test('once: a partial reload sends what it asks for, held or not, and lists only what it sends', async () => {
-    const held = { 'X-Inertia-Except-Once-Props': 'plan' }
-    const asked = await page(await app.request('/', { headers: partial('plan', held) }))
-    expect([asked.props.plan, asked.onceProps]).toEqual([
-      'plan',
-      { plan: { prop: 'plan', expiresAt: null } },
-    ])
-    const other = await page(await app.request('/', { headers: partial('fn', held) }))
-    expect([other.props.plan, other.onceProps]).toEqual([undefined, undefined])
-  })
-  test('merge: X-Inertia-Reset replaces instead', async () => {
-    const res = await page(
-      await app.request('/', { headers: partial('items', { 'X-Inertia-Reset': 'items' }) }),
-    )
-    expect(res.mergeProps).toBeUndefined()
-  })
-  test('merge: a partial reload lists the merged props it sends only', async () => {
-    const res = await page(await app.request('/', { headers: partial('fn') }))
-    expect([res.mergeProps, res.matchPropsOn, res.deepMergeProps]).toEqual([
-      undefined,
-      undefined,
-      undefined,
-    ])
-  })
-  test('scroll: the previous page is prepended', async () => {
-    const res = await page(
-      await app.request('/', {
-        headers: partial('people', { 'X-Inertia-Infinite-Scroll-Merge-Intent': 'prepend' }),
-      }),
-    )
-    expect(res.prependProps).toEqual(['people.data'])
-  })
-})
-
-describe('props combined', () => {
-  const visit = async (headers: Record<string, string> = {}) =>
-    page(await app.request('/combos', { headers: inertia(headers) }))
-  const reload = async (data: string, headers: Record<string, string> = {}) =>
-    page(
-      await app.request('/combos', {
-        headers: inertia({
-          'X-Inertia-Partial-Component': 'home',
-          'X-Inertia-Partial-Data': data,
-          ...headers,
-        }),
-      }),
-    )
-  test('once(defer()): deferred until the client holds it, then neither sent nor deferred', async () => {
-    const first = await visit()
-    expect([first.props.permissions, first.deferredProps]).toEqual([
-      undefined,
-      { default: ['permissions', 'results', 'feed'] },
-    ])
-    expect(first.onceProps).toMatchObject({ permissions: { prop: 'permissions' } })
-    expect((await reload('permissions')).props.permissions).toEqual(['edit'])
-    const held = await visit({ 'X-Inertia-Except-Once-Props': 'permissions' })
-    expect(held.deferredProps).toEqual({ default: ['results', 'feed'] })
-    expect(held.onceProps).toHaveProperty('permissions')
-  })
-  test('once(optional()): listed on a visit, sent when named', async () => {
-    const first = await visit()
-    expect([
-      first.props.categories,
-      (first.onceProps as Record<string, unknown>).categories,
-    ]).toEqual([undefined, { prop: 'categories', expiresAt: null }])
-    expect((await reload('categories')).props.categories).toEqual(['news'])
-  })
-  test('once(merge()): merged when sent; not sent, nor listed to merge, when held', async () => {
-    const first = await visit()
-    expect([first.props.activity, first.mergeProps]).toEqual([
-      [{ id: 1 }],
-      ['activity', 'users.data', 'feed.data'],
-    ])
-    const held = await visit({ 'X-Inertia-Except-Once-Props': 'activity' })
-    expect([held.props.activity, held.mergeProps]).toEqual([undefined, ['users.data', 'feed.data']])
-  })
-  test('deepMerge(defer()): deferred, and listed to merge from the first visit', async () => {
-    const first = await visit()
-    expect(first.deepMergeProps).toEqual(['results', 'thread'])
-    const later = await reload('results')
-    expect([later.props.results, later.deepMergeProps]).toEqual([{ data: [1] }, ['results']])
-  })
-  test('merge at a path, matching on a field', async () => {
-    const first = await visit()
-    expect(first.prependProps).toEqual(['chat.messages'])
-    expect(first.matchPropsOn).toEqual(['users.data.id', 'thread.messages.id'])
-  })
-  test('defer(scroll()): deferred, its page merged once loaded', async () => {
-    const first = await visit()
-    expect([first.props.feed, first.scrollProps]).toEqual([undefined, undefined])
-    expect(first.mergeProps).toContain('feed.data') // listed to merge from the first visit, as Laravel does
-    const later = await reload('feed')
-    expect([later.mergeProps, (later.scrollProps as Record<string, unknown>).feed]).toEqual([
-      ['feed.data'],
-      { pageName: 'page', currentPage: 1, previousPage: null, nextPage: 2, reset: false },
-    ])
-  })
-  test('what Inertia does not combine is an error', () => {
-    expect(() => once(always(1))).toThrow("once() can't wrap always()")
-    expect(() => defer(merge(() => 1) as never)).toThrow("defer() can't wrap merge()")
-    expect(() => once(once(() => 1))).toThrow("once() can't wrap once()")
+    const cookie = res.headers.get('set-cookie')!.split(';')[0]!
+    const next = await page(await app.request('/', { headers: { ...fondu(), Cookie: cookie } }))
+    expect(next.clearHistory).toBe(true)
+    expect((await page(await app.request('/', { headers: fondu() }))).clearHistory).toBeUndefined()
   })
 })
 
@@ -266,40 +107,24 @@ describe('routes', () => {
     expect((await post('nope')).status).toBe(404)
     expect((await post('constructor')).status).toBe(404)
   })
-  test('a 302 after PUT is a 303 for Inertia', async () => {
-    expect(
-      (await app.request('/redirect', { method: 'PUT', headers: { ...inertia(), Origin: ORIGIN } }))
-        .status,
-    ).toBe(303)
-  })
-  test('a redirect with a #fragment: 409 + X-Inertia-Redirect', async () => {
-    const res = await app.request('/redirect?fragment', {
-      method: 'POST',
-      headers: { ...inertia(), Origin: ORIGIN },
-    })
-    expect(res.status).toBe(409)
-    expect(res.headers.get('x-inertia-redirect')).toBe('/#target')
-    const prefetch = await app.request('/redirect', { headers: inertia({ Purpose: 'prefetch' }) })
-    expect([prefetch.status, prefetch.headers.get('location')]).toEqual([302, '/#target']) // not for a prefetch
-  })
-  test('an empty answer to a visit: back to the page', async () => {
+  test('an empty answer to a form: back to the page', async () => {
     const res = await app.request('/redirect?nothing', {
       method: 'POST',
-      headers: { ...inertia(), Origin: ORIGIN, Referer: `${ORIGIN}/items` },
+      headers: { ...fondu(), Origin: ORIGIN, Referer: `${ORIGIN}/items` },
     })
     expect([res.status, res.headers.get('location')]).toEqual([303, '/items'])
     const api = await app.request('/redirect?nothing', {
       method: 'POST',
       headers: { Origin: ORIGIN },
     })
-    expect(api.status).toBe(200) // not a visit: as it is
+    expect(api.status).toBe(200) // not a navigation: as it is
   })
-  test('location(): 409 + X-Inertia-Location for a visit, a redirect otherwise', async () => {
-    const visit = await app.request('/redirect?away', {
+  test('location(): 409 + X-Fondu-Location for a navigation, a redirect otherwise', async () => {
+    const navigation = await app.request('/redirect?away', {
       method: 'POST',
-      headers: { ...inertia(), Origin: ORIGIN },
+      headers: { ...fondu(), Origin: ORIGIN },
     })
-    expect([visit.status, visit.headers.get('x-inertia-location')]).toEqual([
+    expect([navigation.status, navigation.headers.get('x-fondu-location')]).toEqual([
       409,
       'https://example.com/',
     ])
@@ -363,56 +188,17 @@ describe('withValidator', () => {
       body: JSON.stringify(body),
     })
   test('a page request with invalid input: 303 back, the errors in the flash cookie', async () => {
-    const res = await post({ name: 'x' }, inertia())
+    const res = await post({ name: 'x' }, fondu())
     expect([res.status, res.headers.get('location')]).toEqual([303, '/'])
     expect(decodeURIComponent(res.headers.get('set-cookie')!)).toContain(
       '"errors":{"name":"Too short"}',
     )
   })
-  test('an error bag', async () => {
-    const res = await post({ name: 'x' }, inertia({ 'X-Inertia-Error-Bag': 'create' }))
-    expect(decodeURIComponent(res.headers.get('set-cookie')!)).toContain(
-      '"errors":{"create":{"name":"Too short"}}',
-    )
-  })
   test('the next page shows the errors and the flash once', async () => {
-    const valid = await post({ name: 'Ada' }, inertia())
+    const valid = await post({ name: 'Ada' }, fondu())
     const cookie = valid.headers.get('set-cookie')!.split(';')[0]!
-    const next = await page(await app.request('/', { headers: { ...inertia(), Cookie: cookie } }))
+    const next = await page(await app.request('/', { headers: { ...fondu(), Cookie: cookie } }))
     expect(next.flash).toEqual({ message: 'added Ada' })
-  })
-  test('a partial reload after the redirect (a form with `only`) gets the errors and the flash, once', async () => {
-    const cookie = (res: Response) => res.headers.get('set-cookie')!.split(';')[0]!
-    const invalid = cookie(await post({ name: 'x' }, inertia()))
-    const next = await app.request('/', { headers: { ...partial('items'), Cookie: invalid } })
-    expect((await page(next)).props.errors).toEqual({ name: 'Too short' })
-    expect(next.headers.get('set-cookie')).toMatch(/fondu-flash=; Max-Age=0/)
-    const valid = cookie(await post({ name: 'Ada' }, inertia()))
-    expect(
-      (await page(await app.request('/', { headers: { ...partial('items'), Cookie: valid } })))
-        .flash,
-    ).toEqual({
-      message: 'added Ada',
-    })
-    const bag = cookie(await post({ name: 'x' }, inertia({ 'X-Inertia-Error-Bag': 'create' })))
-    expect(
-      (await page(await app.request('/', { headers: { ...partial('items'), Cookie: bag } }))).props
-        .errors,
-    ).toEqual({
-      create: { name: 'Too short' },
-    })
-  })
-  test('a prefetch leaves them for the visit', async () => {
-    const cookie = (await post({ name: 'x' }, inertia())).headers.get('set-cookie')!.split(';')[0]!
-    const prefetch = await app.request('/', {
-      headers: { ...inertia({ Purpose: 'prefetch' }), Cookie: cookie },
-    })
-    expect([(await page(prefetch)).props.errors, prefetch.headers.get('set-cookie')]).toEqual([
-      {},
-      null,
-    ])
-    const visit = await page(await app.request('/', { headers: { ...inertia(), Cookie: cookie } }))
-    expect(visit.props.errors).toEqual({ name: 'Too short' })
   })
   test('an API client: 422 { errors }', async () => {
     const res = await app.request('/api/data', {
@@ -427,30 +213,13 @@ describe('withValidator', () => {
     expect(await (await app.request('/users/7?full=1')).json()).toEqual({ id: 7, full: '1' })
     expect((await app.request('/users/x')).status).toBe(404)
   })
-  test('Precognition: validation only — 422 with the asked fields, or 204', async () => {
-    const pre = { Precognition: 'true' }
-    const invalid = await post({ name: 'x', email: 'no' }, pre)
-    expect([invalid.status, invalid.headers.get('precognition')]).toEqual([422, 'true'])
-    expect(await invalid.json()).toEqual({ errors: { name: 'Too short', email: 'Bad email' } })
-    const only = await post(
-      { name: 'x', email: 'no' },
-      { ...pre, 'Precognition-Validate-Only': 'email' },
-    )
-    expect(await only.json()).toEqual({ errors: { email: 'Bad email' } })
-    const valid = await post({ name: 'Ada' }, pre)
-    expect([
-      valid.status,
-      valid.headers.get('precognition-success'),
-      valid.headers.get('set-cookie'),
-    ]).toEqual([204, 'true', null]) // the action did not run
-  })
 })
 
 describe('errors', () => {
-  test('404: the error page for a visit or a document, plain text for an API client', async () => {
-    const visit = await app.request('/nope', { headers: inertia() })
-    expect(visit.status).toBe(404)
-    expect(await page(visit)).toMatchObject({
+  test('404: the error page for a navigation or a document, plain text for an API client', async () => {
+    const navigation = await app.request('/nope', { headers: fondu() })
+    expect(navigation.status).toBe(404)
+    expect(await page(navigation)).toMatchObject({
       component: 'error',
       props: { status: 404, app: 'test' },
     })
@@ -460,21 +229,21 @@ describe('errors', () => {
     expect([api.status, await api.text()]).toEqual([404, 'Not Found'])
   })
   test('an HTTPException: its status on the error page', async () => {
-    expect(await page(await app.request('/forbidden', { headers: inertia() }))).toMatchObject({
+    expect(await page(await app.request('/forbidden', { headers: fondu() }))).toMatchObject({
       props: { status: 403 },
     })
   })
-  test('a thrown error in development: the report, also for a visit (Inertia shows it in its dialog)', async () => {
+  test('a thrown error in development: the report, also for a navigation (loaded as a document)', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
-    const res = await app.request('/boom', { headers: inertia() })
+    const res = await app.request('/boom', { headers: fondu() })
     expect(res.status).toBe(500)
-    expect(res.headers.get('x-inertia')).toBeNull()
+    expect(res.headers.get('x-fondu')).toBeNull()
     expect(await res.text()).toContain('the database is down')
   })
   test('a thrown error in production: the error page with status 500', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
     vi.stubEnv('DEV', false)
-    expect(await page(await app.request('/boom', { headers: inertia() }))).toMatchObject({
+    expect(await page(await app.request('/boom', { headers: fondu() }))).toMatchObject({
       component: 'error',
       props: { status: 500 },
     })
@@ -535,13 +304,4 @@ describe('the document', () => {
     const app = createApp({ document: ({ body }) => `<html><body>${body}</body></html>` })
     expect((await app.request('/', { headers: html })).status).toBe(500)
   })
-})
-
-test('encryptHistory(): the pages of a directory encrypted in history; a route can opt out', async () => {
-  const app = createApp()
-  const visit = async (path: string) =>
-    (await (await app.request(path, { headers: inertia() })).json()) as Record<string, unknown>
-  expect((await visit('/private')).encryptHistory).toBe(true)
-  expect((await visit('/private/open')).encryptHistory).toBeUndefined()
-  expect((await visit('/')).encryptHistory).toBeUndefined()
 })

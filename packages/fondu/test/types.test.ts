@@ -1,24 +1,20 @@
 // The public types, as an app with its own declarations sees them (type checks: `tsc`; each @ts-expect-error must
-// be an error): render() by the pages, href() by the routes, share() and flash() by Inertia's InertiaConfig,
+// be an error): render() by the pages, href() by the routes, share() and flash() by Register's shared and flash,
 // withValidator() by its schemas. CONTRIBUTING: "Types are behavior".
 import type { Context } from 'hono'
 import { expect, test } from 'vitest'
 import * as z from 'zod/mini'
 
-import type { href } from '../src/client.js'
+import type { href, usePage } from '../src/client.js'
 import type { flash } from '../src/server/flash.js'
 import type { defineHandler } from '../src/server/handler.js'
 import type { render, share } from '../src/server/protocol.js'
 
 type Auth = { user: string | null }
-declare module '@inertiajs/core' {
-  interface InertiaConfig {
-    sharedPageProps: { auth: Auth }
-    flashDataType: { message?: string }
-  }
-}
 declare module '../src/types.js' {
   interface Register {
+    shared: { auth: Auth }
+    flash: { message?: string }
     pages: {
       bare: { default: () => null }
       titled: { default: (props: { title: string; auth: Auth }) => null }
@@ -40,6 +36,7 @@ type Api = {
   href: typeof href
   share: typeof share
   flash: typeof flash
+  usePage: typeof usePage
   defineHandler: typeof defineHandler
 }
 const typed = (call: (api: Api, c: Context) => unknown) => call
@@ -53,7 +50,7 @@ const renders = [
   // the shared props a page takes may be left out, or given
   typed(({ render }, c) => render(c, 'titled', { title: 'Hello' })),
   typed(({ render }, c) => render(c, 'titled', { title: 'Hello', auth: { user: null } })),
-  // a prop may be a function, called when the prop is sent
+  // @ts-expect-error a prop is a value (a function is for share(): called when a page renders)
   typed(({ render }, c) => render(c, 'titled', { title: async () => 'Hello' })),
   // @ts-expect-error a prop of its own is missing
   typed(({ render }, c) => render(c, 'titled', {})),
@@ -101,6 +98,16 @@ const shared = [
   typed(({ flash }, c) => flash(c, { message: 7 })),
   // @ts-expect-error only the declared flash data
   typed(({ flash }, c) => flash(c, { mesage: 'Saved' })),
+  // the page on screen: the shared props, the errors, the flash data
+  typed(({ usePage }) => {
+    const { props, flash } = usePage()
+    const user: string | null = props.auth.user
+    const email: string | undefined = props.errors.email
+    const message: string | undefined = flash.message
+    return [user, email, message]
+  }),
+  // @ts-expect-error not a shared prop
+  typed(({ usePage }) => usePage().props.autk),
 ]
 
 const params = z.object({ id: z.coerce.number() })
@@ -139,5 +146,5 @@ const validated = [
 ]
 
 test('the types above are checked by tsc', () => {
-  expect([...renders, ...hrefs, ...shared, ...validated]).toHaveLength(33)
+  expect([...renders, ...hrefs, ...shared, ...validated]).toHaveLength(35)
 })

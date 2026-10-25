@@ -18,8 +18,8 @@ const TEXT: Record<number, string> = {
 /**
  * The answer to an unmatched URL or a thrown error (installed by `createApp`):
  * - API clients: the `HTTPException`'s response, or plain text
- * - pages, in development: a report of the error (Inertia shows it in its dialog during a visit)
- * - pages: the error page (`app/pages/error.tsx`, `{ status }`) with the shared props, as Inertia's docs describe
+ * - pages, in development: a report of the error (a navigation loads it as a document)
+ * - pages: the error page (`app/pages/error.tsx`, `{ status }`) with the shared props
  */
 export async function errorResponse(
   c: Context,
@@ -74,7 +74,7 @@ li{white-space:pre;padding:1px 8px;border-radius:4px}li.own{color:#1f2328;backgr
 footer{padding:0 var(--x) 24px;color:#afb8c1;font-size:12px;font-weight:400}
 </style></head><body><article>
 <header><p class="kind">${escape(err.name)} · 500</p><h1>${escape(err.message)}</h1>
-<p class="req"><b>${escape(c.req.method)}</b> ${escape(url.pathname + url.search)}${c.req.header('x-inertia') ? ' · Inertia visit' : ''}</p></header>
+<p class="req"><b>${escape(c.req.method)}</b> ${escape(url.pathname + url.search)}${c.req.header('x-fondu') ? ' · navigation' : ''}</p></header>
 <main><h2>Stack — your files are highlighted</h2><ol>${frames.map(frame).join('')}</ol></main>
 <footer>Shown in development only. In production this request gets your error page with status 500.</footer>
 </article></body></html>`

@@ -19,7 +19,7 @@ interface WithInput<S extends Schemas> {
 /**
  * Validated input for the handler, after the middleware (a guard runs before the request body is read):
  * `defineHandler.withValidator({ body, query, params })(...middleware, (c, { body, query, params }) => …)`.
- * Any Standard Schema. Invalid input: back to the page with the errors (Inertia), or 422 `{ errors }`.
+ * Any Standard Schema. Invalid input: back to the page with the errors, or 422 `{ errors }`.
  * More than three middleware: combine them with `every()` from `hono/combine`.
  */
 function withValidator<S extends Schemas>(schemas: S): WithInput<S> {

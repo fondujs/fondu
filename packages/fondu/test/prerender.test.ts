@@ -75,10 +75,10 @@ describe('headers', () => {
     expect(own.hashes).toEqual([`'sha256-${createHash('sha256').update('a()').digest('base64')}'`])
     expect(ownScripts(html, "script-src 'self'")).toEqual({ html, hashes: [] }) // no nonce: nothing is replaced
   })
-  test("_headers: a rule for the documents, X-Inertia for the page objects, after Fondu's own", () => {
+  test("_headers: a rule for the documents, X-Fondu for the page objects, after Fondu's own", () => {
     const fondus = '/assets/*\n  Cache-Control: public, max-age=31536000, immutable\n'
     expect(withHeaderRules(fondus, { 'referrer-policy': 'same-origin' })).toBe(
-      `${fondus}\n/*\n  referrer-policy: same-origin\n\n/_fondu/pages/*\n  X-Inertia: true\n`,
+      `${fondus}\n/*\n  referrer-policy: same-origin\n\n/_fondu/pages/*\n  X-Fondu: true\n`,
     )
   })
   test("_headers: the app's rule for a path gets the headers it doesn't set, its own kept (#99)", () => {
@@ -90,7 +90,7 @@ describe('headers', () => {
       'x-content-type-options': 'nosniff',
     })
     expect(out).toBe(
-      '/*\n  Cache-Control: no-store\n  Referrer-Policy: no-referrer\n  ! X-Frame-Options\n  x-content-type-options: nosniff\n\n/api/*\n  X-Robots-Tag: noindex\n\n/_fondu/pages/*\n  X-Inertia: true\n',
+      '/*\n  Cache-Control: no-store\n  Referrer-Policy: no-referrer\n  ! X-Frame-Options\n  x-content-type-options: nosniff\n\n/api/*\n  X-Robots-Tag: noindex\n\n/_fondu/pages/*\n  X-Fondu: true\n',
     )
     expect(out.match(/^\/\*$/gm)).toHaveLength(1)
     // built again on the result: nothing more
@@ -137,27 +137,27 @@ describe('the app', () => {
       problems: [],
     })
   })
-  test('the page object of a page without a file: the page, as a visit', async () => {
+  test('the page object of a page without a file: the page, as a navigation', async () => {
     const res = await app.request('/_fondu/pages/index.json?fresh', {
-      headers: { 'X-Inertia': 'true', 'X-Inertia-Version': 'v1' },
+      headers: { 'X-Fondu': 'true', 'X-Fondu-Version': 'v1' },
     })
-    expect(res.headers.get('x-inertia')).toBe('true')
+    expect(res.headers.get('x-fondu')).toBe('true')
     const page = (await res.json()) as { component: string; url: string }
     expect(page.component).toBe('home')
     expect(page.url).toBe('/?fresh')
   })
   test('the page object of a page object: none', async () => {
     const res = await app.request('/_fondu/pages/_fondu/pages/index.json.json', {
-      headers: { 'X-Inertia': 'true', 'X-Inertia-Version': 'v1' },
+      headers: { 'X-Fondu': 'true', 'X-Fondu-Version': 'v1' },
     })
     expect(res.status).toBe(404)
   })
   test('… from other assets: reloaded at the page, not at the page object', async () => {
     const res = await app.request('/_fondu/pages/index.json', {
-      headers: { 'X-Inertia': 'true', 'X-Inertia-Version': 'old' },
+      headers: { 'X-Fondu': 'true', 'X-Fondu-Version': 'old' },
     })
     expect(res.status).toBe(409)
-    expect(res.headers.get('x-inertia-location')).toBe('http://localhost/')
+    expect(res.headers.get('x-fondu-location')).toBe('http://localhost/')
   })
   test('Node / Bun: a prerendered page from its file, before the routes, with the security headers', async () => {
     const files: Record<string, string> = {
@@ -176,13 +176,13 @@ describe('the app', () => {
       expect(await doc.text()).toBe('<html>static home</html>')
       expect(doc.headers.get('content-security-policy')).toContain("script-src 'self' 'nonce-")
       const data = await app.request('/_fondu/pages/index.json', {
-        headers: { 'X-Inertia': 'true' },
+        headers: { 'X-Fondu': 'true' },
       })
-      expect(data.headers.get('x-inertia')).toBe('true')
+      expect(data.headers.get('x-fondu')).toBe('true')
       expect(await data.text()).toBe('{"component":"home"}')
       // a visit to the page itself, or a page with no file: the routes
       const visit = await app.request('/', {
-        headers: { 'X-Inertia': 'true', 'X-Inertia-Version': 'v1' },
+        headers: { 'X-Fondu': 'true', 'X-Fondu-Version': 'v1' },
       })
       expect(((await visit.json()) as { component: string }).component).toBe('home')
       expect(
@@ -197,7 +197,7 @@ describe('the app', () => {
         '/_fondu/pages/..%2f..%2f.vite%2fmanifest.json',
         '/_fondu/pages/%2e%2e/%2e%2e/.vite/manifest.json',
       ]) {
-        const res = await app.request(path, { headers: { 'X-Inertia': 'true' } })
+        const res = await app.request(path, { headers: { 'X-Fondu': 'true' } })
         expect(await res.text(), path).not.toContain('secret')
       }
     } finally {

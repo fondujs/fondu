@@ -39,7 +39,7 @@ type SecureHeadersOptions = NonNullable<Parameters<typeof secureHeaders>[0]>
 const CSP = {
   defaultSrc: ["'self'"],
   scriptSrc: ["'self'", NONCE],
-  styleSrc: ["'self'", "'unsafe-inline'"], // style attributes (React, Base UI), Inertia's progress bar
+  styleSrc: ["'self'", "'unsafe-inline'"], // style attributes (React, Base UI)
   imgSrc: ["'self'", 'data:'],
   fontSrc: ["'self'", 'data:'],
   objectSrc: ["'none'"],

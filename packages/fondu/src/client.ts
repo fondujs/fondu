@@ -1,12 +1,10 @@
-import { http, router } from '@inertiajs/react'
-
-import { fillPattern, pageDataPath } from './paths.js'
+import { fillPattern } from './paths.js'
 import type { Routes } from './types.js'
 
 /**
  * Typed URLs from `app/routes/` (as React Router's `href`): `href('/users/:id', { id })` → `'/users/7'`;
  * one of a file's `actions`: `href('/users/:id?delete', { id })`. Only patterns that exist; params are required.
- * The method is Inertia's: `<Link href={href('/logout')} method="post" as="button">`, `<Form action=… method="post">`.
+ * A form's action too: `<form method="post" action={href('/logout')}>`.
  */
 type Keys = keyof Routes & string
 type Actions = {
@@ -31,46 +29,14 @@ export function href<P extends Href>(path: P, ...[params]: Args<P>): string {
   return fillPattern(path, params)
 }
 
-/**
- * `fondu({ prerender: true })` adds this to the client entry: visits ask for the page object at
- * `/_fondu/pages/<path>.json`, a static file for a prerendered page, the server's answer for any other. A page
- * object of another build reloads the page as a document, as the server's 409 would.
- */
-export function prerendered() {
-  const loaded = document.querySelector('script[data-page]')?.textContent
-  const version = loaded ? (JSON.parse(loaded) as { version?: string | null }).version : null
-  http.onRequest((config) => {
-    const url = new URL(config.url, location.href)
-    if (config.method !== 'get' || !config.headers?.['X-Inertia'] || url.origin !== location.origin)
-      return config
-    return { ...config, url: pageDataPath(url.pathname) + url.search }
-  })
-  http.onResponse((response) => {
-    if (!version || response.status !== 200 || !response.headers['x-inertia']) return response
-    const page = JSON.parse(response.data) as { url: string; version?: string | null }
-    if (!page.version || page.version === version) return response
-    return {
-      status: 409,
-      data: '',
-      headers: { 'x-inertia-location': page.url, 'x-inertia-version': page.version },
-    }
-  })
-}
-
-/**
- * The build adds this to the client entry: in production, a GET visit answered with something that isn't an Inertia
- * page (a proxy's 502, a CDN's 524) loads the URL as a document, as a site without Inertia would, instead of showing
- * that answer in Inertia's dialog. Fondu's own answers to visits are pages, errors included. Other methods keep the
- * dialog (loading the URL would drop the form); a visit's own `onHttpException` comes first.
- */
-export function documentFallback() {
-  let visit: { url: URL; method: string } | undefined
-  router.on('start', (event) => {
-    visit = event.detail.visit
-  })
-  router.on('httpException', (event) => {
-    if (event.detail.response.headers['x-inertia'] || visit?.method !== 'get') return
-    event.preventDefault()
-    window.location.href = visit.url.href
-  })
-}
+export {
+  startApp,
+  usePage,
+  useNavigating,
+  navigate,
+  reload,
+  __entry,
+  renderPage,
+  type AppOptions,
+} from './client/app.js'
+export type { Page } from './client/navigation.js'

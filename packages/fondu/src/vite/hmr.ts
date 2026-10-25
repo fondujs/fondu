@@ -4,7 +4,7 @@ import type { EnvironmentModuleNode, Plugin } from 'vite'
 
 import { isPageFile } from '../paths.js'
 
-/** the browser's event for "the current page's props may have changed" (the client entry: Inertia's reload) */
+/** the browser's event for "the current page's props may have changed" (the client entry: `reload()`) */
 export const PROPS_EVENT = 'fondu:props'
 
 /** the global the dev preamble reads: the named exports of each page module (`__getReactRefreshIgnoredExports`) */
@@ -38,7 +38,7 @@ export function reach(start: Iterable<Node>, root: string): { routes: boolean; d
  * Dev: a change updates what it changes, without reloading the page where it can.
  * - The browser's code: React Fast Refresh (`@vitejs/plugin-react`), MDX pages too. A page module's other exports
  *   (an MDX page's `toc`) are left out of Fast Refresh's check: the server reads them, and the next rule applies.
- * - What a route depends on: the browser asks for the page's props again (Inertia's `router.reload()`), its state
+ * - What a route depends on: the browser asks for the page's props again (fondu/client's `reload()`), its state
  *   and scroll kept, as React Router's "Hot Data Revalidation".
  * - The document (`server.ts` and what only it imports): the page reloads.
  */

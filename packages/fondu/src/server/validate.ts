@@ -24,8 +24,8 @@ type StandardResult<Output> =
 type InferOutput<S> = S extends StandardSchemaV1<unknown, infer O> ? O : never
 
 /**
- * Field errors (`{ email: 'Enter a valid email' }`). Thrown from an action, or by `withValidator`: Inertia's requests
- * and plain forms go back to the page they came from with the errors (its `errors` prop, as Laravel does); other
+ * Field errors (`{ email: 'Enter a valid email' }`). Thrown from an action, or by `withValidator`: navigations
+ * and forms go back to the page they came from with the errors (its `errors` prop, as Laravel does); other
  * requests (an API client) get 422 `{ errors }`.
  */
 export class ValidationError extends Error {
@@ -39,8 +39,7 @@ export class ValidationError extends Error {
 
 export function validationErrorResponse(c: Context, error: ValidationError): Response {
   if (!wantsPage(c)) return c.json({ errors: error.errors }, 422)
-  const bag = c.req.header('x-inertia-error-bag')
-  flashErrors(c, bag ? { [bag]: error.errors } : error.errors)
+  flashErrors(c, error.errors)
   return back(c)
 }
 
@@ -48,10 +47,10 @@ export function validationErrorResponse(c: Context, error: ValidationError): Res
 const DEPTH = 32
 
 /**
- * A request body as one object: JSON, or form fields with PHP-style names, as Inertia's `useForm` sends files
- * (`notify[0]`, `user[name]`) and as plain forms write them (`notify[]`); files are `File`s, empty file inputs
- * are left out. Names that would change the object itself (`__proto__`…) are ignored. A body that can't be one
- * object (JSON that doesn't parse, `a=1&a[b]=2`, names nested deeper than 32) is a 400.
+ * A request body as one object: JSON, or form fields with PHP-style names, as forms write them (`notify[]`,
+ * `user[name]`); files are `File`s, empty file inputs are left out. Names that would change the object itself
+ * (`__proto__`…) are ignored. A body that can't be one object (JSON that doesn't parse, `a=1&a[b]=2`, names nested
+ * deeper than 32) is a 400.
  */
 export async function readBody(c: Context): Promise<unknown> {
   const malformed = (why: string) =>
@@ -121,9 +120,7 @@ export type Input<S extends Schemas> = {
 
 /**
  * The validation step of `withValidator`: a middleware, and the validated input of its request. Params that don't
- * fit the schema are a 404 (`/users/abc` names no user); invalid body or query fields are a `ValidationError`. A Precognition
- * request (Inertia's live validation: `<Form validate>`, `useForm().withPrecognition()`) stops here: 204 when
- * valid, 422 `{ errors }` otherwise, the handler never runs.
+ * fit the schema are a 404 (`/users/abc` names no user); invalid body or query fields are a `ValidationError`.
  */
 export function validator<S extends Schemas>(
   schemas: S,
@@ -144,16 +141,6 @@ export function validator<S extends Schemas>(
       if (result.issues)
         for (const issue of result.issues) errors[pathOf(issue.path)] ??= issue.message
       else input[key] = result.value
-    }
-    if (c.req.header('precognition') === 'true') {
-      const only = c.req.header('precognition-validate-only')?.split(',').filter(Boolean)
-      const shown = only
-        ? Object.fromEntries(Object.entries(errors).filter(([field]) => only.includes(field)))
-        : errors
-      const headers = { Precognition: 'true', Vary: 'Precognition' }
-      return Object.keys(shown).length
-        ? c.json({ errors: shown }, 422, headers)
-        : c.body(null, 204, { ...headers, 'Precognition-Success': 'true' })
     }
     if (Object.keys(errors).length) throw new ValidationError(errors)
     inputs.set(c, input as Input<S>)
