@@ -50,7 +50,7 @@ for (const target of Object.keys(production).filter(
     await crawl(base, html)
     check(
       `${target} dev: home server-rendered`,
-      html.includes('data-server-rendered') && html.includes(greeting),
+      /<div id="app"><\w/.test(html) && html.includes(greeting),
       output(),
     )
     check(
@@ -92,7 +92,7 @@ for (const target of Object.keys(production).filter(
     const missing = await page(base + '/nope')
     check(
       `${target} ${script}: home server-rendered`,
-      home.status === 200 && html.includes('data-server-rendered') && html.includes(greeting),
+      home.status === 200 && /<div id="app"><\w/.test(html) && html.includes(greeting),
     )
     check(
       `${target} ${script}: an unknown URL, the error page with 404`,

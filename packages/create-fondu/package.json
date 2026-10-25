@@ -1,15 +1,13 @@
 {
   "name": "create-fondu",
   "version": "0.9.6",
-  "description": "Create a Fondu app: full-stack React on Hono, Vite and Inertia, for Bun, Cloudflare Workers or Node.",
+  "description": "Create a Fondu app: full-stack React on Hono and Vite, for Bun, Cloudflare Workers or Node.",
   "keywords": [
     "bun",
     "cloudflare-workers",
     "fondujs",
     "hono",
     "honojs",
-    "inertia",
-    "inertiajs",
     "nodejs",
     "react",
     "ssr",

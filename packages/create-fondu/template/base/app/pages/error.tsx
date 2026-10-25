@@ -1,4 +1,3 @@
-import { Head, Link } from '@inertiajs/react'
 import { href } from 'fondu/client'
 
 const titles: Record<number, string> = {
@@ -13,10 +12,10 @@ export default function ErrorPage({ status }: { status: number }) {
   const title = titles[status] ?? 'Error'
   return (
     <>
-      <Head title={title} />
+      <title>{`${title} · Fondu`}</title>
       <h1>{title}</h1>
       <p className="text-muted">
-        Status {status}. <Link href={href('/')}>Go home</Link>
+        Status {status}. <a href={href('/')}>Go home</a>
       </p>
     </>
   )
