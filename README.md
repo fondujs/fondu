@@ -2,17 +2,12 @@
 
 [![Fondu · Server routes. React pages. No API in between.](https://fondu.dev/og.png)](https://fondu.dev)
 
-Fondu is a small meta-framework for full-stack React apps, built on Hono, Vite and Inertia. It runs on Bun, Cloudflare
-Workers and Node.
+Fondu is a small meta-framework for full-stack React apps, built on Hono and Vite. It runs on Bun, Cloudflare Workers
+and Node.
 
 Routes are Hono handlers in `app/routes/`; pages are React components in `app/pages/`. A route renders a page with its
-props, and Inertia does the rest in the browser: visits without full reloads, forms with validation, deferred and
-merged props, all without an API to write or a client-side router to keep in sync.
-
-Fondu writes only what none of them does: Inertia's server side for Hono (the protocol, forms' errors and flash
-data), file routes, typed pages and URLs, the document and error pages. Everything else is Hono's, Vite's and
-Inertia's. [Fondu and @hono/inertia](https://fondu.dev/docs#fondu-and-honoinertia) says how it compares with Hono's
-own middleware.
+props. In the browser, links and forms are plain `<a>` and `<form>`: Fondu's small client, on the Navigation API, swaps
+the pages in place, without an API to write or a client-side router to keep in sync.
 
 ## Quick start
 
@@ -26,7 +21,7 @@ It asks where the app runs (Bun, Cloudflare Workers or Node; or `--target bun|cl
 code checks (oxfmt, oxlint, lefthook, commitlint; or `--checks`), and writes a small app: a route, its page, the
 error page, Tailwind CSS, editor snippets and an `AGENTS.md` for coding agents. `--yes` asks nothing more.
 
-[demo.fondu.dev](https://demo.fondu.dev) ([apps/demo](https://github.com/fondujs/fondu/tree/main/apps/demo)) shows Fondu's and Inertia's features, one page each,
+[demo.fondu.dev](https://demo.fondu.dev) ([apps/demo](https://github.com/fondujs/fondu/tree/main/apps/demo)) shows Fondu's features, one page each,
 on Cloudflare Workers with D1 and Better Auth.
 
 ## Docs
@@ -40,7 +35,7 @@ server-side rendering, static pages, MDX pages, internationalization, deploying,
 ```
 packages/fondu          the package
 packages/create-fondu   `bun create fondu`
-apps/demo               Fondu's and Inertia's features, one page each — Workers, D1, Better Auth, coss ui
+apps/demo               Fondu's features, one page each — Workers, D1, Better Auth, coss ui
 apps/site               fondu.dev: the docs, MDX and static pages on Workers
 ```
 
