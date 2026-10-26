@@ -253,7 +253,7 @@ ok(
 await nav('/contacts')
 await h1('Forms & validation')
 {
-  const guestPost = await fetch(BASE + '/contacts', {
+  const guestPost = await fetch(BASE + '/contacts?create', {
     method: 'POST',
     redirect: 'manual',
     headers: { 'Content-Type': 'application/json', Origin: ORIGIN },
@@ -441,7 +441,7 @@ ok(
   const early = await browser.newPage()
   await early.setRequestInterception(true)
   early.on('request', (r) => {
-    if (r.resourceType() === 'script' && /\/app\/app\.tsx|\/assets\/app-/.test(r.url()))
+    if (r.resourceType() === 'script' && /virtual:fondu\/entry|\/assets\/entry-/.test(r.url()))
       setTimeout(() => r.continue().catch(() => {}), 5000)
     else r.continue().catch(() => {})
   })
@@ -561,7 +561,7 @@ ok(
   ok(
     'withoutSsr(): this route is rendered in the browser only (the page data, an empty #app)',
     browserOnly.includes('</script><div id="app"></div></body>') &&
-      browserOnly.includes('"component":"ssr"'),
+      browserOnly.includes('"component":"(demos)\\/ssr\\/browser"'),
   )
   await page.goto(BASE + '/ssr/browser', { waitUntil: 'networkidle0' })
   ok(
@@ -737,8 +737,8 @@ await page.waitForFunction(
   await page.click('[data-testid=visit-403-forbidden]')
   await page.waitForSelector('[data-testid=error-status]')
   ok(
-    'HTTPException(403) during a navigation: the error page with the status, in the layout',
-    (await testid('error-status')) === '403' && (await page.$('aside')) !== null,
+    'HTTPException(403) during a navigation: the error page with the status, in the root layout',
+    (await testid('error-status')) === '403' && (await page.$('aside')) === null,
   )
   await page.goBack()
   await h1('Errors')
@@ -758,15 +758,6 @@ await page.waitForFunction(
     )
   }
   await page.goto(BASE + '/errors', { waitUntil: 'networkidle0' })
-  const missingPage = await (
-    await fetch(BASE + '/errors/missing', { headers: { Accept: 'text/html' } })
-  ).text()
-  ok(
-    'a page that does not exist: said so (development), the error page (production)',
-    dev
-      ? missingPage.includes('create app/pages/reports/yearly.tsx')
-      : missingPage.includes('"status":500'),
-  )
   const failed = await fetchAs(BASE + '/errors?fail', {
     method: 'POST',
     headers: { ...fondu(), Origin: ORIGIN },
@@ -911,7 +902,7 @@ await page.waitForFunction(
   )
   await page.goto(BASE + '/admin/dashboard', { waitUntil: 'networkidle0' })
   ok(
-    '/admin: its own layout (pages/admin/_layout.tsx), the accounts',
+    '/admin: its own layout (routes/admin/_layout.tsx), the accounts',
     (await page.$('[data-testid=admin-home]')) !== null &&
       (await page.$('aside')) === null &&
       (await text()).includes('demo@fondu.dev'),
@@ -1170,7 +1161,7 @@ await page.waitForFunction(
   const pageNope = await fetchAs(BASE + '/nope', { headers: fondu() })
   ok(
     'a missing URL, as a navigation: the 404 page object, status 404',
-    pageNope.status === 404 && (await pageNope.json()).component === 'error',
+    pageNope.status === 404 && (await pageNope.json()).component === '_error',
   )
   const doc404 = await fetch(BASE + '/nope', { headers: { Accept: 'text/html' } })
   ok(
@@ -1318,9 +1309,9 @@ await page.waitForFunction(
   const sources = await Promise.all(
     [
       '/app/modules/auth/auth.server.ts?raw',
-      '/app/routes/login.ts?raw',
+      '/app/routes/logout.ts?raw',
       '/app/server.ts?raw',
-      '/app/routes/login.ts?import&raw',
+      '/app/routes/logout.ts?import&raw',
     ].map(async (u) => [u, (await fetch(BASE + u)).status]),
   )
   ok(
@@ -1347,7 +1338,7 @@ await page.waitForFunction(
     builtIns.join(),
   )
   const protoPost = () =>
-    fetchAs(BASE + '/contacts', {
+    fetchAs(BASE + '/contacts?create', {
       method: 'POST',
       redirect: 'manual',
       headers: {
@@ -1472,7 +1463,13 @@ await page.waitForFunction(
 // ---- dev only: an edit to a route's code updates the page's props in place, without reloading it
 if ((await fetch(BASE + '/@vite/client').catch(() => null))?.ok) {
   const { readFileSync, writeFileSync } = await import('node:fs')
-  const file = new URL('../app/routes/props.ts', import.meta.url)
+  // the browser's copy of a page's route file: the page, not its loader nor actions, nor what only they import
+  const copy = await (await fetch(BASE + '/app/routes/(demos)/login.tsx')).text()
+  ok(
+    "dev: a page's route file in the browser, without its server code",
+    copy.includes('function Login') && !/callAuth|auth\.server|withValidator|zod/.test(copy),
+  )
+  const file = new URL('../app/routes/(demos)/props.tsx', import.meta.url)
   const source = readFileSync(file, 'utf8')
   const hp = await browser.newPage()
   try {

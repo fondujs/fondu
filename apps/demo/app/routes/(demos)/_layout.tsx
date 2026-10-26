@@ -6,7 +6,6 @@ import { AccountMenu } from '#/components/account-menu.tsx'
 import { RenderBadge } from '#/components/demo.tsx'
 import { groups } from '#/components/demos.ts'
 import { Logo } from '#/components/logo.tsx'
-import { Toasts } from '#/components/toasts.tsx'
 import { Button } from '#/components/ui/button.tsx'
 import {
   Drawer,
@@ -32,13 +31,13 @@ const sections: Array<[group: string | null, links: Array<[url: string, label: s
   ]),
 ]
 
-// The default layout (app.tsx): it stays mounted while pages change. Below md the menu is a drawer from the
+// The demos' layout (routes/(demos)/: a group, no URL segment): it stays mounted while pages change. Below md the menu is a drawer from the
 // left, as on fondu.dev's docs.
-export default function AppLayout({ children }: { children: ReactNode }) {
+export default function DemosLayout({ children }: { children: ReactNode }) {
   const { url, component } = usePage()
   const [open, setOpen] = useState(false)
   // the Languages page has a URL per language (/de/i18n…): one item
-  const path = component === 'i18n' ? href('/i18n') : url.split(/[?#]/)[0]!
+  const path = component === '(demos)/[[locale]]/i18n' ? href('/i18n') : url.split(/[?#]/)[0]!
   const active = (to: string) =>
     to === '/' ? path === '/' : path === to || path.startsWith(to + '/')
   return (
@@ -77,14 +76,13 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             className="hidden truncate font-mono text-xs text-muted-foreground sm:inline"
             data-testid="component"
           >
-            /{component}
+            routes/{component}
           </span>
           <RenderBadge />
           <span className="ml-auto flex items-center gap-2">
             <AccountMenu />
           </span>
         </header>
-        <Toasts />
         <main className="mx-auto max-w-5xl px-5 py-10">{children}</main>
       </div>
     </div>

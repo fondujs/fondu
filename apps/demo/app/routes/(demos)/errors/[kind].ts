@@ -1,4 +1,4 @@
-import { defineHandler, render } from 'fondu'
+import { defineHandler } from 'fondu'
 import { HTTPException } from 'hono/http-exception'
 
 // what a proxy in front of the app sends when the app doesn't answer: a page of its own, not the app's (so its
@@ -35,8 +35,6 @@ export const loader = defineHandler((c) => {
       throw new Error('The loader failed: the database did not answer')
     case 'forbidden':
       throw new HTTPException(403)
-    case 'missing':
-      return render(c, 'reports/yearly' as never) // a page that was never written
     case 'proxy':
       return c.html(proxyPage, 502)
     default:

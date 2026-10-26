@@ -4,6 +4,10 @@ import { href } from 'fondu/client'
 import type { Context } from 'hono'
 import * as z from 'zod/mini'
 
+import Show from '#/routes/(demos)/contacts/[id].tsx'
+import Contacts from '#/routes/(demos)/contacts/index.tsx'
+import Routes from '#/routes/(demos)/routes.tsx'
+
 declare const c: Context
 
 // ---- href(): only patterns of app/routes/, and one of a file's actions; params required
@@ -26,20 +30,20 @@ href('/contacts?nope')
 // @ts-expect-error /props takes no params
 href('/props', { id: 1 })
 
-// ---- render(): only pages of app/pages/, props checked against the component's own
-void render(c, 'contacts/show', { contact: { id: 1, name: 'Ada', email: 'a@x.org' } })
-void render(c, 'routes')
-void render(c, 'contacts/index', { contacts: [] })
+// ---- render(): a route file's page, its props checked against the component's own
+void render(c, Show, { contact: { id: 1, name: 'Ada', email: 'a@x.org' } })
+void render(c, Routes)
+void render(c, Contacts, { contacts: [] })
 // @ts-expect-error a value, not a function (share() takes those)
-void render(c, 'contacts/index', { contacts: () => Promise.resolve([]) })
-// @ts-expect-error no such page
-void render(c, 'nope')
+void render(c, Contacts, { contacts: () => Promise.resolve([]) })
+// @ts-expect-error a page is its component, not a name
+void render(c, 'routes')
 // @ts-expect-error a required prop is missing
-void render(c, 'contacts/show', {})
+void render(c, Show, {})
 // @ts-expect-error a prop of the wrong type
-void render(c, 'contacts/show', { contact: { id: 'x', name: 'Ada', email: 'a@x.org' } })
+void render(c, Show, { contact: { id: 'x', name: 'Ada', email: 'a@x.org' } })
 // @ts-expect-error a prop the page does not take
-void render(c, 'routes', { extra: 1 })
+void render(c, Routes, { extra: 1 })
 
 // ---- shared props and flash: typed by Fondu's Register (routes/_middleware.ts)
 share(c, { auth: { user: { name: 'Ada', email: 'ada@x.org', role: 'user' } } })
