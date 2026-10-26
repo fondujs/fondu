@@ -814,6 +814,58 @@ await page.waitForFunction(
     (await page.evaluate(() => document.querySelector('h1')?.textContent)) === 'Bad gateway',
   )
   await page.goto(BASE + '/errors', { waitUntil: 'networkidle0' })
+  // an action's answer that isn't HTML (here, the form's request answered so): text, what a user typed in it; a file
+  await page.setRequestInterception(true)
+  let answer = null
+  const fake = (r) => {
+    if (r.isInterceptResolutionHandled()) return
+    if (answer && r.method() === 'POST' && new URL(r.url()).search === '?fail') {
+      const a = answer
+      answer = null
+      return void r.respond(a)
+    }
+    r.continue().catch(() => {})
+  }
+  page.on('request', fake)
+  const typed = '<h1 id="typed">typed</h1>'
+  answer = { status: 200, contentType: 'text/plain', body: typed }
+  await page.click('[data-testid=action-fail]')
+  await page.waitForFunction(() => document.querySelector('pre'), { timeout: 8000 }).catch(() => {})
+  ok(
+    "a form's answer that is text: shown as text, never as HTML",
+    await page.evaluate(
+      (t) => !document.getElementById('typed') && document.querySelector('pre')?.textContent === t,
+      typed,
+    ),
+  )
+  await page.goto(BASE + '/errors', { waitUntil: 'networkidle0' })
+  // the download's link, seen instead of followed
+  await page.evaluate(() => {
+    HTMLAnchorElement.prototype.click = function () {
+      window.__download = [this.download, this.href.split(':')[0]]
+    }
+  })
+  answer = {
+    status: 200,
+    contentType: 'text/csv',
+    headers: { 'Content-Disposition': 'attachment; filename="contacts.csv"' },
+    body: 'name\nAda',
+  }
+  await page.click('[data-testid=action-fail]')
+  await page.waitForFunction(() => window.__download, { timeout: 8000 }).catch(() => {})
+  const download = await page.evaluate(() => [
+    window.__download,
+    location.pathname,
+    !!document.querySelector('[data-testid=action-fail]'),
+  ])
+  ok(
+    "a form's answer that is a file: downloaded, the page stays",
+    JSON.stringify(download) === JSON.stringify([['contacts.csv', 'blob'], '/errors', true]),
+    JSON.stringify(download),
+  )
+  page.off('request', fake)
+  await page.setRequestInterception(false)
+  await page.goto(BASE + '/errors', { waitUntil: 'networkidle0' })
 }
 
 // ---- flash data: toasts, data of the app's own, once

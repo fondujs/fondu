@@ -120,14 +120,29 @@ export function startNavigation({ initial, show, prerender, pending, preload }: 
           return
         }
         if (!response.headers.has('X-Fondu')) {
-          // a proxy's error page, a file: the URL as a document (a POST's redirect: its target); the answer to a POST
-          // itself can't be asked for again
-          if (!post || response.redirected)
+          // a proxy's error page, a file: the URL as a document (a POST's redirect: its target), this answer unread
+          if (!post || response.redirected) {
+            void response.body?.cancel()
             return documentLoad(post ? response.url : url.href, options.history !== 'push')
-          const html = await response.text()
+          }
+          // the answer to a POST itself, which can't be asked for again: as the browser would show it
+          const disposition = response.headers.get('Content-Disposition') ?? ''
+          if (/^\s*attachment/i.test(disposition)) {
+            // a file: downloaded, the page stays
+            const link = document.createElement('a') // with `download`: let through by the click listener
+            link.href = URL.createObjectURL(await response.blob())
+            link.download = fileName(disposition)
+            link.click()
+            setTimeout(() => URL.revokeObjectURL(link.href), 60_000) // once the download has it
+            return
+          }
+          const html = /^\s*text\/html\b/i.test(response.headers.get('Content-Type') ?? '')
+          const text = await response.text()
           document.open() // the page's listeners gone with it, popstate's too
-          document.write(html)
+          // anything else as text, never as HTML (an action's `c.text()` with what a user typed)
+          document.write(html ? text : '<!doctype html><meta charset="utf-8"><pre></pre>')
           document.close()
+          if (!html) document.querySelector('pre')!.textContent = text
           // Back and Forward stay in this document (the entries before it are its own): their URL as a document
           addEventListener('popstate', () => location.reload())
           return
@@ -377,6 +392,17 @@ const isWebUrl = (url: string) => {
   } catch {
     return false
   }
+}
+
+/** a Content-Disposition's file name: `filename*=UTF-8''…` (RFC 6266), else `filename="…"`; '' for none */
+function fileName(disposition: string): string {
+  const encoded = /filename\*\s*=\s*UTF-8''([^;\s]+)/i.exec(disposition)?.[1]
+  if (encoded)
+    try {
+      return decodeURIComponent(encoded)
+    } catch {}
+  const m = /filename\s*=\s*(?:"([^"]*)"|([^;\s]+))/i.exec(disposition)
+  return m?.[1] ?? m?.[2] ?? ''
 }
 
 /**

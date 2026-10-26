@@ -127,6 +127,14 @@ describe('routes', () => {
     })
     expect(api.status).toBe(200) // not a navigation: as it is
   })
+  test("a stream, to a navigation: answered at once (its body isn't read to tell if it is empty)", async () => {
+    const res = await Promise.race([
+      app.request('/redirect?events', { method: 'POST', headers: { ...fondu(), Origin: ORIGIN } }),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 1000)),
+    ])
+    expect(res?.headers.get('content-type')).toBe('text/event-stream')
+    await res?.body?.cancel()
+  })
   test('a redirect to another site: 409 + X-Fondu-Location for a navigation, as it is otherwise', async () => {
     const navigation = await app.request('/redirect?away', {
       method: 'POST',

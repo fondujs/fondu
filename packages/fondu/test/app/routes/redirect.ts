@@ -8,5 +8,13 @@ export const actions = {
   // an open redirect to a URL that runs: never turned into a document load
   script: defineHandler((c) => c.redirect('javascript:alert(1)', 303)),
   nothing: defineHandler((c) => c.body(null)),
+  // a stream that doesn't end (server-sent events)
+  events: defineHandler((c) =>
+    c.body(
+      new ReadableStream({ start: (s) => s.enqueue(new TextEncoder().encode('data: 1\n\n')) }),
+      200,
+      { 'Content-Type': 'text/event-stream' },
+    ),
+  ),
   fragment: defineHandler((c) => c.redirect('/notes#end', 303)),
 }

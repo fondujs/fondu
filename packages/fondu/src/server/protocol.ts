@@ -211,13 +211,9 @@ const versionCheck: MiddlewareHandler = async (c, next) => {
   await next()
   // a URL answers a navigation and a document differently: caches keep them apart
   appendHeader(c, 'Vary', 'X-Fondu')
-  // an empty answer to a form (an action that returns nothing to show): back to the page
-  if (
-    isPageRequest(c) &&
-    c.res.status === 200 &&
-    !c.res.headers.has('x-fondu') &&
-    (await c.res.clone().text()) === ''
-  )
+  // an empty answer to a form (an action that returns nothing to show, `c.body(null)`): back to the page. Its body
+  // isn't read to tell (a stream's would be, to its end)
+  if (isPageRequest(c) && c.res.status === 200 && !c.res.headers.has('x-fondu') && !c.res.body)
     c.res = back(c)
   const to = c.res.headers.get('location')
   if (isPageRequest(c) && c.res.status >= 300 && c.res.status < 400 && to) {
