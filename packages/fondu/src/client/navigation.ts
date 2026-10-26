@@ -194,7 +194,15 @@ export function startNavigation({ initial, show, prerender, pending, preload }: 
     if (popped.fragment) return restore(popped.position, location.hash)
     visit!(location.href, { history: 'none', scroll: popped.position })
   })
-  window.addEventListener('pagehide', scroll.save)
+  // leaving the document (a reload, another site): its position, and the browser's restoration back on for this
+  // entry, so a reload or Back to it is scrolled at first paint, as any document
+  window.addEventListener('pagehide', () => {
+    scroll.save()
+    history.scrollRestoration = 'auto'
+  })
+  window.addEventListener('pageshow', (event) => {
+    if (event.persisted) history.scrollRestoration = 'manual' // back from the back/forward cache
+  })
   // the browser's own #fragment navigations: the entry gets its key
   window.addEventListener('hashchange', scroll.commit)
 
@@ -252,11 +260,15 @@ function scrollPositions() {
   return {
     save,
     commit,
-    /** the page's first entry: its key; where it was scrolled, on a reload or Back from another site */
+    /**
+     * The document's entry: its key; where it was scrolled, unless the browser did it (an entry it restores, the one
+     * left by a reload): an entry this client pushed, loaded again (Back from another site past it)
+     */
     start() {
+      const restored = history.scrollRestoration === 'auto'
       history.scrollRestoration = 'manual'
       commit()
-      return read(rendered)
+      return restored ? null : read(rendered)
     },
     /** the page on the screen, at `url`: a new entry or this one */
     write(url: string, replace: boolean) {
