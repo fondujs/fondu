@@ -3,24 +3,17 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { progressBar } from '../src/client/progress.js'
 
 // the DOM it uses, and no more: elements in a body, their style
-type Bar = { style: Record<string, string>; isConnected: boolean; remove(): void }
+type Bar = { style: Record<string, string>; remove(): void }
 let body: Bar[]
 
 beforeEach(() => {
   vi.useFakeTimers()
   body = []
   vi.stubGlobal('matchMedia', () => ({ matches: false }))
-  vi.stubGlobal('requestAnimationFrame', (fn: () => void) => setTimeout(fn, 16))
   vi.stubGlobal('document', {
     createElement: () => {
-      const bar: Bar = {
-        style: {},
-        get isConnected() {
-          return body.includes(bar)
-        },
-        remove: () => void body.splice(body.indexOf(bar), 1),
-      }
-      return Object.assign(bar, { setAttribute: () => {} })
+      const bar: Bar = { style: {}, remove: () => void body.splice(body.indexOf(bar), 1) }
+      return Object.assign(bar, { setAttribute: () => {}, getBoundingClientRect: () => ({}) })
     },
     body: { append: (bar: Bar) => body.push(bar) },
   })
@@ -41,23 +34,32 @@ describe('the progress bar', () => {
     vi.advanceTimersByTime(1000)
     expect(body).toHaveLength(0)
   })
-  test('shown after its delay, in its color, creeping; filled and gone once done', () => {
+  test('shown after its delay, in its color, growing from 0; filled and gone once done', () => {
     let pending = true
     const update = progressBar({ delay: 100, color: 'red' }, () => pending)
     update()
-    vi.advanceTimersByTime(100)
-    expect(body).toHaveLength(1)
+    vi.advanceTimersByTime(99)
+    expect(body).toHaveLength(0)
+    vi.advanceTimersByTime(1)
     const bar = body[0]!
     expect(bar.style.background).toBe('red')
-    vi.advanceTimersByTime(1000)
-    const crept = Number(/scaleX\(([\d.]+)\)/.exec(bar.style.transform!)![1])
-    expect(crept).toBeGreaterThan(0.1)
-    expect(crept).toBeLessThan(0.95)
+    // one long transition from 0 (computed before it is set) towards the end
+    expect([bar.style.transform, bar.style.transition]).toEqual([
+      'scaleX(0.95)',
+      'transform 10s cubic-bezier(0.05, 0.7, 0.1, 1)',
+    ])
     pending = false
     update()
     expect([bar.style.transform, bar.style.opacity]).toEqual(['scaleX(1)', '0'])
-    vi.advanceTimersByTime(250)
+    vi.advanceTimersByTime(400)
     expect(body).toHaveLength(0)
+  })
+  test('reduced motion: a still bar', () => {
+    vi.stubGlobal('matchMedia', () => ({ matches: true }))
+    const update = progressBar({ delay: 0 }, () => true)
+    update()
+    vi.advanceTimersByTime(0)
+    expect([body[0]!.style.transform, body[0]!.style.transition]).toEqual(['scaleX(1)', undefined])
   })
   test('one bar while a navigation is pending, however often it is told', () => {
     const update = progressBar({ delay: 0 }, () => true)

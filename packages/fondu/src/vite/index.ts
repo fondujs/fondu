@@ -315,7 +315,25 @@ function core(options: FonduOptions): Plugin {
     enforce: 'pre',
     config(user, env): UserConfig {
       isBuild = env.command === 'build'
-      const client = { manifest: true, rollupOptions: { input: V.entry } }
+      const client = {
+        manifest: true,
+        rollupOptions: {
+          input: V.entry,
+          // a page's or a layout's chunk named after its route file: (site)/users/[id].tsx is site-users-id
+          output: {
+            chunkFileNames: (chunk: { facadeModuleId: string | null }) => {
+              const file = chunk.facadeModuleId?.split('?')[0]
+              const routes = `${config.root}/app/routes/`
+              const name = file?.startsWith(routes)
+                ? pageId(file.slice(routes.length))
+                    .replace(/[^a-zA-Z0-9]+/g, '-')
+                    .replace(/^-|-$/g, '')
+                : undefined
+              return `assets/${name || '[name]'}-[hash].js`
+            },
+          },
+        },
+      }
       if (options.target === 'cloudflare') {
         return {
           environments: { client: { build: client } },

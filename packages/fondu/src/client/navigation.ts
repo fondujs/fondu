@@ -155,6 +155,8 @@ export function startNavigation({ initial, show, prerender, pending }: Options) 
           if (page.url !== path)
             return void (await display(page, true, true, 'replace').finished?.catch(noop))
           const reload = event.navigationType === 'reload'
+          // Back and Forward commit after the navigate event: scrolled before, the page would show at the top first
+          await (nav.transition as { committed?: Promise<unknown> } | null)?.committed
           await show(page, !reload)
           if (!reload) scrollAfter(event)
         } catch (error) {
