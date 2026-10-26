@@ -3,9 +3,9 @@ import type { ReactNode } from 'react'
 
 import { AccountMenu } from '#/components/account-menu.tsx'
 import { Logo } from '#/components/logo.tsx'
-import { Toasts } from '#/components/toasts.tsx'
 
-// The admin pages' layout (pages/admin/_layout.tsx, in place of app.tsx's AppLayout): a top bar instead of the demo sidebar
+// The admin pages' layout (routes/admin/_layout.tsx, outside the demos' group): a top bar instead of the demos'
+// sidebar
 export default function AdminLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-dvh">
@@ -23,7 +23,6 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           </span>
         </div>
       </header>
-      <Toasts />
       <main className="mx-auto max-w-5xl px-5 py-10">{children}</main>
     </div>
   )
