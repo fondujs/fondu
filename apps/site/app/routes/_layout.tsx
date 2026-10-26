@@ -9,7 +9,9 @@ import { Search } from '#/components/search.tsx'
 import { ThemeMenu } from '#/components/theme-menu.tsx'
 import { Button } from '#/components/ui/button.tsx'
 
-export const GITHUB = 'https://github.com/fondujs/fondu'
+import '../styles/app.css'
+
+const GITHUB = 'https://github.com/fondujs/fondu'
 
 const links: Array<[label: string, url: string]> = [
   ['llms.txt', '/llms.txt'],
@@ -18,7 +20,7 @@ const links: Array<[label: string, url: string]> = [
   ['npm', 'https://www.npmjs.com/package/fondu'],
 ]
 
-// pages/_layout.tsx, around every page: the header (at the top on large screens; on small ones, the docs keep their own
+// routes/_layout.tsx, around every page: the header (at the top on large screens; on small ones, the docs keep their own
 // bar there), the page, the footer. The header's last button: the docs, or in the docs their search.
 export default function SiteLayout({ children }: { children: ReactNode }) {
   const { url } = usePage()

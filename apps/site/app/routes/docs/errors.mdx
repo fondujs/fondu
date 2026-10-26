@@ -1,23 +1,22 @@
 ## The error page
 
-An unknown URL, a `throw new HTTPException(403)` or an error in a handler: a page request gets `app/pages/error.tsx`
-with the status, inside the layout, with the shared props. API clients get plain text, or the `HTTPException`'s own
-response.
+An unknown URL, a `throw new HTTPException(403)` or an error in a handler: a page request gets `app/routes/_error.tsx`
+with the status, inside the root layout, with the shared props. API clients get plain text, or the `HTTPException`'s
+own response.
 
 ```tsx
-// app/pages/error.tsx
+// app/routes/_error.tsx
 export default function ErrorPage({ status }: { status: number }) {
   return <h1>{status === 404 ? 'Page not found' : 'Something went wrong'}</h1>
 }
 ```
 
-Another page: `createApp({ errorPage: 'errors/show' })`. None, plain text for everyone: `errorPage: false`. Without
-`app/pages/error.tsx`, the same plain text.
+Without `app/routes/_error.tsx`, plain text for everyone.
 
 ## In development
 
 A 500 is a report of the error instead: the message, and the stack with your files first; a navigation loads it as a
-document. And `render()` of a page that doesn't exist says which file to create.
+document.
 
 An error before any handler runs, in a route that throws as it is imported, is Vite's: its overlay shows it, as a
 whole page, and the next edit reloads the page.

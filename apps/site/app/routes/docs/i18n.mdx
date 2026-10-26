@@ -8,13 +8,13 @@ languages.
 
 The base language has no prefix, the others have one:
 
-| File                         | URLs                               |
-| ---------------------------- | ---------------------------------- |
-| `routes/[[locale]]/index.ts` | `/`, `/de`, `/fr`                  |
-| `routes/[[locale]]/about.ts` | `/about`, `/de/about`, `/fr/about` |
-| `routes/admin/index.ts`      | `/admin`: the base language only   |
+| File                          | URLs                               |
+| ----------------------------- | ---------------------------------- |
+| `routes/[[locale]]/index.tsx` | `/`, `/de`, `/fr`                  |
+| `routes/[[locale]]/about.tsx` | `/about`, `/de/about`, `/fr/about` |
+| `routes/admin/index.tsx`      | `/admin`: the base language only   |
 
-`params` lists the prefixes, so `/xx/about` is a 404 and a route such as `[slug].ts` keeps the other URLs:
+`params` lists the prefixes, so `/xx/about` is a 404 and a route such as `[slug].tsx` keeps the other URLs:
 
 ```ts
 // app/routes/[[locale]]/_middleware.ts
@@ -135,13 +135,13 @@ Each page lists its URL in every language, itself included, as full URLs: what
 [Google reads](https://developers.google.com/search/docs/specialty/international/localized-versions).
 
 ```ts
-// app/routes/[[locale]]/about.ts, in the loader
+// app/routes/[[locale]]/about.tsx, in the loader
 const url = (locale: Locale) => new URL(localizeHref('/about', { locale }), c.req.url).href
 const alternates = { ...Object.fromEntries(locales.map((l) => [l, url(l)])), 'x-default': url(baseLocale) }
 ```
 
 ```tsx
-// app/pages/about.tsx
+// app/routes/[[locale]]/about.tsx, in the page
 {Object.entries(alternates).map(([lang, href]) => (
   <link key={lang} rel="alternate" hrefLang={lang} href={href} />
 ))}
@@ -193,9 +193,8 @@ provider, with no AsyncLocalStorage:
 
 - **The language**: `c.req.param('locale') ?? 'en'` in `routes/[[locale]]/_middleware.ts`, with the same `params`.
 - **On the server**: an instance per request, `i18next.cloneInstance({ lng })`, its `t` in `c.set()` for actions.
-- **The messages**: shared with the pages, once per language:
-  ``share(c, { locale, messages: once(() => resources[locale], { key: `messages-${locale}` }) })``.
-- **In the browser**: `app/pages/_layout.tsx` makes an instance of the shared messages, once per language, and
+- **The messages**: shared with the pages: `share(c, { locale, messages: () => resources[locale] })`.
+- **In the browser**: `app/routes/_layout.tsx` makes an instance of the shared messages, once per language, and
   wraps the page in `<I18nextProvider>`: `i18next.createInstance()`, then
   `init({ lng, resources, initAsync: false, interpolation: { escapeValue: false } })` (React escapes the values
   already).

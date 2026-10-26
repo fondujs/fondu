@@ -1,13 +1,13 @@
-{/* The landing page's example: a route and its page (pages/index.tsx) */}
+{/* The landing page's example: a route file, its loader and action on the server, its page in the browser */}
 
 <CodeTabs>
 
-```ts title="app/routes/todos.ts" /items/
+```tsx title="app/routes/todos.tsx" /items/
 import { back, defineHandler, render } from 'fondu'
 
 // GET /todos
 export const loader = defineHandler(async (c) =>
-  render(c, 'todos', { items: await db.todos.all() }),
+  render(c, Todos, { items: await db.todos.all() }),
 )
 
 // POST /todos, from the form
@@ -17,11 +17,8 @@ export const action = defineHandler.withValidator({ body: todo })(
     return back(c)
   },
 )
-```
 
-```tsx title="app/pages/todos.tsx" /items/
-import { href } from 'fondu/client'
-
+// the page: all the browser gets of this file
 export default function Todos({ items }: { items: Todo[] }) {
   return (
     <>
@@ -30,7 +27,7 @@ export default function Todos({ items }: { items: Todo[] }) {
           <li key={t.id}>{t.text}</li>
         ))}
       </ul>
-      <form action={href('/todos')} method="post">
+      <form method="post">
         <input name="text" />
         <button>Add</button>
       </form>

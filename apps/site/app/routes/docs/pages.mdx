@@ -1,10 +1,10 @@
 ## Pages
 
-A page is a React component, the default export of a file in `app/pages/`. Its name is its path:
-`'users/show'` is `app/pages/users/show.tsx`. The component's props are the page's props:
+A page is a React component, the default export of its route file: `app/routes/users/[id].tsx` is the page at
+`/users/:id`. The component's props are the page's props:
 
 ```tsx
-// app/pages/users/show.tsx
+// app/routes/users/[id].tsx
 export default function Show({ user }: { user: User }) {
   return (
     <>
@@ -17,20 +17,21 @@ export default function Show({ user }: { user: User }) {
 
 A page renders its own `<title>`, `<meta>` and `<link>` where it likes: React puts them in `<head>`, on the server too.
 A title is one string, hence the template literal. A page can also be [MDX](/docs/mdx); [layouts](/docs/layouts) are
-`_layout.tsx` files in the directories of `app/pages/`.
+`_layout.tsx` files in the directories of `app/routes/`.
 
 ## `render()`
 
-A route renders a page by name, with its props:
+The loader renders its file's page, with its props:
 
 ```ts
-render(c, 'users/show', { user })
-render(c, 'users/show', { user }, { status: 201 })
+render(c, Show, { user })
+render(c, Show, { user }, { status: 201 })
 ```
 
-It takes only pages that exist, with the props their component takes: a missing prop, one of the wrong type or a page
-name with a typo is a type error. The props arrive as JSON: a `Date` for a `string` prop is fine, a `Map` is a type
-error.
+It takes the props the component takes: a missing prop or one of the wrong type is a type error. The props arrive as
+JSON: a `Date` for a `string` prop is fine, a `Map` is a type error. It renders the page of its own route file only;
+another route's page is its own too once it is that file's default export:
+`export { default } from './index.tsx'`.
 
 ## Links and forms
 
@@ -42,6 +43,9 @@ Links are `<a href>`, forms `<form method="post">`, with URLs from [`href()`](/d
   with errors, the page keeps its state too, what was typed included. Elsewhere, it's a new page in the history.
 - Back and Forward show the page as it was left, at once, where it was scrolled, then the server's fresh one.
 - An answer that isn't a page (a file, a proxy's error) is shown as the browser would show it.
+- A navigation that takes a while shows a progress bar at the top of the page: `fondu({ progress: { color, delay } })`
+  in `vite.config.ts` sets its color (the page's text color by default) and how long a navigation runs before it
+  shows (250 ms); `progress: false` leaves it out, for your own with `useNavigating()`.
 
 From `fondu/client`:
 

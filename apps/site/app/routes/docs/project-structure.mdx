@@ -4,15 +4,13 @@
 my-app/
 ├─ app/
 │  ├─ server.ts            # the server: export default createApp()
-│  ├─ app.tsx              # startApp(): the browser and the server render
-│  ├─ routes/              # server code only: the file path is the URL
+│  ├─ routes/              # the file path is the URL
 │  │  ├─ _middleware.ts    # runs for its directory and below
-│  │  ├─ index.ts          # /
-│  │  ├─ users/[id].ts     # /users/:id
-│  │  └─ api/health.ts     # /api/health
-│  ├─ pages/               # React pages, by name: 'users/show' is pages/users/show.tsx
 │  │  ├─ _layout.tsx       # around every page (a directory's _layout.tsx: around its pages)
-│  │  └─ error.tsx         # the error page (404, 403, 500…)
+│  │  ├─ _error.tsx        # the error page (404, 403, 500…)
+│  │  ├─ index.tsx         # /: its loader and actions, and the page
+│  │  ├─ users/[id].tsx    # /users/:id
+│  │  └─ api/health.ts     # /api/health: server code only
 │  └─ fondu.gen.d.ts       # the generated types (commit it)
 ├─ package.json           # fondu, hono, react, react-dom
 └─ vite.config.ts         # plugins: [fondu({ target: 'node' })]
@@ -48,51 +46,40 @@ import { createApp } from 'fondu'
 export default createApp()
 ```
 
-Its options: `document` (the HTML around pages, as in [The document](/docs/document)), `errorPage`, `trailingSlash: 'append'`, `csrf` and `secureHeaders`
+Its options: `document` (the HTML around pages, as in [The document](/docs/document)), `trailingSlash: 'append'`, `csrf` and `secureHeaders`
 (Hono's options, or `false`). The [API](/docs/api#createapp) lists them.
-
-## `app/app.tsx`
-
-The browser's entry, and the server render's: `startApp()`. Fondu's Vite plugin gives it the pages of `app/pages/`.
-
-```tsx
-import { startApp } from 'fondu/client'
-
-import './styles/app.css'
-
-startApp()
-```
 
 ## Server code
 
-`app/routes/`, `app/server.ts` and files named `*.server.ts` are server code: browser code must not import them, and
-the build stops if it does. [Server and client code](/docs/server-and-client) explains where each file runs.
+The `.ts` files of `app/routes/`, `app/server.ts`, files named `*.server.ts` and `fondu` itself are server code:
+browser code must not import them, and the build stops if it does. A page's loader and actions are server code too,
+in the page's own file: the browser's copy of it is the page alone. [Server and client code](/docs/server-and-client) explains where each file runs.
 
 `package.json` maps `#/*` to `./app/*`, so `import { db } from '#/db/index.server.ts'` works from anywhere in `app/`.
 
 ## `app/fondu.gen.d.ts`
 
-The dev server and the build write the types of your pages and routes here: they make `render()` and `href()` typed.
+The dev server and the build write the types of your routes here: they make `href()` typed.
 Commit it, so the types are there before the first build (in CI, say); don't edit it.
 
 ## Editor snippets
 
-A new app has `.vscode/fondu.code-snippets`: type `/route`, `/api`, `/loader`, `/action`, `/actions`, `/validated`,
-`/get` … `/delete` or `/middleware` in a route file, `/page`, `/layout` or `/form` in a page. Edit them freely.
+A new app has `.vscode/fondu.code-snippets`: type `/route` or `/page` in a new `.tsx` route file, `/loader`,
+`/action`, `/actions`, `/validated`, `/layout` or `/form` in one, `/api`, `/get` … `/delete` or `/middleware` in a
+`.ts` file. Edit them freely.
 
 ## One way to organize an app
 
-Fondu reads `routes/`, `pages/` and the files above; the rest of `app/` is yours, and Fondu only checks that browser
-code doesn't import server code. Here is one way to arrange it, which [the demo](/docs/demo) follows. It is an
-example, not a rule.
+Fondu reads `routes/` and the files above; the rest of `app/` is yours, and Fondu only checks that browser code
+doesn't import server code. Here is one way to arrange it, which [the demo](/docs/demo) follows. It is an example, not
+a rule.
 
 ```
 app/
-├─ routes/               # URLs and server code
-├─ pages/                # pages only, named after their routes
+├─ routes/               # URLs: their handlers and pages, the layouts
 ├─ components/           # all UI that isn't a page
 │  ├─ ui/                # the primitives: buttons, fields, dialogs
-│  └─ users/             # the parts of the pages in pages/users/
+│  └─ users/             # the parts of the pages in routes/users/
 ├─ modules/              # what the app does, a directory per domain, no UI
 │  ├─ auth/              # auth.server.ts, guards.server.ts
 │  └─ users/             # users.server.ts, schemas.ts
@@ -100,12 +87,9 @@ app/
 └─ db/                   # the tables and the client
 ```
 
-- A page's path is its route's, without what only the URL needs: `routes/[[locale]]/(user)/account.ts` renders
-  `account`, and `routes/users/[id].ts` renders `users/show`. From one file you find the other.
-- A page's own parts are in `components/`, in a directory named like the page's. `pages/` holds pages and their
-  `_layout.tsx` only.
+- A route file is short: its handlers call a module, its page puts components together.
+- A page's own parts are in `components/`, in a directory named like the page's route.
 - A domain keeps its code together: `modules/users/` has the server code, the schemas its routes validate with and
-  its forms use, and the types of the data it gives pages (which a page imports with
-  [`import type`](/docs/server-and-client#server-code)).
-- A new file goes where the first answer is yes: a page or a layout, `pages/`; UI, `components/`; about one domain,
+  its forms use, and the types of the data it gives pages.
+- A new file goes where the first answer is yes: a URL, `routes/`; UI, `components/`; about one domain,
   `modules/<domain>/`; anything else, `lib/`.

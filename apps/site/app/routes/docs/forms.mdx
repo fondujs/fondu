@@ -4,12 +4,22 @@ A form is a plain `<form>`. It posts to an action, which validates the input and
 back:
 
 ```tsx
-// app/pages/contacts/new.tsx
-import { href, type Errors } from 'fondu/client'
+// app/routes/contacts/new.tsx
+import { back, defineHandler, flash } from 'fondu'
+import type { Errors } from 'fondu/client'
+
+import { contactSchema } from '#/modules/contacts/schemas.ts'
+
+// POST /contacts/new
+export const action = defineHandler.withValidator({ body: contactSchema })(async (c, { body }) => {
+  await addContact(body)
+  flash(c, { message: 'Contact added' })
+  return back(c)
+})
 
 export default function NewContact({ errors }: { errors: Errors }) {
   return (
-    <form action={href('/contacts')} method="post">
+    <form method="post">
       <input name="email" aria-invalid={!!errors.email} />
       {errors.email && <p>{errors.email}</p>}
       <button>Add</button>
@@ -18,18 +28,8 @@ export default function NewContact({ errors }: { errors: Errors }) {
 }
 ```
 
-```ts
-// app/routes/contacts/index.ts
-import { back, defineHandler, flash } from 'fondu'
-
-import { contactSchema } from '#/modules/contacts/schemas.ts'
-
-export const action = defineHandler.withValidator({ body: contactSchema })(async (c, { body }) => {
-  await addContact(body)
-  flash(c, { message: 'Contact added' })
-  return back(c)
-})
-```
+A form without an `action` posts to its page's URL. A page with several forms gives each its own:
+`actions = { add, remove }` in the route file, `<form method="post" action="?remove">` in the page.
 
 With JavaScript, Fondu's client sends it without a page load: back at the same URL, the page is updated where it is.
 Without, it is an ordinary form post, with the same result.
