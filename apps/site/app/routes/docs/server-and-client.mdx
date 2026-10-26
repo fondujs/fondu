@@ -3,31 +3,58 @@ whether it ends up in the JavaScript your visitors download.
 
 ## Where each file runs
 
-| Files                                         | Runs                                                  | In the browser's bundle |
-| --------------------------------------------- | ----------------------------------------------------- | ----------------------- |
-| `app/routes/`, `app/server.ts`, `*.server.ts` | on the server only                                    | never                   |
-| `app/app.tsx`, `app/pages/`, their components | on the server (the first render), then in the browser | yes                     |
-| anything else they import (a schema, a type)  | wherever it is imported                               | if a page imports it    |
+| Files                                                        | Runs                                                  | In the browser's bundle |
+| ------------------------------------------------------------ | ----------------------------------------------------- | ----------------------- |
+| `.ts` files of `app/routes/`, `app/server.ts`, `*.server.ts` | on the server only                                    | never                   |
+| a page's `loader`, `action`, `actions` (in its `.tsx`)       | on the server only                                    | never                   |
+| pages, layouts, their components                             | on the server (the first render), then in the browser | yes                     |
+| anything else they import (a schema, a type)                 | wherever it is imported                               | if a page imports it    |
 
-The browser's bundle is everything `app/app.tsx` and the pages import, directly or not. Each page is a chunk of its
-own, loaded when it is visited.
+The browser's bundle is everything the pages and layouts import, directly or not. Each page is a chunk of its own,
+loaded when it is visited.
+
+## A page's route file
+
+A `.tsx` route file is both: its handlers run on the server, its page on both. The browser gets a copy of the file
+without its server code: `loader`, `action`, `actions`, `prerender` and `params` are removed, then the imports and
+top-level declarations only they used, and so on until none is left.
+
+```tsx
+// app/routes/users/[id].tsx
+import { defineHandler, render } from 'fondu' // removed: only the loader uses it
+import { getUser } from '#/modules/users/users.server.ts' // removed
+import { Avatar } from '#/components/avatar.tsx' // kept: the page uses it
+
+const select = (u: User) => ({ name: u.name }) // removed: only the loader uses it
+
+export const loader = defineHandler(async (c) => render(c, Show, select(await getUser(c))))
+
+export default function Show({ name }: { name: string }) {
+  return <Avatar name={name} />
+}
+```
+
+What is left is what the page uses, so a server module it still imports (a helper the page calls too) stops the
+build, as any other: declare what the server and the browser share in a module of its own. A page imports from
+`fondu/client`: `fondu` is the server's.
 
 ## Server code
 
-`app/routes/`, `app/server.ts` and files named `*.server.ts` are server code: they read the database, the secrets, the
-session. If a page or a component imports one, even through another file, the build stops and names the import:
+The `.ts` files of `app/routes/`, `app/server.ts` and files named `*.server.ts` are server code: they read the database,
+the secrets, the session. If a page or a component imports one, even through another file, the build stops and names
+the import:
 
 ```
-fondu: /app/db/index.server.ts is server code (routes/, server.ts, *.server.ts) and cannot be imported by browser code
+fondu: /app/db/index.server.ts is server code (routes/*.ts, server.ts, *.server.ts) and cannot be imported by browser code
 ```
 
-Name a module `*.server.ts` when it must never reach the browser, and import it from routes and other server files.
+Name a module `*.server.ts` when it must never reach the browser, and import it from handlers and other server files.
 
 A type is not code: a page can take one from a server file with `import type`, which is removed with the rest of
 TypeScript before the build looks at the imports.
 
 ```tsx
-// app/pages/users/show.tsx
+// app/components/users/card.tsx
 import type { UserSummary } from '#/modules/users/users.server.ts'
 ```
 
@@ -61,8 +88,8 @@ export const GET = defineHandler(async (c) => {
 The dev server updates what an edit changes, without reloading the page where it can:
 
 - A page or a component (`.tsx`, `.mdx`): React Fast Refresh, the page's state kept.
-- A route, or code a route imports: the page asks for its props again (`reload()`), its state and
-  scroll kept. A route that now renders another page shows it.
+- A route's handlers, or code they import: the page asks for its props again (`reload()`), its state and scroll
+  kept. A page's file is both: its page is refreshed, its props asked for again.
 - `app/server.ts`, or code only it imports: the page reloads, as the document around it changed.
 - An app that fails to load (a route that throws as it is imported): Vite's overlay shows the error, as a whole page;
   the next edit reloads it.

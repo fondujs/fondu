@@ -171,9 +171,9 @@ export default function Home() {
           </div>
           <CreateCommand />
         </div>
-        {/* the one thing to see: a route and the page it renders, the props they share highlighted */}
+        {/* the one thing to see: a route file, its loader and its page, the props they share highlighted */}
         <Mosaic>
-          <div aria-label="A route and its page" role="group" className="hero-code">
+          <div aria-label="A route file" role="group" className="hero-code">
             <Code
               components={{ pre: (props: ComponentProps<'pre'>) => <pre {...props} />, CodeTabs }}
             />

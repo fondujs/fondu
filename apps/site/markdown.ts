@@ -15,7 +15,7 @@ const SUMMARY =
 function pageMarkdown(doc: Doc): string {
   let fenced = false
   const body = readFileSync(
-    new URL(`./app/pages/docs/${doc.slug || 'index'}.mdx`, import.meta.url),
+    new URL(`./app/routes/docs/${doc.slug || 'index'}.mdx`, import.meta.url),
     'utf8',
   )
     .split('\n')

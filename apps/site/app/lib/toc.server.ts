@@ -3,7 +3,7 @@ import type { Toc } from '@stefanprobst/rehype-extract-toc'
 import type { TocItem } from '#/docs.ts'
 
 // Each MDX page exports `toc`, its headings (vite.config.ts: rehype-extract-toc); the docs layout lists the h2s and h3s
-const tocs = import.meta.glob<Toc>('../pages/docs/**/*.mdx', { import: 'toc' })
+const tocs = import.meta.glob<Toc>('../routes/docs/**/*.mdx', { import: 'toc' })
 
 export async function tocOf(slug: string): Promise<TocItem[]> {
   const flat = (toc: Toc): TocItem[] =>
@@ -13,5 +13,5 @@ export async function tocOf(slug: string): Promise<TocItem[]> {
         : []),
       ...flat(e.children ?? []),
     ])
-  return flat((await tocs[`../pages/docs/${slug || 'index'}.mdx`]?.()) ?? [])
+  return flat((await tocs[`../routes/docs/${slug || 'index'}.mdx`]?.()) ?? [])
 }

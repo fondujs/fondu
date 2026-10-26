@@ -1,24 +1,25 @@
 ## Files and URLs
 
-Every `.ts` file in `app/routes/` is a route, except `_middleware.ts` files, declarations (`*.d.ts`) and tests
-(`*.test.ts`, `*.spec.ts`), which the app doesn't load. Its path is its URL:
+Every file in `app/routes/` is a route: a page (`.tsx`, `.mdx`) or server code only (`.ts`). Files and directories
+starting with `_` are not routes (`_middleware.ts`, `_layout.tsx` and `_error.tsx` are what their names say), nor are
+declarations (`*.d.ts`) and tests (`*.test.ts`, `*.spec.ts`). A route's path is its URL:
 
-| File                     | URL                                         |
-| ------------------------ | ------------------------------------------- |
-| `index.ts`               | `/`                                         |
-| `about.ts`               | `/about`                                    |
-| `users/index.ts`         | `/users`                                    |
-| `users/[id].ts`          | `/users/:id`                                |
-| `files/[...path].ts`     | `/files/*`: one or more segments, in `path` |
-| `[[lang]]/about.ts`      | `/about` and `/:lang/about`                 |
-| `(marketing)/pricing.ts` | `/pricing`: a `(group)` adds no segment     |
+| File                      | URL                                         |
+| ------------------------- | ------------------------------------------- |
+| `index.tsx`               | `/`                                         |
+| `about.tsx`               | `/about`                                    |
+| `users/index.tsx`         | `/users`                                    |
+| `users/[id].tsx`          | `/users/:id`                                |
+| `files/[...path].ts`      | `/files/*`: one or more segments, in `path` |
+| `[[lang]]/about.tsx`      | `/about` and `/:lang/about`                 |
+| `(marketing)/pricing.tsx` | `/pricing`: a `(group)` adds no segment     |
 
 Where two routes could take a URL, a static segment comes first, then a param with listed values, then any param,
-then a catch-all: `/users/new` is `users/new.ts`, not `users/[id].ts`.
+then a catch-all: `/users/new` is `users/new.tsx`, not `users/[id].tsx`.
 
 ## Optional segments
 
-`[[lang]]` is a segment the URL may leave out: `routes/[[lang]]/about.ts` answers `/about` and `/de/about`, and the
+`[[lang]]` is a segment the URL may leave out: `routes/[[lang]]/about.tsx` answers `/about` and `/de/about`, and the
 `_middleware.ts` files of its directories run for both. A route has one at most. The types have both URLs:
 `href('/about')`, `href('/:lang/about', { lang: 'de' })`.
 
@@ -33,32 +34,27 @@ export const params = { lang: ['de', 'fr'] }
 ```
 
 `/de/about` and `/fr/about` answer, `/xx/about` is a 404. The values are URL segments: letters, digits, `-`, `.`,
-`_`, `~`. A dynamic route beside it keeps the other URLs: with `[slug].ts` next to `[[lang]]/index.ts`, `/de` is the
+`_`, `~`. A dynamic route beside it keeps the other URLs: with `[slug].tsx` next to `[[lang]]/index.tsx`, `/de` is the
 language and `/my-post` the slug.
 
 ## One file per URL
 
-Two files that answer the same URLs stop the app at startup: `index.ts` and `[[lang]]/index.ts`, `users/[id].ts`
-and `users/[slug].ts`, `about.ts` and `(site)/about.ts`. Only one of them could answer, and maybe without the other's
+Two files that answer the same URLs stop the app at startup: `index.tsx` and `[[lang]]/index.tsx`,
+`users/[id].tsx` and `users/[slug].tsx`, `about.tsx` and `(site)/about.tsx`, `about.tsx` and `about.ts`. Only one of them could answer, and maybe without the other's
 middleware. Routes whose URLs differ by the values of a param list them with `params`.
 
 ## Loader and actions
 
-A route for pages exports what answers each request:
+A page's route file has its handlers and its page, the default export:
 
-```ts
-// app/routes/users/[id].ts
+```tsx
+// app/routes/users/[id].tsx
 import { back, defineHandler, render } from 'fondu'
 
+// GET /users/7
 export const loader = defineHandler(async (c) =>
-  // GET /users/7
-  render(c, 'users/show', { user: await getUser(c.req.param('id')) }),
+  render(c, Show, { user: await getUser(c.req.param('id')) }),
 )
-
-export const action = defineHandler(async (c) => {
-  // POST /users/7
-  return back(c)
-})
 
 export const actions = {
   // POST /users/7?rename
@@ -66,21 +62,48 @@ export const actions = {
   // POST /users/7?delete
   delete: defineHandler(async (c) => c.redirect('/users', 303)),
 }
+
+export default function Show({ user }: { user: User }) {
+  return (
+    <>
+      <h1>{user.name}</h1>
+      <form method="post" action="?rename">…</form>
+      <form method="post" action="?delete">…</form>
+    </>
+  )
+}
 ```
 
-- `loader` answers GET, `action` POST.
-- `actions.name` answers `POST ?name`, so one page can have several forms, each with its own action:
-  `<form method="post" action="/users/7?rename">`.
+- `loader` answers GET and renders the page with its props. Without a loader, the page is rendered on GET with
+  none of its own.
+- `action` answers POST: the page's one form.
+- `actions.name` answers `POST ?name`, a form each: `<form method="post" action="?rename">`. A file has `action` or
+  `actions`, not both; with `actions`, a POST without one of their names is a 404.
 - After an action, answer with a redirect: `back(c)` to the page the request came from, or `c.redirect(url, 303)`.
   The browser then shows that page.
 
 `defineHandler(...middleware, handler)` is Hono's `createHandlers`: `c` is Hono's [Context](https://hono.dev/docs/api/context),
 so `c.req.param()`, `c.req.query()`, `c.json()` and the rest are there.
 
+## What a route file exports
+
+Each kind of file exports what it is for, and nothing else: the app stops at startup with what to do instead. Code
+they share goes in a file of its own (`app/lib/`, `app/components/`).
+
+| File                        | Exports                                                                                                    |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `.tsx`                      | the page (default), `loader`, `action` or `actions`, `prerender`, `params`                                 |
+| `.ts`                       | `loader`, `action` or `actions`, `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS`, `prerender`, `params` |
+| `.mdx`                      | its content: an [MDX page](/docs/mdx) has no handlers                                                      |
+| `_middleware.ts`            | its middleware (default), `prerender`, `params`                                                            |
+| `_layout.tsx`, `_error.tsx` | the component (default)                                                                                    |
+
+The browser gets a page's file without its server code: [Server and client code](/docs/server-and-client).
+
 ## HTTP routes
 
-A route for API clients exports handlers named after the methods: `GET`, `POST`, `PUT`, `PATCH`, `DELETE`,
-`OPTIONS`.
+A route for API clients is a `.ts` file exporting handlers named after the methods: `GET`, `POST`, `PUT`, `PATCH`,
+`DELETE`, `OPTIONS`.
 
 ```ts
 // app/routes/api/health.ts

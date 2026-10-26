@@ -5,8 +5,8 @@
 Fondu is a small meta-framework for full-stack React apps, built on Hono and Vite. It runs on Bun, Cloudflare Workers
 and Node.
 
-Routes are Hono handlers in `app/routes/`; pages are React components in `app/pages/`. A route renders a page with its
-props. In the browser, links and forms are plain `<a>` and `<form>`: Fondu's small client, on the Navigation API, swaps
+The files in `app/routes/` are the URLs: Hono handlers that run on the server, and for a page, the React component its
+loader renders with props, in the same file (the browser gets the component alone). In the browser, links and forms are plain `<a>` and `<form>`: Fondu's small client, on the Navigation API, swaps
 the pages in place, without an API to write or a client-side router to keep in sync.
 
 ## Quick start

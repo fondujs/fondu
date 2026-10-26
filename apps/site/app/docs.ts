@@ -1,5 +1,5 @@
 // The docs, in reading order: the sidebar, the previous / next links, the titles, llms.txt. A page here is
-// app/pages/docs/<slug>.mdx at /docs/<slug> ('' is /docs: pages/docs/index.mdx).
+// app/routes/docs/<slug>.mdx at /docs/<slug> ('' is /docs: routes/docs/index.mdx).
 
 export interface Doc {
   slug: string
@@ -122,7 +122,7 @@ export const docUrl = (doc: Doc) => (doc.slug ? `/docs/${doc.slug}` : '/docs')
 /** the page as Markdown (vite: markdown.ts): /docs/routes.md, /docs.md */
 export const markdownUrl = (doc: Doc) => `${docUrl(doc)}.md`
 
-/** the doc of a page name ('docs/routes', 'docs/index') */
+/** the doc of a page (its id: 'docs/routes', 'docs/index') */
 export const docOf = (component: string) => {
   const slug = component.replace(/^docs\/?/, '').replace(/^index$/, '')
   return docs.find((d) => d.slug === slug)

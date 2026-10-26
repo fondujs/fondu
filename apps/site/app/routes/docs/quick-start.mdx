@@ -32,7 +32,7 @@ bun create fondu@latest my-app
 It asks where the app runs: Bun, Cloudflare Workers or Node (or pass `--target bun`, `--target cloudflare` or
 `--target node`), and whether to add code checks (or pass `--checks`): oxfmt and oxlint, git hooks that run them and
 check commit messages (lefthook and commitlint), and VS Code settings that format on save; and whether to make a git
-repository (`--git`), unless the folder is in one. Then it writes a small app: one route, its page, the error page,
+repository (`--git`), unless the folder is in one. Then it writes a small app: one page, a layout, the error page,
 Tailwind CSS, editor snippets and an `AGENTS.md` for coding agents, and installs the dependencies with the package
 manager you ran it with. `--yes` takes the defaults for what the options don't say, without asking:
 
@@ -66,23 +66,20 @@ bun dev
 
 </CodeTabs>
 
-The app is at `http://localhost:5173`. Edit `app/pages/index.tsx` and the page updates in place; edit
-`app/routes/index.ts` and it gets the new props, without a reload.
+The app is at `http://localhost:5173`. Edit the page in `app/routes/index.tsx` and it updates in place; edit its
+loader and the page gets the new props, without a reload.
 
 ## Add a page
 
-A page is a route file and a page component. Add `app/routes/about.ts`:
-
-```ts
-import { defineHandler, render } from 'fondu'
-
-// GET /about
-export const loader = defineHandler((c) => render(c, 'about', { team: ['Ada', 'Grace'] }))
-```
-
-And `app/pages/about.tsx`:
+A page is a route file: its loader, and the page component. Add `app/routes/about.tsx`:
 
 ```tsx
+import { defineHandler, render } from 'fondu'
+
+// GET /about: runs on the server
+export const loader = defineHandler((c) => render(c, About, { team: ['Ada', 'Grace'] }))
+
+// the page: the part of the file the browser gets
 export default function About({ team }: { team: string[] }) {
   return (
     <>
@@ -98,8 +95,7 @@ export default function About({ team }: { team: string[] }) {
 }
 ```
 
-`render(c, 'about', …)` is checked against the page: a page that doesn't exist, a missing prop or one of the wrong type
-is a type error. Link to it with a plain `<a>` and a URL from `href()`, typed after your routes:
+`render(c, About, …)` is checked against the page: a missing prop or one of the wrong type is a type error. Link to it with a plain `<a>` and a URL from `href()`, typed after your routes:
 
 ```tsx
 import { href } from 'fondu/client'
@@ -134,5 +130,5 @@ Then `start` on Bun or Node, or `deploy` on Cloudflare: [Deploying](/docs/deploy
 ## Next
 
 - [Project structure](/docs/project-structure): the files of the app you just created.
-- [Routes](/docs/routes) and [Pages and props](/docs/pages): the two kinds of files you will write most.
+- [Routes](/docs/routes) and [Pages and props](/docs/pages): what you will write most.
 - Every page of these docs is also Markdown: add `.md` to its URL. [llms.txt](/llms.txt) lists them all.

@@ -24,7 +24,7 @@ import { withoutSsr } from 'fondu'
 export default withoutSsr()
 ```
 
-Or in one handler: `defineHandler(withoutSsr(), (c) => render(c, 'admin/dashboard'))`.
+Or in one handler: `defineHandler(withoutSsr(), (c) => render(c, Dashboard))`.
 
 A page rendered in the browser only is empty until its JavaScript runs, on a reload too, so the browser can paint a
 blank frame first. Keep the server render for pages whose first paint matters.

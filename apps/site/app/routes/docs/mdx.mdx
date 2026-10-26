@@ -37,7 +37,7 @@ export default defineConfig({
 ## A page
 
 ```mdx
-{/* app/pages/guide/intro.mdx */}
+{/* app/routes/guide/intro.mdx: /guide/intro */}
 import { Counter } from '#/components/counter.tsx'
 
 # Introduction
@@ -45,14 +45,9 @@ import { Counter } from '#/components/counter.tsx'
 Some **Markdown**, and a component: <Counter />
 ```
 
-A route renders it like any page, by name:
-
-```ts
-// app/routes/guide/intro.ts
-export const loader = defineHandler((c) => render(c, 'guide/intro'))
-```
-
-Its props are in `props`: `{props.title}` in the Markdown.
+An MDX file in `app/routes/` is a page at its URL, rendered on GET. It has no handlers: a `_middleware.ts` around it
+can [share](/docs/pages#shared-props) props, which are in `props` (`{props.title}` in the Markdown), and set
+`prerender`.
 
 ## Layouts and components
 
@@ -61,7 +56,8 @@ the Markdown becomes (a link that opens another site in a new tab, a styled tabl
 [`providerImportSource`](https://mdxjs.com/packages/mdx/#processoroptions) with `@mdx-js/react`'s `MDXProvider` in
 that layout.
 
-In development, an edit to an MDX page updates it in place (React Fast Refresh), as for a `.tsx` page.
+In development, an edit to an MDX page updates it in place (React Fast Refresh), as for a `.tsx` page. Exports of
+its own (a table of contents a rehype plugin adds, say) are allowed, but not a route's (`loader`, `prerender`…).
 
 Remark and rehype plugins go in `mdx()`'s options: this site uses `remark-gfm` for tables, `rehype-slug` for heading
 ids and `@shikijs/rehype` to highlight code at build time.

@@ -3,12 +3,14 @@ stays mounted while navigations move between the pages it wraps, so its state (a
 
 ## `_layout.tsx`
 
-A `_layout.tsx` in a directory of `app/pages/` wraps every page below it. Its default export is a component that
+A `_layout.tsx` in a directory of `app/routes/` wraps every page below it. Its default export is a component that
 renders the page as `children`:
 
 ```tsx
-// app/pages/_layout.tsx: around every page
+// app/routes/_layout.tsx: around every page
 import type { ReactNode } from 'react'
+
+import '../styles/app.css'
 
 export default function Layout({ children }: { children: ReactNode }) {
   return (
@@ -20,10 +22,11 @@ export default function Layout({ children }: { children: ReactNode }) {
 }
 ```
 
-Layouts nest with the directories, outermost first:
+The root layout is around every page, the [error page](/docs/errors) too: the place to import the app's CSS. Layouts
+nest with the directories, outermost first:
 
 ```
-app/pages/
+app/routes/
 ├─ _layout.tsx           # around every page
 ├─ index.tsx
 └─ docs/
@@ -32,52 +35,37 @@ app/pages/
    └─ routes.mdx
 ```
 
-`docs/intro` is rendered inside `_layout.tsx`, then `docs/_layout.tsx`. Pages written in [MDX](/docs/mdx) get their
+`/docs/intro` is rendered inside `_layout.tsx`, then `docs/_layout.tsx`. Pages written in [MDX](/docs/mdx) get their
 layouts the same way. Read the page and its props in a layout with `usePage()` (`fondu/client`).
 
 ## Different layouts for different parts
 
-A page's name is where its file is, and its URL is the route's: the two are independent. So the directories of
-`app/pages/` can follow the layouts rather than the URLs:
+A `(group)` directory adds no segment to the URLs: its pages share a layout without sharing a path.
 
 ```
-app/pages/
-├─ marketing/
+app/routes/
+├─ _layout.tsx           # the styles, around everything
+├─ (marketing)/
 │  ├─ _layout.tsx        # the site's header and footer
-│  ├─ index.tsx          # rendered by routes/index.ts at /
+│  ├─ index.tsx          # /
 │  └─ legal/
 │     ├─ _layout.tsx     # a narrow column, inside the marketing layout
-│     ├─ terms.tsx       # rendered by routes/terms.ts at /terms
+│     ├─ terms.tsx       # /legal/terms
 │     └─ privacy.tsx
 └─ admin/
-   ├─ _layout.tsx        # the dashboard's sidebar
-   └─ users.tsx
+   ├─ _layout.tsx        # the dashboard's sidebar, not the site's header
+   └─ users.tsx          # /admin/users
 ```
 
-A part that should replace a layout rather than sit inside it goes in a directory beside it: `pages/legal/` instead of
-`pages/marketing/legal/`.
+A part that should not sit inside a layout goes in a directory beside it: `admin/` is not in `(marketing)/`.
 
 ## Code-split with their pages
 
 A layout is in the JavaScript of its pages only: a visitor of the home page doesn't download the docs' sidebar. The
-client loads a page's `_layout.tsx` files with it, found by the page's name.
+client loads a page's `_layout.tsx` files with it, found by the page's route file.
 
-## The app's default layout
+## Files that are not routes
 
-`startApp({ layout })` in `app/app.tsx` is the layout of the pages with no `_layout.tsx` above them. With an
-`app/pages/_layout.tsx`, every page has one, so the default is not needed.
-
-A page can still set its own: `Page.layout = OtherLayout` replaces its directories' layouts.
-
-A page that is another page's component, `export { default } from './edit.tsx'`, gets the layouts of its own
-directory: `users/new` can share `users/edit`'s form.
-
-## Files that are not pages
-
-A file in `app/pages/` whose name starts with `_`, or that is in a directory whose name does, is not a page:
-`render()` can't name it, and it is not in the generated types. Besides `_layout.tsx`, a component used by the pages
-of one directory can live there too, as `_toc.tsx` or `_parts/toc.tsx`. Tests (`*.test.tsx`, `*.spec.tsx`) are not
-pages either, as in `app/routes/`.
-
-Any other file there is a page, and a page is its file's default export. So a file with none, a component put in
-`app/pages/` by mistake say, is an error: shown by Vite's error overlay in development, and the build stops.
+A file in `app/routes/` whose name starts with `_`, or that is in a directory whose name does, is not a route: it has
+no URL, and it is not in the generated types. Besides `_layout.tsx`, a component used by the pages of one directory
+can live there too, as `_toc.tsx` or `_parts/toc.tsx`. Tests (`*.test.tsx`, `*.spec.tsx`) are not routes either.

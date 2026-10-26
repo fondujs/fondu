@@ -9,7 +9,6 @@ The server's API, for `app/server.ts`, routes and middleware.
 | Option          |                                                                                                        |
 | --------------- | ------------------------------------------------------------------------------------------------------ |
 | `document`      | the HTML around pages, `({ head, body, c, nonce })` to JSX or a string: [The document](/docs/document) |
-| `errorPage`     | the page for errors, `'error'` by default; `false`: plain text                                         |
 | `trailingSlash` | `'trim'` (default: `/users/` redirects to `/users`) or `'append'`                                      |
 | `csrf`          | `hono/csrf`'s options, or `false`                                                                      |
 | `secureHeaders` | `hono/secure-headers`' options, or `false`                                                             |
@@ -40,7 +39,7 @@ createApp({
 
 | Export                              |                                                        |
 | ----------------------------------- | ------------------------------------------------------ |
-| `render(c, page, props?, options?)` | a page; options: `status`                              |
+| `render(c, Page, props?, options?)` | its file's page; options: `status`                     |
 | `share(c, props)`                   | props every page of this request gets                  |
 | `flash(c, data)`                    | data for the next page (`usePage().flash`)             |
 | `back(c, fallback?)`                | a redirect to the page the request came from           |
@@ -52,22 +51,26 @@ createApp({
 
 | Export                                             |                                                                                          |
 | -------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `default` (in a `.tsx` file)                       | the page, rendered by `render()`, or on GET without a loader                             |
 | `loader`                                           | GET                                                                                      |
 | `action`                                           | POST                                                                                     |
-| `actions = { name }`                               | POST `?name`                                                                             |
-| `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS` | HTTP handlers                                                                            |
+| `actions = { name }`                               | POST `?name` (`action` or `actions`, not both)                                           |
+| `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS` | HTTP handlers (in a `.ts` file)                                                          |
 | `prerender`                                        | `true`, `false` or a function listing params: a [static page](/docs/static-pages)        |
 | `params`                                           | `{ name: ['value', …] }`: the [values a param takes](/docs/routes#the-values-of-a-param) |
 | `default` (in `_middleware.ts`)                    | the directory's middleware                                                               |
 
-### Page files
+### Route files
 
-| File in `app/pages/`   |                                                                     |
-| ---------------------- | ------------------------------------------------------------------- |
-| `name.tsx`, `name.mdx` | the page `name` (`users/show.tsx`: `'users/show'`)                  |
-| `_layout.tsx`          | the [layout](/docs/layouts) of the pages in its directory and below |
-| `_name.tsx`, `_name/`  | not a page: a file, or a directory, starting with `_`               |
-| `name.test.tsx`        | not a page: a test (`*.test.tsx`, `*.spec.tsx`)                     |
+| File in `app/routes/`  |                                                                                       |
+| ---------------------- | ------------------------------------------------------------------------------------- |
+| `name.tsx`, `name.mdx` | a page and its handlers ([what each exports](/docs/routes#what-a-route-file-exports)) |
+| `name.ts`              | server code only: handlers, HTTP handlers                                             |
+| `_middleware.ts`       | the middleware of its directory and below                                             |
+| `_layout.tsx`          | the [layout](/docs/layouts) of the pages in its directory and below                   |
+| `_error.tsx`           | the [error page](/docs/errors)                                                        |
+| `_name.tsx`, `_name/`  | not a route: a file, or a directory, starting with `_`                                |
+| `name.test.tsx`        | not a route: a test (`*.test.tsx`, `*.spec.tsx`)                                      |
 
 ## `fondu/client`
 
@@ -75,7 +78,6 @@ For the browser.
 
 | Export                |                                                                      |
 | --------------------- | -------------------------------------------------------------------- |
-| `startApp(options?)`  | in `app/app.tsx`: the app; `layout`, the pages' default layout       |
 | `href(path, params?)` | a URL of `app/routes/`, typed: `href('/users/:id', { id: 7 })`       |
 | `usePage()`           | the page on screen: `component`, `props`, `url`, `flash`             |
 | `useNavigating()`     | `true` from a click or a submit until the next page is on the screen |
@@ -93,4 +95,5 @@ The Vite plugin: `fondu(options)`.
 | `port`      | the production port on Bun and Node, 3000 by default (`PORT` overrides it) |
 | `ssr`       | `false`: pages render in the browser only                                  |
 | `prerender` | `true`: write the chosen pages as [static files](/docs/static-pages)       |
+| `progress`  | the navigations' progress bar: `{ color, delay }`, or `false`              |
 | `react`     | options for `@vitejs/plugin-react` (its `include` has `.mdx` by default)   |

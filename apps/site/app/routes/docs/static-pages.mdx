@@ -15,10 +15,10 @@ setting wins:
 // app/routes/(marketing)/_middleware.ts: every page below
 export const prerender = true
 
-// app/routes/(marketing)/contact.ts: not this one
+// app/routes/(marketing)/contact.tsx: not this one
 export const prerender = false
 
-// app/routes/blog/[slug].ts: a dynamic route lists its pages' params
+// app/routes/blog/[slug].tsx: a dynamic route lists its pages' params
 export const prerender = () => posts.map((post) => ({ slug: post.slug }))
 ```
 
@@ -51,9 +51,8 @@ A static page is the same for everyone. It is rendered once, for a visitor with 
 props included. So the build stops, naming the route, when a page:
 
 - answers with a status other than 200, such as a redirect;
-- takes POSTs at its URL (an `action`): Cloudflare answers those with 405 for a static file, so Fondu refuses them
-  on every target;
-- uses deferred props or infinite scroll, which need the Worker.
+- takes POSTs at its URL (an `action` or `actions`): Cloudflare answers those with 405 for a static file, so Fondu
+  refuses them on every target.
 
 ## Headers
 
