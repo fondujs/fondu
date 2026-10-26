@@ -95,7 +95,7 @@ const features: Array<[icon: LucideIcon, title: string, slug: string, text: stri
     TextCursorInput,
     'Forms and validation',
     'forms',
-    'Plain forms, a Standard Schema on the server. The errors land on the page, what was typed kept.',
+    'Plain forms, one Standard Schema for the server and the browser. The errors land on the page, what was typed kept.',
   ],
   [
     Server,
@@ -146,22 +146,22 @@ export default function Home() {
             </span>
           </h1>
           <p className="mt-6 max-w-xl text-base/[1.5] text-(--hero-text) sm:text-lg/[1.5]">
-            Each route is a{' '}
+            A route file holds a{' '}
             <Chip
               mark={<Hono />}
               className="bg-[#E36002]/10 font-mono text-[#B44C02] dark:text-[#FF9A52]"
             >
               Hono
             </Chip>{' '}
-            handler that renders a{' '}
+            handler and the{' '}
             <Chip
               mark={<ReactMark />}
               className="bg-[#087EA4]/10 font-mono text-[#066985] dark:bg-[#61DAFB]/10 dark:text-[#61DAFB]"
             >
               React
             </Chip>{' '}
-            page with its props. Links and forms swap the pages in the browser, so there is no
-            client router and no API to write. Deploy to Bun, Cloudflare Workers or Node.
+            page it renders with props. Links and forms swap the pages in the browser, so there is
+            no client router and no API to write. Deploy to Bun, Cloudflare Workers or Node.
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <Button size="lg" render={<a href="/docs" />}>

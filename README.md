@@ -5,9 +5,10 @@
 Fondu is a small meta-framework for full-stack React apps, built on Hono and Vite. It runs on Bun, Cloudflare Workers
 and Node.
 
-The files in `app/routes/` are the URLs: Hono handlers that run on the server, and for a page, the React component its
-loader renders with props, in the same file (the browser gets the component alone). In the browser, links and forms are plain `<a>` and `<form>`: Fondu's small client swaps
-the pages in place, without an API to write or a client-side router to keep in sync.
+The files in `app/routes/` are the URLs. A page's file holds its Hono handlers, which run on the server, and its React
+component, which the loader renders with props; the browser gets the component alone. Links and forms are plain `<a>`
+and `<form>`: Fondu's small client swaps the pages in place, with no API to write and no client-side router to keep in
+sync.
 
 ## Quick start
 
@@ -27,8 +28,8 @@ on Cloudflare Workers with D1 and Better Auth.
 ## Docs
 
 **[fondu.dev](https://fondu.dev/docs)**: routes, pages and props, layouts, forms and validation, errors, type safety,
-server-side rendering, static pages, MDX pages, internationalization, deploying, and the API. Every page is also Markdown for coding agents
-([llms.txt](https://fondu.dev/llms.txt)).
+server and client code, server-side rendering, static pages, MDX pages, internationalization, deploying, and the API.
+Every page is also Markdown for coding agents ([llms.txt](https://fondu.dev/llms.txt)).
 
 ## Contributing
 
@@ -41,7 +42,7 @@ apps/site               fondu.dev: the docs, MDX and static pages on Workers
 
 ```bash
 bun install            # also builds packages/fondu (the examples use the built package, like a real app)
-bun run test           # the protocol, on a small app with app.request()
+bun run test           # the package: a small app with app.request(), the routes, the client
 bun run typecheck      # the package, the demo (with apps/demo/e2e/types.ts) and the site
 bun run check          # format (oxfmt), lint (oxlint), typecheck
 bun run dev            # rebuild packages/fondu on change
