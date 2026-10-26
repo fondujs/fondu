@@ -177,7 +177,6 @@ export async function renderPage(
     url: pageUrl(c),
     version: version ?? null,
     flash: carried.flash,
-    ...(carried.clearHistory && { clearHistory: true }),
   }
   // a page is this visitor's: not stored by shared caches, revalidated by the browser (unless the route said otherwise)
   if (!c.res.headers.has('Cache-Control')) c.header('Cache-Control', 'private, no-cache')
@@ -211,10 +210,13 @@ const versionCheck: MiddlewareHandler = async (c, next) => {
     (await c.res.clone().text()) === ''
   )
     c.res = back(c)
-  // a redirect to a #fragment: fetch() follows it, the fragment lost (a Response's URL has none); the client follows
   const to = c.res.headers.get('location')
-  if (isPageRequest(c) && c.res.status >= 300 && c.res.status < 400 && to?.includes('#'))
-    c.res = c.body(null, 200, { 'X-Fondu-Redirect': to })
+  if (isPageRequest(c) && c.res.status >= 300 && c.res.status < 400 && to) {
+    // to another site: fetch() can't follow it (CORS), the client loads it as a document
+    if (!sameOrigin(c, to)) c.res = c.body(null, 409, { 'X-Fondu-Location': to })
+    // to a #fragment: fetch() follows it, the fragment lost (a Response's URL has none); the client follows
+    else if (to.includes('#')) c.res = c.body(null, 200, { 'X-Fondu-Redirect': to })
+  }
 }
 
 export const protocol: MiddlewareHandler[] = [flashCookie, versionCheck]

@@ -7,7 +7,6 @@ export interface Page {
   url: string
   version: string | null
   flash: Record<string, unknown>
-  clearHistory?: true
 }
 
 type Info = { fondu?: { page: Page; scroll: boolean; fresh: boolean } | 'document' | 'reload' }
@@ -16,7 +15,7 @@ interface Options {
   initial: Page
   /**
    * puts the page on the screen (in the DOM once it resolves); `fresh`: mounted anew, else it keeps its state (a form
-   * back with its errors, reload(), the server's page after the one kept for Back)
+   * back with its errors, reload())
    */
   show: (page: Page, fresh: boolean) => Promise<void>
   /** `fondu({ prerender: true })`: GET navigations read `/_fondu/pages/<path>.json` */
@@ -39,14 +38,6 @@ export function startNavigation({ initial, show, prerender, pending }: Options) 
   let version = initial.version
   let submitting: AbortController | undefined
   let current = 0
-  // the page each history entry showed, for Back and Forward: in memory, gone on reload and on clearHistory()
-  const saved = new Map<string, Page>()
-  const remember = (page: Page) => {
-    if (page.clearHistory) saved.clear()
-    // its flash data was shown once: not again on Back
-    if (nav.currentEntry) saved.set(nav.currentEntry.key, { ...page, flash: {} })
-  }
-  remember(initial)
   const begin = () => {
     const id = ++current
     pending(true)
@@ -113,7 +104,6 @@ export function startNavigation({ initial, show, prerender, pending }: Options) 
         focusReset: fresh ? 'after-transition' : 'manual',
         async handler() {
           await show(page, fresh)
-          remember(page)
           if (scroll) scrollAfter(event)
         },
       })
@@ -154,12 +144,8 @@ export function startNavigation({ initial, show, prerender, pending }: Options) 
       async handler() {
         const done = begin()
         try {
-          const back = event.navigationType === 'traverse'
-          const kept = back ? saved.get(event.destination.key) : undefined
-          if (kept) {
-            await show(kept, true)
-            scrollAfter(event)
-          }
+          // Back and Forward too: the server's page, as for a link (nothing kept in memory to go stale, as a
+          // private page after signing out); the scroll position is the browser's
           const path = url.pathname + url.search
           const from = prerender ? pageDataPath(url.pathname) + url.search : url
           const response = await fetch(from, { headers: headers(), signal: event.signal })
@@ -167,10 +153,10 @@ export function startNavigation({ initial, show, prerender, pending }: Options) 
           if (!page || event.signal.aborted) return
           // redirected: the page at its own URL, in place of this entry
           if (page.url !== path)
-            return void (await display(page, !kept, true, 'replace').finished?.catch(noop))
-          await show(page, !kept && event.navigationType !== 'reload')
-          remember(page)
-          if (!kept && event.navigationType !== 'reload') scrollAfter(event)
+            return void (await display(page, true, true, 'replace').finished?.catch(noop))
+          const reload = event.navigationType === 'reload'
+          await show(page, !reload)
+          if (!reload) scrollAfter(event)
         } catch (error) {
           failed(url.href)(error)
         } finally {

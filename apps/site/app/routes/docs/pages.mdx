@@ -41,8 +41,9 @@ Links are `<a href>`, forms `<form method="post">`, with URLs from [`href()`](/d
   `#fragment`.
 - A form's answer at the same URL (back with errors, `back(c)`) replaces the page where it is, the scroll position kept;
   with errors, the page keeps its state too, what was typed included. Elsewhere, it's a new page in the history.
-- Back and Forward show the page as it was left, at once, where it was scrolled, then the server's fresh one.
-- An answer that isn't a page (a file, a proxy's error) is shown as the browser would show it.
+- Back and Forward fetch the page again, as a link does, and scroll it where it was left.
+- An answer that isn't a page (a file, a proxy's error, a redirect to another site) is shown as the browser would
+  show it.
 - A navigation that takes a while shows a progress bar at the top of the page: `fondu({ progress: { color, delay } })`
   in `vite.config.ts` sets its color (the page's text color by default) and how long a navigation runs before it
   shows (250 ms); `progress: false` leaves it out, for your own with `useNavigating()`.
@@ -80,5 +81,4 @@ A value can be a function: it runs when a page renders, not for the other reques
 
 - `back(c)`: a redirect to the page the request came from.
 - `flash(c, { message: 'Saved' })`: data for the next page only, in `usePage().flash`.
-- `location(c, url)`: a document load of `url`, for a page outside the app.
-- `clearHistory(c)`: the pages kept for Back are forgotten (after signing out).
+- `c.redirect(url, 303)`: to another page, a file or another site; the browser shows what is there.

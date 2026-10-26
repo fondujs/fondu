@@ -37,15 +37,18 @@ createApp({
 
 ### Responses
 
-| Export                              |                                                        |
-| ----------------------------------- | ------------------------------------------------------ |
-| `render(c, Page, props?, options?)` | its file's page; options: `status`                     |
-| `share(c, props)`                   | props every page of this request gets                  |
-| `flash(c, data)`                    | data for the next page (`usePage().flash`)             |
-| `back(c, fallback?)`                | a redirect to the page the request came from           |
-| `location(c, url)`                  | a document load of `url`                               |
-| `clearHistory(c)`                   | the next page forgets the pages kept for Back          |
-| `wantsPage(c)`                      | whether the request wants a page (or is an API client) |
+| Export                              |                                              |
+| ----------------------------------- | -------------------------------------------- |
+| `render(c, Page, props?, options?)` | its file's page; options: `status`           |
+| `share(c, props)`                   | props every page of this request gets        |
+| `flash(c, data)`                    | data for the next page (`usePage().flash`)   |
+| `back(c, fallback?)`                | a redirect to the page the request came from |
+
+### Types
+
+| Export     |                                                                                                                     |
+| ---------- | ------------------------------------------------------------------------------------------------------------------- |
+| `Register` | declared by the app: `shared` and `flash` type `share()`, `flash()`, `usePage()` ([Type safety](/docs/type-safety)) |
 
 ### Route exports
 

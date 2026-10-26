@@ -11,7 +11,6 @@ import type { Flash } from '../types.js'
 interface Carried {
   flash?: Record<string, unknown>
   errors?: Record<string, unknown>
-  clearHistory?: boolean
 }
 interface State {
   outgoing: Carried
@@ -43,16 +42,10 @@ export function flashErrors(c: Context, errors: Record<string, unknown>) {
   state(c).outgoing.errors = errors
 }
 
-/** The next page forgets the pages kept for Back: after signing out, for example. */
-export function clearHistory(c: Context) {
-  state(c).outgoing.clearHistory = true
-}
-
 /** What this page shows: carried over from the previous request (read once), plus what this request set. */
 export function takeCarried(c: Context): {
   flash: Record<string, unknown>
   errors: Record<string, unknown>
-  clearHistory: boolean
 } {
   const s = state(c)
   if (!s.read) {
@@ -66,7 +59,6 @@ export function takeCarried(c: Context): {
   const carried = {
     flash: { ...s.incoming?.flash, ...s.outgoing.flash },
     errors: { ...s.incoming?.errors, ...s.outgoing.errors },
-    clearHistory: Boolean(s.incoming?.clearHistory || s.outgoing.clearHistory),
   }
   s.outgoing = {}
   return carried
@@ -79,7 +71,7 @@ export const flashCookie: MiddlewareHandler = async (c, next) => {
   if (!s) return
   const name = cookieName(c)
   const options = { path: '/', httpOnly: true, sameSite: 'Lax', secure: isSecure(c) } as const
-  if (s.outgoing.flash || s.outgoing.errors || s.outgoing.clearHistory) {
+  if (s.outgoing.flash || s.outgoing.errors) {
     const value = JSON.stringify(s.outgoing)
     // browsers drop a cookie over ~4 KB without a word: the next page would show no errors, no flash
     if (encodeURIComponent(value).length > 4000)

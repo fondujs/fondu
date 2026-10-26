@@ -500,7 +500,7 @@ await page
   .waitForFunction(() => location.pathname === '/api/health', { timeout: 5000 })
   .catch(() => {})
 ok(
-  'location(c, url): 409 + X-Fondu-Location, the browser loads it as a document',
+  'a redirect to what is not a page: the browser loads it as a document',
   (await path()) === '/api/health' && docs.some((d) => d.endsWith('/api/health')),
 )
 await page.goBack({ waitUntil: 'load' })
@@ -615,23 +615,19 @@ ok('a link to the same page mounts it anew', (await testid('clicks')) === '0')
 }
 {
   const served = await testid('served-at')
-  await page.evaluate(() => window.scrollTo(0, 200))
   await page.click('[data-testid=to-props]')
   await h1('Props')
   fetches.length = 0
   docs.length = 0
   await page.goBack()
   await h1('Navigation')
-  const atOnce = await testid('served-at')
-  await page.waitForFunction(
-    (s) => document.querySelector('[data-testid=served-at]').textContent !== s,
-    { timeout: 5000 },
-    served,
-  )
+  await sleep(300)
   ok(
-    "Back: the page as it was at once, then the server's, no document",
-    atOnce === served && fetches.some((f) => f.url.startsWith('/navigation')) && docs.length === 0,
-    JSON.stringify({ atOnce, served, fetches, docs }),
+    "Back: the server's page again, no document (the scroll position: below)",
+    (await testid('served-at')) !== served &&
+      fetches.some((f) => f.url.startsWith('/navigation')) &&
+      docs.length === 0,
+    JSON.stringify({ served, fetches, docs }),
   )
 }
 
@@ -922,7 +918,7 @@ await page.waitForFunction(
   )
   await waitText('Role changed to user')
   ok("an admin action (Better Auth's setRole), there and back", true)
-  // signed out from here, Back: the admin page is not shown again (clearHistory(): the kept pages forgotten)
+  // signed out from here, Back: the admin page is not shown again (asked again: the sign-in page)
   await page.click('[data-testid=user]')
   await (await page.waitForSelector('[data-testid=sign-out]')).click()
   await page.waitForSelector('[data-testid=sign-in]')
@@ -942,7 +938,7 @@ await page.waitForFunction(
   await sleep(400)
   const seen = await page.evaluate(() => window.__headings ?? [])
   ok(
-    'signed out on /admin: Back never shows it (the kept pages forgotten; asked again: the sign-in page)',
+    'signed out on /admin: Back never shows it (asked again: the sign-in page)',
     !seen.includes('Accounts') && (await path()).startsWith('/login'),
     JSON.stringify([...new Set(seen)]),
   )
@@ -1403,6 +1399,7 @@ await page.waitForFunction(
     if (r.headers()['x-fondu']) requests.push(new URL(r.url()).pathname)
   })
   const at = (p) => hp.waitForFunction((x) => location.pathname === x, {}, p)
+  await hp.setViewport({ width: 800, height: 300 }) // the contacts page scrolls, however few they are
   await hp.goto(BASE + '/flash', { waitUntil: 'networkidle0' })
   await nav('/contacts', hp)
   await at('/contacts')
@@ -1415,7 +1412,7 @@ await page.waitForFunction(
   await at('/contacts')
   await sleep(500)
   ok(
-    "Back: the page as it was left, the scroll position too, then the server's",
+    "Back: the server's page, at the scroll position it was left",
     (await hp.$('[data-testid=contacts] li')) !== null &&
       (await hp.evaluate(() => Math.round(scrollY))) === 300 &&
       requests.includes('/contacts'),
