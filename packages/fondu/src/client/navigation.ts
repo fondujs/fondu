@@ -34,6 +34,8 @@ interface Visit {
   scroll?: { x: number; y: number } | null
   /** reload(): the page keeps its state */
   keep?: boolean
+  /** Back and Forward: the page the entry showed, put on the screen at once, then the server's in its place */
+  kept?: Page
 }
 
 let visit: ((url: string, options: Visit) => void) | undefined
@@ -47,6 +49,16 @@ export function startNavigation({ initial, show, prerender, pending, preload }: 
   const scroll = scrollPositions()
   let version = initial.version
   let current: AbortController | undefined
+  // the page each entry showed, for Back and Forward: in memory only (gone on reload), the last 50; all of them
+  // forgotten once a form is sent (what it changed, a signed-out user's pages), its flash data not shown again
+  const kept = new Map<string, Page>()
+  const keep = (page: Page) => {
+    const key = scroll.key()
+    if (!key) return
+    kept.delete(key)
+    kept.set(key, { ...page, flash: {} })
+    if (kept.size > 50) kept.delete(kept.keys().next().value!)
+  }
 
   const headers = () => ({ 'X-Fondu': 'true', ...(version && { 'X-Fondu-Version': version }) })
   /** a document load: in place of this entry, or after it */
@@ -66,19 +78,28 @@ export function startNavigation({ initial, show, prerender, pending, preload }: 
     const post = options.body !== undefined
     if (options.history !== 'none') scroll.save()
     const form = options.form ?? null
+    // a kept page is on the screen at once: the server's comes quietly, no pending state
+    const shown = options.kept
     // the form being sent is aria-busy: for its submit buttons' pending state (CSS, or useNavigating()), and for
     // assistive technology
     form?.setAttribute('aria-busy', 'true')
-    pending(true, form !== null)
+    if (!shown) pending(true, form !== null)
     const done = () => {
       form?.removeAttribute('aria-busy')
-      if (current === controller) pending(false, false)
+      if (!shown && current === controller) pending(false, false)
     }
     if (!post) preload(url.pathname)
     const from =
       !post && prerender ? pageDataPath(url.pathname) + url.search : url.pathname + url.search
     void (async () => {
       try {
+        if (shown) {
+          scroll.commit()
+          await show(shown, true, () => signal.aborted)
+          if (signal.aborted) return
+          announce()
+          restore(options.scroll, url.hash)
+        }
         const response = await fetch(from, {
           method: post ? 'POST' : 'GET',
           body: options.body,
@@ -86,6 +107,7 @@ export function startNavigation({ initial, show, prerender, pending, preload }: 
           signal,
         })
         if (signal.aborted) return
+        if (post) kept.clear()
         // a new build, another site: the document
         const to = response.headers.get('X-Fondu-Location')
         if (response.status === 409 && to) return documentLoad(to, options.history !== 'push')
@@ -117,10 +139,11 @@ export function startNavigation({ initial, show, prerender, pending, preload }: 
         const here = location.pathname + location.search
         const same = post && page.url === here
         const errors = Object.keys((page.props.errors as object | undefined) ?? {}).length > 0
-        const fresh = !options.keep && !(same && errors)
+        const asked = url.pathname + url.search
+        // the kept page's entry: the server's page in its place, its state kept; redirected (signed out), anew
+        const fresh = shown ? asked !== page.url : !options.keep && !(same && errors)
         // its URL first, as the browser's own navigations: a page's render reads it (`location`, a URL's language);
         // a redirect's, the fragment asked for if it is still this page's
-        const asked = url.pathname + url.search
         const target = page.url + (asked === page.url ? url.hash : '')
         // a form's answer at its URL replaces the entry; Back's or reload()'s page redirected elsewhere too
         const history =
@@ -133,13 +156,15 @@ export function startNavigation({ initial, show, prerender, pending, preload }: 
         scroll.commit()
         await show(page, fresh, () => signal.aborted)
         if (signal.aborted) return
+        keep(page)
+        if (shown && !fresh) return
         if (!options.keep) announce()
         // a page asked for again stays where it is: reload(), a form's answer at its URL
         if (options.keep || same) return
         // at once, the page in the DOM (show() renders it synchronously): no frame drawn where it doesn't belong
         restore(options.history === 'none' ? options.scroll : null, url.hash)
       } catch (error) {
-        if ((error as Error).name === 'AbortError') return
+        if ((error as Error).name === 'AbortError' || shown) return // offline, Back: the kept page stays
         if (post) throw error // the form stays, to send again
         documentLoad(url.href, options.history !== 'push') // offline: the browser says so
       } finally {
@@ -192,7 +217,11 @@ export function startNavigation({ initial, show, prerender, pending, preload }: 
   window.addEventListener('popstate', (event) => {
     const popped = scroll.pop(event.state)
     if (popped.fragment) return restore(popped.position, location.hash)
-    visit!(location.href, { history: 'none', scroll: popped.position })
+    visit!(location.href, {
+      history: 'none',
+      scroll: popped.position,
+      kept: kept.get(popped.key ?? ''),
+    })
   })
   // leaving the document (a reload, another site): its position, and the browser's restoration back on for this
   // entry, so a reload or Back to it is scrolled at first paint, as any document
@@ -207,6 +236,7 @@ export function startNavigation({ initial, show, prerender, pending, preload }: 
   window.addEventListener('hashchange', scroll.commit)
 
   restore(scroll.start(), location.hash, true)
+  keep(initial)
 }
 
 /**
@@ -260,6 +290,8 @@ function scrollPositions() {
   return {
     save,
     commit,
+    /** the key of the entry on the screen */
+    key: () => rendered,
     /**
      * The document's entry: its key; where it was scrolled, unless the browser did it (an entry it restores, the one
      * left by a reload): an entry this client pushed, loaded again (Back from another site past it)
@@ -280,9 +312,10 @@ function scrollPositions() {
     pop(state: unknown) {
       save()
       const fragment = location.pathname + location.search === renderedUrl
-      const position = read(keyOf(state))
+      const key = keyOf(state)
+      const position = read(key)
       if (fragment) commit()
-      return { fragment, position }
+      return { fragment, position, key }
     },
   }
 }

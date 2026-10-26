@@ -41,7 +41,9 @@ Links are `<a href>`, forms `<form method="post">`, with URLs from [`href()`](/d
   `#fragment`.
 - A form's answer at the same URL (back with errors, `back(c)`) replaces the page where it is, the scroll position kept;
   with errors, the page keeps its state too, what was typed included. Elsewhere, it's a new page in the history.
-- Back and Forward fetch the page again, as a link does, and scroll it where it was left.
+- Back and Forward show the page as it was left, at once, where it was scrolled, then the server's in its place. The
+  pages kept for it are in memory only, and forgotten once a form is sent (what it changed, a signed-out user's
+  pages).
 - Screen readers hear the new page's title.
 - An answer that isn't a page (a file, a proxy's error, a redirect to another site) is shown as the browser would
   show it.
