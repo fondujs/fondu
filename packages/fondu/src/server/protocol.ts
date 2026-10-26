@@ -187,6 +187,15 @@ export async function renderPage(
   return c.html(await renderDocument(c, page), (options.status ?? 200) as 200)
 }
 
+/** an http(s) URL, as `to` resolves from the request's */
+function webUrl(c: Context, to: string): boolean {
+  try {
+    return /^https?:$/.test(new URL(to, c.req.url).protocol)
+  } catch {
+    return false
+  }
+}
+
 // ---- the protocol middleware (installed by createApp)
 
 const versionCheck: MiddlewareHandler = async (c, next) => {
@@ -212,8 +221,11 @@ const versionCheck: MiddlewareHandler = async (c, next) => {
     c.res = back(c)
   const to = c.res.headers.get('location')
   if (isPageRequest(c) && c.res.status >= 300 && c.res.status < 400 && to) {
-    // to another site: fetch() can't follow it (CORS), the client loads it as a document
-    if (!sameOrigin(c, to)) c.res = c.body(null, 409, { 'X-Fondu-Location': to })
+    // to another site: fetch() can't follow it (CORS), the client loads it as a document; http(s) only (a browser
+    // follows no redirect to `javascript:`, and neither does the client)
+    if (!sameOrigin(c, to)) {
+      if (webUrl(c, to)) c.res = c.body(null, 409, { 'X-Fondu-Location': to })
+    }
     // to a #fragment: fetch() follows it, the fragment lost (a Response's URL has none); the client follows
     else if (to.includes('#')) c.res = c.body(null, 200, { 'X-Fondu-Redirect': to })
   }

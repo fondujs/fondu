@@ -103,6 +103,14 @@ export default function Page() {
 `)
     expect(out.split('\n')[0]).toBe("import { a } from 'x';")
   })
+  test('code that names a server export: an error (it would reach the browser)', () => {
+    expect(() =>
+      strip(`export let loader\nloader = () => secret()\nexport default () => null`),
+    ).toThrow('loader is server code')
+    expect(() => strip(`export const loader = () => 1\nexport default () => loader`)).toThrow(
+      'loader is server code',
+    )
+  })
   test('what it cannot tell apart: an error', () => {
     expect(() => strip(`export * from 'x'\nexport default () => null`)).toThrow('`export *`')
     expect(() => strip(`export const loader = 1, Page = 2\nexport default () => null`)).toThrow(

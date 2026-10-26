@@ -901,6 +901,8 @@ await page.waitForFunction(
     page.click('main form button'),
   ])
   await page.setExtraHTTPHeaders({})
+  // the URL is the account's as the navigation starts: its page once it is on the screen
+  await page.waitForSelector('[data-testid=account-role]', { timeout: 5000 }).catch(() => {})
   ok('Better Auth: the admin account, its role', (await testid('account-role')) === 'admin')
   const doc = await (await fetchAs(BASE + '/admin/dashboard')).text()
   ok(
@@ -1319,6 +1321,7 @@ await page.waitForFunction(
       '/app/routes/logout.ts?raw',
       '/app/server.ts?raw',
       '/app/routes/logout.ts?import&raw',
+      '/app/routes/(demos)/login.tsx?raw', // a page's route file, its loader and action in it
     ].map(async (u) => [u, (await fetch(BASE + u)).status]),
   )
   ok(

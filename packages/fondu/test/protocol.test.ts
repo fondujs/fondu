@@ -139,6 +139,12 @@ describe('routes', () => {
     expect(
       (await app.request('/redirect?away', { method: 'POST', headers: { Origin: ORIGIN } })).status,
     ).toBe(303)
+    // not http(s): left as it is (a browser follows no redirect to javascript:)
+    const script = await app.request('/redirect?script', {
+      method: 'POST',
+      headers: { ...fondu(), Origin: ORIGIN },
+    })
+    expect([script.status, script.headers.get('x-fondu-location')]).toEqual([303, null])
     // this site's: followed by fetch()
     const here = await app.request('/redirect?home', {
       method: 'POST',

@@ -188,6 +188,8 @@ export function stripServerCode(code: string, program: { body: Node[] }, file: s
   const fail = (why: string): never => {
     throw new Error(`fondu: routes/${file}: ${why}`)
   }
+  // the server exports removed, by name: code left that names one would keep it in the browser, or fail there
+  const removed = new Set<string>()
   const parts: Part[] = program.body.map((node) => ({
     node,
     declares: [],
@@ -203,7 +205,10 @@ export function stripServerCode(code: string, program: { body: Node[] }, file: s
         const server = declared.filter((n) => SERVER_EXPORTS.has(n))
         if (server.length && server.length !== declared.length)
           fail(`declare ${server.join(', ')} on a line of their own`)
-        if (server.length) part.text = ''
+        if (server.length) {
+          part.text = ''
+          for (const name of server) removed.add(name)
+        }
         continue
       }
       const specifiers = node.specifiers as Array<Node & { local: Name; exported: Name }>
@@ -246,6 +251,14 @@ export function stripServerCode(code: string, program: { body: Node[] }, file: s
       }
     }
   }
+
+  for (const part of parts)
+    if (part.text !== '')
+      for (const name of removed)
+        if (part.uses.has(name))
+          fail(
+            `${name} is server code, removed from the browser's copy: set it where it is declared`,
+          )
 
   let out = ''
   let at = 0

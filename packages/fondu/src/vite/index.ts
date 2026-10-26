@@ -550,6 +550,18 @@ function core(options: FonduOptions): Plugin {
           `fondu: ${id.replace(config.root, '')} is server code (routes/*.ts, server.ts, *.server.ts) and cannot be imported by browser code`,
         )
       }
+      // and a page's route file as it is (`?raw`, `?url`…): the browser's copy is the page alone
+      const [file, query] = id.split('?')
+      if (
+        this.environment.config.consumer === 'client' &&
+        query &&
+        file!.startsWith(`${config.root}/app/routes/`) &&
+        isPageFile(file!.slice(`${config.root}/app/routes/`.length)) &&
+        /(?:^|&)(?:raw|url|inline)(?:&|=|$)/.test(query)
+      )
+        this.error(
+          `fondu: ${file!.replace(config.root, '')} has server code: only its page reaches the browser`,
+        )
     },
   }
 }

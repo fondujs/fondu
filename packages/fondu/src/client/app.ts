@@ -155,8 +155,9 @@ function start(settings: { prerender: boolean; progress: ProgressOptions | false
           const page = pageAt(pathname)
           if (page) load(page).catch(() => {})
         },
-        async show(page, fresh) {
+        async show(page, fresh, stale) {
           const view = await load(page.component)
+          if (stale()) return
           flushSync(() => set((now) => ({ page, view, mounts: now.mounts + Number(fresh) })))
         },
       })
