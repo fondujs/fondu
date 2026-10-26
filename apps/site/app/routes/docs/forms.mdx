@@ -64,14 +64,14 @@ already taken).
 
 ```tsx
 import type { Errors } from 'fondu/client'
-import { useState, type FormEvent } from 'react'
+import { useState, type SubmitEvent } from 'react'
 import * as z from 'zod'
 
 import { contactSchema } from '#/modules/contacts/schemas.ts'
 
 export default function NewContact({ errors }: { errors: Errors }) {
   const [checked, setChecked] = useState<Errors>({})
-  const check = (event: FormEvent<HTMLFormElement>) => {
+  const check = (event: SubmitEvent<HTMLFormElement>) => {
     const result = contactSchema.safeParse(Object.fromEntries(new FormData(event.currentTarget)))
     if (result.success) return setChecked({}) // sent, by Fondu's client
     event.preventDefault()
@@ -89,7 +89,9 @@ export default function NewContact({ errors }: { errors: Errors }) {
 }
 ```
 
-Without JavaScript, the form is sent as it is, and the server's check answers.
+A field can be checked the same way as it is left, with its own part of the schema (`schema.shape.email`), and again
+as it changes while it is wrong, so a fixed field loses its message. Without JavaScript, the form is sent as it is,
+and the server's check answers.
 
 ## While it is sent
 

@@ -124,9 +124,11 @@ export function startNavigation({ initial, show, prerender, pending, preload }: 
           if (!post || response.redirected)
             return documentLoad(post ? response.url : url.href, options.history !== 'push')
           const html = await response.text()
-          document.open()
+          document.open() // the page's listeners gone with it, popstate's too
           document.write(html)
           document.close()
+          // Back and Forward stay in this document (the entries before it are its own): their URL as a document
+          addEventListener('popstate', () => location.reload())
           return
         }
         const page = (await response.json()) as Page
@@ -279,6 +281,21 @@ function scrollPositions() {
       sessionStorage.setItem(STORAGE + rendered, JSON.stringify(position))
     } catch {}
   }
+  // the entry on the screen follows its scrolling (once a frame, in memory): its position is the one it was left at,
+  // whenever the browser starts a traversal away from it
+  let frame = 0
+  addEventListener(
+    'scroll',
+    () => {
+      const key = rendered // the entry scrolled, before a popstate makes another one rendered
+      if (frame || !key) return
+      frame = requestAnimationFrame(() => {
+        frame = 0
+        if (rendered === key) positions.set(key, { x: scrollX, y: scrollY })
+      })
+    },
+    { passive: true },
+  )
   /** this entry's key, given one if it has none (a first visit, a #fragment the browser navigated to) */
   const commit = () => {
     let key = keyOf(history.state)
@@ -310,10 +327,9 @@ function scrollPositions() {
     },
     /** Back or Forward to `state`'s entry: where it was; `fragment`: the same page, another #fragment */
     pop(state: unknown) {
+      // nothing saved here: the browser may have scrolled already (Firefox and Safari to a #fragment, before its
+      // popstate); the entry left has its position from its scroll events
       const key = keyOf(state)
-      // an entry without a key: the browser's #fragment navigation, just made (its popstate comes after it scrolled
-      // there in Firefox and Safari): the position left was saved on the click, not this one
-      if (key) save()
       const fragment = location.pathname + location.search === renderedUrl
       const position = read(key)
       if (fragment) commit()

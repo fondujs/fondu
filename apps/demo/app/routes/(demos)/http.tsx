@@ -1,5 +1,5 @@
 import { type Errors, href, usePage } from 'fondu/client'
-import { type FormEvent, useState } from 'react'
+import { type SubmitEvent, useState } from 'react'
 import { flushSync } from 'react-dom'
 
 import { DemoCard, Json, SignInFirst, SubmitButton, TextField, Title } from '#/components/demo.tsx'
@@ -24,7 +24,7 @@ export default function Http() {
     setStatus(null)
     setContacts(((await response.json()) as { contacts: Contact[] }).contacts)
   }
-  const create = async (e: FormEvent<HTMLFormElement>) => {
+  const create = async (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault()
     const form = e.currentTarget
     setCreating(true)

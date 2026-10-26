@@ -89,5 +89,7 @@ import { createHotContext } from '${import.meta.env.BASE_URL}@vite/client'
 const hot = createHotContext('/@fondu/error-report')
 hot.on('fondu:props', () => location.reload())
 hot.on('vite:afterUpdate', () => location.reload())
+// Back and Forward to the app's entries before it (this document may be given them): their URL as a document
+addEventListener('popstate', () => location.reload())
 </script></body></html>`
 }

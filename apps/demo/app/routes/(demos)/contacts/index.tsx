@@ -2,10 +2,16 @@ import { desc, eq } from 'drizzle-orm'
 import { back, defineHandler, flash, render } from 'fondu'
 import { type Errors, href, useNavigating, usePage } from 'fondu/client'
 import { Trash2Icon } from 'lucide-react'
-import { useState, type FormEvent } from 'react'
 import * as z from 'zod/mini'
 
-import { DemoCard, SignInFirst, SubmitButton, TextField, Title } from '#/components/demo.tsx'
+import {
+  DemoCard,
+  SignInFirst,
+  SubmitButton,
+  TextField,
+  Title,
+  useSchemaForm,
+} from '#/components/demo.tsx'
 import {
   AlertDialog,
   AlertDialogClose,
@@ -57,20 +63,7 @@ export default function Contacts({ contacts, errors }: { contacts: Contact[]; er
   const { auth } = usePage().props
   // the action's schema, in the browser too: an invalid form isn't sent; the server checks again (and what only it
   // can, an address already taken)
-  const [checked, setChecked] = useState<Errors>({})
-  const check = (event: FormEvent<HTMLFormElement>) => {
-    const result = z.safeParse(contactSchema, Object.fromEntries(new FormData(event.currentTarget)))
-    if (result.success) return setChecked({})
-    event.preventDefault()
-    const fields = z.flattenError(result.error).fieldErrors as Record<string, string[] | undefined>
-    const found = Object.fromEntries(
-      Object.entries(fields).map(([name, messages]) => [name, messages?.[0] ?? '']),
-    )
-    setChecked(found)
-    const first = event.currentTarget.elements.namedItem(Object.keys(found)[0] ?? '')
-    if (first instanceof HTMLElement) first.focus()
-  }
-  const shown = { ...errors, ...checked }
+  const { form, field } = useSchemaForm(contactSchema, errors)
   // a contact being deleted: its form is aria-busy (Fondu's client), the trash button shows it
   const navigating = useNavigating()
   return (
@@ -91,10 +84,10 @@ export default function Contacts({ contacts, errors }: { contacts: Contact[]; er
               method="post"
               className="grid gap-4"
               data-testid="add-contact"
-              onSubmit={check}
+              {...form}
             >
-              <TextField label="Name" name="name" error={shown.name} testid="err-name" />
-              <TextField label="Email" name="email" error={shown.email} testid="err-email" />
+              <TextField label="Name" {...field('name')} testid="err-name" />
+              <TextField label="Email" {...field('email')} testid="err-email" />
               <SubmitButton>Add contact</SubmitButton>
             </form>
           </DemoCard>

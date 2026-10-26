@@ -1,6 +1,17 @@
-import { href, useNavigating, usePage } from 'fondu/client'
+import { type Errors, href, useNavigating, usePage } from 'fondu/client'
 import { InfoIcon } from 'lucide-react'
-import { useEffect, useRef, useSyncExternalStore, type HTMLAttributes, type ReactNode } from 'react'
+import {
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type ChangeEvent,
+  type FocusEvent,
+  type HTMLAttributes,
+  type ReactNode,
+  type SubmitEvent,
+} from 'react'
+import * as z from 'zod/mini'
 
 import { Alert, AlertDescription } from '#/components/ui/alert.tsx'
 import { Badge } from '#/components/ui/badge.tsx'
@@ -104,17 +115,16 @@ export function TextField({
   )
 }
 
-/**
- * A form's submit button, busy while its form is sent (`useNavigating()`, from its click: Enter in a field clicks it
- * too). When the answer comes back with errors, the first field to fix gets the focus. For a request of the page's
- * own (fetch), pass `processing`.
- */
 /** whether a form is being sent: Fondu's client marks it `aria-busy` while it is */
 export function useSending(form: () => HTMLFormElement | null | undefined): boolean {
   const navigating = useNavigating()
   return navigating && form()?.getAttribute('aria-busy') === 'true'
 }
 
+/**
+ * A form's submit button, busy while its form is sent. When the answer comes back with errors, the first field to fix
+ * gets the focus. For a request of the page's own (fetch), pass `processing`.
+ */
 export function SubmitButton({ processing, ...props }: ButtonProps & { processing?: boolean }) {
   const ref = useRef<HTMLButtonElement>(null)
   const sending = useSending(() => ref.current?.form)
@@ -132,6 +142,60 @@ export function SubmitButton({ processing, ...props }: ButtonProps & { processin
       ref.current?.form?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus()
   }, [sending, errors])
   return <Button ref={ref} type="submit" loading={processing ?? sending} {...props} />
+}
+
+/** a field's first message, by name */
+function messages(error: z.core.$ZodError): Errors {
+  const found: Errors = {}
+  for (const issue of error.issues) found[String(issue.path[0] ?? '')] ??= issue.message
+  return found
+}
+
+/**
+ * A form checked in the browser with the action's own schema (the server checks again): on submit, an invalid form
+ * isn't sent and its first field to fix gets the focus; a field is checked as it is left for another with something
+ * typed, and again as it changes while it is wrong, so a fixed one loses its message. The server's errors (`errors`) until a field
+ * is checked again. Spread `form` on the <form>, `field(name)` on a TextField.
+ */
+export function useSchemaForm(schema: z.ZodMiniObject, errors: Errors) {
+  // the browser's messages, for these server errors: a new answer of the server starts over
+  const [checked, setChecked] = useState({ for: errors, messages: {} as Errors })
+  const own = checked.for === errors ? checked.messages : {}
+  const error = (name: string) => (name in own ? own[name] : errors[name]) || undefined
+  const check = (name: string, value: string) => {
+    const shape = schema.def.shape as Record<string, z.ZodMiniType>
+    const result = shape[name] ? z.safeParse(shape[name], value) : null
+    const message = result && !result.success ? (result.error.issues[0]?.message ?? '') : ''
+    setChecked({ for: errors, messages: { ...own, [name]: message } })
+  }
+  return {
+    form: {
+      noValidate: true, // its messages, in the page's language, not the browser's
+      onSubmit(event: SubmitEvent<HTMLFormElement>) {
+        const result = z.safeParse(schema, Object.fromEntries(new FormData(event.currentTarget)))
+        if (result.success) return setChecked({ for: errors, messages: {} }) // sent, by Fondu's client
+        event.preventDefault()
+        const found = messages(result.error)
+        setChecked({ for: errors, messages: found })
+        const first = event.currentTarget.elements.namedItem(Object.keys(found)[0] ?? '')
+        if (first instanceof HTMLElement) first.focus()
+      },
+    },
+    field: (name: string) => ({
+      name,
+      error: error(name),
+      onBlur: (event: FocusEvent<HTMLInputElement>) => {
+        // left for another field: a click on the submit button is checked by the submit (a message shown on the way
+        // would move the button from under the pointer, and the click would be lost)
+        const to = event.relatedTarget
+        if (!(to instanceof HTMLElement) || (to as HTMLButtonElement).type === 'submit') return
+        if (event.currentTarget.value) check(name, event.currentTarget.value)
+      },
+      onChange: (event: ChangeEvent<HTMLInputElement>) => {
+        if (error(name)) check(name, event.currentTarget.value)
+      },
+    }),
+  }
 }
 
 /** For guests, in place of forms whose actions need an account (requireUser): the way in, and back here */
