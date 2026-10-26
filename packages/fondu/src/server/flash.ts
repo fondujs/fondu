@@ -1,7 +1,8 @@
 import type { Context, MiddlewareHandler } from 'hono'
-import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
+import { generateCookie, getCookie } from 'hono/cookie'
 
 import type { Flash } from '../types.js'
+import { appendHeader } from './http.js'
 
 /**
  * Flash data and validation errors for the next page, the way Laravel keeps them in the session: here a short
@@ -78,6 +79,7 @@ export const flashCookie: MiddlewareHandler = async (c, next) => {
       console.error(
         `[fondu] flash data and errors are too large for a cookie (${encodeURIComponent(value).length} bytes, about 4000 fit): the browser will drop them`,
       )
-    setCookie(c, name, value, { ...options, maxAge: 60 })
-  } else if (s.read && s.incoming) deleteCookie(c, name, options)
+    appendHeader(c, 'Set-Cookie', generateCookie(name, value, { ...options, maxAge: 60 }))
+  } else if (s.read && s.incoming)
+    appendHeader(c, 'Set-Cookie', generateCookie(name, '', { ...options, maxAge: 0 }))
 }
