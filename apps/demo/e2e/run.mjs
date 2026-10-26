@@ -753,6 +753,17 @@ await page.waitForFunction(
       (await testid('error-status')) === '500',
     )
   }
+  await page.goBack({ waitUntil: 'load' })
+  await page
+    .waitForFunction(() => document.querySelector('h1')?.textContent === 'Errors', {
+      timeout: 5000,
+    })
+    .catch(() => {})
+  ok(
+    'Back from the error: the page before it, not the error with its URL',
+    (await path()) === '/errors' &&
+      (await page.evaluate(() => document.querySelector('h1')?.textContent)) === 'Errors',
+  )
   await page.goto(BASE + '/errors', { waitUntil: 'networkidle0' })
   const failed = await fetchAs(BASE + '/errors?fail', {
     method: 'POST',

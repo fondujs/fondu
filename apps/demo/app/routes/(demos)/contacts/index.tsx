@@ -1,6 +1,6 @@
 import { desc, eq } from 'drizzle-orm'
 import { back, defineHandler, flash, render } from 'fondu'
-import { type Errors, href, usePage } from 'fondu/client'
+import { type Errors, href, useNavigating, usePage } from 'fondu/client'
 import { Trash2Icon } from 'lucide-react'
 import * as z from 'zod/mini'
 
@@ -53,6 +53,8 @@ type Contact = { id: number; name: string; email: string }
 
 export default function Contacts({ contacts, errors }: { contacts: Contact[]; errors: Errors }) {
   const { auth } = usePage().props
+  // a contact being deleted: its form is aria-busy (Fondu's client), the trash button shows it
+  const navigating = useNavigating()
   return (
     <>
       <Title>Forms & validation</Title>
@@ -112,6 +114,10 @@ export default function Contacts({ contacts, errors }: { contacts: Contact[]; er
                           variant="ghost"
                           size="icon-sm"
                           aria-label={`Delete ${contact.name}`}
+                          loading={
+                            navigating &&
+                            document.getElementById(`delete-${contact.id}`)?.ariaBusy === 'true'
+                          }
                         />
                       }
                     >

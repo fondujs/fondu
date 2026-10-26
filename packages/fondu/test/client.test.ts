@@ -4,6 +4,7 @@ import { renderToString } from 'react-dom/server'
 import { expect, test } from 'vitest'
 
 import { __entry, renderPage, usePage } from '../src/client.js'
+import { pageAt } from '../src/client/app.js'
 
 const Outer = ({ children }: { children: ReactNode }) => h('section', { id: 'outer' }, children)
 const Inner = ({ children }: { children: ReactNode }) => h('div', { id: 'inner' }, children)
@@ -19,6 +20,10 @@ __entry(
     '/app/routes/(site)/users/[id].tsx': async () => ({ default: Show }),
     '/app/routes/about.mdx': async () => ({ default: Plain }),
     '/app/routes/admin/users/list.tsx': async () => ({ default: Plain }),
+    '/app/routes/(site)/users/new.tsx': async () => ({ default: Plain }),
+    '/app/routes/(site)/index.tsx': async () => ({ default: Plain }),
+    '/app/routes/files/[...path].tsx': async () => ({ default: Plain }),
+    '/app/routes/_error.tsx': async () => ({ default: Plain }),
   },
   {
     '/app/routes/(site)/_layout.tsx': async () => ({ default: Inner }),
@@ -56,4 +61,14 @@ test('a page with no _layout.tsx above it: as it is', async () => {
 
 test('a page that is not there: said so', async () => {
   await expect(renderPage(page('nope'), renderToString)).rejects.toThrow('there is no page "nope"')
+})
+
+test("a URL's page, guessed to load its modules with its data: static segments first", () => {
+  expect(pageAt('/')).toBe('(site)/index')
+  expect(pageAt('/users/7')).toBe('(site)/users/[id]')
+  expect(pageAt('/users/new')).toBe('(site)/users/new')
+  expect(pageAt('/about')).toBe('about')
+  expect(pageAt('/files/a/b')).toBe('files/[...path]')
+  expect(pageAt('/files')).toBeUndefined()
+  expect(pageAt('/nope/nope')).toBeUndefined()
 })

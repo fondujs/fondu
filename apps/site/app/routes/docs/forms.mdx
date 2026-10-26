@@ -57,16 +57,29 @@ The errors are one object for the page: two forms on a page keep theirs apart by
 
 ## While it is sent
 
-`useNavigating()` is `true` from the submit until the answer is on the screen: a button can show it.
+The form being sent has `aria-busy="true"` until the answer is on the screen, however it was sent (a click, Enter,
+`requestSubmit()`): its buttons can show it with CSS alone, and assistive technology says it.
+
+```css
+form[aria-busy='true'] button[type='submit'] {
+  opacity: 0.6;
+  cursor: progress;
+}
+```
+
+In a component, `useNavigating()` is `true` meanwhile; with the form's `aria-busy`, it is this form's submission:
 
 ```tsx
 import { useNavigating } from 'fondu/client'
 
 export function SubmitButton(props: ComponentProps<'button'>) {
-  const navigating = useNavigating()
-  return <button aria-busy={navigating} {...props} />
+  const ref = useRef<HTMLButtonElement>(null)
+  const sending = useNavigating() && ref.current?.form?.ariaBusy === 'true'
+  return <button ref={ref} type="submit" disabled={sending} {...props} />
 }
 ```
+
+The progress bar shows for submissions too; `fondu({ progress: { forms: false } })` leaves it to the buttons.
 
 ## Files and nested fields
 
