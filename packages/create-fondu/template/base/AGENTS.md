@@ -1,37 +1,46 @@
 # Notes for coding agents
 
 This is a Fondu app: React pages, a Hono server, built with Vite. There is no client-side router and no API layer for
-pages: a route's loader renders a page with props; links and forms are plain `<a>` and `<form>`, and Fondu's client
+pages: a route's loader renders its page with props; links and forms are plain `<a>` and `<form>`, and Fondu's client
 swaps the page in place (the browser's Navigation API; without it, a page load).
 
-- `app/routes/`: server code only. The file path is the URL: `index.ts` is `/`, `users/[id].ts` is `/users/:id`,
-  `api/[...rest].ts` a catch-all, `[[lang]]/about.ts` both `/about` and `/:lang/about` (an optional segment;
+- `app/routes/`: the file path is the URL: `index.tsx` is `/`, `users/[id].tsx` is `/users/:id`,
+  `api/[...rest].ts` a catch-all, `[[lang]]/about.tsx` both `/about` and `/:lang/about` (an optional segment;
   `export const params = { lang: ['de'] }` lists a param's values), `(group)/` adds no segment. One file per URL.
-  A file exports `loader` (GET), `action` (POST), `actions = { name }` (POST `?name`), or plain HTTP handlers
-  `GET`, `POST`, `PUT`, `PATCH`, `DELETE`. `_middleware.ts` (default export) runs for its directory and below.
+  - A page is a `.tsx` file: `loader` (GET), `action` (POST, one form) or `actions = { name }` (POST `?name`, several
+    forms: `<form method="post" action="?name">`; not both), and the page component as its default export. Without
+    a loader, the page is rendered on GET. The browser gets the page alone: the other exports are server code,
+    removed from its copy, with the imports only they use.
+  - A `.ts` file is server code only: `loader`, `action`/`actions`, or plain HTTP handlers `GET`, `POST`, `PUT`,
+    `PATCH`, `DELETE`, `OPTIONS` (an API, a file).
+  - `.mdx` files are pages too. A route file exports nothing else (`prerender` and `params` aside): put shared
+    code in another file (`app/lib/`, `app/components/`).
+  - `_middleware.ts` (default export) runs for its directory and below. Files and directories starting with `_` are
+    not routes.
 - Handlers: `defineHandler(...middleware, (c) => …)` (Hono's `createHandlers`; `c` is Hono's Context).
   Validated input: `defineHandler.withValidator({ body, query, params })(...middleware, (c, { body }) => …)` with any
   Standard Schema (zod…); invalid input goes back to the page with its `errors` prop, or 422 for API clients.
-- Responses: `render(c, 'page/name', props)` for pages; `back(c)` or `c.redirect(url, 303)` after an action;
+- Responses: `render(c, Page, props)` for the file's page (its default export); `back(c)` or `c.redirect(url, 303)` after an action;
   `flash(c, { … })` for the next page; `throw new HTTPException(404)` (from `hono/http-exception`) for errors.
 - Shared props, every page's: `share(c, { … })` in a `_middleware.ts` (a function value is computed when a page
   renders), typed by `declare module 'fondu' { interface Register { shared: { … }; flash: { … } } }`.
-- `app/pages/`: React components, default export, rendered by name (`'users/show'` is `pages/users/show.tsx`). The
-  component's props are the page's props; `render()` checks them. `pages/error.tsx` gets `{ status }`. Name a page
-  after its route where it can be (`routes/index.ts` renders `index`); a dynamic route's page gets a name such as
-  `users/show`.
-- Layouts: `app/pages/_layout.tsx` wraps every page; a directory's `_layout.tsx` wraps its pages, inside the outer
-  ones. A layout's default export takes `{ children }` and stays mounted while pages change. Files in `app/pages/`
-  starting with `_` are not pages.
+- A page's props are its component's: `render()` checks them. `routes/_error.tsx` is the error page, `{ status }`.
+- Layouts: `app/routes/_layout.tsx` wraps every page; a directory's `_layout.tsx` wraps its pages, inside the outer
+  ones (a `(group)/` directory gives pages a layout without a URL segment). A layout's default export takes
+  `{ children }` and stays mounted while pages change; the root layout imports the CSS.
 - Editor snippets (VS Code): `.vscode/fondu.code-snippets`, `/route`, `/loader`, `/action`, `/page`…
 - Links and forms: `<a href>` and `<form method="post">`, URLs from `href('/users/:id', { id })` (`fondu/client`,
   typed after `app/routes/`). A form's errors: the page's `errors` prop. From `fondu/client` too: `usePage()` (props,
-  shared props, `url`, `flash`), `useNavigating()` (pending UI), `reload()` (the props again). In code, `location.assign(href(…))` navigates as a link
-  would; `loadDocument(href(…))` loads a document instead.
+  shared props, `url`, `flash`), `useNavigating()` (pending UI), `reload()` (the props again). In code,
+  `location.assign(href(…))` navigates as a link would; `loadDocument(href(…))` loads a document instead. A
+  progress bar shows during slow navigations: `fondu({ progress: { color, delay } })` in `vite.config.ts`, or
+  `progress: false`.
 - The head: a page renders `<title>` and `<meta>` where it likes; React puts them in `<head>`. A title is one string:
   ``<title>{`${user.name} · Fondu`}</title>``.
-- Server-only code: `app/routes/`, `app/server.ts`, and files named `*.server.ts`. Browser code (pages, components)
-  must not import them; the build fails if it does. Import app files as `#/lib/x.server.ts`.
+- Server-only code: the `.ts` files of `app/routes/`, `app/server.ts`, files named `*.server.ts`, and `fondu`
+  (the browser's is `fondu/client`). Browser code (pages, components) must not import them; the build fails if it
+  does. A page's loader and actions may: their imports are removed with them. Import app files as
+  `#/lib/x.server.ts`.
 - `app/fondu.gen.d.ts` is generated by the dev server and the build: don't edit it.
 - After updating a dependency, restart the dev server: it doesn't watch `node_modules`.
 - Code style: as the existing files: TypeScript, ES modules, no semicolons, single quotes; `server.ts`, pages,

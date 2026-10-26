@@ -72,8 +72,8 @@ for (const target of Object.keys(production).filter(
       ),
     )
     writeFileSync(
-      join(app, 'app/routes/index.ts'),
-      readFileSync(join(app, 'app/routes/index.ts'), 'utf8') + 'export const prerender = true\n',
+      join(app, 'app/routes/index.tsx'),
+      readFileSync(join(app, 'app/routes/index.tsx'), 'utf8') + 'export const prerender = true\n',
     )
   }
   sh('bun', ['run', 'build'], app)
@@ -96,7 +96,7 @@ for (const target of Object.keys(production).filter(
     )
     check(
       `${target} ${script}: an unknown URL, the error page with 404`,
-      missing.status === 404 && (await missing.text()).includes('"component":"error"'),
+      missing.status === 404 && (await missing.text()).includes('"component":"_error"'),
     )
     check(
       `${target} ${script}: a Content Security Policy`,

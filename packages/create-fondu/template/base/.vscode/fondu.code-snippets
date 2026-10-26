@@ -1,13 +1,22 @@
 {
   "route": {
-    "scope": "typescript",
+    "scope": "typescriptreact",
     "prefix": "/route",
-    "description": "A page route: the loader renders the page named after this file",
+    "description": "A page route: its loader renders this file's page with props",
     "body": [
       "import { defineHandler, render } from 'fondu'",
       "",
-      "export const loader = defineHandler((c) => render(c, '${1:${TM_FILEPATH/^.*[\\\\/]app[\\\\/]routes[\\\\/](.+)\\.ts$/$1/}}'$2))",
-      "$0",
+      "export const loader = defineHandler((c) => render(c, ${1:${TM_FILENAME_BASE/[^a-zA-Z0-9]*([a-zA-Z0-9])([a-zA-Z0-9]*)/${1:/capitalize}${2}/g}}, { ${2:title}: ${3:'Hello'} \\}))",
+      "",
+      "export default function ${1}({ ${2} }: { ${2}: ${4:string} }) {",
+      "  return (",
+      "    <>",
+      "      <title>{${2}}</title>",
+      "      <h1>{${2}}</h1>",
+      "      $0",
+      "    </>",
+      "  )",
+      "}",
     ],
   },
   "api": {
@@ -26,13 +35,13 @@
     ],
   },
   "loader": {
-    "scope": "typescript",
+    "scope": "typescript,typescriptreact",
     "prefix": "/loader",
-    "description": "GET: render a page",
-    "body": ["export const loader = defineHandler((c) => render(c, '${1:page}'${2:, { \\}}))$0"],
+    "description": "GET: render this file's page",
+    "body": ["export const loader = defineHandler((c) => render(c, ${1:Page}${2:, { \\}}))$0"],
   },
   "action": {
-    "scope": "typescript",
+    "scope": "typescript,typescriptreact",
     "prefix": "/action",
     "description": "POST: validated input, then back to the page",
     "body": [
@@ -43,7 +52,7 @@
     ],
   },
   "actions": {
-    "scope": "typescript",
+    "scope": "typescript,typescriptreact",
     "prefix": "/actions",
     "description": "POST ?name: one of several form actions",
     "body": [
@@ -56,7 +65,7 @@
     ],
   },
   "validated": {
-    "scope": "typescript",
+    "scope": "typescript,typescriptreact",
     "prefix": "/validated",
     "description": "A handler with validated body, query and params",
     "body": [
@@ -111,13 +120,13 @@
   "page": {
     "scope": "typescriptreact",
     "prefix": "/page",
-    "description": "A page component: its parameter is the page's props",
+    "description": "A page without a loader: rendered on GET",
     "body": [
-      "export default function ${TM_FILENAME_BASE/[^a-zA-Z0-9]*([a-zA-Z0-9])([a-zA-Z0-9]*)/${1:/capitalize}${2}/g}({ ${1:title} }: { ${1:title}: ${2:string} }) {",
+      "export default function ${TM_FILENAME_BASE/[^a-zA-Z0-9]*([a-zA-Z0-9])([a-zA-Z0-9]*)/${1:/capitalize}${2}/g}() {",
       "  return (",
       "    <>",
-      "      <title>{${1:title}}</title>",
-      "      <h1>{${1:title}}</h1>",
+      "      <title>${1:Title}</title>",
+      "      <h1>${1:Title}</h1>",
       "      $0",
       "    </>",
       "  )",
@@ -127,7 +136,7 @@
   "layout": {
     "scope": "typescriptreact",
     "prefix": "/layout",
-    "description": "A layout: pages/<directory>/_layout.tsx wraps the pages below it",
+    "description": "A layout: routes/<directory>/_layout.tsx wraps the pages below it",
     "body": [
       "import type { ReactNode } from 'react'",
       "",
@@ -139,12 +148,12 @@
   "form": {
     "scope": "typescriptreact",
     "prefix": "/form",
-    "description": "A form posting to a route, with its errors (the page's errors prop)",
+    "description": "A form posting to its page's action, with its errors (the page's errors prop)",
     "body": [
-      "<form action={href('${1:/path}')} method=\"post\">",
-      "  <input name=\"${2:name}\" aria-invalid={!!errors.${2:name}} />",
-      "  {errors.${2:name} && <p>{errors.${2:name}}</p>}",
-      "  <button>${3:Save}</button>$0",
+      "<form method=\"post\">",
+      "  <input name=\"${1:name}\" aria-invalid={!!errors.${1:name}} />",
+      "  {errors.${1:name} && <p>{errors.${1:name}}</p>}",
+      "  <button>${2:Save}</button>$0",
       "</form>",
     ],
   },
