@@ -46,6 +46,18 @@ const components = {
 export default function DocsLayout({ children }: { children: ReactNode }) {
   const { component, props } = usePage<{ toc: TocItem[] }>()
   const [open, setOpen] = useState(false)
+  const [tocOpen, setTocOpen] = useState(false)
+  // the bar is for small screens: grown past it (lg), its drawer and menu close with it
+  useEffect(() => {
+    const wide = matchMedia('(min-width: 64rem)')
+    const close = () => {
+      if (!wide.matches) return
+      setOpen(false)
+      setTocOpen(false)
+    }
+    wide.addEventListener('change', close)
+    return () => wide.removeEventListener('change', close)
+  }, [])
   const doc = docOf(component)!
   const i = docs.indexOf(doc)
   const [prev, next] = [docs[i - 1], docs[i + 1]]
@@ -71,11 +83,11 @@ export default function DocsLayout({ children }: { children: ReactNode }) {
           </DrawerPopup>
         </Drawer>
         {props.toc.length > 0 && (
-          <Dropdown>
+          <Dropdown open={tocOpen} onOpenChange={setTocOpen}>
             <MenuTrigger className="flex shrink-0 items-center gap-1 text-muted-foreground">
               On this page <ChevronDown className="size-3.5" />
             </MenuTrigger>
-            <MenuPopup align="end" className="max-h-[60vh]">
+            <MenuPopup align="end" className="max-h-[60vh] max-w-[min(18rem,calc(100vw-2rem))]">
               {props.toc.map((item) => (
                 <MenuItem
                   key={item.id}

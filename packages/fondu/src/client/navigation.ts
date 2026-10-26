@@ -310,9 +310,11 @@ function scrollPositions() {
     },
     /** Back or Forward to `state`'s entry: where it was; `fragment`: the same page, another #fragment */
     pop(state: unknown) {
-      save()
-      const fragment = location.pathname + location.search === renderedUrl
       const key = keyOf(state)
+      // an entry without a key: the browser's #fragment navigation, just made (its popstate comes after it scrolled
+      // there in Firefox and Safari): the position left was saved on the click, not this one
+      if (key) save()
+      const fragment = location.pathname + location.search === renderedUrl
       const position = read(key)
       if (fragment) commit()
       return { fragment, position, key }

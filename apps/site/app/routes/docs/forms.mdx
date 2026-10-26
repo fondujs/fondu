@@ -55,6 +55,42 @@ if (await emailTaken(body.email)) throw new ValidationError({ email: 'This addre
 
 The errors are one object for the page: two forms on a page keep theirs apart by their fields' names.
 
+## The same schema in the browser
+
+A schema is plain code: a page can import it, from any module that isn't [server code](/docs/server-and-client),
+and check the form before it is sent. A plain form still: when the check passes, Fondu's client sends it; when it
+doesn't, the submit is stopped and the errors shown. The server checks again, and what only it can (an address
+already taken).
+
+```tsx
+import type { Errors } from 'fondu/client'
+import { useState, type FormEvent } from 'react'
+import * as z from 'zod'
+
+import { contactSchema } from '#/modules/contacts/schemas.ts'
+
+export default function NewContact({ errors }: { errors: Errors }) {
+  const [checked, setChecked] = useState<Errors>({})
+  const check = (event: FormEvent<HTMLFormElement>) => {
+    const result = contactSchema.safeParse(Object.fromEntries(new FormData(event.currentTarget)))
+    if (result.success) return setChecked({}) // sent, by Fondu's client
+    event.preventDefault()
+    const fields = z.flattenError(result.error).fieldErrors
+    setChecked(Object.fromEntries(Object.entries(fields).map(([name, messages]) => [name, messages?.[0] ?? ''])))
+  }
+  const shown = { ...errors, ...checked } // the server's, and the browser's
+  return (
+    <form method="post" onSubmit={check}>
+      <input name="email" aria-invalid={!!shown.email} />
+      {shown.email && <p>{shown.email}</p>}
+      <button>Add</button>
+    </form>
+  )
+}
+```
+
+Without JavaScript, the form is sent as it is, and the server's check answers.
+
 ## While it is sent
 
 The form being sent has `aria-busy="true"` until the answer is on the screen, however it was sent (a click, Enter,

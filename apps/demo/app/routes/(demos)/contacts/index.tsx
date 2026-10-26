@@ -2,6 +2,7 @@ import { desc, eq } from 'drizzle-orm'
 import { back, defineHandler, flash, render } from 'fondu'
 import { type Errors, href, useNavigating, usePage } from 'fondu/client'
 import { Trash2Icon } from 'lucide-react'
+import { useState, type FormEvent } from 'react'
 import * as z from 'zod/mini'
 
 import { DemoCard, SignInFirst, SubmitButton, TextField, Title } from '#/components/demo.tsx'
@@ -20,6 +21,7 @@ import { db } from '#/db/index.server.ts'
 import { contacts } from '#/db/schema/index.ts'
 import { requireUser } from '#/modules/auth/auth.server.ts'
 import { newContactSchema } from '#/modules/contacts/contacts.server.ts'
+import { contactSchema } from '#/modules/contacts/schemas.ts'
 
 export const loader = defineHandler(async (c) =>
   render(c, Contacts, {
@@ -53,6 +55,22 @@ type Contact = { id: number; name: string; email: string }
 
 export default function Contacts({ contacts, errors }: { contacts: Contact[]; errors: Errors }) {
   const { auth } = usePage().props
+  // the action's schema, in the browser too: an invalid form isn't sent; the server checks again (and what only it
+  // can, an address already taken)
+  const [checked, setChecked] = useState<Errors>({})
+  const check = (event: FormEvent<HTMLFormElement>) => {
+    const result = z.safeParse(contactSchema, Object.fromEntries(new FormData(event.currentTarget)))
+    if (result.success) return setChecked({})
+    event.preventDefault()
+    const fields = z.flattenError(result.error).fieldErrors as Record<string, string[] | undefined>
+    const found = Object.fromEntries(
+      Object.entries(fields).map(([name, messages]) => [name, messages?.[0] ?? '']),
+    )
+    setChecked(found)
+    const first = event.currentTarget.elements.namedItem(Object.keys(found)[0] ?? '')
+    if (first instanceof HTMLElement) first.focus()
+  }
+  const shown = { ...errors, ...checked }
   // a contact being deleted: its form is aria-busy (Fondu's client), the trash button shows it
   const navigating = useNavigating()
   return (
@@ -60,22 +78,23 @@ export default function Contacts({ contacts, errors }: { contacts: Contact[]; er
       <Title>Forms & validation</Title>
       <h1>Forms & validation</h1>
       <p className="lede">
-        A plain form, validated on the server by the action&apos;s schema; invalid input is answered
-        with a 303 back to this page and the errors in its <code>errors</code> prop, what was typed
-        still there. Contacts are stored in D1.
+        A plain form, checked in the browser by the action&apos;s own schema before it is sent, then
+        on the server: invalid input there is answered with a 303 back to this page and the errors
+        in its <code>errors</code> prop, what was typed still there. Contacts are stored in D1.
       </p>
       {/* adding, changing and deleting are for signed-in users (the actions use requireUser) */}
       {auth.user ? (
         <div className="mb-4 sm:max-w-md">
-          <DemoCard title="Add a contact" tag="<form method=post> · errors prop">
+          <DemoCard title="Add a contact" tag="one schema, browser and server">
             <form
               action={href('/contacts?create')}
               method="post"
               className="grid gap-4"
               data-testid="add-contact"
+              onSubmit={check}
             >
-              <TextField label="Name" name="name" error={errors.name} testid="err-name" />
-              <TextField label="Email" name="email" error={errors.email} testid="err-email" />
+              <TextField label="Name" name="name" error={shown.name} testid="err-name" />
+              <TextField label="Email" name="email" error={shown.email} testid="err-email" />
               <SubmitButton>Add contact</SubmitButton>
             </form>
           </DemoCard>
