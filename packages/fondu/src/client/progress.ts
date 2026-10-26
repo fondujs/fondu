@@ -7,9 +7,10 @@ export interface ProgressOptions {
 }
 
 /**
- * The bar: shown once a navigation has run for `delay`, creeping towards the end while it runs, filled and faded out
- * when it is done. Drawn with CSSOM styles (no stylesheet, nothing for a Content Security Policy to refuse), above the
- * page, out of the accessibility tree: `useNavigating()` is the app's way to say it in its own words.
+ * The bar: shown once a navigation has run for `delay`, growing towards the end while it runs (one long CSS
+ * transition, slower as it gets there), filled and faded out when it is done. Drawn with CSSOM styles (no stylesheet,
+ * nothing for a Content Security Policy to refuse), above the page, out of the accessibility tree: `useNavigating()`
+ * is the app's way to say it in its own words. With reduced motion, a still bar.
  */
 export function progressBar(
   { delay = 250, color = 'currentColor' }: ProgressOptions,
@@ -18,44 +19,40 @@ export function progressBar(
   const still = matchMedia('(prefers-reduced-motion: reduce)')
   let bar: HTMLDivElement | undefined
   let wait: ReturnType<typeof setTimeout> | undefined
-  let creep: ReturnType<typeof setInterval> | undefined
-  let width = 0
-  const set = (value: number) => {
-    width = value
-    if (bar) bar.style.transform = `scaleX(${value})`
-  }
   const show = () => {
-    bar = document.createElement('div') // a new one: the last may still be fading out
-    Object.assign(bar.style, {
+    wait = undefined
+    const el = (bar = document.createElement('div')) // a new one: the last may still be fading out
+    Object.assign(el.style, {
       position: 'fixed',
       inset: '0 0 auto',
       zIndex: '2147483647',
       height: '2px',
       background: color,
       transformOrigin: 'left',
-      transform: 'scaleX(0)',
-      transition: still.matches ? 'opacity 200ms' : 'transform 200ms ease-out, opacity 200ms',
-      opacity: '1',
+      transform: still.matches ? 'scaleX(1)' : 'scaleX(0)',
       pointerEvents: 'none',
     })
-    bar.setAttribute('aria-hidden', 'true')
-    document.body.append(bar)
-    requestAnimationFrame(() => set(0.1)) // from 0, once it is drawn
-    // nearer the end, slower: it never gets there before the navigation does
-    creep = setInterval(() => set(width + (0.95 - width) * 0.1), 200)
+    el.setAttribute('aria-hidden', 'true')
+    document.body.append(el)
+    if (still.matches) return
+    el.getBoundingClientRect() // its start computed: the transition runs from 0
+    el.style.transition = 'transform 10s cubic-bezier(0.05, 0.7, 0.1, 1)'
+    el.style.transform = 'scaleX(0.95)'
   }
   const done = () => {
     clearTimeout(wait)
-    clearInterval(creep)
-    wait = creep = undefined
-    if (!bar?.isConnected) return
-    set(1)
-    bar.style.opacity = '0'
-    const gone = bar
-    setTimeout(() => gone.remove(), 250)
+    wait = undefined
+    const el = bar
+    bar = undefined
+    if (!el) return
+    // from where it is: a transition starts from the value on the screen
+    el.style.transition = 'transform 200ms ease-out, opacity 200ms 100ms'
+    el.style.transform = 'scaleX(1)'
+    el.style.opacity = '0'
+    setTimeout(() => el.remove(), 400)
   }
   return () => {
     if (!pending()) return done()
-    if (wait === undefined && creep === undefined) wait = setTimeout(show, delay)
+    if (wait === undefined && bar === undefined) wait = setTimeout(show, delay)
   }
 }
