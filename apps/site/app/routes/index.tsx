@@ -160,8 +160,8 @@ export default function Home() {
             >
               React
             </Chip>{' '}
-            page it renders with props. Links and forms swap the pages in the browser, so there is
-            no client router and no API to write. Deploy to Bun, Cloudflare Workers or Node.
+            page it renders. Plain links and forms change pages in place: no client router, no API
+            to write.
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <Button size="lg" render={<a href="/docs" />}>

@@ -78,12 +78,13 @@ export function startNavigation({ initial, show, prerender, pending, preload }: 
     const post = options.body !== undefined
     if (options.history !== 'none') scroll.save()
     const form = options.form ?? null
-    // a kept page is on the screen at once: the server's comes quietly, no pending state
+    // a kept page is on the screen at once: the server's comes quietly, no pending state (the navigation it
+    // interrupted, aborted, ends here)
     const shown = options.kept
     // the form being sent is aria-busy: for its submit buttons' pending state (CSS, or useNavigating()), and for
     // assistive technology
     form?.setAttribute('aria-busy', 'true')
-    if (!shown) pending(true, form !== null)
+    pending(!shown, form !== null)
     const done = () => {
       form?.removeAttribute('aria-busy')
       if (!shown && current === controller) pending(false, false)

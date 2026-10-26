@@ -10,9 +10,9 @@ export interface ProgressOptions {
 
 /**
  * The bar: shown once a navigation has run for `delay`, growing towards the end while it runs (one long CSS
- * transition, slower as it gets there), filled and faded out when it is done. Drawn with CSSOM styles (no stylesheet,
- * nothing for a Content Security Policy to refuse), above the page, out of the accessibility tree: `useNavigating()`
- * is the app's way to say it in its own words. With reduced motion, a still bar.
+ * transition, slower as it gets there), filled, then faded out, when it is done. Drawn with CSSOM styles (no
+ * stylesheet, nothing for a Content Security Policy to refuse), above the page, out of the accessibility tree:
+ * `useNavigating()` is the app's way to say it in its own words. With reduced motion, a still bar.
  */
 export function progressBar(
   { delay = 350, color = 'currentColor' }: ProgressOptions,
@@ -21,9 +21,18 @@ export function progressBar(
   const still = matchMedia('(prefers-reduced-motion: reduce)')
   let bar: HTMLDivElement | undefined
   let wait: ReturnType<typeof setTimeout> | undefined
+  const bars = new Set<HTMLDivElement>() // on the screen, the one fading out included
+  // leaving the document: no bar kept in the back/forward cache, to be seen again on Back
+  addEventListener('pagehide', () => {
+    clearTimeout(wait)
+    wait = bar = undefined
+    for (const el of bars) el.remove()
+    bars.clear()
+  })
   const show = () => {
     wait = undefined
     const el = (bar = document.createElement('div')) // a new one: the last may still be fading out
+    bars.add(el)
     Object.assign(el.style, {
       position: 'fixed',
       inset: '0 0 auto',
@@ -47,11 +56,14 @@ export function progressBar(
     const el = bar
     bar = undefined
     if (!el) return
-    // from where it is: a transition starts from the value on the screen
-    el.style.transition = 'transform 200ms ease-out, opacity 200ms 100ms'
+    // filled from where it is (a transition starts from the value on the screen), then faded out
+    el.style.transition = 'transform 200ms ease-out, opacity 200ms 200ms'
     el.style.transform = 'scaleX(1)'
     el.style.opacity = '0'
-    setTimeout(() => el.remove(), 400)
+    setTimeout(() => {
+      el.remove()
+      bars.delete(el)
+    }, 450)
   }
   return () => {
     if (!pending()) return done()
