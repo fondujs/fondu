@@ -18,9 +18,9 @@ interface Options {
   initial: Page
   /**
    * puts the page on the screen (in the DOM once it resolves); `fresh`: mounted anew, else it keeps its state (a form
-   * back with its errors, reload())
+   * back with its errors, reload()); not once `stale()` (superseded while its modules loaded)
    */
-  show: (page: Page, fresh: boolean) => Promise<void>
+  show: (page: Page, fresh: boolean, stale: () => boolean) => Promise<void>
   /** `fondu({ prerender: true })`: GET navigations read `/_fondu/pages/<path>.json` */
   prerender: boolean
   /** a navigation started (true; `form`: a form's submission) or ended (false) */
@@ -65,6 +65,8 @@ export function startNavigation({ initial, show, prerender, pending, preload }: 
    * the document pushed from there.
    */
   const documentLoad = async (url: string, history: History) => {
+    // http(s) only: a header's URL never runs as `javascript:` (an app's redirect to a URL it was given)
+    if (!isWebUrl(url)) return console.error(`fondu: not loading ${url}: not an http(s) URL`)
     const info = { fondu: 'document' } satisfies Info
     if (history === 'instead') await nav.back({ info }).committed?.catch(noop)
     nav.navigate(url, { history: history === 'replace' ? 'replace' : 'push', info })
@@ -81,7 +83,8 @@ export function startNavigation({ initial, show, prerender, pending, preload }: 
     if (response.status === 409 && to) return void documentLoad(to, history)
     // a redirect to a #fragment, followed here: fetch() would lose it
     const redirect = response.headers.get('X-Fondu-Redirect')
-    if (redirect) return void nav.navigate(redirect, { history: post ? 'push' : 'replace' })
+    if (redirect && isWebUrl(redirect))
+      return void nav.navigate(redirect, { history: post ? 'push' : 'replace' })
     if (!response.headers.has('X-Fondu')) {
       // a proxy's error page, a file: the URL as a document (a POST's redirect: its target); the answer to a POST
       // itself can't be asked for again
@@ -120,8 +123,8 @@ export function startNavigation({ initial, show, prerender, pending, preload }: 
         // the same page (a form back with its errors): the focus stays where it was, as the scroll position does
         focusReset: fresh ? 'after-transition' : 'manual',
         async handler() {
-          await show(page, fresh)
-          if (scroll) scrollAfter(event)
+          await show(page, fresh, () => event.signal.aborted)
+          if (scroll && !event.signal.aborted) scrollAfter(event)
         },
       })
       return
@@ -176,8 +179,9 @@ export function startNavigation({ initial, show, prerender, pending, preload }: 
           const reload = event.navigationType === 'reload'
           // Back and Forward commit after the navigate event: scrolled before, the page would show at the top first
           await (nav.transition as { committed?: Promise<unknown> } | null)?.committed
-          await show(page, !reload)
-          if (!reload) scrollAfter(event)
+          // superseded meanwhile (Back pressed before it was on the screen): neither shown nor scrolled
+          await show(page, !reload, () => event.signal.aborted)
+          if (!reload && !event.signal.aborted) scrollAfter(event)
         } catch (error) {
           failed(url.href, pushed)(error)
         } finally {
@@ -186,6 +190,14 @@ export function startNavigation({ initial, show, prerender, pending, preload }: 
       },
     })
   })
+}
+
+const isWebUrl = (url: string) => {
+  try {
+    return /^https?:$/.test(new URL(url, location.href).protocol)
+  } catch {
+    return false
+  }
 }
 
 /** the form a navigation sends (a POST's, a GET form's): the element it started from, a form or its submitter */
