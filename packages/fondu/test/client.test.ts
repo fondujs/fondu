@@ -1,9 +1,9 @@
-// The server render of fondu/client's app: the page in its layouts, the tags it renders hoisted out of #app
+// The server render of fondu/client's app: the page in its directories' layouts, the tags it renders hoisted out of #app
 import { createElement as h, type ReactNode } from 'react'
 import { renderToString } from 'react-dom/server'
 import { expect, test } from 'vitest'
 
-import { __entry, renderPage, startApp, usePage } from '../src/client.js'
+import { __entry, renderPage, usePage } from '../src/client.js'
 
 const Outer = ({ children }: { children: ReactNode }) => h('section', { id: 'outer' }, children)
 const Inner = ({ children }: { children: ReactNode }) => h('div', { id: 'inner' }, children)
@@ -12,30 +12,30 @@ const Show = ({ name }: { name: string }) => [
   h('h1', { key: 'h' }, name, ' at ', usePage().url),
 ]
 const Plain = () => h('p', null, 'plain')
-const Own = Object.assign(() => h('p', null, 'own'), { layout: Inner })
-const Default = ({ children }: { children: ReactNode }) => h('main', null, children)
 
+// on the server, the entry only keeps the modules (no document to start the app in)
 __entry(
   {
-    '/app/pages/users/show.tsx': async () => ({ default: Show }),
-    '/app/pages/users/own.tsx': async () => ({ default: Own }),
-    '/app/pages/plain.mdx': async () => ({ default: Plain }),
-    '/app/pages/admin/users/list.tsx': async () => ({ default: Plain }),
+    '/app/routes/(site)/users/[id].tsx': async () => ({ default: Show }),
+    '/app/routes/about.mdx': async () => ({ default: Plain }),
+    '/app/routes/admin/users/list.tsx': async () => ({ default: Plain }),
   },
   {
-    '/app/pages/users/_layout.tsx': async () => ({ default: Inner }),
-    '/app/pages/admin/_layout.tsx': async () => ({ default: Outer }),
-    '/app/pages/admin/users/_layout.jsx': async () => ({ default: Inner }),
+    '/app/routes/(site)/_layout.tsx': async () => ({ default: Inner }),
+    '/app/routes/admin/_layout.tsx': async () => ({ default: Outer }),
+    '/app/routes/admin/users/_layout.jsx': async () => ({ default: Inner }),
   },
-  { prerender: false },
+  { prerender: false, progress: false },
 )
-startApp({ layout: Default }) // on the server: only the options
 
 const page = (component: string, props = {}) =>
   ({ component, props, url: '/users/7', version: null, flash: {} }) as const
 
-test("a page in its directory's _layout.tsx; the page's tags before #app", async () => {
-  const { head, body } = await renderPage(page('users/show', { name: 'Ada' }), renderToString)
+test("a page in its directory's _layout.tsx (a group's too); the page's tags before #app", async () => {
+  const { head, body } = await renderPage(
+    page('(site)/users/[id]', { name: 'Ada' }),
+    renderToString,
+  )
   expect(head).toBe('<title>User Ada</title>')
   expect(body).toBe(
     '<div id="app"><div id="inner"><h1>Ada<!-- --> at <!-- -->/users/7</h1></div></div>',
@@ -49,14 +49,9 @@ test('the _layout.tsx of each directory, outermost first', async () => {
   )
 })
 
-test('a page that sets its own layout: that one', async () => {
-  const { body } = await renderPage(page('users/own'), renderToString)
-  expect(body).toBe('<div id="app"><div id="inner"><p>own</p></div></div>')
-})
-
-test("a page with no _layout.tsx above it: the app's", async () => {
-  const { head, body } = await renderPage(page('plain'), renderToString)
-  expect([head, body]).toEqual(['', '<div id="app"><main><p>plain</p></main></div>'])
+test('a page with no _layout.tsx above it: as it is', async () => {
+  const { head, body } = await renderPage(page('about'), renderToString)
+  expect([head, body]).toEqual(['', '<div id="app"><p>plain</p></div>'])
 })
 
 test('a page that is not there: said so', async () => {

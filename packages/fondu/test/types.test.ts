@@ -1,5 +1,5 @@
 // The public types, as an app with its own declarations sees them (type checks: `tsc`; each @ts-expect-error must
-// be an error): render() by the pages, href() by the routes, share() and flash() by Register's shared and flash,
+// be an error): render() by the page component, href() by the routes, share() and flash() by Register's shared and flash,
 // withValidator() by its schemas. CONTRIBUTING: "Types are behavior".
 import type { Context } from 'hono'
 import { expect, test } from 'vitest'
@@ -15,11 +15,6 @@ declare module '../src/types.js' {
   interface Register {
     shared: { auth: Auth }
     flash: { message?: string }
-    pages: {
-      bare: { default: () => null }
-      titled: { default: (props: { title: string; auth: Auth }) => null }
-      clashing: { default: (props: { auth: string }) => null }
-    }
     routes: {
       '/': object
       '/about': object
@@ -41,25 +36,33 @@ type Api = {
 }
 const typed = (call: (api: Api, c: Context) => unknown) => call
 
+// pages: a route file's default export
+declare function Bare(): null
+declare function Titled(props: { title: string; auth: Auth }): null
+declare function Clashing(props: { auth: string }): null
+declare function Errors(props: { errors?: Record<string, string> }): null
+
 const renders = [
-  typed(({ render }, c) => render(c, 'bare')),
+  typed(({ render }, c) => render(c, Bare)),
   // a page without props, with options: its props are {} whatever is shared (#83)
-  typed(({ render }, c) => render(c, 'bare', {}, { status: 404 })),
+  typed(({ render }, c) => render(c, Bare, {}, { status: 404 })),
   // @ts-expect-error a page without props takes none
-  typed(({ render }, c) => render(c, 'bare', { title: 'Hello' })),
+  typed(({ render }, c) => render(c, Bare, { title: 'Hello' })),
   // the shared props a page takes may be left out, or given
-  typed(({ render }, c) => render(c, 'titled', { title: 'Hello' })),
-  typed(({ render }, c) => render(c, 'titled', { title: 'Hello', auth: { user: null } })),
+  typed(({ render }, c) => render(c, Titled, { title: 'Hello' })),
+  typed(({ render }, c) => render(c, Titled, { title: 'Hello', auth: { user: null } })),
   // @ts-expect-error a prop is a value (a function is for share(): called when a page renders)
-  typed(({ render }, c) => render(c, 'titled', { title: async () => 'Hello' })),
+  typed(({ render }, c) => render(c, Titled, { title: async () => 'Hello' })),
   // @ts-expect-error a prop of its own is missing
-  typed(({ render }, c) => render(c, 'titled', {})),
+  typed(({ render }, c) => render(c, Titled, {})),
   // @ts-expect-error a prop of the wrong type
-  typed(({ render }, c) => render(c, 'titled', { title: 1 })),
+  typed(({ render }, c) => render(c, Titled, { title: 1 })),
   // @ts-expect-error a page prop named like a shared prop, of another type
-  typed(({ render }, c) => render(c, 'clashing', { auth: 'Ada' })),
-  // @ts-expect-error no such page
-  typed(({ render }, c) => render(c, 'titel', { title: 'Hello' })),
+  typed(({ render }, c) => render(c, Clashing, { auth: 'Ada' })),
+  // @ts-expect-error not a component
+  typed(({ render }, c) => render(c, 'titled', { title: 'Hello' })),
+  // a page's errors come from the form's action: not given
+  typed(({ render }, c) => render(c, Errors)),
 ]
 
 const hrefs = [
@@ -146,5 +149,5 @@ const validated = [
 ]
 
 test('the types above are checked by tsc', () => {
-  expect([...renders, ...hrefs, ...shared, ...validated]).toHaveLength(35)
+  expect([...renders, ...hrefs, ...shared, ...validated]).toHaveLength(36)
 })

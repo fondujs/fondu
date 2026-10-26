@@ -1,6 +1,6 @@
 import { pageDataPath } from '../paths.js'
 
-/** what the server sends for a page: the page module's name in `app/pages/`, its props, its URL, the build's version */
+/** what the server sends for a page: its id (its route file, `users/[id]`), its props, its URL, the build's version */
 export interface Page {
   component: string
   props: Record<string, unknown>
@@ -71,6 +71,9 @@ export function startNavigation({ initial, show, prerender, pending }: Options) 
   ): Promise<Page | undefined> => {
     const to = response.headers.get('X-Fondu-Location')
     if (response.status === 409 && to) return void documentLoad(to, post)
+    // a redirect to a #fragment, followed here: fetch() would lose it
+    const redirect = response.headers.get('X-Fondu-Redirect')
+    if (redirect) return void nav.navigate(redirect, { history: post ? 'push' : 'replace' })
     if (!response.headers.has('X-Fondu')) {
       // a proxy's error page, a file: the URL as a document (a POST's redirect: its target); the answer to a POST
       // itself can't be asked for again

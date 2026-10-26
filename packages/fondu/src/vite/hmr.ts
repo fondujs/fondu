@@ -15,7 +15,7 @@ type Node = { file: string | null; importers: Set<Node> }
 /**
  * What a change to a module reaches on the server, through the app's own modules only (app/, not node_modules nor
  * fondu): a route (`app/routes/…`: what it renders may have changed), and the document (`app/server.ts`, reached
- * other than through a route or the pages' entry). `app/app.tsx` is the pages' entry: the browser's own HMR.
+ * other than through a route).
  */
 export function reach(start: Iterable<Node>, root: string): { routes: boolean; document: boolean } {
   const found = { routes: false, document: false }
@@ -29,7 +29,7 @@ export function reach(start: Iterable<Node>, root: string): { routes: boolean; d
     if (rel.startsWith('..') || rel.includes('node_modules/') || !rel.startsWith('app/')) continue
     if (rel.startsWith('app/routes/')) found.routes = true
     else if (rel === 'app/server.ts') found.document = true
-    else if (rel !== 'app/app.tsx') queue.push(...mod.importers)
+    else queue.push(...mod.importers)
   }
   return found
 }
@@ -56,7 +56,7 @@ export function hmr(): Plugin {
       handler(code, id) {
         if (this.environment.config.consumer !== 'client') return
         const file = id.split('?')[0]!
-        const rel = relative(`${root}/app/pages`, file).split(sep).join('/')
+        const rel = relative(`${root}/app/routes`, file).split(sep).join('/')
         if (rel.startsWith('..') || !isPageFile(rel)) return
         const names = namedExports(this.parse(code) as unknown as Program)
         if (!names.length) return

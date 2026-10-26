@@ -143,7 +143,7 @@ describe('the app', () => {
     })
     expect(res.headers.get('x-fondu')).toBe('true')
     const page = (await res.json()) as { component: string; url: string }
-    expect(page.component).toBe('home')
+    expect(page.component).toBe('index')
     expect(page.url).toBe('/?fresh')
   })
   test('the page object of a page object: none', async () => {
@@ -184,7 +184,7 @@ describe('the app', () => {
       const visit = await app.request('/', {
         headers: { 'X-Fondu': 'true', 'X-Fondu-Version': 'v1' },
       })
-      expect(((await visit.json()) as { component: string }).component).toBe('home')
+      expect(((await visit.json()) as { component: string }).component).toBe('index')
       expect(
         await (await app.request('/items', { headers: { Accept: 'text/html' } })).text(),
       ).toContain('data-page')

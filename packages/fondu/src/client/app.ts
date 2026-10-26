@@ -14,60 +14,56 @@ import {
 import { flushSync } from 'react-dom'
 import { createRoot, hydrateRoot } from 'react-dom/client'
 
-import { layoutsOf } from '../paths.js'
+import { layoutsOf, pageId } from '../paths.js'
 import type { Flash, Shared } from '../types.js'
 import { again, startNavigation, type Page } from './navigation.js'
+import { progressBar, type ProgressOptions } from './progress.js'
 
 type Layout = ComponentType<{ children: ReactNode }>
-type PageComponent = ComponentType<Record<string, unknown>> & { layout?: Layout | Layout[] }
+type PageComponent = ComponentType<Record<string, unknown>>
 type Loader = () => Promise<unknown>
 
-export interface AppOptions {
-  /** the layout of a page with no `_layout.tsx` above it (and no `layout` of its own) */
-  layout?: Layout
-}
+const ROUTES = '/app/routes/'
 
-// set by the client entry's transform (the Vite plugin): the page and layout modules, and the build's settings
-let modules: Record<string, Loader> = {}
+// set by the app's entry (the Vite plugin's): the pages and layouts of app/routes/, and the build's settings
+let pages = new Map<string, Loader>()
 let layoutModules: Record<string, Loader> = {}
-let settings = { prerender: false }
-let options: AppOptions = {}
 
-/** @internal the Vite plugin's: `import.meta.glob` of `app/pages/` and its layouts, and `fondu({ prerender })` */
+/**
+ * @internal the app's entry (the Vite plugin writes it), in the browser and for the server render: `import.meta.glob`
+ * of the pages and layouts of `app/routes/`, and `fondu({ prerender, progress })`. In the browser it starts the app:
+ * it hydrates the server's page and starts navigating.
+ */
 export function __entry(
-  pages: Record<string, Loader>,
+  pageModules: Record<string, Loader>,
   layouts: Record<string, Loader>,
-  set: { prerender: boolean },
+  settings: { prerender: boolean; progress: ProgressOptions | false },
 ) {
-  modules = pages
+  pages = new Map(
+    Object.entries(pageModules).map(([key, loader]) => [pageId(key.slice(ROUTES.length)), loader]),
+  )
   layoutModules = layouts
-  settings = set
+  if (typeof document !== 'undefined') start(settings)
 }
 
 const defaultOf = async (loader: Loader) => ((await loader()) as { default: never }).default
 
-/**
- * A page's component, and the layouts it's drawn in, outermost first: its own (`Page.layout`), or the `_layout.tsx`
- * files of its directories, or the app's (`startApp({ layout })`)
- */
+/** a page's component, and the `_layout.tsx` files of its directories it's drawn in, outermost first */
 async function load(component: string): Promise<Shown['view']> {
-  const key = ['tsx', 'jsx', 'mdx']
-    .map((ext) => `/app/pages/${component}.${ext}`)
-    .find((k) => k in modules)
-  if (!key) throw new Error(`fondu: there is no page "${component}" in app/pages/`)
+  const page = pages.get(component)
+  if (!page) throw new Error(`fondu: there is no page "${component}" in app/routes/`)
   const chain = layoutsOf(component)
     .map((dir) =>
       ['tsx', 'jsx']
-        .map((ext) => `/app/pages/${dir ? `${dir}/` : ''}_layout.${ext}`)
+        .map((ext) => `${ROUTES}${dir ? `${dir}/` : ''}_layout.${ext}`)
         .find((k) => k in layoutModules),
     )
     .filter((k) => k !== undefined)
   const [Component, ...layouts] = await Promise.all([
-    defaultOf(modules[key]!) as Promise<PageComponent>,
+    defaultOf(page) as Promise<PageComponent>,
     ...chain.map((k) => defaultOf(layoutModules[k]!) as Promise<Layout>),
   ])
-  const own = Component.layout ?? (layouts.length ? layouts : options.layout)
-  return { Component, layouts: own === undefined ? [] : Array.isArray(own) ? own : [own] }
+  return { Component, layouts }
 }
 
 // ---- the page on screen, for usePage()
@@ -102,15 +98,11 @@ function setNavigating(value: boolean) {
   for (const l of listeners) l()
 }
 
-// ---- the API
+// ---- the app
 
-/**
- * `app/app.tsx`: the app, in the browser (it hydrates the server's page and starts navigating) and for the server
- * render. Pages are the files in `app/pages/` ('users/show' is pages/users/show.tsx).
- */
-export function startApp(app: AppOptions = {}) {
-  options = app
-  if (typeof document === 'undefined') return // the server: renderPage() below
+/** the browser's app: the server's page hydrated, then navigations */
+function start(settings: { prerender: boolean; progress: ProgressOptions | false }) {
+  if (settings.progress) subscribe(progressBar(settings.progress, () => navigating))
   const data = document.querySelector('script[data-page="app"]')?.textContent
   const root = document.getElementById('app')
   if (!data || !root)

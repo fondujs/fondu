@@ -29,14 +29,6 @@ export function href<P extends Href>(path: P, ...[params]: Args<P>): string {
   return fillPattern(path, params)
 }
 
-export {
-  startApp,
-  usePage,
-  useNavigating,
-  reload,
-  __entry,
-  renderPage,
-  type AppOptions,
-  type Errors,
-} from './client/app.js'
+export { usePage, useNavigating, reload, __entry, renderPage, type Errors } from './client/app.js'
 export { loadDocument, type Page } from './client/navigation.js'
+export type { ProgressOptions } from './client/progress.js'

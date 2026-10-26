@@ -4,7 +4,10 @@ import type { ContentfulStatusCode } from 'hono/utils/http-status'
 
 import { settings } from './document.js'
 import { wantsPage } from './http.js'
-import { hasPage, render } from './protocol.js'
+import { renderPage } from './protocol.js'
+
+/** the error page's id: `app/routes/_error.tsx` */
+export const ERROR_PAGE = '_error'
 
 const TEXT: Record<number, string> = {
   401: 'Unauthorized',
@@ -19,7 +22,7 @@ const TEXT: Record<number, string> = {
  * The answer to an unmatched URL or a thrown error (installed by `createApp`):
  * - API clients: the `HTTPException`'s response, or plain text
  * - pages, in development: a report of the error (a navigation loads it as a document)
- * - pages: the error page (`app/pages/error.tsx`, `{ status }`) with the shared props
+ * - pages: the error page (`app/routes/_error.tsx`, `{ status }`) with the shared props
  */
 export async function errorResponse(
   c: Context,
@@ -32,10 +35,9 @@ export async function errorResponse(
   if (!wantsPage(c))
     return error instanceof HTTPException ? error.getResponse() : c.text(text, code)
   if (import.meta.env.DEV && status >= 500) return c.html(report(c, error), 500)
-  const page = settings.get(c)?.errorPage
-  if (page && hasPage(page)) {
+  if (settings.get(c)?.errorPage) {
     try {
-      return await render(c, page as never, { status } as never, { status })
+      return await renderPage(c, ERROR_PAGE, { status }, { status })
     } catch (failure) {
       console.error('[fondu] the error page failed to render:', failure)
     }

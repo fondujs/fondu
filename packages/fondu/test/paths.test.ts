@@ -11,6 +11,8 @@ describe('routes/ files', () => {
     expect(routePatterns('index.ts')).toEqual(['/'])
     expect(routePatterns('users/index.ts')).toEqual(['/users'])
     expect(routePatterns('users/[id].ts')).toEqual(['/users/:id'])
+    expect(routePatterns('users/[id].tsx')).toEqual(['/users/:id']) // a page
+    expect(routePatterns('docs/index.mdx')).toEqual(['/docs'])
     expect(routePatterns('docs/[...path].ts')).toEqual(['/docs/:path{.+}'])
     expect(routePatterns('(marketing)/about.ts')).toEqual(['/about'])
   })
@@ -28,9 +30,13 @@ describe('routes/ files', () => {
   test('what is a route', () => {
     expect(isRouteFile('users/index.ts')).toBe(true)
     expect(isRouteFile('users/_middleware.ts')).toBe(false)
-    expect(isRouteFile('users/-helpers.ts')).toBe(true) // no hidden rules: every .ts file is a route
+    expect(isRouteFile('users/-helpers.ts')).toBe(true) // only _ hides a file: every other one is a route
+    expect(isRouteFile('users/_helpers.ts')).toBe(false)
+    expect(isRouteFile('users/_parts/form.tsx')).toBe(false)
     expect(isRouteFile('users/index.test.ts')).toBe(false)
-    expect(isRouteFile('users/form.tsx')).toBe(false)
+    expect(isRouteFile('users/form.tsx')).toBe(true) // a page
+    expect(isRouteFile('docs/intro.mdx')).toBe(true)
+    expect(isRouteFile('users/form.test.tsx')).toBe(false)
   })
   test('middleware applies to its directory and below, outermost first', () => {
     const files = ['_middleware.ts', 'users/_middleware.ts', 'admin/_middleware.ts']
