@@ -1,4 +1,4 @@
-import { back, defineHandler, flash, location, render } from 'fondu'
+import { back, defineHandler, flash, render } from 'fondu'
 import { href } from 'fondu/client'
 
 import { DemoCard, Title } from '#/components/demo.tsx'
@@ -19,8 +19,9 @@ export const actions = {
     flash(c, { message: 'Redirected from /redirects' })
     return c.redirect('/props', 303)
   }),
-  // another site (or what isn't a page): 409 + X-Fondu-Location, the browser loads it
-  external: defineHandler((c) => location(c, '/api/health')),
+  // what isn't a page (a file, JSON): the browser loads it; another site too (a navigation gets 409 +
+  // X-Fondu-Location: fetch() can't follow it there)
+  external: defineHandler((c) => c.redirect('/api/health', 303)),
 }
 
 const Action = ({ to, label, id }: { to: string; label: string; id: string }) => (
@@ -57,10 +58,10 @@ export default function Redirects({ visitedAt }: { visitedAt: string }) {
           </p>
           <Action to={href('/redirects?props')} label="Redirect to /props" id="to-props" />
         </DemoCard>
-        <DemoCard title="Not a page" tag="location(c, url)">
+        <DemoCard title="Not a page" tag="c.redirect(url, 303)">
           <p className="mb-4 text-muted-foreground">
-            409 with <code>X-Fondu-Location</code>: the browser loads <code>/api/health</code> as a
-            document (another site works the same way).
+            The answer isn&apos;t a page: the browser loads <code>/api/health</code> as a document.
+            Another site works the same way.
           </p>
           <Action to={href('/redirects?external')} label="Load /api/health" id="external" />
         </DemoCard>

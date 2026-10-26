@@ -23,10 +23,3 @@ export const back = (c: Context, fallback = '/') => {
   const from = sameOrigin(c, c.req.header('referer'))
   return c.redirect(from ? from.pathname.replace(/^\/+/, '/') + from.search : fallback, 303)
 }
-
-/**
- * A document load of `url` (another site, a file): a navigation gets 409 + `X-Fondu-Location` (the client then loads
- * it), a document a plain redirect.
- */
-export const location = (c: Context, url: string) =>
-  isPageRequest(c) ? c.body(null, 409, { 'X-Fondu-Location': url }) : c.redirect(url, 302)

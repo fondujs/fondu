@@ -8,7 +8,6 @@ import { callAuth, requireUser } from '#/modules/auth/auth.server.ts'
 
 export const loader = defineHandler(requireUser, (c) => {
   const { name, email, role } = c.get('user')!
-  // private: signing out forgets the pages kept for Back (clearHistory() in routes/logout.ts)
   return render(c, Account, { account: { name, email, role: role ?? 'user' } })
 })
 

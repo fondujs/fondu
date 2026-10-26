@@ -29,10 +29,10 @@ export default function Navigation({ servedAt }: { servedAt: string }) {
         .
       </p>
       <div className="grid gap-4 sm:grid-cols-2">
-        <DemoCard title="Back and Forward" tag="the page kept for Back">
+        <DemoCard title="Back and Forward" tag="the server's page, where it was">
           <p className="mb-4 text-muted-foreground">
-            Go to another demo and press Back: this page shows at once, where you left it, then the
-            server&apos;s fresh one (its time changes).
+            Go to another demo and press Back: this page comes from the server again (its time
+            changes), scrolled where you left it.
           </p>
           <Button variant="outline" render={<a href={href('/props')} />} data-testid="to-props">
             Props

@@ -102,16 +102,6 @@ describe('pages', () => {
     ]
     for (const res of answers) expect(res.headers.get('vary')).toBe('X-Fondu')
   })
-  test('clearHistory(): the next page says so', async () => {
-    const res = await app.request('/redirect?signout', {
-      method: 'POST',
-      headers: { ...fondu(), Origin: ORIGIN },
-    })
-    const cookie = res.headers.get('set-cookie')!.split(';')[0]!
-    const next = await page(await app.request('/', { headers: { ...fondu(), Cookie: cookie } }))
-    expect(next.clearHistory).toBe(true)
-    expect((await page(await app.request('/', { headers: fondu() }))).clearHistory).toBeUndefined()
-  })
 })
 
 describe('routes', () => {
@@ -137,7 +127,7 @@ describe('routes', () => {
     })
     expect(api.status).toBe(200) // not a navigation: as it is
   })
-  test('location(): 409 + X-Fondu-Location for a navigation, a redirect otherwise', async () => {
+  test('a redirect to another site: 409 + X-Fondu-Location for a navigation, as it is otherwise', async () => {
     const navigation = await app.request('/redirect?away', {
       method: 'POST',
       headers: { ...fondu(), Origin: ORIGIN },
@@ -148,7 +138,13 @@ describe('routes', () => {
     ])
     expect(
       (await app.request('/redirect?away', { method: 'POST', headers: { Origin: ORIGIN } })).status,
-    ).toBe(302)
+    ).toBe(303)
+    // this site's: followed by fetch()
+    const here = await app.request('/redirect?home', {
+      method: 'POST',
+      headers: { ...fondu(), Origin: ORIGIN },
+    })
+    expect([here.status, here.headers.get('location')]).toEqual([303, '/'])
   })
   test('a redirect to a #fragment: X-Fondu-Redirect for a navigation (fetch() loses it), as it is otherwise', async () => {
     const navigation = await app.request('/redirect?fragment', {
