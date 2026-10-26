@@ -1,4 +1,5 @@
 import {
+  Component,
   createContext,
   createElement,
   useContext,
@@ -24,6 +25,7 @@ type PageComponent = ComponentType<Record<string, unknown>>
 type Loader = () => Promise<unknown>
 
 const ROUTES = '/app/routes/'
+const ERROR = '_error'
 
 // set by the app's entry (the Vite plugin's): the pages and layouts of app/routes/, and the build's settings
 let pages = new Map<string, Loader>()
@@ -78,11 +80,38 @@ function App({ initial }: { initial: Shown }): ReactElement {
   useLayoutEffect(() => mounted?.(set), [set])
   const { Component, layouts } = view
   // the page mounted anew by each navigation, its layouts kept (the same components: React keeps them)
+  // a page that throws in the browser: the error page in its place, in its layouts; a layout that throws: the error
+  // page alone. Until the next page
   const content = layouts.reduceRight<ReactElement>(
     (children, L) => createElement(L, null, children),
-    createElement(Component, { key: mounts, ...page.props }),
+    createElement(Failed, { key: mounts, page }, createElement(Component, { ...page.props })),
   )
-  return createElement(PageContext.Provider, { value: page }, content)
+  return createElement(
+    PageContext.Provider,
+    { value: page },
+    createElement(Failed, { page }, content),
+  )
+}
+
+/** the app's error page (routes/_error.tsx), loaded once the app starts: a failed render can't wait for it */
+let ErrorPage: ComponentType<{ status: number }> | undefined
+
+/** what failed to render, until another page (the layouts it is around are kept: no key) */
+class Failed extends Component<
+  { children?: ReactNode; page: Page },
+  { failed: boolean; page: Page }
+> {
+  override state = { failed: false, page: this.props.page }
+  static getDerivedStateFromError() {
+    return { failed: true }
+  }
+  static getDerivedStateFromProps(props: { page: Page }, state: { page: Page }) {
+    return props.page === state.page ? null : { failed: false, page: props.page }
+  }
+  override render() {
+    if (!this.state.failed) return this.props.children
+    return ErrorPage ? createElement(ErrorPage, { status: 500 }) : 'Something went wrong'
+  }
 }
 
 /**
@@ -140,6 +169,9 @@ function start(settings: { prerender: boolean; progress: ProgressOptions | false
   if (!data || !root)
     throw new Error('fondu: the document has no page (script[data-page="app"], #app)')
   const initial = JSON.parse(data) as Page
+  void pages
+    .get(ERROR)?.()
+    .then((m) => (ErrorPage = (m as { default: typeof ErrorPage }).default))
   void load(initial.component).then((view) => {
     // dev: the stylesheet the server gave the page until its layouts brought their CSS (they have now)
     document.querySelector('[data-fondu-dev-css]')?.remove()

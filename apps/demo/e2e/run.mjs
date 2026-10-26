@@ -274,7 +274,7 @@ await signIn()
 await page.setExtraHTTPHeaders({})
 await page.goto(BASE + '/contacts', { waitUntil: 'networkidle0' })
 {
-  const entries = await page.evaluate(() => navigation.entries().length)
+  const entries = await page.evaluate(() => history.length)
   await setValue('[data-testid=add-contact] input[name=name]', 'x')
   await page.click('[data-testid=add-contact] button')
   await page.waitForSelector('[data-testid=err-email]')
@@ -284,7 +284,7 @@ await page.goto(BASE + '/contacts', { waitUntil: 'networkidle0' })
     formErrors.every(Boolean) &&
       (await path()) === '/contacts' &&
       (await page.$eval('[data-testid=add-contact] input[name=name]', (e) => e.value)) === 'x' &&
-      (await page.evaluate(() => navigation.entries().length)) === entries,
+      (await page.evaluate(() => history.length)) === entries,
     JSON.stringify(formErrors),
   )
 }

@@ -13,6 +13,9 @@ export default function ErrorPage({ status }: { status: number }) {
 
 Without `app/routes/_error.tsx`, plain text for everyone.
 
+A page that throws as it renders in the browser gets the error page with status 500 in its place, inside its layouts
+(the error in the console); a layout that throws, the error page alone. The next page is shown as usual.
+
 ## In development
 
 A 500 is a report of the error instead: the message, and the stack with your files first; a navigation loads it as a

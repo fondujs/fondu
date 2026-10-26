@@ -59,7 +59,7 @@ export const groups: Array<[group: string, demos: Demo[]]> = [
       [
         href('/navigation'),
         'Navigation',
-        'Links and forms through the Navigation API: Back at once, pending state.',
+        'Links and forms swapped in place: Back, the scroll position, pending state.',
       ],
       [href('/versioning'), 'Asset versioning', 'A version mismatch forces a full page reload.'],
     ],

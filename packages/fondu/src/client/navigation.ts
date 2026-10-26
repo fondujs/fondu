@@ -9,11 +9,6 @@ export interface Page {
   flash: Record<string, unknown>
 }
 
-/** how a document load goes in the history: see `documentLoad` */
-type History = 'push' | 'replace' | 'instead'
-
-type Info = { fondu?: { page: Page; scroll: boolean; fresh: boolean } | 'document' | 'reload' }
-
 interface Options {
   initial: Page
   /**
@@ -29,167 +24,287 @@ interface Options {
   preload: (pathname: string) => void
 }
 
-const noop = () => {}
-const navigation = () =>
-  (globalThis as unknown as { navigation?: Navigation }).navigation as Navigation | undefined
+interface Visit {
+  /** where the page goes in the history once it is on the screen: a new entry, this one, or none (Back, reload()) */
+  history: 'push' | 'replace' | 'none'
+  /** a POST form's body, from its form */
+  body?: FormData
+  form?: HTMLFormElement
+  /** Back and Forward: where the entry was scrolled; reload(): undefined, the scroll stays */
+  scroll?: { x: number; y: number } | null
+  /** reload(): the page keeps its state */
+  keep?: boolean
+}
+
+let visit: ((url: string, options: Visit) => void) | undefined
 
 /**
- * Same-origin links, GET and POST forms, Back and Forward, through the Navigation API: the page fetched as JSON and
- * shown in place. Without the Navigation API, links and forms load documents.
+ * Same-origin links and forms, Back and Forward, through the History API (as Void's client, MIT): the page fetched
+ * as JSON, its URL in the history, the page shown in place, then the scroll position (Fondu's own, per history entry:
+ * the browsers' differ). What isn't for it (another site, a new tab, a download, a modified click) is the browser's.
  */
 export function startNavigation({ initial, show, prerender, pending, preload }: Options) {
-  const nav = navigation()
-  if (!nav) return
+  const scroll = scrollPositions()
   let version = initial.version
-  let submitting: AbortController | undefined
-  let current = 0
-  // the form being sent is aria-busy: for its submit buttons' pending state (CSS, or useNavigating()), and for
-  // assistive technology
-  const begin = (form: HTMLFormElement | null = null) => {
-    const id = ++current
-    form?.setAttribute('aria-busy', 'true')
-    pending(true, form !== null)
-    return () => {
-      form?.removeAttribute('aria-busy')
-      if (id === current) pending(false, false)
-    }
-  }
+  let current: AbortController | undefined
 
-  const here = () => location.pathname + location.search
-  const display = (page: Page, scroll: boolean, fresh: boolean, history: 'push' | 'replace') =>
-    nav.navigate(page.url, { history, info: { fondu: { page, scroll, fresh } } satisfies Info })
-  /**
-   * A document load: a POST's after the page it was sent from (`push`); a GET's in place of the entry it committed:
-   * `instead` when that entry was pushed. A document replacing it would take the entries before it, of this
-   * document, for its own (Chromium): Back would change the URL only. So back to the entry it was pushed from, then
-   * the document pushed from there.
-   */
-  const documentLoad = async (url: string, history: History) => {
+  const headers = () => ({ 'X-Fondu': 'true', ...(version && { 'X-Fondu-Version': version }) })
+  /** a document load: in place of this entry, or after it */
+  const documentLoad = (url: string, replace: boolean) => {
     // http(s) only: a header's URL never runs as `javascript:` (an app's redirect to a URL it was given)
     if (!isWebUrl(url)) return console.error(`fondu: not loading ${url}: not an http(s) URL`)
-    const info = { fondu: 'document' } satisfies Info
-    if (history === 'instead') await nav.back({ info }).committed?.catch(noop)
-    nav.navigate(url, { history: history === 'replace' ? 'replace' : 'push', info })
+    if (replace) location.replace(url)
+    else location.assign(url)
   }
 
-  /** the page a response is, or undefined when it's handled here (a new build, not a page) */
-  const read = async (
-    response: Response,
-    url: string,
-    history: History,
-  ): Promise<Page | undefined> => {
-    const post = history === 'push'
-    const to = response.headers.get('X-Fondu-Location')
-    if (response.status === 409 && to) return void documentLoad(to, history)
-    // a redirect to a #fragment, followed here: fetch() would lose it
-    const redirect = response.headers.get('X-Fondu-Redirect')
-    if (redirect && isWebUrl(redirect))
-      return void nav.navigate(redirect, { history: post ? 'push' : 'replace' })
-    if (!response.headers.has('X-Fondu')) {
-      // a proxy's error page, a file: the URL as a document (a POST's redirect: its target); the answer to a POST
-      // itself can't be asked for again
-      if (!post || response.redirected) return void documentLoad(url, history)
-      const html = await response.text()
-      document.open()
-      document.write(html)
-      document.close()
-      return
+  visit = (href, options) => {
+    current?.abort()
+    const controller = (current = new AbortController())
+    const { signal } = controller
+    const url = new URL(href, location.href)
+    if (url.origin !== location.origin) return documentLoad(url.href, options.history !== 'push')
+    const post = options.body !== undefined
+    if (options.history !== 'none') scroll.save()
+    const form = options.form ?? null
+    // the form being sent is aria-busy: for its submit buttons' pending state (CSS, or useNavigating()), and for
+    // assistive technology
+    form?.setAttribute('aria-busy', 'true')
+    pending(true, form !== null)
+    const done = () => {
+      form?.removeAttribute('aria-busy')
+      if (current === controller) pending(false, false)
     }
-    const page = (await response.json()) as Page
-    if (version && page.version && page.version !== version)
-      return void documentLoad(page.url, history)
-    version = page.version
-    return page
-  }
-  const headers = () => ({ 'X-Fondu': 'true', ...(version && { 'X-Fondu-Version': version }) })
-  const failed = (url: string, history: History) => (error: unknown) => {
-    if ((error as Error).name !== 'AbortError') void documentLoad(url, history) // offline: the browser says so
-  }
-
-  nav.addEventListener('navigate', (event) => {
-    const info = event.info as Info | undefined
-    const url = new URL(event.destination.url)
-    if (info?.fondu === 'document' || !event.canIntercept || event.hashChange) return
-    // `location.reload()` (Vite's full reload, an app's own): the document, as asked; `reload()` is fondu/client's
-    if (event.navigationType === 'reload' && info?.fondu !== 'reload') return
-    if (event.downloadRequest !== null || url.origin !== location.origin) return
-    submitting?.abort()
-
-    // a page already fetched (a form's answer, a redirect's target): shown by this navigation
-    if (typeof info?.fondu === 'object') {
-      const { page, scroll, fresh } = info.fondu
-      event.intercept({
-        scroll: 'manual',
-        // the same page (a form back with its errors): the focus stays where it was, as the scroll position does
-        focusReset: fresh ? 'after-transition' : 'manual',
-        async handler() {
-          await show(page, fresh, () => event.signal.aborted)
-          if (scroll && !event.signal.aborted) scrollAfter(event)
-        },
-      })
-      return
-    }
-
-    // a POST form: sent outside the navigation (no history entry for the POST), its answer shown by one
-    if (event.formData) {
-      event.preventDefault()
-      const done = begin(formOf(event))
-      const controller = (submitting = new AbortController())
-      fetch(url, {
-        method: 'POST',
-        body: event.formData,
-        headers: headers(),
-        signal: controller.signal,
-      })
-        .then(async (response) => {
-          const page = await read(response, response.url, 'push')
-          if (!page || controller.signal.aborted) return
-          // the same URL: in place, at the same scroll position; back with errors, the form and its values stay too
-          const same = page.url === here()
-          const errors = Object.keys((page.props.errors as object | undefined) ?? {}).length > 0
-          // pending until the page is on the screen
-          const shown = display(page, !same, !(same && errors), same ? 'replace' : 'push')
-          await shown.finished?.catch(noop)
+    if (!post) preload(url.pathname)
+    const from =
+      !post && prerender ? pageDataPath(url.pathname) + url.search : url.pathname + url.search
+    void (async () => {
+      try {
+        const response = await fetch(from, {
+          method: post ? 'POST' : 'GET',
+          body: options.body,
+          headers: headers(),
+          signal,
         })
-        .catch((error: Error) => {
-          if (error.name !== 'AbortError') throw error // the form stays, to send again
-        })
-        .finally(done)
-      return
-    }
-
-    event.intercept({
-      scroll: 'manual',
-      focusReset: event.navigationType === 'reload' ? 'manual' : 'after-transition',
-      async handler() {
-        const done = begin(formOf(event))
-        const pushed: History = event.navigationType === 'push' ? 'instead' : 'replace'
-        try {
-          // Back and Forward too: the server's page, as for a link (nothing kept in memory to go stale, as a
-          // private page after signing out); the scroll position is the browser's
-          const path = url.pathname + url.search
-          preload(url.pathname)
-          const from = prerender ? pageDataPath(url.pathname) + url.search : url
-          const response = await fetch(from, { headers: headers(), signal: event.signal })
-          const page = await read(response, url.href, pushed)
-          if (!page || event.signal.aborted) return
-          // redirected: the page at its own URL, in place of this entry
-          if (page.url !== path)
-            return void (await display(page, true, true, 'replace').finished?.catch(noop))
-          const reload = event.navigationType === 'reload'
-          // Back and Forward commit after the navigate event: scrolled before, the page would show at the top first
-          await (nav.transition as { committed?: Promise<unknown> } | null)?.committed
-          // superseded meanwhile (Back pressed before it was on the screen): neither shown nor scrolled
-          await show(page, !reload, () => event.signal.aborted)
-          if (!reload && !event.signal.aborted) scrollAfter(event)
-        } catch (error) {
-          failed(url.href, pushed)(error)
-        } finally {
-          done()
+        if (signal.aborted) return
+        // a new build, another site: the document
+        const to = response.headers.get('X-Fondu-Location')
+        if (response.status === 409 && to) return documentLoad(to, options.history !== 'push')
+        // a redirect to a #fragment, followed here: fetch() would lose it
+        const redirect = response.headers.get('X-Fondu-Redirect')
+        if (redirect) {
+          if (isWebUrl(redirect))
+            visit!(redirect, { history: options.history === 'push' ? 'push' : 'replace' })
+          return
         }
-      },
-    })
+        if (!response.headers.has('X-Fondu')) {
+          // a proxy's error page, a file: the URL as a document (a POST's redirect: its target); the answer to a POST
+          // itself can't be asked for again
+          if (!post || response.redirected)
+            return documentLoad(post ? response.url : url.href, options.history !== 'push')
+          const html = await response.text()
+          document.open()
+          document.write(html)
+          document.close()
+          return
+        }
+        const page = (await response.json()) as Page
+        if (signal.aborted) return
+        if (version && page.version && page.version !== version)
+          return documentLoad(page.url, options.history !== 'push')
+        version = page.version
+        // the answer to a form at the URL it was sent from: in place, its scroll position kept; back with errors,
+        // the form and what was typed stay too
+        const here = location.pathname + location.search
+        const same = post && page.url === here
+        const errors = Object.keys((page.props.errors as object | undefined) ?? {}).length > 0
+        const fresh = !options.keep && !(same && errors)
+        // its URL first, as the browser's own navigations: a page's render reads it (`location`, a URL's language);
+        // a redirect's, the fragment asked for if it is still this page's
+        const asked = url.pathname + url.search
+        const target = page.url + (asked === page.url ? url.hash : '')
+        // a form's answer at its URL replaces the entry; Back's or reload()'s page redirected elsewhere too
+        const history =
+          options.history === 'push' && same
+            ? 'replace'
+            : options.history === 'none' && asked !== page.url
+              ? 'replace'
+              : options.history
+        if (history !== 'none') scroll.write(target, history === 'replace')
+        scroll.commit()
+        await show(page, fresh, () => signal.aborted)
+        if (signal.aborted) return
+        if (!options.keep) announce()
+        // a page asked for again stays where it is: reload(), a form's answer at its URL
+        if (options.keep || same) return
+        // at once, the page in the DOM (show() renders it synchronously): no frame drawn where it doesn't belong
+        restore(options.history === 'none' ? options.scroll : null, url.hash)
+      } catch (error) {
+        if ((error as Error).name === 'AbortError') return
+        if (post) throw error // the form stays, to send again
+        documentLoad(url.href, options.history !== 'push') // offline: the browser says so
+      } finally {
+        done()
+      }
+    })()
+  }
+
+  // links: a plain click on a same-origin <a href>, which the page let through
+  document.addEventListener('click', (event) => {
+    if (event.defaultPrevented || event.button !== 0) return
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+    const link = (event.target as Element | null)?.closest?.('a[href]')
+    if (!(link instanceof HTMLAnchorElement)) return
+    if ((link.target && link.target !== '_self') || link.hasAttribute('download')) return
+    const url = new URL(link.href)
+    if (url.origin !== location.origin || !isWebUrl(url.href)) return
+    // a #fragment of this page: the browser scrolls to it (the position left saved for Back)
+    if (url.pathname + url.search === location.pathname + location.search && url.hash) {
+      scroll.save()
+      return
+    }
+    event.preventDefault()
+    visit!(url.href, { history: url.href === location.href ? 'replace' : 'push' })
   })
+
+  // forms: GET and POST to this origin, in this window, which the page let through
+  document.addEventListener('submit', (event) => {
+    if (event.defaultPrevented) return
+    const form = event.target
+    if (!(form instanceof HTMLFormElement)) return
+    const submitter = event.submitter as HTMLButtonElement | HTMLInputElement | null
+    const attr = (name: string, own: string) =>
+      submitter?.getAttribute(own) ?? form.getAttribute(name) ?? ''
+    const method = attr('method', 'formmethod').toLowerCase() || 'get'
+    const target = attr('target', 'formtarget')
+    if ((method !== 'get' && method !== 'post') || (target && target !== '_self')) return
+    const url = new URL(attr('action', 'formaction') || location.href, location.href)
+    if (url.origin !== location.origin || !isWebUrl(url.href)) return
+    event.preventDefault()
+    const data = new FormData(form, submitter)
+    if (method === 'post') return visit!(url.href, { history: 'push', body: data, form })
+    url.search = new URLSearchParams(
+      [...data].map(([k, v]) => [k, typeof v === 'string' ? v : v.name]),
+    ).toString()
+    visit!(url.href, { history: 'push', form })
+  })
+
+  // Back and Forward: the entry's page, where it was scrolled
+  window.addEventListener('popstate', (event) => {
+    const popped = scroll.pop(event.state)
+    if (popped.fragment) return restore(popped.position, location.hash)
+    visit!(location.href, { history: 'none', scroll: popped.position })
+  })
+  window.addEventListener('pagehide', scroll.save)
+  // the browser's own #fragment navigations: the entry gets its key
+  window.addEventListener('hashchange', scroll.commit)
+
+  restore(scroll.start(), location.hash, true)
+}
+
+/**
+ * Scroll positions, per history entry (a key in `history.state`), in memory and in sessionStorage (a reload, a page
+ * of another site and back): the browser's restoration is off. Each belongs to the entry on the screen, even once
+ * the browser has started a traversal away from it.
+ */
+function scrollPositions() {
+  const KEY = '__fondu'
+  const STORAGE = 'fondu-scroll:'
+  const positions = new Map<string, { x: number; y: number }>()
+  const keyOf = (state: unknown) =>
+    state &&
+    typeof state === 'object' &&
+    typeof (state as Record<string, unknown>)[KEY] === 'string'
+      ? ((state as Record<string, string>)[KEY] as string)
+      : null
+  const newKey = () => Math.random().toString(36).slice(2, 10)
+  let rendered = keyOf(history.state)
+  let renderedUrl = location.pathname + location.search
+  const read = (key: string | null) => {
+    if (!key) return null
+    const kept = positions.get(key)
+    if (kept) return kept
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(STORAGE + key) ?? 'null') as {
+        x: number
+        y: number
+      } | null
+      return typeof saved?.x === 'number' && typeof saved.y === 'number' ? saved : null
+    } catch {
+      return null
+    }
+  }
+  const save = () => {
+    if (!rendered) return
+    const position = { x: scrollX, y: scrollY }
+    positions.set(rendered, position)
+    try {
+      sessionStorage.setItem(STORAGE + rendered, JSON.stringify(position))
+    } catch {}
+  }
+  /** this entry's key, given one if it has none (a first visit, a #fragment the browser navigated to) */
+  const commit = () => {
+    let key = keyOf(history.state)
+    if (!key)
+      history.replaceState({ ...(history.state as object | null), [KEY]: (key = newKey()) }, '')
+    rendered = key
+    renderedUrl = location.pathname + location.search
+  }
+  return {
+    save,
+    commit,
+    /** the page's first entry: its key; where it was scrolled, on a reload or Back from another site */
+    start() {
+      history.scrollRestoration = 'manual'
+      commit()
+      return read(rendered)
+    },
+    /** the page on the screen, at `url`: a new entry or this one */
+    write(url: string, replace: boolean) {
+      const state = { ...(replace ? (history.state as object | null) : {}), [KEY]: newKey() }
+      if (replace) history.replaceState(state, '', url)
+      else history.pushState(state, '', url)
+    },
+    /** Back or Forward to `state`'s entry: where it was; `fragment`: the same page, another #fragment */
+    pop(state: unknown) {
+      save()
+      const fragment = location.pathname + location.search === renderedUrl
+      const position = read(keyOf(state))
+      if (fragment) commit()
+      return { fragment, position }
+    },
+  }
+}
+
+/** an entry's position, or its #fragment, or the top */
+function restore(
+  position: { x: number; y: number } | null | undefined,
+  hash: string,
+  first = false,
+) {
+  if (position) return window.scrollTo(position.x, position.y)
+  const target = hash && document.getElementById(decodeURIComponent(hash.slice(1)))
+  if (target) return target.scrollIntoView()
+  if (!first) window.scrollTo(0, 0)
+}
+
+/** the new page's title, for screen readers: a navigation in place is otherwise silent */
+let announcer: HTMLElement | undefined
+function announce() {
+  if (!announcer) {
+    announcer = document.createElement('div')
+    announcer.setAttribute('aria-live', 'assertive')
+    announcer.setAttribute('aria-atomic', 'true')
+    Object.assign(announcer.style, {
+      position: 'absolute',
+      width: '1px',
+      height: '1px',
+      overflow: 'hidden',
+      clip: 'rect(0 0 0 0)',
+      whiteSpace: 'nowrap',
+    })
+    document.body.append(announcer)
+  }
+  announcer.textContent = document.title
 }
 
 const isWebUrl = (url: string) => {
@@ -200,36 +315,16 @@ const isWebUrl = (url: string) => {
   }
 }
 
-/** the form a navigation sends (a POST's, a GET form's): the element it started from, a form or its submitter */
-function formOf(event: NavigateEvent): HTMLFormElement | null {
-  const from = (event as { sourceElement?: Element | null }).sourceElement
-  if (from instanceof HTMLFormElement) return from
-  return (from as HTMLButtonElement | null | undefined)?.form ?? null
-}
-
 /**
- * `href` loaded as a document. Every other navigation is the client's, `location.assign()` and `location.href = …`
- * too: this is for what a page can't change in place (`<html lang>`: another language).
+ * `href` loaded as a document. Every other navigation is the client's, links and forms: this is for what a page
+ * can't change in place (`<html lang>`: another language).
  */
 export function loadDocument(href: string) {
-  const nav = navigation()
-  if (nav) nav.navigate(href, { info: { fondu: 'document' } satisfies Info })
-  else location.assign(href)
+  location.assign(href)
 }
 
 /** the page asked for again, its state and the scroll position kept */
 export function again() {
-  const nav = navigation()
-  if (nav) nav.reload({ info: { fondu: 'reload' } satisfies Info })
+  if (visit) visit(location.href, { history: 'none', keep: true })
   else location.reload()
-}
-
-/**
- * Where a navigation leaves the page: Back and Forward where it was, a #fragment at its target, else the top (which
- * `event.scroll()` does too since whatwg/html#11987; Chromium 141 doesn't yet).
- */
-function scrollAfter(event: NavigateEvent) {
-  event.scroll()
-  if (event.navigationType !== 'traverse' && !new URL(event.destination.url).hash)
-    window.scrollTo(0, 0)
 }
