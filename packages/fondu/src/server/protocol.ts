@@ -116,10 +116,14 @@ type RenderArgs<P> = [keyof OwnProps<P>] extends [never]
 type OptionalArgs<P> = [props?: Delivered<OwnProps<P>>, options?: RenderOptions]
 type RequiredArgs<P> = [props: Delivered<OwnProps<P>>, options?: RenderOptions]
 
-// the pages of app/routes/ (createApp): a component → its id; and, per request, the page of the route answering it
-const pageIds = new WeakMap<object, string>()
+// the pages of app/routes/ (createApp): a component → its ids; and, per request, the page of the route answering it
+// (the ids: a page may be the default export of several, `export { default } from './index.tsx'`)
+const pageIds = new WeakMap<object, Set<string>>()
 const ownPages = new WeakMap<Context, string>()
-export const registerPage = (component: object, id: string) => pageIds.set(component, id)
+export const registerPage = (component: object, id: string) => {
+  const ids = pageIds.get(component) ?? new Set()
+  pageIds.set(component, ids.add(id))
+}
 export const routePage =
   (id: string): MiddlewareHandler =>
   async (c, next) => {
@@ -143,15 +147,14 @@ export function render<P extends object>(
   page: PageComponent<P>,
   ...[props = {} as Delivered<OwnProps<P>>, options = {}]: RenderArgs<P>
 ): Promise<Response> {
-  const id = pageIds.get(page)
   const own = ownPages.get(c)
-  if (!id || id !== own)
+  if (!own || !pageIds.get(page)?.has(own))
     throw new Error(
       own
         ? `fondu: render() renders the page of its own route file, routes/${own}: its default export`
         : 'fondu: render() renders the page of its route file (a .tsx or .mdx file, its default export); this route has none',
     )
-  return renderPage(c, id, props as Record<string, unknown>, options)
+  return renderPage(c, own, props as Record<string, unknown>, options)
 }
 
 /** @internal the page `id` (a route file without its extension) with these props: `render()`, the error page */

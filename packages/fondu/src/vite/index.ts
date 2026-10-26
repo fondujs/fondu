@@ -426,7 +426,7 @@ function core(options: FonduOptions): Plugin {
     },
     // dev: the CSS the layouts import (the app's own: `import './styles/app.css'` in routes/_layout.tsx), as a
     // stylesheet in the document, so a server-rendered page is styled at first paint (Vite would add it only once the
-    // JS runs); removed once the entry has run
+    // JS runs); removed by fondu/client once the page's modules (its layouts: their CSS) are loaded
     configureServer(server) {
       server.middlewares.use(DEV_CSS, async (_req, res) => {
         const env = server.environments.client
@@ -482,6 +482,12 @@ function core(options: FonduOptions): Plugin {
         source: '/assets/*\n  Cache-Control: public, max-age=31536000, immutable\n',
       })
     },
+    // the server render loads a page through the entry's import(), of a module createApp has imported already: in
+    // the server's bundle, as it should be
+    onLog(_level, log) {
+      if (log.code === 'INEFFECTIVE_DYNAMIC_IMPORT' && log.message.includes('virtual:fondu/entry'))
+        return false
+    },
     resolveId(id, importer) {
       if (id === V.entry || id === V.assets || id === V.ssr) return resolved(id)
       // the server-only guard, for fondu's own: `fondu` is the server's, `fondu/client` the browser's
@@ -497,20 +503,10 @@ function core(options: FonduOptions): Plugin {
       if (id === resolved(V.entry)) {
         const dev = this.environment.config.consumer === 'client' && !isBuild
         const settings = { prerender: Boolean(options.prerender), progress: options.progress ?? {} }
-        // the browser loads a page's modules when it shows the page; the server has them already (createApp's)
-        const server = this.environment.config.consumer === 'server'
-        const glob = (pattern: string | string[]) =>
-          server
-            ? `lazy(import.meta.glob(${JSON.stringify(pattern)}, { eager: true }))`
-            : `import.meta.glob(${JSON.stringify(pattern)})`
+        const glob = (pattern: string | string[]) => `import.meta.glob(${JSON.stringify(pattern)})`
         return [
           `import { __entry${dev ? ', reload' : ''} } from 'fondu/client'`,
           ...(dev ? [`import.meta.hot?.on(${JSON.stringify(PROPS_EVENT)}, () => reload())`] : []),
-          ...(server
-            ? [
-                `const lazy = (mods) => Object.fromEntries(Object.entries(mods).map(([k, m]) => [k, async () => m]))`,
-              ]
-            : []),
           `__entry({ ...${glob(PAGES_GLOB)}, ...${glob(ERROR_GLOB)} }, ${glob(LAYOUTS_GLOB)}, ${JSON.stringify(settings)})`,
         ].join('\n')
       }
@@ -560,7 +556,7 @@ function devAssets(base: string): string {
   return `export const version = null
 export function assetTags(_component, nonce) {
   return '<link rel="stylesheet" href="${base}${DEV_CSS.slice(1)}" data-fondu-dev-css>'
-    + \`<script type="module"${nonceAttr}>${preamble}</script><script type="module" src="${base}@vite/client"${nonceAttr}></script><script type="module" src="${base}@id/__x00__${V.entry}"${nonceAttr}></script><script type="module"${nonceAttr}>document.querySelector('[data-fondu-dev-css]')?.remove()</script>\`
+    + \`<script type="module"${nonceAttr}>${preamble}</script><script type="module" src="${base}@vite/client"${nonceAttr}></script><script type="module" src="${base}@id/__x00__${V.entry}"${nonceAttr}></script>\`
 }`
 }
 

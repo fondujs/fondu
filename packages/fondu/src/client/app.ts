@@ -109,6 +109,8 @@ function start(settings: { prerender: boolean; progress: ProgressOptions | false
     throw new Error('fondu: the document has no page (script[data-page="app"], #app)')
   const initial = JSON.parse(data) as Page
   void load(initial.component).then((view) => {
+    // dev: the stylesheet the server gave the page until its layouts brought their CSS (they have now)
+    document.querySelector('[data-fondu-dev-css]')?.remove()
     const app = createElement(App, { initial: { page: initial, view, mounts: 0 } })
     // navigations start once the page is on the screen (hydrated)
     mounted = (set) => {
