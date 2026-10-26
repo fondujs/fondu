@@ -17,7 +17,7 @@ export default defineConfig({
       strategy: ['url', 'cookie', 'baseLocale'],
       trailingSlash: 'never',
     }),
-    fondu({ target: 'cloudflare' }),
+    fondu({ target: 'cloudflare', progress: { forms: false } }),
     tailwindcss(),
   ],
 })
