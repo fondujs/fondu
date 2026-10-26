@@ -59,6 +59,11 @@ describe('pages', () => {
       'this route has none',
     )
   })
+  test("another route's page as its own (its default export too): rendered under its own id", async () => {
+    const res = await page(await app.request('/again', { headers: fondu() }))
+    expect([res.component, res.props.plain]).toEqual(['again', 'again'])
+    expect((await page(await app.request('/', { headers: fondu() }))).component).toBe('index')
+  })
   test('a navigation: the page object as JSON', async () => {
     const res = await app.request('/', { headers: fondu() })
     expect(res.headers.get('x-fondu')).toBe('true')
