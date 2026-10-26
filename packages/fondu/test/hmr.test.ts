@@ -18,16 +18,14 @@ function graph(edges: Record<string, string[]>) {
 const root = '/app-root'
 const at = (rel: string) => `${root}/${rel}`
 const modules = graph({
-  // fondu (outside the app) imports the routes, the pages' entry, and is imported by server.ts and every route
+  // fondu (outside the app) imports the routes (pages too), and is imported by server.ts and every route
   [at('app/routes/docs.ts')]: ['/fondu/dist/server/app.js'],
+  [at('app/routes/users.tsx')]: ['/fondu/dist/server/app.js', '\0virtual:fondu/entry'],
+  [at('app/components/avatar.tsx')]: [at('app/routes/users.tsx')],
   ['/fondu/dist/server/app.js']: [at('app/server.ts')],
   ['/fondu/dist/index.js']: [at('app/server.ts'), at('app/routes/docs.ts')],
   [at('app/lib/db.server.ts')]: [at('app/routes/docs.ts')],
   [at('app/lib/toc.server.ts')]: [at('app/routes/docs.ts')],
-  [at('app/pages/docs/intro.mdx')]: [at('app/app.tsx'), at('app/lib/toc.server.ts')],
-  [at('app/pages/users.tsx')]: [at('app/app.tsx')],
-  [at('app/app.tsx')]: ['/fondu/dist/server/document.js'],
-  ['/fondu/dist/server/document.js']: ['/fondu/dist/index.js'],
   [at('app/lib/theme.server.ts')]: [at('app/server.ts')],
   [at('app/lib/shared.ts')]: [at('app/server.ts'), at('app/routes/docs.ts')],
 })
@@ -43,12 +41,12 @@ describe('what a change reaches on the server', () => {
       document: false,
     })
   })
-  test('a page: the browser’s own update, unless a route reads it too (an MDX page’s toc)', () => {
-    expect(reach(modules(at('app/pages/users.tsx')), root)).toEqual({
-      routes: false,
+  test('a page, and what it imports: the browser’s own update, and its props (its route file is its loader’s)', () => {
+    expect(reach(modules(at('app/routes/users.tsx')), root)).toEqual({
+      routes: true,
       document: false,
     })
-    expect(reach(modules(at('app/pages/docs/intro.mdx')), root)).toEqual({
+    expect(reach(modules(at('app/components/avatar.tsx')), root)).toEqual({
       routes: true,
       document: false,
     })

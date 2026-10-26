@@ -1,3 +1,6 @@
 import { defineHandler, render } from 'fondu'
 
-export const loader = defineHandler((c) => render(c, 'nope' as never))
+import Home from './index.tsx'
+
+// a .ts route has no page to render: an error
+export const loader = defineHandler((c) => render(c, Home, { plain: 'x' }))

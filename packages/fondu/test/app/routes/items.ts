@@ -10,7 +10,3 @@ export const action = defineHandler.withValidator({
   flash(c, { message: `added ${body.name}` })
   return back(c)
 })
-
-export const actions = {
-  remove: defineHandler((c) => c.text('removed')),
-}

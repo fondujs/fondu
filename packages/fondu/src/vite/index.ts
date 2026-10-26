@@ -2,19 +2,27 @@ import { createHash } from 'node:crypto'
 import { appendFileSync, existsSync, readdirSync, readFileSync } from 'node:fs'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { builtinModules, createRequire } from 'node:module'
-import { dirname, join, resolve } from 'node:path'
+import { dirname, join, relative, resolve, sep } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
 import devServer, { defaultOptions as devServerDefaults } from '@hono/vite-dev-server'
 import react, { type Options as ReactOptions } from '@vitejs/plugin-react'
-import type { Plugin, PluginOption, ResolvedConfig, UserConfig } from 'vite'
+import {
+  parseAst,
+  transformWithOxc,
+  type Plugin,
+  type PluginOption,
+  type ResolvedConfig,
+  type UserConfig,
+} from 'vite'
 
-import { isPageFile, layoutsOf } from '../paths.js'
+import type { ProgressOptions } from '../client/progress.js'
+import { isPageFile, layoutsOf, pageId } from '../paths.js'
 import { hmr, PAGE_EXPORTS, PROPS_EVENT } from './hmr.js'
-import { pages } from './pages.js'
 import { nodeServer, prerender, worker } from './prerender.js'
+import { stripRoutes, stripServerCode } from './strip.js'
 import { typegen } from './typegen.js'
-import { vitestCache } from './vitest-cache.js'
+import { walk as walkFiles } from './typegen.js'
 
 /**
  * `vite.config.ts`: `plugins: [fondu({ target: 'node' })]` (or `'bun'`; for Cloudflare: `cloudflare()` and
@@ -22,9 +30,9 @@ import { vitestCache } from './vitest-cache.js'
  * - `@vitejs/plugin-react`
  * - Node / Bun: `@hono/vite-dev-server` (dev); the build is Vite's own, of two environments (`serverEntry()`)
  * - Cloudflare: `@cloudflare/vite-plugin` (yours: dev in workerd, the Worker's build)
- * and adds what none of them does: the pages for `app/app.tsx`, the document's asset tags, the generated types, the
- * server-only guard. One
- * `vite build` builds the client, then the server, then the pages to prerender.
+ * and adds what none of them does: the app's entry (its pages and layouts, from `app/routes/`), the browser's copy of
+ * a page's route file (its server code removed), the document's asset tags, the generated types, the server-only
+ * guard. One `vite build` builds the client, then the server, then the pages to prerender.
  */
 export interface FonduOptions {
   target: 'node' | 'bun' | 'cloudflare'
@@ -38,9 +46,10 @@ export interface FonduOptions {
    * time, and navigations read them; the server (the Worker) answers the other pages
    */
   prerender?: boolean
+  /** the bar at the top of the page while a navigation is on its way: its `delay` (ms) and `color`; `false`: none */
+  progress?: ProgressOptions | false
 }
 
-const ENTRY = 'app/app.tsx'
 /** what fondu's server code imports from Hono (test/hono.test.ts keeps the list complete) */
 export const HONO = [
   'hono',
@@ -55,21 +64,50 @@ export const HONO = [
 const SERVER = './app/server.ts'
 const DEV_CSS = '/@fondu/dev.css'
 const V = {
+  /** the app's entry: the browser's, and the server render's */
+  entry: 'virtual:fondu/entry',
   assets: 'virtual:fondu/assets',
   ssr: 'virtual:fondu/ssr',
   serverEntry: 'virtual:fondu/server-entry',
 }
 const resolved = (id: string) => '\0' + id
 
-/** the page modules, for the app entry: `app/pages/`, but what isn't a page (`_layout.tsx`, `_parts/`, tests) */
+/** the pages, for the app's entry: the route files of `app/routes/` that are React, but what isn't a route */
 const PAGES_GLOB = [
-  '/app/pages/**/*.{tsx,jsx,mdx}',
-  '!/app/pages/**/_*',
-  '!/app/pages/**/_*/**',
-  '!/app/pages/**/*.{test,spec}.{tsx,jsx}',
+  '/app/routes/**/*.{tsx,jsx,mdx}',
+  '!/app/routes/**/_*',
+  '!/app/routes/**/_*/**',
+  '!/app/routes/**/*.{test,spec}.{tsx,jsx}',
 ]
+/** the error page (`_error.tsx`: a page, though its name says it is no URL) */
+const ERROR_GLOB = '/app/routes/_error.{tsx,jsx}'
 /** and the layouts (`_layout.tsx`): the client puts a page in those of its directories */
-const LAYOUTS_GLOB = ['/app/pages/**/_layout.{tsx,jsx}', '!/app/pages/**/_*/**']
+const LAYOUTS_GLOB = ['/app/routes/**/_layout.{tsx,jsx}', '!/app/routes/**/_*/**']
+
+/**
+ * For the dependency scan: a page's route file as the browser gets it, its server code removed. The scan would find
+ * the server's dependencies otherwise, and bundle them for the browser.
+ */
+function scanRoutes(root: () => string): Plugin {
+  return {
+    name: 'fondu:scan-routes',
+    load: {
+      filter: { id: /\/app\/routes\/.*\.[jt]sx$/ },
+      async handler(id) {
+        const file = relative(`${root()}/app/routes`, id).split(sep).join('/')
+        if (file.startsWith('..') || !isPageFile(file)) return
+        const { code } = await transformWithOxc(readFileSync(id, 'utf8'), id, {
+          lang: id.endsWith('.jsx') ? 'jsx' : 'tsx',
+          jsx: { runtime: 'automatic' },
+        })
+        return {
+          code: stripServerCode(code, parseAst(code) as never, file),
+          moduleType: 'js',
+        }
+      },
+    },
+  }
+}
 
 /** For the dependency scan: an MDX page as the JavaScript @mdx-js/rollup makes of it (nothing without it) */
 function scanMdx(config: () => ResolvedConfig): Plugin {
@@ -118,8 +156,7 @@ export default function fondu(options: FonduOptions): PluginOption[] {
     // .mdx too: MDX pages and components get Fast Refresh (as MDX's own docs set it up)
     react({ include: /\.(?:[jt]sx?|mdx)$/, ...options.react }),
     core(options),
-    pages(),
-    vitestCache(ENTRY),
+    stripRoutes(),
     hmr(),
     loadFailure(),
     typegen(),
@@ -278,7 +315,7 @@ function core(options: FonduOptions): Plugin {
     enforce: 'pre',
     config(user, env): UserConfig {
       isBuild = env.command === 'build'
-      const client = { manifest: true, rollupOptions: { input: ENTRY } }
+      const client = { manifest: true, rollupOptions: { input: V.entry } }
       if (options.target === 'cloudflare') {
         return {
           environments: { client: { build: client } },
@@ -291,7 +328,8 @@ function core(options: FonduOptions): Plugin {
               const ignore = resolve(config.root, client.config.build.outDir, '.assetsignore')
               if (existsSync(ignore)) appendFileSync(ignore, '.vite\n')
               for (const env of Object.values(builder.environments)) {
-                if (env.name === 'client') continue
+                // the Workers (@cloudflare/vite-plugin's environments, an input each), not Vite's own `ssr`, unused
+                if (env.name === 'client' || !env.config.build.rolldownOptions?.input) continue
                 await builder.build(env)
                 const wrangler = resolve(config.root, env.config.build.outDir, 'wrangler.json')
                 if (options.prerender && existsSync(wrangler)) {
@@ -348,11 +386,20 @@ function core(options: FonduOptions): Plugin {
     },
     // dev: the dependencies are found before the first request (Vite scans index.html by default; an app has none),
     // so the first page is not reloaded once they are optimized. The scan reads JavaScript: an MDX page is compiled
-    // for it by the app's @mdx-js/rollup
+    // for it by the app's @mdx-js/rollup; the browser's, a page's route file without its server code
     configEnvironment(name, env) {
-      const pages = ['app/pages/**/*.{tsx,jsx,mdx}']
+      const pages = ['app/routes/**/*.{tsx,jsx,mdx}']
       const mdx = { extensions: ['.mdx'], rolldownOptions: { plugins: [scanMdx(() => config)] } }
-      if (name === 'client') return { optimizeDeps: { entries: [ENTRY, ...pages], ...mdx } }
+      if (name === 'client')
+        return {
+          optimizeDeps: {
+            entries: pages,
+            ...mdx,
+            rolldownOptions: {
+              plugins: [...mdx.rolldownOptions.plugins, scanRoutes(() => config.root)],
+            },
+          },
+        }
       if (options.target !== 'cloudflare') return
       // the Worker: fondu is not pre-bundled (its routes import it back: a bundle would hand them a half-loaded
       // module), so the scan does not see what it imports (HONO, react, react-dom); nor react-dom/server, imported by
@@ -367,7 +414,7 @@ function core(options: FonduOptions): Plugin {
             'react-dom',
             ...(options.ssr === false ? [] : ['react-dom/server']),
           ],
-          entries: [SERVER.slice(2), 'app/routes/**/*.ts', ENTRY, ...pages],
+          entries: [SERVER.slice(2), 'app/routes/**/*.ts', ...pages],
           ...mdx,
           rolldownOptions: { plugins: [...mdx.rolldownOptions.plugins, serverReactDomClient()] },
         },
@@ -377,14 +424,23 @@ function core(options: FonduOptions): Plugin {
     configResolved(c) {
       config = c
     },
-    // dev: the CSS the client entry imports, as a stylesheet in the document, so a server-rendered page is styled
-    // at first paint (Vite would add it only once the JS runs); removed once the entry has run
+    // dev: the CSS the layouts import (the app's own: `import './styles/app.css'` in routes/_layout.tsx), as a
+    // stylesheet in the document, so a server-rendered page is styled at first paint (Vite would add it only once the
+    // JS runs); removed once the entry has run
     configureServer(server) {
       server.middlewares.use(DEV_CSS, async (_req, res) => {
         const env = server.environments.client
         const css: string[] = []
         try {
-          await env.transformRequest('/' + ENTRY)
+          const layouts = walkFiles(resolve(config.root, 'app/routes')).filter(
+            (f) =>
+              /(?:^|\/)_layout\.[jt]sx$/.test(f) &&
+              !f
+                .split('/')
+                .slice(0, -1)
+                .some((d) => d.startsWith('_')),
+          )
+          await Promise.all(layouts.map((f) => env.transformRequest(`/app/routes/${f}`)))
           const seen = new Set<string>()
           const walk = (
             mod: { id: string | null; url: string; importedModules: Set<typeof mod> } | undefined,
@@ -394,7 +450,8 @@ function core(options: FonduOptions): Plugin {
             if (/\.(css|scss|sass|less|styl|pcss|postcss)(\?|$)/.test(mod.url)) css.push(mod.url)
             for (const m of mod.importedModules) walk(m)
           }
-          walk(env.moduleGraph.getModuleById(resolve(config.root, ENTRY)) as never)
+          for (const f of layouts)
+            walk(env.moduleGraph.getModuleById(resolve(config.root, 'app/routes', f)) as never)
           const parts = await Promise.all(
             css.map(
               async (url) =>
@@ -425,31 +482,44 @@ function core(options: FonduOptions): Plugin {
         source: '/assets/*\n  Cache-Control: public, max-age=31536000, immutable\n',
       })
     },
-    resolveId(id) {
-      if (id === V.assets || id === V.ssr) return resolved(id)
-    },
-    // the app entry, in the browser and for the server render: the page and layout modules, and whether pages are prerendered
-    // (navigations read their page objects from the static files); in dev, the page's props asked for again when
-    // what its route depends on changed (hmr.ts). Within the first line: the lines stay where they were
-    transform(code, id) {
-      if (id !== resolve(config.root, ENTRY)) return
-      const client = this.environment.config.consumer === 'client'
-      const before = [
-        `import { __entry as __fondu_entry${client && !isBuild ? ', reload as __fondu_reload' : ''} } from 'fondu/client';`,
-        `__fondu_entry(import.meta.glob(${JSON.stringify(PAGES_GLOB)}), import.meta.glob(${JSON.stringify(LAYOUTS_GLOB)}), { prerender: ${Boolean(options.prerender)} });`,
-        ...(client && !isBuild
-          ? [`import.meta.hot?.on(${JSON.stringify(PROPS_EVENT)}, () => __fondu_reload());`]
-          : []),
-      ]
-      return { code: before.join('') + code, map: null }
+    resolveId(id, importer) {
+      if (id === V.entry || id === V.assets || id === V.ssr) return resolved(id)
+      // the server-only guard, for fondu's own: `fondu` is the server's, `fondu/client` the browser's
+      if (id === 'fondu' && importer && this.environment.config.consumer === 'client')
+        this.error(
+          `fondu: ${importer.replace(config.root, '')} imports 'fondu', server code that cannot be imported by browser code: the browser's is 'fondu/client'`,
+        )
     },
     load(id) {
+      // the app's entry, in the browser and for the server render: the pages and layouts, whether pages are
+      // prerendered (navigations read their page objects from the static files), the progress bar; in dev, the
+      // page's props asked for again when what its route depends on changed (hmr.ts)
+      if (id === resolved(V.entry)) {
+        const dev = this.environment.config.consumer === 'client' && !isBuild
+        const settings = { prerender: Boolean(options.prerender), progress: options.progress ?? {} }
+        // the browser loads a page's modules when it shows the page; the server has them already (createApp's)
+        const server = this.environment.config.consumer === 'server'
+        const glob = (pattern: string | string[]) =>
+          server
+            ? `lazy(import.meta.glob(${JSON.stringify(pattern)}, { eager: true }))`
+            : `import.meta.glob(${JSON.stringify(pattern)})`
+        return [
+          `import { __entry${dev ? ', reload' : ''} } from 'fondu/client'`,
+          ...(dev ? [`import.meta.hot?.on(${JSON.stringify(PROPS_EVENT)}, () => reload())`] : []),
+          ...(server
+            ? [
+                `const lazy = (mods) => Object.fromEntries(Object.entries(mods).map(([k, m]) => [k, async () => m]))`,
+              ]
+            : []),
+          `__entry({ ...${glob(PAGES_GLOB)}, ...${glob(ERROR_GLOB)} }, ${glob(LAYOUTS_GLOB)}, ${JSON.stringify(settings)})`,
+        ].join('\n')
+      }
       // and React's static markup for a JSX document (react-dom/server: the server render's, or loaded for it)
       if (id === resolved(V.ssr))
         return options.ssr === false
           ? `export const renderPage = null\nexport const renderMarkup = async (el) => (await import('react-dom/server')).renderToStaticMarkup(el)`
           : [
-              `import '/${ENTRY}'`,
+              `import '${V.entry}'`,
               `import { renderToString, renderToStaticMarkup } from 'react-dom/server'`,
               `import { renderPage as render } from 'fondu/client'`,
               `export const renderPage = (page) => render(page, renderToString)`,
@@ -463,19 +533,22 @@ function core(options: FonduOptions): Plugin {
       // the server-only guard: browser code must never import server code
       if (this.environment.config.consumer === 'client' && isServerOnly(id, config.root)) {
         this.error(
-          `fondu: ${id.replace(config.root, '')} is server code (routes/, server.ts, *.server.ts) and cannot be imported by browser code`,
+          `fondu: ${id.replace(config.root, '')} is server code (routes/*.ts, server.ts, *.server.ts) and cannot be imported by browser code`,
         )
       }
     },
   }
 }
 
-/** `*.server.ts`, or the app's `routes/` and `server.ts` (the root's: a path above it or in a package may have them) */
+/**
+ * `*.server.ts`, or the app's `server.ts` and the `.ts` files of `routes/` (the root's: a path above it or in a package
+ * may have them). A page's route file (`.tsx`) reaches the browser without its server code (strip.ts).
+ */
 const isServerOnly = (id: string, root: string) => {
   const file = id.split('?')[0]!
   return (
     /\.server\.[cm]?[jt]sx?$/.test(file) ||
-    file.startsWith(`${root}/app/routes/`) ||
+    (file.startsWith(`${root}/app/routes/`) && file.endsWith('.ts')) ||
     file === `${root}/app/server.ts`
   )
 }
@@ -485,15 +558,15 @@ const nonceAttr = `\${nonce ? \` nonce="\${nonce}"\` : ''}`
 function devAssets(base: string): string {
   const preamble = `import RefreshRuntime from "${base}@react-refresh";RefreshRuntime.injectIntoGlobalHook(window);window.$RefreshReg$=()=>{};window.$RefreshSig$=()=>(type)=>type;window.__vite_plugin_react_preamble_installed__=true;window.__getReactRefreshIgnoredExports=({id})=>window.${PAGE_EXPORTS}?.[id]??[]`
   return `export const version = null
-export const pages = null
 export function assetTags(_component, nonce) {
   return '<link rel="stylesheet" href="${base}${DEV_CSS.slice(1)}" data-fondu-dev-css>'
-    + \`<script type="module"${nonceAttr}>${preamble}</script><script type="module" src="${base}@vite/client"${nonceAttr}></script><script type="module" src="${base}${ENTRY}"${nonceAttr}></script><script type="module"${nonceAttr}>document.querySelector('[data-fondu-dev-css]')?.remove()</script>\`
+    + \`<script type="module"${nonceAttr}>${preamble}</script><script type="module" src="${base}@vite/client"${nonceAttr}></script><script type="module" src="${base}@id/__x00__${V.entry}"${nonceAttr}></script><script type="module"${nonceAttr}>document.querySelector('[data-fondu-dev-css]')?.remove()</script>\`
 }`
 }
 
 interface ManifestChunk {
   file: string
+  isEntry?: boolean
   css?: string[]
   imports?: string[]
 }
@@ -524,26 +597,26 @@ function productionAssets(config: ResolvedConfig, options: FonduOptions): string
     collect(key, css, js)
     return { css: [...css], js: [...js] }
   }
-  const entry = tags(ENTRY)
+  // the app's entry: the client build's only one
+  const entry = tags(Object.keys(manifest).find((k) => manifest[k]!.isEntry)!)
   const pages: Record<string, { css: string[]; js: string[] }> = {}
   for (const key of Object.keys(manifest)) {
-    const m = key.match(/^app\/pages\/(.+)\.(?:[jt]sx|mdx)$/)
-    if (!m || !isPageFile(key)) continue
+    const file = key.startsWith('app/routes/') ? key.slice('app/routes/'.length) : undefined
+    if (!file || !(isPageFile(file) || /^_error\.[jt]sx$/.test(file))) continue
     // the page's chunk, and its layouts' (loaded with it)
-    const around = layoutsOf(m[1]!)
+    const around = layoutsOf(file)
       .flatMap((dir) =>
-        ['tsx', 'jsx'].map((ext) => `app/pages/${dir ? `${dir}/` : ''}_layout.${ext}`),
+        ['tsx', 'jsx'].map((ext) => `app/routes/${dir ? `${dir}/` : ''}_layout.${ext}`),
       )
       .filter((k) => k in manifest)
     const all = [...around, key].map(tags)
-    pages[m[1]!] = { css: all.flatMap((t) => t.css), js: all.flatMap((t) => t.js) }
+    pages[pageId(file)] = { css: all.flatMap((t) => t.css), js: all.flatMap((t) => t.js) }
   }
   const version = createHash('sha256').update(text).digest('hex').slice(0, 16)
   return `const base = ${JSON.stringify(config.base)}
 const entry = ${JSON.stringify(entry)}
 const byPage = ${JSON.stringify(pages)}
 export const version = ${JSON.stringify(version)}
-export const pages = ${JSON.stringify(Object.keys(pages))}
 export function assetTags(component, nonce) {
   const page = byPage[component] ?? { css: [], js: [] }
   const css = [...new Set([...entry.css, ...page.css])]

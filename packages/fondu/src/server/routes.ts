@@ -13,7 +13,7 @@ export interface RouteModule {
   prerender?: Prerender
   /** the values its params take, `{ lang: ['de', 'fr'] }`, any other not its URL (also in a `_middleware.ts`) */
   params?: Params
-  /** a `_middleware.ts`: the middleware */
+  /** a `_middleware.ts`: the middleware; a page: its component */
   default?: Handlers
   loader?: Handlers
   action?: Handlers

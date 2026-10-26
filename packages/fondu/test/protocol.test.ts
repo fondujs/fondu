@@ -31,7 +31,7 @@ describe('pages', () => {
     )
     expect(res.headers.get('content-type')).toContain('text/html')
     expect(data).toEqual({
-      component: 'home',
+      component: 'index',
       props: { app: 'test', lazy: 'computed', plain: 'value', errors: {} },
       url: '/',
       version: 'v1',
@@ -44,10 +44,20 @@ describe('pages', () => {
     expect(res.headers.get('cache-control')).toBe('private, no-cache')
     expect(res.headers.get('referrer-policy')).toBe('same-origin')
   })
-  test('a page in MDX: found like a .tsx one', async () => {
+  test('a page with no loader: a GET renders it, with the shared props', async () => {
     expect(await page(await app.request('/notes', { headers: fondu() }))).toMatchObject({
       component: 'notes',
+      props: { app: 'test', errors: {} },
     })
+  })
+  test('render(): the page of its own route file only', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    expect(await (await app.request('/wrong', { headers: html })).text()).toContain(
+      'render() renders the page of its own route file, routes/wrong',
+    )
+    expect(await (await app.request('/missing', { headers: html })).text()).toContain(
+      'this route has none',
+    )
   })
   test('a navigation: the page object as JSON', async () => {
     const res = await app.request('/', { headers: fondu() })
@@ -100,12 +110,15 @@ describe('pages', () => {
 })
 
 describe('routes', () => {
-  test('actions: ?name picks one; unknown and built-in names are 404', async () => {
+  test('actions: ?name picks one; unknown and built-in names, or none, are 404', async () => {
     const post = (q: string) =>
-      app.request(`/items?${q}`, { method: 'POST', headers: { Origin: ORIGIN } })
+      app.request(`/tasks?${q}`, { method: 'POST', headers: { Origin: ORIGIN } })
     expect(await (await post('remove')).text()).toBe('removed')
     expect((await post('nope')).status).toBe(404)
     expect((await post('constructor')).status).toBe(404)
+    expect(
+      (await app.request('/tasks', { method: 'POST', headers: { Origin: ORIGIN } })).status,
+    ).toBe(404)
   })
   test('an empty answer to a form: back to the page', async () => {
     const res = await app.request('/redirect?nothing', {
@@ -131,6 +144,21 @@ describe('routes', () => {
     expect(
       (await app.request('/redirect?away', { method: 'POST', headers: { Origin: ORIGIN } })).status,
     ).toBe(302)
+  })
+  test('a redirect to a #fragment: X-Fondu-Redirect for a navigation (fetch() loses it), as it is otherwise', async () => {
+    const navigation = await app.request('/redirect?fragment', {
+      method: 'POST',
+      headers: { ...fondu(), Origin: ORIGIN },
+    })
+    expect([navigation.status, navigation.headers.get('x-fondu-redirect')]).toEqual([
+      200,
+      '/notes#end',
+    ])
+    const res = await app.request('/redirect?fragment', {
+      method: 'POST',
+      headers: { Origin: ORIGIN },
+    })
+    expect([res.status, res.headers.get('location')]).toEqual([303, '/notes#end'])
   })
   test('trailing slash: trimmed (Hono), the redirect stays on this site', async () => {
     const res = await app.request('/items/?x=1', { headers: html })
@@ -220,11 +248,11 @@ describe('errors', () => {
     const navigation = await app.request('/nope', { headers: fondu() })
     expect(navigation.status).toBe(404)
     expect(await page(navigation)).toMatchObject({
-      component: 'error',
+      component: '_error',
       props: { status: 404, app: 'test' },
     })
     const doc = await app.request('/nope', { headers: html })
-    expect([doc.status, (await doc.text()).includes('"component":"error"')]).toEqual([404, true])
+    expect([doc.status, (await doc.text()).includes('"component":"_error"')]).toEqual([404, true])
     const api = await app.request('/nope')
     expect([api.status, await api.text()]).toEqual([404, 'Not Found'])
   })
@@ -244,20 +272,9 @@ describe('errors', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
     vi.stubEnv('DEV', false)
     expect(await page(await app.request('/boom', { headers: fondu() }))).toMatchObject({
-      component: 'error',
+      component: '_error',
       props: { status: 500 },
     })
-  })
-  test('a page that does not exist: said so, with the file to create', async () => {
-    vi.spyOn(console, 'error').mockImplementation(() => {})
-    expect(await (await app.request('/missing', { headers: html })).text()).toContain(
-      'create app/pages/nope.tsx',
-    )
-  })
-  test('errorPage: false: plain text', async () => {
-    expect(
-      await (await createApp({ errorPage: false }).request('/nope', { headers: html })).text(),
-    ).toBe('Not Found')
   })
 })
 

@@ -2,15 +2,13 @@
 declare module 'virtual:fondu/assets' {
   /** client asset version (production builds); a navigation from other assets loads as a document */
   export const version: string | null
-  /** the page names of a build (from the client manifest); null in development */
-  export const pages: string[] | null
   /** `fondu({ prerender: true })`: page objects of pages without a static file are answered (`/_fondu/pages/…`) */
   export const prerender: boolean
   /** the `<head>` tags a page needs: the client entry and its styles, the page component's chunk */
   export function assetTags(component: string, nonce?: string): string
 }
 declare module 'virtual:fondu/ssr' {
-  /** the app (`app/app.tsx`) rendering a page on the server (null: `fondu({ ssr: false })`) */
+  /** the server render of a page (null: `fondu({ ssr: false })`) */
   export const renderPage:
     | ((page: import('./client/navigation.js').Page) => Promise<{ head: string; body: string }>)
     | null

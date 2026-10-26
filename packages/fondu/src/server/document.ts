@@ -27,10 +27,7 @@ const defaultTemplate: DocumentTemplate = ({ head, body }) =>
   `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${head}</head><body>${body}</body></html>`
 
 /** the options of the app (`createApp`) a request belongs to */
-export const settings = new WeakMap<
-  Context,
-  { document?: DocumentTemplate; errorPage: string | false }
->()
+export const settings = new WeakMap<Context, { document?: DocumentTemplate; errorPage: boolean }>()
 
 const browserOnly = new WeakSet<Context>()
 

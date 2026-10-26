@@ -1,7 +1,7 @@
 /**
  * `routes/` file → its URL patterns (Hono syntax). Shared by the runtime (`createApp`) and the type generator.
  *
- * - `index.ts` is its directory: `routes/users/index.ts` → `/users`
+ * - `index.ts` (or `.tsx`, `.mdx`) is its directory: `routes/users/index.ts` → `/users`
  * - `[id]` → `:id`, `[...path]` → `:path{.+}` (one or more segments)
  * - `[[lang]]`, an optional segment: two patterns, without it and with it (`/about`, `/:lang/about`), as Hono takes
  *   an optional param only at the end of a path. One per route.
@@ -10,7 +10,7 @@
  */
 export function routePatterns(file: string): string[] {
   const segments = file
-    .replace(/\.ts$/, '')
+    .replace(ROUTE_EXTENSION, '')
     .split('/')
     .filter((s) => s !== '' && s !== 'index' && !/^\(.+\)$/.test(s))
   const optional = segments.filter((s) => /^\[\[(?:\.\.\.)?\w+\]\]$/.test(s))
@@ -34,29 +34,29 @@ export function routePatterns(file: string): string[] {
   return optional.length ? [pattern(false), pattern(true)] : [pattern(true)]
 }
 
-/** a path inside `routes/` that is a route file: every `.ts` file but `_middleware.ts`, tests and declarations */
-export function isRouteFile(file: string): boolean {
-  return (
-    file.endsWith('.ts') &&
-    !file.endsWith('.d.ts') &&
-    !/\.(test|spec)\.ts$/.test(file) &&
-    file.split('/').at(-1) !== '_middleware.ts'
-  )
-}
+const ROUTE_EXTENSION = /\.(?:ts|[jt]sx|mdx)$/
 
 /**
- * a path inside `pages/` that is a page: a .tsx, .jsx or .mdx file but tests (as for routes), neither its name nor a
- * directory on its path starting with `_` (`_layout.tsx`, `_parts/badge.tsx`)
+ * a path inside `routes/` that is a route file: `.ts` (server code: handlers) or `.tsx`, `.jsx`, `.mdx` (a page), but
+ * tests and declarations, and neither its name nor a directory on its path starting with `_` (`_middleware.ts`,
+ * `_layout.tsx`, `_parts/badge.tsx`)
  */
-export function isPageFile(file: string): boolean {
+export function isRouteFile(file: string): boolean {
   return (
-    /\.(?:[jt]sx|mdx)$/.test(file) &&
-    !/\.(?:test|spec)\.[jt]sx$/.test(file) &&
+    ROUTE_EXTENSION.test(file) &&
+    !file.endsWith('.d.ts') &&
+    !/\.(?:test|spec)\.(?:ts|[jt]sx)$/.test(file) &&
     !file.split('/').some((s) => s.startsWith('_'))
   )
 }
 
-/** the directories of `pages/` whose `_layout.tsx` wraps a page, outermost first: `docs/intro.mdx` → `['', 'docs']` */
+/** a route file that is a page (React: `.tsx`, `.jsx`, `.mdx`), not server code only (`.ts`) */
+export const isPageFile = (file: string) => isRouteFile(file) && !file.endsWith('.ts')
+
+/** a page's id, its route file without the extension: `users/[id].tsx` → `users/[id]` (the client's name for it) */
+export const pageId = (file: string) => file.replace(ROUTE_EXTENSION, '')
+
+/** the directories of `routes/` whose `_layout.tsx` wraps a page, outermost first: `docs/intro.mdx` → `['', 'docs']` */
 export function layoutsOf(file: string): string[] {
   const dirs = file.split('/').slice(0, -1)
   return ['', ...dirs.map((_, i) => dirs.slice(0, i + 1).join('/'))]

@@ -1,10 +1,10 @@
 /// <reference path="../virtual.d.ts" />
 import type { Context, MiddlewareHandler } from 'hono'
-import { pages, version } from 'virtual:fondu/assets'
+import type { Component, ReactNode } from 'react'
+import { version } from 'virtual:fondu/assets'
 
 import type { Page } from '../client/navigation.js'
-import { isPageFile } from '../paths.js'
-import type { Pages, Shared } from '../types.js'
+import type { Shared } from '../types.js'
 import { renderDocument } from './document.js'
 import { flashCookie, takeCarried } from './flash.js'
 import { back, isPageRequest, sameOrigin } from './http.js'
@@ -25,14 +25,10 @@ export function share(c: Context, props: Shareable<Shared>) {
 
 // ---- render
 
-type PageName = [keyof Pages] extends [never] ? string : Extract<keyof Pages, string>
-type ComponentProps<N> = N extends keyof Pages
-  ? Pages[N] extends { default: (...args: infer A) => unknown }
-    ? A extends [infer P, ...unknown[]]
-      ? P
-      : Record<string, never>
-    : Record<string, unknown>
-  : Record<string, unknown>
+/** a page: a component, its props what it receives (a function component, or a class one) */
+type PageComponent<P> =
+  | ((props: P) => ReactNode | Promise<ReactNode>)
+  | (new (props: P) => Component<P>)
 /** the props a page names: not an index signature (a page without props takes `Record<string, never>`) */
 type Named<P> = keyof {
   [K in keyof P as string extends K ? never : number extends K ? never : K]: 0
@@ -47,12 +43,9 @@ type Clashing<P> = string extends keyof Shared
   : Exclude<Named<P> & keyof Shared, FromShared<P>>
 type ClashError = 'fondu: this page prop has the name of a shared prop (share()); rename it'
 /** what `render` takes: the component's props, less `errors` and the shared props it gets anyway (may still be given) */
-type OwnProps<N> = Omit<
-  ComponentProps<N>,
-  FromShared<ComponentProps<N>> | Clashing<ComponentProps<N>> | 'errors'
-> &
-  Partial<Pick<ComponentProps<N>, FromShared<ComponentProps<N>>>> & {
-    [K in Clashing<ComponentProps<N>>]: ClashError
+type OwnProps<P> = Omit<P, FromShared<P> | Clashing<P> | 'errors'> &
+  Partial<Pick<P, FromShared<P>>> & {
+    [K in Clashing<P>]: ClashError
   }
 
 // ---- props as JSON delivers them: a page's prop types are what it receives; `render` takes what becomes that
@@ -112,21 +105,27 @@ type RequiredKeys<T> = { [K in keyof T]-?: object extends Pick<T, K> ? never : K
 export interface RenderOptions {
   status?: number
 }
-type RenderArgs<N> = [RequiredKeys<OwnProps<N>>] extends [never]
-  ? OptionalArgs<N>
-  : string extends keyof OwnProps<N>
-    ? OptionalArgs<N>
-    : RequiredArgs<N>
-type OptionalArgs<N> = [props?: Delivered<OwnProps<N>>, options?: RenderOptions]
-type RequiredArgs<N> = [props: Delivered<OwnProps<N>>, options?: RenderOptions]
+// a page with no props of its own (none at all: P is inferred as `object`) takes none
+type RenderArgs<P> = [keyof OwnProps<P>] extends [never]
+  ? [props?: Record<string, never>, options?: RenderOptions]
+  : [RequiredKeys<OwnProps<P>>] extends [never]
+    ? OptionalArgs<P>
+    : string extends keyof OwnProps<P>
+      ? OptionalArgs<P>
+      : RequiredArgs<P>
+type OptionalArgs<P> = [props?: Delivered<OwnProps<P>>, options?: RenderOptions]
+type RequiredArgs<P> = [props: Delivered<OwnProps<P>>, options?: RenderOptions]
 
-// development: the files in app/pages/ (Vite keeps the list current); a build: the pages in the client manifest
-const devPages = import.meta.env.DEV ? import.meta.glob('/app/pages/**/*.{tsx,jsx,mdx}') : {}
-export const hasPage = (name: string) =>
-  pages
-    ? pages.includes(name)
-    : isPageFile(`${name}.tsx`) &&
-      ['tsx', 'jsx', 'mdx'].some((ext) => `/app/pages/${name}.${ext}` in devPages)
+// the pages of app/routes/ (createApp): a component → its id; and, per request, the page of the route answering it
+const pageIds = new WeakMap<object, string>()
+const ownPages = new WeakMap<Context, string>()
+export const registerPage = (component: object, id: string) => pageIds.set(component, id)
+export const routePage =
+  (id: string): MiddlewareHandler =>
+  async (c, next) => {
+    ownPages.set(c, id)
+    await next()
+  }
 
 /** This URL as the page's: the request's for a GET, the page the request came from otherwise. */
 function pageUrl(c: Context): string {
@@ -136,25 +135,41 @@ function pageUrl(c: Context): string {
 }
 
 /**
- * The page `component` (a file in `pages/`, without extension) with these props: JSON for a navigation, the HTML
- * document (server-rendered) otherwise. Props are checked against the component's own props.
+ * The route file's page (its default export) with these props: JSON for a navigation, the HTML document
+ * (server-rendered) otherwise. Props are checked against the component's own, as JSON delivers them.
  */
-export async function render<N extends PageName>(
+export function render<P extends object>(
   c: Context,
-  component: N,
-  ...[props = {} as Delivered<OwnProps<N>>, options = {}]: RenderArgs<N>
+  page: PageComponent<P>,
+  ...[props = {} as Delivered<OwnProps<P>>, options = {}]: RenderArgs<P>
 ): Promise<Response> {
-  if (!hasPage(component))
+  const id = pageIds.get(page)
+  const own = ownPages.get(c)
+  if (!id || id !== own)
     throw new Error(
-      `fondu: there is no page "${component}": create app/pages/${component}.tsx (or .mdx)`,
+      own
+        ? `fondu: render() renders the page of its own route file, routes/${own}: its default export`
+        : 'fondu: render() renders the page of its route file (a .tsx or .mdx file, its default export); this route has none',
     )
+  return renderPage(c, id, props as Record<string, unknown>, options)
+}
+
+/** @internal the page `id` (a route file without its extension) with these props: `render()`, the error page */
+export async function renderPage(
+  c: Context,
+  id: string,
+  props: Record<string, unknown>,
+  options: RenderOptions = {},
+): Promise<Response> {
   const carried = takeCarried(c)
-  const own = Object.entries(shared.get(c) ?? {})
   const fromShared = await Promise.all(
-    own.map(async ([key, value]) => [key, typeof value === 'function' ? await value() : value]),
+    Object.entries(shared.get(c) ?? {}).map(async ([key, value]) => [
+      key,
+      typeof value === 'function' ? await value() : value,
+    ]),
   )
   const page: Page = {
-    component,
+    component: id,
     props: { ...Object.fromEntries(fromShared), ...props, errors: carried.errors },
     url: pageUrl(c),
     version: version ?? null,
@@ -193,6 +208,10 @@ const versionCheck: MiddlewareHandler = async (c, next) => {
     (await c.res.clone().text()) === ''
   )
     c.res = back(c)
+  // a redirect to a #fragment: fetch() follows it, the fragment lost (a Response's URL has none); the client follows
+  const to = c.res.headers.get('location')
+  if (isPageRequest(c) && c.res.status >= 300 && c.res.status < 400 && to?.includes('#'))
+    c.res = c.body(null, 200, { 'X-Fondu-Redirect': to })
 }
 
 export const protocol: MiddlewareHandler[] = [flashCookie, versionCheck]
