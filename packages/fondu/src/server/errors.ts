@@ -47,7 +47,10 @@ export async function errorResponse(
 
 const escape = (s: string) => s.replace(/[&<>"']/g, (ch) => `&#${ch.charCodeAt(0)};`)
 
-/** the development error report: what failed, where (your files first), for which request */
+/**
+ * the development error report: what failed, where (your files first), for which request; reloaded once an edit is
+ * saved (Vite's client, as the app's pages have it)
+ */
 function report(c: Context, error: unknown): string {
   const err = error instanceof Error ? error : new Error(String(error))
   const frames = (err.stack ?? '')
@@ -61,7 +64,7 @@ function report(c: Context, error: unknown): string {
     const own = /\/app\//.test(line) && !line.includes('node_modules')
     return `<li class="${own ? 'own' : ''}">${escape(line.replace(/^at /, ''))}</li>`
   }
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escape(err.name)}: ${escape(err.message)}</title>
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Something went wrong</title>
 <style${nonce ? ` nonce="${nonce}"` : ''}>
 *{box-sizing:border-box}body{margin:0;padding:clamp(16px,6vw,80px);font:14px/1.55 ui-sans-serif,system-ui,sans-serif;color:#1f2328;background:#f9f9f9;--x:clamp(16px,4vw,32px)}
 article{background:#fff;border:1px solid #eaecef;border-radius:6px;overflow:hidden}
@@ -79,5 +82,12 @@ footer{padding:0 var(--x) 24px;color:#afb8c1;font-size:12px;font-weight:400}
 <p class="req"><b>${escape(c.req.method)}</b> ${escape(url.pathname + url.search)}${c.req.header('x-fondu') ? ' · navigation' : ''}</p></header>
 <main><h2>Stack — your files are highlighted</h2><ol>${frames.map(frame).join('')}</ol></main>
 <footer>Shown in development only. In production this request gets your error page with status 500.</footer>
-</article></body></html>`
+</article>
+<script type="module"${nonce ? ` nonce="${nonce}"` : ''}>
+import { createHotContext } from '${import.meta.env.BASE_URL}@vite/client'
+// fixed and saved: the page again (what the edit reached, a route or the browser's code)
+const hot = createHotContext('/@fondu/error-report')
+hot.on('fondu:props', () => location.reload())
+hot.on('vite:afterUpdate', () => location.reload())
+</script></body></html>`
 }
