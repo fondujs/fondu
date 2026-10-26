@@ -1,8 +1,7 @@
 import { back, defineHandler, flash, render } from 'fondu'
 import { href } from 'fondu/client'
 
-import { DemoCard, Title } from '#/components/demo.tsx'
-import { Button } from '#/components/ui/button.tsx'
+import { DemoCard, SubmitButton, Title } from '#/components/demo.tsx'
 
 export const loader = defineHandler((c) =>
   render(c, Redirects, { visitedAt: new Date().toISOString().slice(11, 23) }),
@@ -26,9 +25,7 @@ export const actions = {
 
 const Action = ({ to, label, id }: { to: string; label: string; id: string }) => (
   <form action={to} method="post">
-    <Button type="submit" data-testid={id}>
-      {label}
-    </Button>
+    <SubmitButton data-testid={id}>{label}</SubmitButton>
   </form>
 )
 

@@ -14,7 +14,7 @@ import {
 import { flushSync } from 'react-dom'
 import { createRoot, hydrateRoot } from 'react-dom/client'
 
-import { layoutsOf, pageId } from '../paths.js'
+import { layoutsOf, pageId, routePatterns } from '../paths.js'
 import type { Flash, Shared } from '../types.js'
 import { again, startNavigation, type Page } from './navigation.js'
 import { progressBar, type ProgressOptions } from './progress.js'
@@ -85,16 +85,46 @@ function App({ initial }: { initial: Shown }): ReactElement {
   return createElement(PageContext.Provider, { value: page }, content)
 }
 
+/**
+ * @internal The page a URL most likely is, by its route file's patterns (static segments first): its modules load with its
+ * data. Only a guess (a param's listed values are the server's), so the page shown is the one the server says.
+ */
+export function pageAt(pathname: string): string | undefined {
+  const parts = pathname.split('/').filter(Boolean)
+  let best: { id: string; score: number } | undefined
+  for (const id of pages.keys()) {
+    if (id.split('/').some((s) => s.startsWith('_'))) continue
+    for (const pattern of routePatterns(id)) {
+      const segments = pattern.split('/').filter(Boolean)
+      let score = 0
+      let i = 0
+      for (const s of segments) {
+        const part = parts[i]
+        if (part === undefined) score = -1
+        else if (s.endsWith('{.+}')) score += 1 // a catch-all: the rest
+        else if (s.startsWith(':')) score += 2
+        else score += s === part ? 3 : -Infinity
+        i = s.endsWith('{.+}') ? parts.length : i + 1
+        if (score < 0) break
+      }
+      if (score >= 0 && i === parts.length && (!best || score > best.score)) best = { id, score }
+    }
+  }
+  return best?.id
+}
+
 // ---- pending navigations, for useNavigating()
 
 let navigating = false
+let submitting = false
 const listeners = new Set<() => void>()
 const subscribe = (listener: () => void) => {
   listeners.add(listener)
   return () => listeners.delete(listener)
 }
-function setNavigating(value: boolean) {
+function setNavigating(value: boolean, form: boolean) {
   navigating = value
+  submitting = form
   for (const l of listeners) l()
 }
 
@@ -102,7 +132,9 @@ function setNavigating(value: boolean) {
 
 /** the browser's app: the server's page hydrated, then navigations */
 function start(settings: { prerender: boolean; progress: ProgressOptions | false }) {
-  if (settings.progress) subscribe(progressBar(settings.progress, () => navigating))
+  const progress = settings.progress
+  if (progress)
+    subscribe(progressBar(progress, () => navigating && (progress.forms !== false || !submitting)))
   const data = document.querySelector('script[data-page="app"]')?.textContent
   const root = document.getElementById('app')
   if (!data || !root)
@@ -119,6 +151,10 @@ function start(settings: { prerender: boolean; progress: ProgressOptions | false
         initial,
         prerender: settings.prerender,
         pending: setNavigating,
+        preload(pathname) {
+          const page = pageAt(pathname)
+          if (page) load(page).catch(() => {})
+        },
         async show(page, fresh) {
           const view = await load(page.component)
           flushSync(() => set((now) => ({ page, view, mounts: now.mounts + Number(fresh) })))

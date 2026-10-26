@@ -1,13 +1,6 @@
 import { href, useNavigating, usePage } from 'fondu/client'
 import { InfoIcon } from 'lucide-react'
-import {
-  useEffect,
-  useRef,
-  useState,
-  useSyncExternalStore,
-  type HTMLAttributes,
-  type ReactNode,
-} from 'react'
+import { useEffect, useRef, useSyncExternalStore, type HTMLAttributes, type ReactNode } from 'react'
 
 import { Alert, AlertDescription } from '#/components/ui/alert.tsx'
 import { Badge } from '#/components/ui/badge.tsx'
@@ -116,26 +109,29 @@ export function TextField({
  * too). When the answer comes back with errors, the first field to fix gets the focus. For a request of the page's
  * own (fetch), pass `processing`.
  */
-export function SubmitButton({ processing, ...props }: ButtonProps & { processing?: boolean }) {
+/** whether a form is being sent: Fondu's client marks it `aria-busy` while it is */
+export function useSending(form: () => HTMLFormElement | null | undefined): boolean {
   const navigating = useNavigating()
-  const { errors } = usePage().props
-  const [sent, setSent] = useState(false)
+  return navigating && form()?.getAttribute('aria-busy') === 'true'
+}
+
+export function SubmitButton({ processing, ...props }: ButtonProps & { processing?: boolean }) {
   const ref = useRef<HTMLButtonElement>(null)
-  // the answer is on the screen: the focus to the first field to fix
+  const sending = useSending(() => ref.current?.form)
+  const sent = useRef(false)
+  const { errors } = usePage().props
+  // the answer to this form is on the screen: the focus to the first field to fix
   useEffect(() => {
-    if (navigating || !sent || !Object.keys(errors).length) return
-    ref.current?.form?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus()
-  }, [sent, navigating, errors])
-  return (
-    <Button
-      ref={ref}
-      type="submit"
-      loading={processing ?? (sent && navigating)}
-      onClick={() => setSent(true)}
-      onBlur={() => setSent(false)}
-      {...props}
-    />
-  )
+    if (sending) {
+      sent.current = true
+      return
+    }
+    if (!sent.current) return
+    sent.current = false
+    if (Object.keys(errors).length)
+      ref.current?.form?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus()
+  }, [sending, errors])
+  return <Button ref={ref} type="submit" loading={processing ?? sending} {...props} />
 }
 
 /** For guests, in place of forms whose actions need an account (requireUser): the way in, and back here */

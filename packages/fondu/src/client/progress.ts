@@ -1,9 +1,11 @@
 /** `fondu({ progress })`: the bar at the top of the page while a navigation or a form's submission is on its way */
 export interface ProgressOptions {
-  /** how long a navigation runs before the bar shows, in ms (a quick one shows none); default 250 */
+  /** how long a navigation runs before the bar shows, in ms (a quick one shows none); default 350 */
   delay?: number
   /** the bar's color, any CSS color (`var(--brand)`); default the page's text color (`currentColor`) */
   color?: string
+  /** for forms' submissions too; default true (`false`: their buttons show it, with the form's `aria-busy`) */
+  forms?: boolean
 }
 
 /**
@@ -13,7 +15,7 @@ export interface ProgressOptions {
  * is the app's way to say it in its own words. With reduced motion, a still bar.
  */
 export function progressBar(
-  { delay = 250, color = 'currentColor' }: ProgressOptions,
+  { delay = 350, color = 'currentColor' }: ProgressOptions,
   pending: () => boolean,
 ): () => void {
   const still = matchMedia('(prefers-reduced-motion: reduce)')

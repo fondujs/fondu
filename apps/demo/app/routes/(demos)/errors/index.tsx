@@ -1,8 +1,7 @@
 import { defineHandler } from 'fondu'
 import { href } from 'fondu/client'
 
-import { DemoCard, Title } from '#/components/demo.tsx'
-import { Button } from '#/components/ui/button.tsx'
+import { DemoCard, SubmitButton, Title } from '#/components/demo.tsx'
 
 export const actions = {
   // POST /errors?fail
@@ -48,14 +47,14 @@ export default function Errors() {
             ))}
           </ul>
           <form action={href('/errors?fail')} method="post" className="mt-4">
-            <Button type="submit" variant="outline" data-testid="action-fail">
+            <SubmitButton variant="outline" data-testid="action-fail">
               An action that throws
-            </Button>
+            </SubmitButton>
           </form>
           <form action={href('/errors/:kind', { kind: 'proxy' })} method="post" className="mt-4">
-            <Button type="submit" variant="outline" data-testid="action-proxy">
+            <SubmitButton variant="outline" data-testid="action-proxy">
               A form, a proxy answers
-            </Button>{' '}
+            </SubmitButton>{' '}
             <Status>502</Status>
           </form>
         </DemoCard>

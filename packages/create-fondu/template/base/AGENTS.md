@@ -33,8 +33,8 @@ swaps the page in place (the browser's Navigation API; without it, a page load).
   typed after `app/routes/`). A form's errors: the page's `errors` prop. From `fondu/client` too: `usePage()` (props,
   shared props, `url`, `flash`), `useNavigating()` (pending UI), `reload()` (the props again). In code,
   `location.assign(href(…))` navigates as a link would; `loadDocument(href(…))` loads a document instead. A
-  progress bar shows during slow navigations: `fondu({ progress: { color, delay } })` in `vite.config.ts`, or
-  `progress: false`.
+  progress bar shows during slow navigations: `fondu({ progress: { color, delay, forms } })` in `vite.config.ts`,
+  or `progress: false`. A form being sent has `aria-busy="true"`: its submit button's pending state.
 - The head: a page renders `<title>` and `<meta>` where it likes; React puts them in `<head>`. A title is one string:
   ``<title>{`${user.name} · Fondu`}</title>``.
 - Server-only code: the `.ts` files of `app/routes/`, `app/server.ts`, files named `*.server.ts`, and `fondu`

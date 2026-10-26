@@ -44,9 +44,10 @@ Links are `<a href>`, forms `<form method="post">`, with URLs from [`href()`](/d
 - Back and Forward fetch the page again, as a link does, and scroll it where it was left.
 - An answer that isn't a page (a file, a proxy's error, a redirect to another site) is shown as the browser would
   show it.
-- A navigation that takes a while shows a progress bar at the top of the page: `fondu({ progress: { color, delay } })`
-  in `vite.config.ts` sets its color (the page's text color by default) and how long a navigation runs before it
-  shows (250 ms); `progress: false` leaves it out, for your own with `useNavigating()`.
+- A navigation that takes a while shows a progress bar at the top of the page: `fondu({ progress: { color, delay,
+forms } })` in `vite.config.ts` sets its color (the page's text color by default), how long a navigation runs before
+  it shows (350 ms), and whether forms' submissions show it too (`forms: false` when their buttons do);
+  `progress: false` leaves it out, for your own with `useNavigating()`.
 
 From `fondu/client`:
 

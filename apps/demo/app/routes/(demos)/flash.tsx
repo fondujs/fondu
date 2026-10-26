@@ -2,7 +2,7 @@ import { back, defineHandler, flash } from 'fondu'
 import { href, reload, usePage } from 'fondu/client'
 import * as z from 'zod/mini'
 
-import { DemoCard, Json, Title } from '#/components/demo.tsx'
+import { DemoCard, Json, SubmitButton, Title } from '#/components/demo.tsx'
 import { Button } from '#/components/ui/button.tsx'
 import { cn } from '#/lib/utils.ts'
 
@@ -46,14 +46,12 @@ export default function Flash() {
           </p>
           <div className="flex flex-wrap gap-2">
             <form action={href('/flash?saved')} method="post">
-              <Button type="submit" data-testid="flash-saved">
-                Save
-              </Button>
+              <SubmitButton data-testid="flash-saved">Save</SubmitButton>
             </form>
             <form action={href('/flash?failed')} method="post">
-              <Button type="submit" variant="outline" data-testid="flash-failed">
+              <SubmitButton variant="outline" data-testid="flash-failed">
                 Fail
-              </Button>
+              </SubmitButton>
             </form>
           </div>
         </DemoCard>
@@ -62,10 +60,10 @@ export default function Flash() {
             {(Object.keys(colors) as Array<keyof typeof colors>).map((color) => (
               <form key={color} action={href('/flash?pick')} method="post">
                 <input type="hidden" name="color" value={color} />
-                <Button type="submit" variant="outline" data-testid={`pick-${color}`}>
+                <SubmitButton variant="outline" data-testid={`pick-${color}`}>
                   <span className={cn('size-3 rounded-full', colors[color])} aria-hidden />
                   {color}
-                </Button>
+                </SubmitButton>
               </form>
             ))}
           </div>
