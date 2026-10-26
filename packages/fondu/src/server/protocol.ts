@@ -7,7 +7,7 @@ import type { Page } from '../client/navigation.js'
 import type { Shared } from '../types.js'
 import { renderDocument } from './document.js'
 import { flashCookie, takeCarried } from './flash.js'
-import { back, isPageRequest, sameOrigin } from './http.js'
+import { appendHeader, back, isPageRequest, sameOrigin } from './http.js'
 
 /**
  * Fondu's protocol: a document gets the HTML page, a navigation of fondu/client (`X-Fondu`) the page as JSON.
@@ -210,7 +210,7 @@ const versionCheck: MiddlewareHandler = async (c, next) => {
   }
   await next()
   // a URL answers a navigation and a document differently: caches keep them apart
-  c.header('Vary', 'X-Fondu', { append: true })
+  appendHeader(c, 'Vary', 'X-Fondu')
   // an empty answer to a form (an action that returns nothing to show): back to the page
   if (
     isPageRequest(c) &&

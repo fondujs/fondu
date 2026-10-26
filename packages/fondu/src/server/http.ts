@@ -23,3 +23,16 @@ export const back = (c: Context, fallback = '/') => {
   const from = sameOrigin(c, c.req.header('referer'))
   return c.redirect(from ? from.pathname.replace(/^\/+/, '/') + from.search : fallback, 303)
 }
+
+/**
+ * A header added to the response a handler returned. Hono's `c.header()` would copy that response first, and on Bun
+ * the copy of `new Response('text')` (`c.text()`) has no Content-Type: browsers download it. Its own headers, then,
+ * unless they can't change (a `fetch()`'s): the copy.
+ */
+export function appendHeader(c: Context, name: string, value: string) {
+  try {
+    c.res.headers.append(name, value)
+  } catch {
+    c.header(name, value, { append: true })
+  }
+}
