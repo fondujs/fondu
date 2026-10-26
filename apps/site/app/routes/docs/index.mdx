@@ -19,10 +19,9 @@ export default function Show({ user }: { user: User }) {
 ```
 
 The first request gets the page rendered on the server. From then on, links and forms are plain `<a>` and `<form>`:
-Fondu's client, on the browser's [Navigation API](https://developer.mozilla.org/en-US/docs/Web/API/Navigation_API),
-asks the same route for the next page and its props as JSON, and React swaps the page in place. There is no API to
-write for your pages and no client-side router to keep in sync with the server: the routes are the only router.
-Without the Navigation API, links and forms load documents, and everything still works.
+Fondu's client asks the same route for the next page and its props as JSON, and React swaps the page in place. There
+is no API to write for your pages and no client-side router to keep in sync with the server: the routes are the only
+router.
 
 ## Who does what
 

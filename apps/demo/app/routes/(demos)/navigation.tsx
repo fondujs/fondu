@@ -20,9 +20,9 @@ export default function Navigation({ servedAt }: { servedAt: string }) {
       <Title>Navigation</Title>
       <h1>Navigation</h1>
       <p className="lede">
-        A link or a form is a fetch of the next page as JSON, through the browser&apos;s Navigation
-        API; the page is swapped in place, the layout and its state stay mounted. Without the
-        Navigation API, links and forms load documents. Served at{' '}
+        A link or a form is a fetch of the next page as JSON; the page is swapped in place, the
+        layout and its state stay mounted, and Back and Forward return where each page was scrolled.
+        Served at{' '}
         <span className="font-mono" data-testid="served-at">
           {servedAt}
         </span>

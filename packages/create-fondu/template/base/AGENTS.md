@@ -2,7 +2,7 @@
 
 This is a Fondu app: React pages, a Hono server, built with Vite. There is no client-side router and no API layer for
 pages: a route's loader renders its page with props; links and forms are plain `<a>` and `<form>`, and Fondu's client
-swaps the page in place (the browser's Navigation API; without it, a page load).
+swaps the page in place (the History API); Back and Forward restore the scroll position.
 
 - `app/routes/`: the file path is the URL: `index.tsx` is `/`, `users/[id].tsx` is `/users/:id`,
   `api/[...rest].ts` a catch-all, `[[lang]]/about.tsx` both `/about` and `/:lang/about` (an optional segment;
