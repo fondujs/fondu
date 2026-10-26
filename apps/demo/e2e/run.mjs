@@ -621,13 +621,21 @@ ok('a link to the same page mounts it anew', (await testid('clicks')) === '0')
   docs.length = 0
   await page.goBack()
   await h1('Navigation')
-  await sleep(300)
+  const atOnce = await testid('served-at')
+  await page
+    .waitForFunction(
+      (s) => document.querySelector('[data-testid=served-at]').textContent !== s,
+      { timeout: 5000 },
+      served,
+    )
+    .catch(() => {})
   ok(
-    "Back: the server's page again, no document (the scroll position: below)",
-    (await testid('served-at')) !== served &&
+    "Back: the page as it was at once, then the server's in its place, no document",
+    atOnce === served &&
+      (await testid('served-at')) !== served &&
       fetches.some((f) => f.url.startsWith('/navigation')) &&
       docs.length === 0,
-    JSON.stringify({ served, fetches, docs }),
+    JSON.stringify({ atOnce, served, docs }),
   )
 }
 
