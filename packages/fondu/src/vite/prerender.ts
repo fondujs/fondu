@@ -195,8 +195,20 @@ export const worker = (root: string, workerConfig: string) => async (): Promise<
   })
   await started.ready
   return {
-    fetch: (path, headers = {}) =>
-      started.fetch(new URL(path, 'http://localhost').href, { headers, redirect: 'manual' }),
+    // a Worker that throws as it starts: wrangler logs it, then its requests never answer
+    fetch: (path, headers = {}) => {
+      let timer: ReturnType<typeof setTimeout> | undefined
+      const late = new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error(`the Worker did not answer ${path} (an error above?)`)),
+          60_000,
+        )
+      })
+      return Promise.race([
+        started.fetch(new URL(path, 'http://localhost').href, { headers, redirect: 'manual' }),
+        late,
+      ]).finally(() => clearTimeout(timer))
+    },
     dispose: () => started.dispose(),
   }
 }
