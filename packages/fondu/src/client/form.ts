@@ -118,7 +118,8 @@ export function useForm(schema?: Schema): {
       const before = now.for === from ? now.own : {}
       const next: Record<string, string | undefined> = { ...before }
       const covered = (k: string) => key === undefined || within(key, k)
-      for (const k of [...Object.keys(before), ...Object.keys(from)])
+      // a field's check settles the server's error too; the whole form's, what it can say (not a taken address)
+      for (const k of [...Object.keys(before), ...(key === undefined ? [] : Object.keys(from))])
         if (covered(k)) next[k] = undefined
       for (const [k, m] of Object.entries(found)) if (covered(k)) next[k] = m
       return { for: from, own: next }
