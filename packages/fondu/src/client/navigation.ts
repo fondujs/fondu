@@ -101,12 +101,18 @@ export function startNavigation({ initial, show, prerender, pending, preload }: 
           announce()
           restore(options.scroll, url.hash)
         }
-        const response = await fetch(from, {
+        let response = await fetch(from, {
           method: post ? 'POST' : 'GET',
           body: options.body,
           headers: headers(),
           signal,
         })
+        // no page object (prerender): the URL may be a file of the site, not a page (/llms.txt), so it is asked for
+        // itself; a page (a 404 one too) comes back as one, anything else is loaded as a document below
+        if (from !== url.pathname + url.search && response.status === 404) {
+          void response.body?.cancel()
+          response = await fetch(url.pathname + url.search, { headers: headers(), signal })
+        }
         if (signal.aborted) return
         if (post) kept.clear()
         // a new build, another site: the document
