@@ -13,3 +13,7 @@ Thumbs.db
 coverage
 .idea
 packages/fondu/README.md
+
+# Playwright (apps/conformance)
+test-results/
+playwright-report/

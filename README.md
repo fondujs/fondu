@@ -38,12 +38,13 @@ packages/fondu          the package
 packages/create-fondu   `bun create fondu`
 apps/demo               Fondu's features, one page each — Workers, D1, Better Auth, coss ui
 apps/site               fondu.dev: the docs, MDX and static pages on Workers
+apps/conformance        fondu/client against the browsers without JavaScript (Playwright: Chromium, Firefox, WebKit)
 ```
 
 ```bash
 bun install            # also builds packages/fondu (the examples use the built package, like a real app)
 bun run test           # the package: a small app with app.request(), the routes, the client
-bun run typecheck      # the package, the demo (with apps/demo/e2e/types.ts) and the site
+bun run typecheck      # the package, the demo (with apps/demo/e2e/types.ts), the site and apps/conformance
 bun run check          # format (oxfmt), lint (oxlint), typecheck
 bun run dev            # rebuild packages/fondu on change
 ```

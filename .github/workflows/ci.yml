@@ -22,3 +22,17 @@ jobs:
       - run: bun run typecheck
       - run: bun run test
       - run: bun run --filter create-fondu test # an app per target, built and served
+
+  # fondu/client against the browsers themselves (apps/conformance): Chromium, Firefox and WebKit
+  conformance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bunx playwright install --with-deps chromium firefox webkit
+        working-directory: apps/conformance
+      - run: bun run test
+        working-directory: apps/conformance
