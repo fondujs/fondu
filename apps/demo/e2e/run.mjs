@@ -991,6 +991,26 @@ await page.waitForFunction(
   await rp.close()
 }
 
+// ---- a reload of a page rendered in the browser only (withoutSsr()): where it was left, once it is rendered
+{
+  const rp = await browser.newPage()
+  await rp.setViewport({ width: 1100, height: 240 })
+  await rp.goto(BASE + '/ssr/browser', { waitUntil: 'networkidle0' })
+  const max = await rp.evaluate(() => document.documentElement.scrollHeight - innerHeight)
+  const left = Math.floor(max / 2)
+  await rp.evaluate((y) => scrollTo(0, y), left)
+  await new Promise((r) => setTimeout(r, 300))
+  await rp.reload({ waitUntil: 'networkidle0' })
+  await new Promise((r) => setTimeout(r, 500))
+  const after = await rp.evaluate(() => Math.round(scrollY))
+  ok(
+    'a reload of a page rendered in the browser only: where it was left',
+    max > 40 && after === left,
+    JSON.stringify({ max, left, after }),
+  )
+  await rp.close()
+}
+
 // ---- a <textarea>'s line breaks, sent as the browser sends them (CRLF), URL-encoded and as plain text
 {
   const fp = await browser.newPage()

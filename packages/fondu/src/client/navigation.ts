@@ -345,8 +345,9 @@ function scrollPositions() {
      * reload, Back from another site past it), and whether the browser or the document's script put it back already
      */
     start() {
-      // restored already: by the browser, or the document's own script (the page's position, before its first paint)
-      const restored = history.scrollRestoration === 'auto' || scrollX !== 0 || scrollY !== 0
+      // restored already, by the browser or the document's own script: the page is scrolled (one rendered in the
+      // browser was empty for them, it has its content only now)
+      const restored = scrollX !== 0 || scrollY !== 0
       history.scrollRestoration = 'manual'
       commit()
       return { position: read(rendered), restored }

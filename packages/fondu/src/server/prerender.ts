@@ -1,6 +1,6 @@
 import type { ExecutionContext, Hono } from 'hono'
 
-import { fillPattern, PAGE_DATA, pathOfPageData, staticFiles } from '../paths.js'
+import { endsInIndex, fillPattern, PAGE_DATA, pathOfPageData, staticFiles } from '../paths.js'
 import { isPageRequest } from './http.js'
 
 /** `export const prerender` of a route or a `_middleware.ts`: the params of a dynamic route's pages, or on / off */
@@ -43,16 +43,24 @@ export async function prerenderPaths(
       continue
     }
     const dynamic = route.pattern.includes(':')
+    // a page whose URL ends in index: its file would be its directory's page's (index.html), another page
+    const add = (path: string) =>
+      endsInIndex(path)
+        ? problems.push(
+            `${where}: ${path} ends in index, so its static file would be the page of its directory: ` +
+              `leave it out of \`prerender\``,
+          )
+        : paths.add(path)
     if (setting === true) {
       if (dynamic)
         problems.push(
           `${where} is dynamic: \`export const prerender = () => [{ …params }]\` lists its pages, or \`= false\``,
         )
-      else paths.add(route.pattern)
+      else add(route.pattern)
       continue
     }
     try {
-      for (const params of await setting()) paths.add(fillPattern(route.pattern, params))
+      for (const params of await setting()) add(fillPattern(route.pattern, params))
     } catch (error) {
       problems.push(`${where}: ${error instanceof Error ? error.message : String(error)}`)
     }
@@ -73,6 +81,8 @@ export function prerenderRoutes(app: Hono, routes: () => PrerenderRoute[], versi
     const data = pathOfPageData(c.req.path) !== null // a navigation, rewritten to the page object by fondu/client
     if (!data && (isPageRequest(c) || !(c.req.header('accept') ?? '').includes('text/html')))
       return next()
+    // a URL ending in index is never a static document: that file is its directory's page (the routes answer it)
+    if (!data && endsInIndex(c.req.path)) return next()
     let file: string
     try {
       file = data ? decodeURIComponent(c.req.path).slice(1) : staticFiles(c.req.path).html

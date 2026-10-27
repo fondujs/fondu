@@ -160,8 +160,8 @@ export default function Home() {
             >
               React
             </Chip>{' '}
-            page it renders. Plain links and forms change pages in place: no client router, no API
-            to write.
+            page it renders. Plain links and forms change pages in place: no API to write, no
+            client-side router to keep in sync.
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <Button size="lg" render={<a href="/docs" />}>

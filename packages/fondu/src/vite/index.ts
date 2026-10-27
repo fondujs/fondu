@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { appendFileSync, existsSync, readdirSync, readFileSync } from 'node:fs'
+import { appendFileSync, existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { builtinModules, createRequire } from 'node:module'
 import { dirname, join, relative, resolve, sep } from 'node:path'
@@ -353,6 +353,7 @@ function core(options: FonduOptions): Plugin {
                 if (options.prerender && existsSync(wrangler)) {
                   const clientDir = resolve(config.root, client.config.build.outDir)
                   await prerender(worker(config.root, wrangler), clientDir, config.logger, true)
+                  workerFirstForIndex(wrangler)
                 }
               }
             },
@@ -577,6 +578,22 @@ const isServerOnly = (id: string, root: string) => {
     (file.startsWith(`${root}/app/routes/`) && file.endsWith('.ts')) ||
     file === `${root}/app/server.ts`
   )
+}
+
+/**
+ * The built Worker's config: URLs ending in index go to the Worker first. Static assets would answer them with the
+ * page of their directory (`/docs/index` → `docs/index.html`, redirected to `/docs/`), while a route (a param's value)
+ * may be theirs. Added to the app's own `run_worker_first`, unless it is `true` (every request first) already.
+ */
+function workerFirstForIndex(file: string) {
+  const config = JSON.parse(readFileSync(file, 'utf8')) as {
+    assets?: { run_worker_first?: boolean | string[] }
+  }
+  const assets = (config.assets ??= {})
+  if (assets.run_worker_first === true) return
+  const own = Array.isArray(assets.run_worker_first) ? assets.run_worker_first : []
+  assets.run_worker_first = [...new Set([...own, '/index', '/*/index'])]
+  writeFileSync(file, JSON.stringify(config))
 }
 
 const nonceAttr = `\${nonce ? \` nonce="\${nonce}"\` : ''}`

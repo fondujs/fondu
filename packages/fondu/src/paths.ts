@@ -98,9 +98,31 @@ export const PAGE_DATA = '/_fondu/pages'
  * `…/index.json`), and a last segment named index (or ~index…) gets one more `~` (`/items/index` → `…/items/~index.json`)
  */
 export function pageDataPath(path: string): string {
-  const named = path.endsWith('/') ? `${path}index` : path.replace(/(?<=\/)(~*index)$/, '~$1')
+  const last = path.slice(path.lastIndexOf('/') + 1)
+  // as the server reads it, decoded: `%69ndex` is index too (written as it, of unreserved characters)
+  const named = path.endsWith('/')
+    ? `${path}index`
+    : /^~*index$/.test(decoded(last))
+      ? `${path.slice(0, -last.length)}~${decoded(last)}`
+      : path
   return `${PAGE_DATA}${named}.json`
 }
+
+/** a URL segment decoded, or as it is if it doesn't decode */
+function decoded(segment: string): string {
+  try {
+    return decodeURIComponent(segment)
+  } catch {
+    return segment
+  }
+}
+
+/**
+ * a path whose last segment is index (`/index`, `/docs/%69ndex`): its static file would be its directory's
+ * (`index.html`, `docs/index.html`), which is another page
+ */
+export const endsInIndex = (path: string) =>
+  decoded(path.slice(path.lastIndexOf('/') + 1)) === 'index'
 
 /** the other way: `/_fondu/pages/docs/intro.json` → `/docs/intro`; null for any other path */
 export function pathOfPageData(pathname: string): string | null {

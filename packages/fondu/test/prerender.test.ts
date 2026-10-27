@@ -57,6 +57,11 @@ describe('files', () => {
       '/a%20b',
     ])
       expect(pathOfPageData(pageDataPath(path)), path).toBe(path)
+    // index written encoded is index all the same (the server reads the path decoded)
+    expect(pageDataPath('/items/%69ndex')).toBe('/_fondu/pages/items/~index.json')
+    expect(pageDataPath('/items/%7Eindex')).toBe('/_fondu/pages/items/~~index.json')
+    expect(pageDataPath('/items/%7einDEX')).toBe('/_fondu/pages/items/%7einDEX.json')
+    expect(pathOfPageData('/_fondu/pages/items/~~index.json')).toBe('/items/~index')
     expect(pathOfPageData('/docs/intro.json')).toBe(null)
   })
 })
@@ -139,6 +144,16 @@ describe('paths', () => {
       /^routes\/docs\/\[\.\.\.path\]\.ts: fondu: param "path" is not a path segment/,
     )
   })
+  test("a URL ending in index: a problem, its file would be its directory's page", async () => {
+    const { paths, problems } = await prerenderPaths([
+      route('index.ts', '/', [true]),
+      route('[slug].ts', '/:slug', [() => [{ slug: 'about' }, { slug: 'index' }]]),
+      route('index/index.ts', '/index', [true]),
+    ])
+    expect(paths).toEqual(['/', '/about'])
+    expect(problems).toHaveLength(2)
+    expect(problems[0]).toMatch(/^routes\/\[slug\]\.ts: \/index ends in index/)
+  })
 })
 
 describe('the app', () => {
@@ -189,6 +204,11 @@ describe('the app', () => {
     try {
       const doc = await app.request('/', { headers: { Accept: 'text/html' } })
       expect(await doc.text()).toBe('<html>static home</html>')
+      // a URL ending in index is never its directory's file: the routes answer it
+      for (const path of ['/index', '/%69ndex'])
+        expect(
+          await (await app.request(path, { headers: { Accept: 'text/html' } })).text(),
+        ).not.toBe('<html>static home</html>')
       expect(doc.headers.get('content-security-policy')).toContain("script-src 'self' 'nonce-")
       const data = await app.request('/_fondu/pages/index.json', {
         headers: { 'X-Fondu': 'true' },
