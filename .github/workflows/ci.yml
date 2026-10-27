@@ -41,3 +41,11 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run test
         working-directory: apps/conformance
+      # what Playwright kept of a failing or flaky case: its error context, its trace
+      - uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        with:
+          name: conformance-results
+          path: apps/conformance/test-results/
+          if-no-files-found: ignore
+          retention-days: 7
