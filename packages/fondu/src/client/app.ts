@@ -177,6 +177,7 @@ function start(settings: { prerender: boolean; progress: ProgressOptions | false
     // dev: the stylesheet the server gave the page until its layouts brought their CSS (they have now)
     document.querySelector('[data-fondu-dev-css]')?.remove()
     const app = createElement(App, { initial: { page: initial, view, mounts: 0 } })
+    const hydrated = root.hasChildNodes() // rendered on the server
     // navigations start once the page is on the screen (hydrated)
     mounted = (set) => {
       mounted = undefined
@@ -189,6 +190,7 @@ function start(settings: { prerender: boolean; progress: ProgressOptions | false
           if (page) load(page).catch(() => {})
         },
         isPage: (pathname) => pageAt(pathname) !== undefined,
+        hydrated,
         async show(page, fresh, stale) {
           const view = await load(page.component)
           if (stale()) return
@@ -196,7 +198,7 @@ function start(settings: { prerender: boolean; progress: ProgressOptions | false
         },
       })
     }
-    if (root.hasChildNodes()) hydrateRoot(root, app)
+    if (hydrated) hydrateRoot(root, app)
     else createRoot(root).render(app)
   })
 }

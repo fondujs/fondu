@@ -24,6 +24,8 @@ interface Options {
   preload: (pathname: string) => void
   /** a URL path is one of the app's pages (by the route files' patterns): its links are the client's */
   isPage: (pathname: string) => boolean
+  /** the page was rendered on the server (hydrated), not in the browser */
+  hydrated: boolean
 }
 
 interface Visit {
@@ -47,7 +49,15 @@ let visit: ((url: string, options: Visit) => void) | undefined
  * as JSON, its URL in the history, the page shown in place, then the scroll position (Fondu's own, per history entry:
  * the browsers' differ). What isn't for it (another site, a new tab, a download, a modified click) is the browser's.
  */
-export function startNavigation({ initial, show, prerender, pending, preload, isPage }: Options) {
+export function startNavigation({
+  initial,
+  show,
+  prerender,
+  pending,
+  preload,
+  isPage,
+  hydrated,
+}: Options) {
   const scroll = scrollPositions()
   let version = initial.version
   let current: AbortController | undefined
@@ -255,24 +265,18 @@ export function startNavigation({ initial, show, prerender, pending, preload, is
       kept: kept.get(popped.key ?? ''),
     })
   })
-  // leaving the document (a reload, another site): its position, and the browser's restoration back on for this
-  // entry, so a reload or Back to it is scrolled at first paint, as any document
-  window.addEventListener('pagehide', () => {
-    scroll.save()
-    history.scrollRestoration = 'auto'
-  })
-  window.addEventListener('pageshow', (event) => {
-    if (event.persisted) history.scrollRestoration = 'manual' // back from the back/forward cache
-  })
+  // leaving the document (a reload, another site): its position, put back by the document when it is loaded again.
+  // The browser's own restoration stays off: engines restore at times of their own, or not (WebKit, an entry once
+  // manual; Firefox, a #fragment), and over the page's own (Firefox, at load, a page rendered in the browser at 0)
+  window.addEventListener('pagehide', scroll.save)
   // the browser's own #fragment navigations: the entry gets its key
   window.addEventListener('hashchange', scroll.commit)
 
-  // an entry with a position (a reload, Back from another site): that position, the #fragment's target or not, as
-  // the browser restores it; otherwise, a first visit, the #fragment's target (rendered by now)
-  const { position, restored } = scroll.start()
-  if (position) {
-    if (!restored) window.scrollTo(position.x, position.y)
-  } else restore(null, location.hash, true)
+  // a page rendered on the server is where it belongs already, before its first paint: at its entry's position (its
+  // document's script: a reload, Back from another site), else at its #fragment (the browser). One rendered here has
+  // its content only now: its entry's position, or its #fragment's target
+  const position = scroll.start()
+  if (!hydrated) restore(position, location.hash, true)
   keep(initial)
 }
 
@@ -345,16 +349,13 @@ function scrollPositions() {
     /** the key of the entry on the screen */
     key: () => rendered,
     /**
-     * The document's entry: its key; where it was scrolled, if it was (an entry this client pushed, loaded again: a
-     * reload, Back from another site past it), and whether the browser or the document's script put it back already
+     * The document's entry: its key, and where it was scrolled, if it was (an entry this client pushed, loaded again:
+     * a reload, Back from another site past it)
      */
     start() {
-      // restored already, by the browser or the document's own script: the page is scrolled (one rendered in the
-      // browser was empty for them, it has its content only now)
-      const restored = scrollX !== 0 || scrollY !== 0
       history.scrollRestoration = 'manual'
       commit()
-      return { position: read(rendered), restored }
+      return read(rendered)
     },
     /** the page on the screen, at `url`: a new entry or this one */
     write(url: string, replace: boolean) {

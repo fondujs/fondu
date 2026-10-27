@@ -8,8 +8,16 @@ type Outcome = Record<string, unknown>
 /** whether a page's context runs JavaScript (fondu/client) */
 const scripted = new WeakMap<Page, boolean>()
 
-/** the same steps, with fondu/client and without JavaScript; the outcomes, equal */
-async function both(browser: Browser, steps: (page: Page) => Promise<Outcome>) {
+/**
+ * The same steps, with fondu/client and without JavaScript; the outcomes, equal (a scroll position to a pixel: the
+ * engines round a #fragment's subpixel position each their way). `expected`: what the client is to do where the
+ * engines disagree among themselves, in place of what this one does.
+ */
+async function both(
+  browser: Browser,
+  steps: (page: Page) => Promise<Outcome>,
+  expected: Outcome = {},
+) {
   const run = async (js: boolean) => {
     const context = await browser.newContext({
       javaScriptEnabled: js,
@@ -24,7 +32,14 @@ async function both(browser: Browser, steps: (page: Page) => Promise<Outcome>) {
     }
   }
   const [client, native] = await Promise.all([run(true), run(false)])
-  expect(client).toEqual(native)
+  const wanted = { ...native, ...expected }
+  if (
+    typeof client.y === 'number' &&
+    typeof wanted.y === 'number' &&
+    Math.abs(client.y - wanted.y) <= 1
+  )
+    wanted.y = client.y
+  expect(client).toEqual(wanted)
 }
 
 async function open(page: Page, url: string) {
@@ -116,14 +131,19 @@ test.describe('scroll positions', () => {
   test("a reload of a #fragment's page scrolled away from it: where it was left", async ({
     browser,
   }) => {
-    await both(browser, async (page) => {
-      await open(page, '/long#end')
-      await page.evaluate(() => scrollTo(0, 1200))
-      await page.waitForTimeout(300)
-      await page.reload()
-      await settle(page)
-      return state(page)
-    })
+    // as Chromium and WebKit restore it; Firefox goes to the #fragment again
+    await both(
+      browser,
+      async (page) => {
+        await open(page, '/long#end')
+        await page.evaluate(() => scrollTo(0, 1200))
+        await page.waitForTimeout(300)
+        await page.reload()
+        await settle(page)
+        return state(page)
+      },
+      { y: 1200 },
+    )
   })
   test('Back to a page: where it was left', async ({ browser }) => {
     await both(browser, async (page) => {
