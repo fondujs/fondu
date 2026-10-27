@@ -39,7 +39,9 @@ export default defineConfig({
           [
             rehypeShiki,
             {
-              themes: { light: 'github-light', dark: 'github-dark' },
+              themes: { light: 'github-light-default', dark: 'github-dark' },
+              // its comments' gray, a shade darker: 4.5:1 on the code's background (WCAG AA)
+              colorReplacements: { 'github-light-default': { '#6e7781': '#59636e' } },
               defaultColor: false,
               defaultLanguage: 'text',
               langs: [],
