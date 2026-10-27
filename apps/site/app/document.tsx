@@ -1,5 +1,6 @@
 import geistMono from '@fontsource-variable/geist-mono/files/geist-mono-latin-wght-normal.woff2?url'
 import inter from '@fontsource-variable/inter/files/inter-latin-wght-normal.woff2?url'
+import instrumentSerif from '@fontsource/instrument-serif/files/instrument-serif-latin-400-italic.woff2?url'
 import type { DocumentParts } from 'fondu'
 
 /**
@@ -10,7 +11,7 @@ const THEME =
   "document.documentElement.className=/(?:^|; )theme=(light|dark)/.exec(document.cookie)?.[1]??'system'"
 
 /** The HTML around every page (server.ts) */
-export default function Document({ head, body }: DocumentParts) {
+export default function Document({ head, body, c }: DocumentParts) {
   return (
     <html lang="en" className="system">
       <head>
@@ -24,6 +25,11 @@ export default function Document({ head, body }: DocumentParts) {
             in them, not in a fallback first (a layout shift on a slow network) */}
         <link rel="preload" href={inter} as="font" type="font/woff2" crossOrigin="" />
         <link rel="preload" href={geistMono} as="font" type="font/woff2" crossOrigin="" />
+        {/* the home page's headline serif: in its document only (a page's own <link> would be added again on a
+            navigation to it, once the page is loaded, for a font its stylesheet has asked for already) */}
+        {c.req.path === '/' && (
+          <link rel="preload" href={instrumentSerif} as="font" type="font/woff2" crossOrigin="" />
+        )}
         {head}
       </head>
       <body>{body}</body>

@@ -1,4 +1,3 @@
-import instrumentSerif from '@fontsource/instrument-serif/files/instrument-serif-latin-400-italic.woff2?url'
 import {
   BadgeCheck,
   Check,
@@ -133,8 +132,6 @@ export default function Home() {
   return (
     <>
       <Meta description="Fondu is a small meta-framework for full-stack React apps, built on Hono and Vite. It runs on Bun, Cloudflare Workers and Node." />
-      {/* the headline's serif, this page's only: fetched with the stylesheet (document.tsx preloads the others) */}
-      <link rel="preload" href={instrumentSerif} as="font" type="font/woff2" crossOrigin="" />
 
       <section className="mx-auto grid max-w-7xl grid-cols-[minmax(0,1fr)] items-center gap-12 px-4 pt-12 pb-16 sm:px-6 sm:pt-16 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:gap-16">
         <div className="min-w-0">
