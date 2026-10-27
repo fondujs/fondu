@@ -3,7 +3,7 @@ import { expect, test, type Browser, type Page } from '@playwright/test'
 // fondu/client against the browser itself: each case runs with the client and without JavaScript (the browser's own
 // navigation, the expected outcome), and the two must end the same: URL, page, history, scroll position.
 
-type Outcome = Record<string, unknown>
+type Outcome = Record<string, unknown> & { timeline?: string[] }
 
 /** whether a page's context runs JavaScript (fondu/client) */
 const scripted = new WeakMap<Page, boolean>()
@@ -25,21 +25,44 @@ async function both(
     })
     const page = await context.newPage()
     scripted.set(page, js)
+    if (js) await page.addInitScript(timeline)
     try {
       return await steps(page)
     } finally {
       await context.close()
     }
   }
-  const [client, native] = await Promise.all([run(true), run(false)])
-  const wanted = { ...native, ...expected }
+  const [{ timeline: scrolls, ...client }, { timeline: _, ...native }] = await Promise.all([
+    run(true),
+    run(false),
+  ])
+  const wanted: Outcome = { ...native, ...expected }
   if (
     typeof client.y === 'number' &&
     typeof wanted.y === 'number' &&
     Math.abs(client.y - wanted.y) <= 1
   )
     wanted.y = client.y
-  expect(client).toEqual(wanted)
+  expect(client, `with fondu/client: ${JSON.stringify(scrolls ?? [])}`).toEqual(wanted)
+}
+
+/**
+ * A document's scrolling, for a failure's message: each scroll event's time, position and the document's state, and
+ * the position its entry has kept (where a reload's scrolling comes from, engine by engine)
+ */
+function timeline() {
+  const t0 = performance.now()
+  const at = (what: string) =>
+    ((window as unknown as { __scrolls?: string[] }).__scrolls ??= []).push(
+      `${Math.round(performance.now() - t0)}ms ${what} y=${Math.round(scrollY)} ${document.readyState}`,
+    )
+  try {
+    const key = (history.state as { __fondu?: string } | null)?.__fondu
+    at(`kept=${key && sessionStorage.getItem('fondu-scroll:' + key)}`)
+  } catch {}
+  addEventListener('scroll', () => at('scroll'), { passive: true })
+  addEventListener('DOMContentLoaded', () => at('DOMContentLoaded'))
+  addEventListener('load', () => (at('load'), setTimeout(() => at('load+0'))))
 }
 
 async function open(page: Page, url: string) {
@@ -70,6 +93,7 @@ const state = (page: Page) =>
       .slice(0, 300),
     entries: history.length,
     y: Math.round(scrollY),
+    timeline: (window as unknown as { __scrolls?: string[] }).__scrolls,
   }))
 
 test.describe('links', () => {
@@ -185,11 +209,13 @@ test.describe('with fondu/client only', () => {
     expect(await page.evaluate(() => (window as unknown as { kept?: boolean }).kept)).toBe(true)
   })
   test('a reload of a page rendered in the browser only: where it was left', async ({ page }) => {
+    await page.addInitScript(timeline)
     await open(page, '/csr')
     await page.evaluate(() => scrollTo(0, 1200))
     await page.waitForTimeout(300)
     await page.reload()
     await settle(page)
-    expect((await state(page)).y).toBe(1200)
+    const { y, timeline: scrolls } = await state(page)
+    expect(y, JSON.stringify(scrolls)).toBe(1200)
   })
 })
