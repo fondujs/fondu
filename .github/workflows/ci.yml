@@ -25,14 +25,18 @@ jobs:
 
   # fondu/client against the browsers themselves (apps/conformance): Chromium, Firefox and WebKit
   conformance:
-    runs-on: ubuntu-24.04 # Playwright 1.56's browsers and their system dependencies: Ubuntu 24.04 at most
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Playwright's image: the three browsers and what they need installed already (@playwright/test's version), so
+    # nothing is downloaded on each run
+    container:
+      image: mcr.microsoft.com/playwright:v1.56.0-noble
+      options: --user 1001
     steps:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
-      - run: bunx playwright install --with-deps chromium firefox webkit
-        working-directory: apps/conformance
       - run: bun run test
         working-directory: apps/conformance
