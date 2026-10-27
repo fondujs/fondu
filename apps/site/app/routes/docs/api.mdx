@@ -6,7 +6,7 @@ The server's API, for `app/server.ts`, routes and middleware.
 
 `createApp(options?)` returns the Hono app made of `app/routes/`.
 
-| Option          |                                                                                                        |
+| Option          | Is                                                                                                     |
 | --------------- | ------------------------------------------------------------------------------------------------------ |
 | `document`      | the HTML around pages, `({ head, body, c, nonce })` to JSX or a string: [The document](/docs/document) |
 | `trailingSlash` | `'trim'` (default: `/users/` redirects to `/users`) or `'append'`                                      |
@@ -27,7 +27,7 @@ createApp({
 
 ### Handlers
 
-| Export                                                 |                                                                         |
+| Export                                                 | Is                                                                      |
 | ------------------------------------------------------ | ----------------------------------------------------------------------- |
 | `defineHandler(...middleware, handler)`                | a route's handler: Hono's `createHandlers`                              |
 | `defineHandler.withValidator({ body, query, params })` | the same, with input checked by Standard Schemas: `(c, input) => …`     |
@@ -37,7 +37,7 @@ createApp({
 
 ### Responses
 
-| Export                              |                                              |
+| Export                              | Is                                           |
 | ----------------------------------- | -------------------------------------------- |
 | `render(c, Page, props?, options?)` | its file's page; options: `status`           |
 | `share(c, props)`                   | props every page of this request gets        |
@@ -46,13 +46,13 @@ createApp({
 
 ### Types
 
-| Export     |                                                                                                                     |
+| Export     | Is                                                                                                                  |
 | ---------- | ------------------------------------------------------------------------------------------------------------------- |
 | `Register` | declared by the app: `shared` and `flash` type `share()`, `flash()`, `usePage()` ([Type safety](/docs/type-safety)) |
 
 ### Route exports
 
-| Export                                             |                                                                                          |
+| Export                                             | Is                                                                                       |
 | -------------------------------------------------- | ---------------------------------------------------------------------------------------- |
 | `default` (in a `.tsx` file)                       | the page, rendered by `render()`, or on GET without a loader                             |
 | `loader`                                           | GET                                                                                      |
@@ -65,7 +65,7 @@ createApp({
 
 ### Route files
 
-| File in `app/routes/`  |                                                                                       |
+| File in `app/routes/`  | Is                                                                                    |
 | ---------------------- | ------------------------------------------------------------------------------------- |
 | `name.tsx`, `name.mdx` | a page and its handlers ([what each exports](/docs/routes#what-a-route-file-exports)) |
 | `name.ts`              | server code only: handlers, HTTP handlers                                             |
@@ -79,20 +79,21 @@ createApp({
 
 For the browser.
 
-| Export                |                                                                      |
-| --------------------- | -------------------------------------------------------------------- |
-| `href(path, params?)` | a URL of `app/routes/`, typed: `href('/users/:id', { id: 7 })`       |
-| `usePage()`           | the page on screen: `component`, `props`, `url`, `flash`             |
-| `useNavigating()`     | `true` from a click or a submit until the next page is on the screen |
-| `reload()`            | the page's props again, its state and scroll position kept           |
-| `loadDocument(href)`  | a document load, for what a page can't change in place               |
-| `Errors`              | the type of a page's `errors` prop                                   |
+| Export                         | Is                                                                                                                               |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
+| `href(path, params?)`          | a URL of `app/routes/`, typed: `href('/users/:id', { id: 7 })`                                                                   |
+| `usePage()`                    | the page on screen: `component`, `props`, `url`, `flash`                                                                         |
+| `useNavigating()`              | `true` from a click or a submit until the next page is on the screen                                                             |
+| `reload()`                     | the page's props again, its state and scroll position kept                                                                       |
+| `navigate(href, { replace? })` | goes to `href` as a link would: a page in place, anything else as a document ([Navigation](/docs/navigation#navigating-in-code)) |
+| `loadDocument(href)`           | a document load, for what a page can't change in place                                                                           |
+| `Errors`                       | the type of a page's `errors` prop                                                                                               |
 
 ## `fondu/vite`
 
 The Vite plugin: `fondu(options)`.
 
-| Option      |                                                                            |
+| Option      | Is                                                                         |
 | ----------- | -------------------------------------------------------------------------- |
 | `target`    | `'bun'`, `'cloudflare'` or `'node'`                                        |
 | `port`      | the production port on Bun and Node, 3000 by default (`PORT` overrides it) |

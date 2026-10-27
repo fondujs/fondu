@@ -1,0 +1,132 @@
+The first request for a page gets HTML, rendered on the server. After that, Fondu's client takes over the app's
+links and forms: it asks the server for the next page's props as JSON and swaps the page in place. The layouts stay
+mounted, with their state, and the browser doesn't reload.
+
+There is no router to set up and no special link component: links are `<a>`, forms are `<form>`. Without
+JavaScript, they work the same way, as plain links and forms.
+
+## Links
+
+Link to a page with a plain `<a>`, and build its URL with [`href()`](/docs/type-safety), which is typed after your
+routes:
+
+```tsx
+import { href } from 'fondu/client'
+
+export function UserLink({ user }: { user: { id: number; name: string } }) {
+  return <a href={href('/users/:id', { id: user.id })}>{user.name}</a>
+}
+```
+
+When the link is clicked, the client loads `/users/7` in place. The new page starts at the top, or at its
+`#fragment` (`/docs#setup`).
+
+The client takes a click only when it is a link to one of the app's pages, as the files in `app/routes/` define
+them. The browser handles every other link, as it would without Fondu:
+
+| Link                                                            | Handled by                  |
+| --------------------------------------------------------------- | --------------------------- |
+| a page of the app: `/users/7`                                   | the client, in place        |
+| a `#fragment` of the current page: `#setup`                     | the browser, scrolls to it  |
+| a file of the site: `/llms.txt`, `/report.pdf`                  | the browser, loads the file |
+| an HTTP route (a `.ts` file): `/api/health`                     | the browser                 |
+| a URL no route answers: `/nope`                                 | the browser, shows the 404  |
+| another site                                                    | the browser                 |
+| with `target` (`_blank`…), `download`, or Ctrl, ⌘, Shift or Alt | the browser                 |
+
+### A full page load
+
+To make a link to a page load as a whole document, without the client, add `target="_top"`. In a page that isn't in
+a frame, it opens in the same tab, as any link, but the browser loads it:
+
+```tsx
+<a href={href('/admin')} target="_top">
+  Admin
+</a>
+```
+
+Use it when the next page needs a fresh document, such as a page of another `<html lang>`, or one whose scripts must
+run again. In code, `loadDocument(url)` does the same.
+
+A catch-all page route (`docs/[...slug].tsx`) covers every URL below it, files included. A link to a file there,
+`/docs/manual.pdf`, takes `download` or `target="_top"`, so the browser loads the file.
+
+## Navigating in code
+
+`navigate()` from `fondu/client` goes to a URL as a link to it would:
+
+```tsx
+import { href, navigate } from 'fondu/client'
+
+// the results page, as you type: one history entry for the search, not one per letter
+function Search() {
+  const search = (q: string) => navigate(`${href('/search')}?q=${encodeURIComponent(q)}`, { replace: true })
+  return <input type="search" onChange={(event) => search(event.target.value)} />
+}
+```
+
+- A page of the app loads in place, in a new history entry.
+- `{ replace: true }` replaces the current history entry instead, so Back skips it.
+- Any other URL loads as a document.
+
+| From `fondu/client`           | Does                                                           |
+| ----------------------------- | -------------------------------------------------------------- |
+| `navigate(url, { replace? })` | goes to `url` as a link would                                  |
+| `loadDocument(url)`           | loads `url` as a document (a full page load)                   |
+| `reload()`                    | asks for the current page's props again; state and scroll stay |
+
+## Forms
+
+A `<form method="post">` is sent by the client too, and its answer is shown in place. When the answer is the same
+page (back with validation errors, or `back(c)`), the page is updated where it is: the scroll position and what was
+typed stay. When it is another page, it is a new entry in the history. [Forms and validation](/docs/forms) covers
+actions, errors and pending states.
+
+## Scroll positions
+
+| After                                          | The page is                             |
+| ---------------------------------------------- | --------------------------------------- |
+| a link, or `navigate()`                        | at the top, or at the URL's `#fragment` |
+| Back or Forward                                | where it was when you left it           |
+| a reload                                       | where it was when you left it           |
+| a form's answer at the same URL, or `reload()` | where it is                             |
+
+Back and Forward show the page at once, as it was left, then put the server's fresh page in its place. The pages
+kept for this are in memory only, and they are all forgotten once a form is sent, as the form may have changed
+them (or signed the user out).
+
+## While a page loads
+
+`useNavigating()` from `fondu/client` is `true` from a click or a submit until the next page is on the screen:
+
+```tsx
+import { useNavigating } from 'fondu/client'
+
+export function Spinner() {
+  return useNavigating() ? <span aria-label="Loading">…</span> : null
+}
+```
+
+A navigation that takes longer than 350 ms also shows a thin progress bar at the top of the page. Configure it in
+`vite.config.ts`:
+
+```ts
+fondu({
+  target: 'node',
+  progress: {
+    color: 'var(--brand)', // default: the page's text color
+    delay: 500, // ms before it shows (default 350)
+    forms: false, // not for forms' submissions: their buttons show it
+  },
+})
+```
+
+`progress: false` removes it, when your own indicator uses `useNavigating()`.
+
+## Other answers
+
+- Screen readers announce the new page's title after each navigation.
+- An answer that isn't a page, such as a file or a proxy's error page, is shown as the browser would show it.
+- A redirect to another site (`c.redirect('https://…')`) loads that site.
+- After a deploy, the next navigation from a tab opened before it loads the page as a document, so the browser runs
+  the new version.

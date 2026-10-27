@@ -43,6 +43,8 @@ interface Visit {
 }
 
 let visit: ((url: string, options: Visit) => void) | undefined
+/** a URL path is one of the app's pages (the client's, once it has started) */
+let isAppPage: ((pathname: string) => boolean) | undefined
 
 /**
  * Same-origin links and forms, Back and Forward, through the History API (as Void's client, MIT): the page fetched
@@ -81,6 +83,7 @@ export function startNavigation({
     else location.assign(url)
   }
 
+  isAppPage = isPage
   visit = (href, options) => {
     current?.abort()
     const controller = (current = new AbortController())
@@ -461,6 +464,18 @@ function fileName(disposition: string): string {
  */
 export function loadDocument(href: string) {
   location.assign(href)
+}
+
+/**
+ * `href` visited as a link to it would be: a page of the app in place (a new history entry, or this one's with
+ * `replace`), anything else as a document
+ */
+export function navigate(href: string, { replace = false }: { replace?: boolean } = {}) {
+  const url = new URL(href, location.href)
+  const here = url.pathname + url.search === location.pathname + location.search
+  if (!visit || url.origin !== location.origin || !isAppPage?.(url.pathname) || (here && url.hash))
+    return replace ? location.replace(url.href) : location.assign(url.href) // a #fragment of this page: the browser's
+  visit(url.href, { history: replace || url.href === location.href ? 'replace' : 'push' })
 }
 
 /** the page asked for again, its state and the scroll position kept */

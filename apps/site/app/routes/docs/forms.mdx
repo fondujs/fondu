@@ -34,6 +34,15 @@ A form without an `action` posts to its page's URL. A page with several forms gi
 With JavaScript, Fondu's client sends it without a page load: back at the same URL, the page is updated where it is.
 Without, it is an ordinary form post, with the same result.
 
+## After an action
+
+An action answers with a redirect, so that a reload doesn't send the form again:
+
+- `back(c)`: back to the page the form was on. With JavaScript, that page is updated in place.
+- `c.redirect(url, 303)`: to another page, a file or another site.
+- `flash(c, { message: 'Saved' })` before either: data for the next page only, in `usePage().flash`, for a "Saved"
+  message say.
+
 ## Invalid input
 
 When the body or the query doesn't fit its schema, the handler doesn't run:
@@ -58,7 +67,7 @@ The errors are one object for the page: two forms on a page keep theirs apart by
 ## The same schema in the browser
 
 A schema is plain code: a page can import it, from any module that isn't [server code](/docs/server-and-client),
-and check the form before it is sent. A plain form still: when the check passes, Fondu's client sends it; when it
+and check the form before it is sent. It is still a plain form: when the check passes, Fondu's client sends it; when it
 doesn't, the submit is stopped and the errors shown. The server checks again, and what only it can (an address
 already taken).
 

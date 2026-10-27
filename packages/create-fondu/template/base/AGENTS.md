@@ -32,7 +32,8 @@ swaps the page in place (the History API); Back and Forward restore the scroll p
 - Links and forms: `<a href>` and `<form method="post">`, URLs from `href('/users/:id', { id })` (`fondu/client`,
   typed after `app/routes/`). A form's errors: the page's `errors` prop. From `fondu/client` too: `usePage()` (props,
   shared props, `url`, `flash`), `useNavigating()` (pending UI), `reload()` (the props again). In code,
-  `location.assign(href(…))` navigates as a link would; `loadDocument(href(…))` loads a document instead. A
+  `navigate(href(…))` navigates as a link would (`{ replace: true }`: no new history entry); `loadDocument(href(…))`
+  loads a document instead, as `<a target="_top">` does. Only links to the app's pages are the client's. A
   progress bar shows during slow navigations: `fondu({ progress: { color, delay, forms } })` in `vite.config.ts`,
   or `progress: false`. A form being sent has `aria-busy="true"`: its submit button's pending state.
 - The head: a page renders `<title>` and `<meta>` where it likes; React puts them in `<head>`. A title is one string:
