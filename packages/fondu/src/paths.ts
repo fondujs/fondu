@@ -93,19 +93,20 @@ export const SCROLL_STORAGE = 'fondu-scroll:'
 export const PAGE_DATA = '/_fondu/pages'
 
 /**
- * a page's URL path → the URL of its page object: `/docs/intro` → `/_fondu/pages/docs/intro.json`, `/` →
- * `/_fondu/pages.json`. A trailing slash is left out: an app's pages have one or don't (`trailingSlash`), so
- * `/docs/` and `/docs` are never two pages, while `/docs/index` (a param's value) is another one
+ * a page's URL path → the URL of its page object, one for one whatever the app's trailing slashes: `/docs/intro` →
+ * `/_fondu/pages/docs/intro.json`; a trailing slash is `index` (`/docs/` → `…/docs/index.json`, `/` →
+ * `…/index.json`), and a last segment named index (or ~index…) gets one more `~` (`/items/index` → `…/items/~index.json`)
  */
 export function pageDataPath(path: string): string {
-  return `${PAGE_DATA}${path.replace(/\/$/, '')}.json`
+  const named = path.endsWith('/') ? `${path}index` : path.replace(/(?<=\/)(~*index)$/, '~$1')
+  return `${PAGE_DATA}${named}.json`
 }
 
-/** the other way, for an app whose pages end with a slash (`append`) or don't; null for any other path */
-export function pathOfPageData(pathname: string, append = false): string | null {
-  const m = pathname.match(/^\/_fondu\/pages((?:\/.+)?)\.json$/)
+/** the other way: `/_fondu/pages/docs/intro.json` → `/docs/intro`; null for any other path */
+export function pathOfPageData(pathname: string): string | null {
+  const m = pathname.match(/^\/_fondu\/pages(\/.+)\.json$/)
   if (!m) return null
-  return append ? `${m[1]}/` : m[1] || '/'
+  return m[1]!.replace(/(?<=\/)index$/, '').replace(/(?<=\/)~(~*index)$/, '$1')
 }
 
 /** the files of a prerendered page: `/docs/intro` → `docs/intro.html` and `_fondu/pages/docs/intro.json` (decoded) */

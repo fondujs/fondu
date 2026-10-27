@@ -166,7 +166,7 @@ export function createApp(options: CreateAppOptions = {}): Hono {
   }
   if (options.csrf !== false) app.use(csrf(options.csrf))
   const prerendered: PrerenderRoute[] = []
-  if (prerender) prerenderRoutes(app, () => prerendered, version, append)
+  if (prerender) prerenderRoutes(app, () => prerendered, version)
   app.use(append ? appendTrailingSlash() : trimTrailingSlash(), ...protocol)
   app.notFound((c) => errorResponse(c, 404))
   app.onError((error, c) => {

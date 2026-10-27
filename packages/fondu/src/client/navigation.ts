@@ -224,8 +224,9 @@ export function startNavigation({ initial, show, prerender, pending, preload }: 
     if (url.origin !== location.origin || !isWebUrl(url.href)) return
     event.preventDefault()
     const data = new FormData(form, submitter)
-    // as the browser would send them: a file by its name in a URL or plain text
-    const fields = [...data].map(([k, v]) => [k, typeof v === 'string' ? v : v.name])
+    // as the browser would send them: a file by its name in a URL or plain text, line breaks as CRLF (a <textarea>'s)
+    const crlf = (text: string) => text.replace(/\r\n|\r|\n/g, '\r\n')
+    const fields = [...data].map(([k, v]) => [crlf(k), crlf(typeof v === 'string' ? v : v.name)])
     if (method === 'post') {
       const enctype = attr('enctype', 'formenctype').toLowerCase()
       const body =
@@ -262,7 +263,12 @@ export function startNavigation({ initial, show, prerender, pending, preload }: 
   // the browser's own #fragment navigations: the entry gets its key
   window.addEventListener('hashchange', scroll.commit)
 
-  restore(scroll.start(), location.hash, true)
+  // an entry with a position (a reload, Back from another site): that position, the #fragment's target or not, as
+  // the browser restores it; otherwise, a first visit, the #fragment's target (rendered by now)
+  const { position, restored } = scroll.start()
+  if (position) {
+    if (!restored) window.scrollTo(position.x, position.y)
+  } else restore(null, location.hash, true)
   keep(initial)
 }
 
@@ -335,15 +341,15 @@ function scrollPositions() {
     /** the key of the entry on the screen */
     key: () => rendered,
     /**
-     * The document's entry: its key; where it was scrolled, unless the browser did it (an entry it restores, the one
-     * left by a reload): an entry this client pushed, loaded again (Back from another site past it)
+     * The document's entry: its key; where it was scrolled, if it was (an entry this client pushed, loaded again: a
+     * reload, Back from another site past it), and whether the browser or the document's script put it back already
      */
     start() {
       // restored already: by the browser, or the document's own script (the page's position, before its first paint)
       const restored = history.scrollRestoration === 'auto' || scrollX !== 0 || scrollY !== 0
       history.scrollRestoration = 'manual'
       commit()
-      return restored ? null : read(rendered)
+      return { position: read(rendered), restored }
     },
     /** the page on the screen, at `url`: a new entry or this one */
     write(url: string, replace: boolean) {

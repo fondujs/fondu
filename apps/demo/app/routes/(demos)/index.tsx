@@ -12,7 +12,7 @@ export default function Overview() {
         code that makes it work. The docs are on <a href="https://fondu.dev/docs">fondu.dev</a>.
       </p>
       {groups.map(([group, demos]) => (
-        <section key={group} className="mb-8">
+        <section key={group} id={group.toLowerCase().replace(/\W+/g, '-')} className="mb-8">
           <h2 className="mb-3 text-lg font-semibold">{group}</h2>
           <div className="grid gap-4 sm:grid-cols-2">
             {demos.map(([url, title, text]) => (

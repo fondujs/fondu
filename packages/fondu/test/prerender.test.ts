@@ -25,28 +25,38 @@ const route = (
 
 describe('files', () => {
   test('a page and its page object', () => {
-    expect(staticFiles('/')).toEqual({ html: 'index.html', json: '_fondu/pages.json' })
+    expect(staticFiles('/')).toEqual({ html: 'index.html', json: '_fondu/pages/index.json' })
     expect(staticFiles('/docs/intro')).toEqual({
       html: 'docs/intro.html',
       json: '_fondu/pages/docs/intro.json',
     })
     expect(staticFiles('/docs/')).toEqual({
       html: 'docs/index.html',
-      json: '_fondu/pages/docs.json',
+      json: '_fondu/pages/docs/index.json',
     })
     // a param's value named index: a page of its own, not its directory's
-    expect(staticFiles('/items/index').json).toBe('_fondu/pages/items/index.json')
+    expect(staticFiles('/items/index').json).toBe('_fondu/pages/items/~index.json')
     expect(staticFiles('/docs/caf%C3%A9')).toEqual({
       html: 'docs/café.html',
       json: '_fondu/pages/docs/café.json',
     })
   })
   test('the page object URL, both ways', () => {
-    for (const path of ['/', '/docs/intro', '/items/index', '/index', '/a%20b'])
-      expect(pathOfPageData(pageDataPath(path))).toBe(path)
-    // trailingSlash: 'append', every page's path ends with one
-    for (const path of ['/', '/docs/', '/items/index/'])
-      expect(pathOfPageData(pageDataPath(path), true)).toBe(path)
+    // one for one, slash or not (trailingSlash: 'append' has both: a catch-all takes none), index or not
+    for (const path of [
+      '/',
+      '/docs/intro',
+      '/docs/',
+      '/docs/a',
+      '/docs/a/b/',
+      '/items/index',
+      '/items/index/',
+      '/index',
+      '/items/~index',
+      '/items/~~index/',
+      '/a%20b',
+    ])
+      expect(pathOfPageData(pageDataPath(path)), path).toBe(path)
     expect(pathOfPageData('/docs/intro.json')).toBe(null)
   })
 })
@@ -83,7 +93,7 @@ describe('headers', () => {
   test("_headers: a rule for the documents, X-Fondu for the page objects, after Fondu's own", () => {
     const fondus = '/assets/*\n  Cache-Control: public, max-age=31536000, immutable\n'
     expect(withHeaderRules(fondus, { 'referrer-policy': 'same-origin' })).toBe(
-      `${fondus}\n/*\n  referrer-policy: same-origin\n\n/_fondu/pages.json\n  X-Fondu: true\n\n/_fondu/pages/*\n  X-Fondu: true\n`,
+      `${fondus}\n/*\n  referrer-policy: same-origin\n\n/_fondu/pages/*\n  X-Fondu: true\n`,
     )
   })
   test("_headers: the app's rule for a path gets the headers it doesn't set, its own kept (#99)", () => {
@@ -95,7 +105,7 @@ describe('headers', () => {
       'x-content-type-options': 'nosniff',
     })
     expect(out).toBe(
-      '/*\n  Cache-Control: no-store\n  Referrer-Policy: no-referrer\n  ! X-Frame-Options\n  x-content-type-options: nosniff\n\n/api/*\n  X-Robots-Tag: noindex\n\n/_fondu/pages.json\n  X-Fondu: true\n\n/_fondu/pages/*\n  X-Fondu: true\n',
+      '/*\n  Cache-Control: no-store\n  Referrer-Policy: no-referrer\n  ! X-Frame-Options\n  x-content-type-options: nosniff\n\n/api/*\n  X-Robots-Tag: noindex\n\n/_fondu/pages/*\n  X-Fondu: true\n',
     )
     expect(out.match(/^\/\*$/gm)).toHaveLength(1)
     // built again on the result: nothing more
@@ -143,7 +153,7 @@ describe('the app', () => {
     })
   })
   test('the page object of a page without a file: the page, as a navigation', async () => {
-    const res = await app.request('/_fondu/pages.json?fresh', {
+    const res = await app.request('/_fondu/pages/index.json?fresh', {
       headers: { 'X-Fondu': 'true', 'X-Fondu-Version': 'v1' },
     })
     expect(res.headers.get('x-fondu')).toBe('true')
@@ -152,13 +162,13 @@ describe('the app', () => {
     expect(page.url).toBe('/?fresh')
   })
   test('the page object of a page object: none', async () => {
-    const res = await app.request('/_fondu/pages/_fondu/pages.json.json', {
+    const res = await app.request('/_fondu/pages/_fondu/pages/index.json.json', {
       headers: { 'X-Fondu': 'true', 'X-Fondu-Version': 'v1' },
     })
     expect(res.status).toBe(404)
   })
   test('… from other assets: reloaded at the page, not at the page object', async () => {
-    const res = await app.request('/_fondu/pages.json', {
+    const res = await app.request('/_fondu/pages/index.json', {
       headers: { 'X-Fondu': 'true', 'X-Fondu-Version': 'old' },
     })
     expect(res.status).toBe(409)
@@ -167,7 +177,7 @@ describe('the app', () => {
   test('Node / Bun: a prerendered page from its file, before the routes, with the security headers', async () => {
     const files: Record<string, string> = {
       'index.html': '<html>static home</html>',
-      '_fondu/pages.json': '{"component":"home"}',
+      '_fondu/pages/index.json': '{"component":"home"}',
     }
     const key = Symbol.for('fondu.staticFiles')
     const g = globalThis as unknown as Record<symbol, unknown>
@@ -180,7 +190,7 @@ describe('the app', () => {
       const doc = await app.request('/', { headers: { Accept: 'text/html' } })
       expect(await doc.text()).toBe('<html>static home</html>')
       expect(doc.headers.get('content-security-policy')).toContain("script-src 'self' 'nonce-")
-      const data = await app.request('/_fondu/pages.json', {
+      const data = await app.request('/_fondu/pages/index.json', {
         headers: { 'X-Fondu': 'true' },
       })
       expect(data.headers.get('x-fondu')).toBe('true')

@@ -970,6 +970,70 @@ await page.waitForFunction(
   )
 }
 
+// ---- a reload of a #fragment's page scrolled elsewhere: where it was left, as without JavaScript
+{
+  const rp = await browser.newPage()
+  await rp.setViewport({ width: 1100, height: 240 })
+  await rp.goto(BASE + '/#rendering', { waitUntil: 'networkidle0' })
+  await new Promise((r) => setTimeout(r, 300))
+  const anchorY = await rp.evaluate(() => Math.round(scrollY))
+  const left = Math.floor(anchorY / 2)
+  await rp.evaluate((y) => scrollTo(0, y), left)
+  await new Promise((r) => setTimeout(r, 300))
+  await rp.reload({ waitUntil: 'networkidle0' })
+  await new Promise((r) => setTimeout(r, 500))
+  const after = await rp.evaluate(() => Math.round(scrollY))
+  ok(
+    "a reload of a #fragment's page scrolled away from it: where it was left, not at the fragment",
+    anchorY > 40 && after === left,
+    JSON.stringify({ anchorY, left, after }),
+  )
+  await rp.close()
+}
+
+// ---- a <textarea>'s line breaks, sent as the browser sends them (CRLF), URL-encoded and as plain text
+{
+  const fp = await browser.newPage()
+  await fp.goto(BASE + '/errors', { waitUntil: 'networkidle0' })
+  await fp.setRequestInterception(true)
+  const bodies = []
+  fp.on('request', (r) => {
+    if (r.isInterceptResolutionHandled()) return
+    if (r.method() === 'POST' && new URL(r.url()).pathname === '/echo') {
+      bodies.push(r.postData())
+      return void r.respond({ status: 200, contentType: 'text/plain', body: 'ok' })
+    }
+    r.continue().catch(() => {})
+  })
+  for (const enctype of ['application/x-www-form-urlencoded', 'text/plain']) {
+    await fp.evaluate((enctype) => {
+      const form = Object.assign(document.createElement('form'), {
+        method: 'post',
+        action: '/echo',
+        enctype,
+      })
+      const notes = Object.assign(document.createElement('textarea'), {
+        name: 'notes',
+        value: 'one\ntwo',
+      })
+      form.append(notes, document.createElement('button'))
+      document.body.append(form)
+      form.querySelector('button').click()
+    }, enctype)
+    await fp
+      .waitForFunction((n) => document.querySelector('pre') || n, { timeout: 5000 }, bodies.length)
+      .catch(() => {})
+    await new Promise((r) => setTimeout(r, 300))
+    await fp.goto(BASE + '/errors', { waitUntil: 'networkidle0' })
+  }
+  ok(
+    "a <textarea>'s line breaks: CRLF, as the browser sends them",
+    JSON.stringify(bodies) === JSON.stringify(['notes=one%0D%0Atwo', 'notes=one\r\ntwo\r\n']),
+    JSON.stringify(bodies),
+  )
+  await fp.close()
+}
+
 // ---- a #fragment that doesn't decode (#100%): the page all the same
 {
   const before = problems.length

@@ -67,7 +67,6 @@ export function withHeaderRules(file: string, headers: Record<string, string>): 
   const lines = file.replace(/\n+$/, '').split('\n')
   const rules: Array<[string, Record<string, string>]> = [
     ['/*', headers],
-    [`${PAGE_DATA}.json`, { 'X-Fondu': 'true' }], // the home page's
     [`${PAGE_DATA}/*`, { 'X-Fondu': 'true' }],
   ]
   for (const [path, set] of rules) {
