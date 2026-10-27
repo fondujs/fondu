@@ -1,5 +1,5 @@
 import { back, defineHandler, flash } from 'fondu'
-import { type Errors, href } from 'fondu/client'
+import { href, useForm } from 'fondu/client'
 import * as z from 'zod/mini'
 
 import { DemoCard, SubmitButton, TextField, Title } from '#/components/demo.tsx'
@@ -23,7 +23,8 @@ export const action = defineHandler.withValidator({ body: upload })((c, { body }
   return back(c)
 })
 
-export default function Uploads({ errors }: { errors: Errors }) {
+export default function Uploads() {
+  const { form, field, errors, submitting } = useForm()
   return (
     <>
       <Title>File uploads</Title>
@@ -41,16 +42,19 @@ export default function Uploads({ errors }: { errors: Errors }) {
             encType="multipart/form-data"
             className="grid gap-4"
             data-testid="upload"
+            {...form}
           >
             <TextField
               label="File"
               type="file"
-              name="file"
+              {...field('file')}
               accept="image/png,image/jpeg,image/webp,text/plain"
               error={errors.file}
               testid="err-file"
             />
-            <SubmitButton data-testid="upload-send">Upload</SubmitButton>
+            <SubmitButton loading={submitting} data-testid="upload-send">
+              Upload
+            </SubmitButton>
           </form>
         </DemoCard>
         <DemoCard title="The schema" tag="its action">

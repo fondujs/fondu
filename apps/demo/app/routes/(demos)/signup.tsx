@@ -1,5 +1,5 @@
 import { defineHandler, flash, render } from 'fondu'
-import { type Errors, href } from 'fondu/client'
+import { href, useForm } from 'fondu/client'
 import { TriangleAlertIcon } from 'lucide-react'
 import * as z from 'zod/mini'
 
@@ -23,7 +23,8 @@ export const action = defineHandler.withValidator({
   return c.redirect('/account', 303)
 })
 
-export default function Signup({ errors }: { errors: Errors }) {
+export default function Signup() {
+  const { form, field, errors, submitting } = useForm()
   return (
     <div className="max-w-sm">
       <Title>Create an account</Title>
@@ -37,11 +38,17 @@ export default function Signup({ errors }: { errors: Errors }) {
         <AlertTitle>Sign-up is turned off in this demo</AlertTitle>
         <AlertDescription>Sign in with one of its accounts instead.</AlertDescription>
       </Alert>
-      <form action={href('/signup')} method="post" className="grid gap-4" data-testid="signup">
-        <TextField label="Name" name="name" autoComplete="name" error={errors.name} />
+      <form
+        action={href('/signup')}
+        method="post"
+        className="grid gap-4"
+        data-testid="signup"
+        {...form}
+      >
+        <TextField label="Name" {...field('name')} autoComplete="name" error={errors.name} />
         <TextField
           label="Email"
-          name="email"
+          {...field('email')}
           type="email"
           autoComplete="username"
           error={errors.email}
@@ -49,12 +56,12 @@ export default function Signup({ errors }: { errors: Errors }) {
         />
         <TextField
           label="Password"
-          name="password"
+          {...field('password')}
           type="password"
           autoComplete="new-password"
           error={errors.password}
         />
-        <SubmitButton>Create account</SubmitButton>
+        <SubmitButton loading={submitting}>Create account</SubmitButton>
       </form>
       <p className="mt-4 text-sm text-muted-foreground">
         Have one? <a href={href('/login')}>Sign in</a>

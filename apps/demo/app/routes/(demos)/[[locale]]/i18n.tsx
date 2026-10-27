@@ -1,5 +1,5 @@
 import { back, defineHandler, flash, render } from 'fondu'
-import { type Errors, href, loadDocument } from 'fondu/client'
+import { href, loadDocument, useForm } from 'fondu/client'
 import * as z from 'zod/mini'
 
 import { DemoCard, SubmitButton, TextField, Title } from '#/components/demo.tsx'
@@ -48,7 +48,6 @@ interface Props {
   date: string
   price: string
   alternates: Record<string, string>
-  errors: Errors
 }
 
 // each language in its own words
@@ -60,7 +59,8 @@ const pick = (locale: Locale) => {
   loadDocument(localizeHref(href('/i18n'), { locale }))
 }
 
-export default function I18n({ rendered, date, price, alternates, errors }: Props) {
+export default function I18n({ rendered, date, price, alternates }: Props) {
+  const { form, field, errors, submitting } = useForm()
   const locale = getLocale() // the URL's, in the browser as on the server
   return (
     <>
@@ -113,9 +113,16 @@ export default function I18n({ rendered, date, price, alternates, errors }: Prop
           </p>
         </DemoCard>
         <DemoCard title="From the server" tag="flash(c, { message: m.said_hello({ name }) })">
-          <form action={localizedHref('/i18n')} method="post" className="grid gap-4">
-            <TextField label={m.name_label()} name="name" error={errors.name} testid="err-name" />
-            <SubmitButton data-testid="say-hello">{m.say_hello()}</SubmitButton>
+          <form action={localizedHref('/i18n')} method="post" className="grid gap-4" {...form}>
+            <TextField
+              label={m.name_label()}
+              {...field('name')}
+              error={errors.name}
+              testid="err-name"
+            />
+            <SubmitButton loading={submitting} data-testid="say-hello">
+              {m.say_hello()}
+            </SubmitButton>
           </form>
         </DemoCard>
       </div>

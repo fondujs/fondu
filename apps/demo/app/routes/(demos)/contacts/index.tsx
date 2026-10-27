@@ -56,7 +56,7 @@ export default function Contacts({ contacts }: { contacts: Contact[] }) {
   const { auth } = usePage().props
   // the action's schema, in the browser too: an invalid form isn't sent; the server checks again (and what only it
   // can, an address already taken)
-  const { form, field, errors } = useForm(contactSchema)
+  const { form, field, errors, submitting } = useForm(contactSchema)
   // a contact being deleted: the form being sent is its form, the trash button shows it
   const sending = useNavigation().form
   return (
@@ -86,7 +86,7 @@ export default function Contacts({ contacts }: { contacts: Contact[] }) {
                 error={errors.email}
                 testid="err-email"
               />
-              <SubmitButton>Add contact</SubmitButton>
+              <SubmitButton loading={submitting}>Add contact</SubmitButton>
             </form>
           </DemoCard>
         </div>

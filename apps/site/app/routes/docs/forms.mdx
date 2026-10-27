@@ -91,12 +91,12 @@ export default function NewContact() {
 }
 ```
 
-| From `useForm()` | Is                                                                                                |
-| ---------------- | ------------------------------------------------------------------------------------------------- |
-| `form`           | for the `<form>`: checks it on submit; an invalid one isn't sent, its first field to fix focused  |
-| `field(name)`    | for a field: its `name`, `aria-invalid`, and its checks as it is left and changed                 |
-| `errors`         | the server's (the page's `errors` prop), and the browser's: `errors.email`, `errors['user.name']` |
-| `submitting`     | this form is being sent                                                                           |
+| Field         | Is                                                                                                |
+| ------------- | ------------------------------------------------------------------------------------------------- |
+| `form`        | for the `<form>`: checks it on submit; an invalid one isn't sent, its first field to fix focused  |
+| `field(name)` | for a field: its `name`, `aria-invalid`, and its checks as it is left and changed                 |
+| `errors`      | the server's (the page's `errors` prop), and the browser's: `errors.email`, `errors['user.name']` |
+| `submitting`  | this form is being sent                                                                           |
 
 - A field is checked as it is left for another with something typed, and again as it changes while it is wrong,
   so a fixed field loses its message. Not as it is left for the submit button: the message would move the button

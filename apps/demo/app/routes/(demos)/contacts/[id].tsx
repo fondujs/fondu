@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm'
 import { back, defineHandler, flash, render, ValidationError } from 'fondu'
-import { type Errors, href, usePage } from 'fondu/client'
+import { href, useForm, usePage } from 'fondu/client'
 import { HTTPException } from 'hono/http-exception'
 import * as z from 'zod/mini'
 
@@ -47,12 +47,13 @@ export const actions = {
 
 export default function Show({
   contact,
-  errors,
 }: {
   contact: { id: number; name: string; email: string }
-  errors: Errors
 }) {
   const { user } = usePage().props.auth
+  // a form each: each shows the errors of its own fields, and is busy on its own
+  const rename = useForm()
+  const email = useForm()
   return (
     <>
       <Title>{contact.name}</Title>
@@ -73,15 +74,16 @@ export default function Show({
               method="post"
               className="grid gap-4"
               data-testid="rename"
+              {...rename.form}
             >
               <TextField
                 label="Name"
-                name="name"
+                {...rename.field('name')}
                 defaultValue={contact.name}
-                error={errors.name}
+                error={rename.errors.name}
                 testid="err-rename"
               />
-              <SubmitButton>Rename</SubmitButton>
+              <SubmitButton loading={rename.submitting}>Rename</SubmitButton>
             </form>
           </DemoCard>
           <DemoCard title="Email" tag="actions.email">
@@ -90,15 +92,16 @@ export default function Show({
               method="post"
               className="grid gap-4"
               data-testid="email"
+              {...email.form}
             >
               <TextField
                 label="Email"
-                name="email"
+                {...email.field('email')}
                 defaultValue={contact.email}
-                error={errors.email}
+                error={email.errors.email}
                 testid="err-email"
               />
-              <SubmitButton>Change email</SubmitButton>
+              <SubmitButton loading={email.submitting}>Change email</SubmitButton>
             </form>
           </DemoCard>
         </div>

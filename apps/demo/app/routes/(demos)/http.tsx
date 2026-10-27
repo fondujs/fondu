@@ -81,7 +81,7 @@ export default function Http() {
           <form className="grid gap-4" onSubmit={create} noValidate data-testid="create">
             <TextField label="Name" name="name" error={errors.name} testid="err-name" />
             <TextField label="Email" name="email" error={errors.email} testid="err-email" />
-            <SubmitButton processing={creating}>Create</SubmitButton>
+            <SubmitButton loading={creating}>Create</SubmitButton>
           </form>
           {created ? <Json value={created} className="mt-4" data-testid="created" /> : null}
         </DemoCard>
