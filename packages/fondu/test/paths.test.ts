@@ -29,6 +29,11 @@ describe('routes/ files', () => {
       '/:lang/items/:id',
     ])
     expect(() => routePatterns('[[lang]]/[[page]].ts')).toThrow('2 optional segments; one at most')
+    // href()'s options
+    expect(() => routePatterns('[query].tsx')).toThrow("can't be named query")
+    expect(() => routePatterns('a/[[hash]]/b.ts')).toThrow("can't be named hash")
+    expect(() => routePatterns('[...query].ts')).toThrow("can't be named query")
+    expect(routePatterns('query/[queryId].tsx')).toEqual(['/query/:queryId'])
     expect(() => routePatterns('docs/[[...path]].ts')).toThrow('an optional catch-all')
   })
   test('what is a route', () => {
@@ -152,5 +157,17 @@ describe('href()', () => {
     expect(to('/users/:id', { id: 7 })).toBe('/users/7')
     expect(to('/users/:id?delete', { id: 7 })).toBe('/users/7?delete')
     expect(to('/about')).toBe('/about')
+  })
+  test('a query and a fragment', () => {
+    const go = href as (path: string, options?: Record<string, unknown>) => string
+    expect(go('/search', { query: { q: 'a b&c', page: 2, none: undefined, no: null } })).toBe(
+      '/search?q=a+b%26c&page=2',
+    )
+    expect(go('/users/:id?delete', { id: 7, query: { now: true } })).toBe(
+      '/users/7?delete&now=true',
+    )
+    expect(go('/docs', { hash: 'set up' })).toBe('/docs#set%20up')
+    expect(go('/docs', { query: {}, hash: '' })).toBe('/docs')
+    expect(go('/tags', { query: { t: ['a', 'b'] } })).toBe('/tags?t=a&t=b')
   })
 })

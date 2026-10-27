@@ -20,6 +20,12 @@ export function routePatterns(file: string): string[] {
     )
   if (optional.length > 1)
     throw new Error(`fondu: routes/${file} has ${optional.length} optional segments; one at most`)
+  // href()'s options, next to the params
+  const reserved = segments.find((s) => /^\[{1,2}(?:\.\.\.)?(?:query|hash)\]{1,2}$/.test(s))
+  if (reserved)
+    throw new Error(
+      `fondu: routes/${file}: a param can't be named ${reserved.replace(/[[\].]/g, '')} (href()'s query and hash); rename it`,
+    )
   const pattern = (withOptional: boolean) =>
     '/' +
     segments

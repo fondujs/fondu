@@ -10,6 +10,7 @@ There is nothing to declare twice. Each type has one source, and the rest follow
 | ------------------------------------- | --------------------------------------------------------------------- |
 | a page component's props              | `render(c, Page, props)`: every prop is there and fits                |
 | the files in `app/routes/`            | `href('/users/:id', { id })`: the URL exists, its params, its actions |
+| a route's query schema                | `href('/search', { query })`: the query the route takes               |
 | a handler's schemas (`withValidator`) | the `body`, `query` and `params` the handler receives                 |
 | declarations next to your middleware  | `share()`, `flash()`, `usePage()`, `c.get()`                          |
 
@@ -39,6 +40,25 @@ href('/users/:id?rename', { id: 7 }) // '/users/7?rename': actions.rename
 href('/users/:id') // error: the param is missing
 href('/user/:id', { id: 7 }) // error: no such route
 ```
+
+`query` and `hash` add a query string and a fragment. When the route checks its query with `withValidator({ query })`
+(its loader, a `.ts` file's `GET`, or the action), `query` is typed by that schema; otherwise it takes any values.
+
+```tsx
+// app/routes/search.tsx
+const query = z.object({ q: z.string(), page: z.optional(z.coerce.number()) })
+export const loader = defineHandler.withValidator({ query })(async (c, { query }) => …)
+
+// anywhere
+href('/search', { query: { q: 'ada', page: 2 }, hash: 'results' }) // '/search?q=ada&page=2#results'
+href('/search') // error: the schema requires q
+href('/users/:id', { id: 7, query: { tab: 'posts' } }) // '/users/7?tab=posts': no schema, any query
+```
+
+A param can't be named `query` or `hash`: they are `href()`'s. A value that is `undefined` or `null` is left out, and
+`z.coerce.number()` takes any value (a string or a number), as the URL carries it as text.
+
+A redirect takes `href()` too: `return c.redirect(href('/users/:id', { id: user.id }), 303)`.
 
 ## Handler input
 

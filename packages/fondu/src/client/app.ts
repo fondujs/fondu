@@ -143,18 +143,31 @@ export function pageAt(pathname: string): string | undefined {
   return best?.id
 }
 
-// ---- pending navigations, for useNavigating()
+// ---- pending navigations, for useNavigation()
 
-let navigating = false
-let submitting = false
+/** a navigation on its way, or none: `useNavigation()` */
+export type Navigation =
+  | { state: 'idle'; to: null; form: null }
+  | {
+      /** `submitting`: a form's POST; `loading`: any other (a link, a GET form, `navigate()`, `reload()`) */
+      state: 'loading' | 'submitting'
+      /** where to: a path, its query and fragment (`/users/7?tab=posts`) */
+      to: string
+      /** the form being sent (a GET form's too), else null */
+      form: HTMLFormElement | null
+    }
+
+const IDLE: Navigation = { state: 'idle', to: null, form: null }
+let navigation: Navigation = IDLE
 const listeners = new Set<() => void>()
 const subscribe = (listener: () => void) => {
   listeners.add(listener)
   return () => listeners.delete(listener)
 }
-function setNavigating(value: boolean, form: boolean) {
-  navigating = value
-  submitting = form
+function setNavigation(next: { to: string; form: HTMLFormElement | null; post: boolean } | null) {
+  navigation = next
+    ? { state: next.post ? 'submitting' : 'loading', to: next.to, form: next.form }
+    : IDLE
   for (const l of listeners) l()
 }
 
@@ -164,7 +177,12 @@ function setNavigating(value: boolean, form: boolean) {
 function start(settings: { prerender: boolean; progress: ProgressOptions | false }) {
   const progress = settings.progress
   if (progress)
-    subscribe(progressBar(progress, () => navigating && (progress.forms !== false || !submitting)))
+    subscribe(
+      progressBar(
+        progress,
+        () => navigation.state !== 'idle' && (progress.forms !== false || navigation.form === null),
+      ),
+    )
   const data = document.querySelector('script[data-page="app"]')?.textContent
   const root = document.getElementById('app')
   if (!data || !root)
@@ -184,7 +202,7 @@ function start(settings: { prerender: boolean; progress: ProgressOptions | false
       startNavigation({
         initial,
         prerender: settings.prerender,
-        pending: setNavigating,
+        pending: setNavigation,
         preload(pathname) {
           const page = pageAt(pathname)
           if (page) load(page).catch(() => {})
@@ -232,12 +250,15 @@ export function usePage<P = Shared>(): {
   return page as never
 }
 
-/** true while a navigation or a form's submission is on its way */
-export function useNavigating(): boolean {
+/**
+ * The navigation on its way: `state` is `idle`, `loading` (a link, `navigate()`…) or `submitting` (a form's POST),
+ * from the click or the submit until the next page is on the screen; `to`, where to; `form`, the form being sent.
+ */
+export function useNavigation(): Navigation {
   return useSyncExternalStore(
     subscribe,
-    () => navigating,
-    () => false,
+    () => navigation,
+    () => IDLE,
   )
 }
 

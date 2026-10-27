@@ -1,4 +1,4 @@
-import { type Errors, href, useNavigating, usePage } from 'fondu/client'
+import { type Errors, href, useNavigation, usePage } from 'fondu/client'
 import { InfoIcon } from 'lucide-react'
 import {
   useEffect,
@@ -115,10 +115,10 @@ export function TextField({
   )
 }
 
-/** whether a form is being sent: Fondu's client marks it `aria-busy` while it is */
+/** whether a form is being sent */
 export function useSending(form: () => HTMLFormElement | null | undefined): boolean {
-  const navigating = useNavigating()
-  return navigating && form()?.getAttribute('aria-busy') === 'true'
+  const navigation = useNavigation()
+  return navigation.form !== null && navigation.form === form()
 }
 
 /**
@@ -209,7 +209,7 @@ export function SignInFirst({ children }: { children: ReactNode }) {
       <InfoIcon />
       <AlertDescription>
         <p>
-          <a href={`${href('/login')}?next=${encodeURIComponent(url)}`}>Sign in</a> {children}
+          <a href={href('/login', { query: { next: url } })}>Sign in</a> {children}
         </p>
       </AlertDescription>
     </Alert>

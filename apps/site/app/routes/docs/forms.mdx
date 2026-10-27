@@ -114,14 +114,15 @@ form[aria-busy='true'] button[type='submit'] {
 }
 ```
 
-In a component, `useNavigating()` is `true` meanwhile; with the form's `aria-busy`, it is this form's submission:
+In a component, `useNavigation().form` is the form being sent:
 
 ```tsx
-import { useNavigating } from 'fondu/client'
+import { useNavigation } from 'fondu/client'
 
 export function SubmitButton(props: ComponentProps<'button'>) {
   const ref = useRef<HTMLButtonElement>(null)
-  const sending = useNavigating() && ref.current?.form?.ariaBusy === 'true'
+  const { form } = useNavigation()
+  const sending = form !== null && form === ref.current?.form
   return <button ref={ref} type="submit" disabled={sending} {...props} />
 }
 ```
