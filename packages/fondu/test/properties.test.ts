@@ -51,7 +51,7 @@ describe('page objects', () => {
 })
 
 describe('form bodies', () => {
-  const read = async (body: string | Uint8Array, type: string) => {
+  const read = async (body: string | Uint8Array<ArrayBuffer>, type: string) => {
     const app = new Hono().post('/', async (c) => c.json(await readBody(c as never)))
     const res = await app.request('/', { method: 'POST', body, headers: { 'Content-Type': type } })
     return { status: res.status, body: res.status === 200 ? await res.json() : null }
@@ -88,7 +88,8 @@ describe('form bodies', () => {
       'application/json',
     )
     await fc.assert(
-      fc.asyncProperty(fc.uint8Array({ maxLength: 200 }), type, async (bytes, t) => {
+      fc.asyncProperty(fc.uint8Array({ maxLength: 200 }), type, async (generated, t) => {
+        const bytes = new Uint8Array(generated) // its own ArrayBuffer, as a request body takes
         const { status } = await read(bytes, t)
         expect([200, 400]).toContain(status)
         expect(({} as Record<string, unknown>).polluted).toBeUndefined()
