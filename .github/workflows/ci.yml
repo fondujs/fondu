@@ -25,7 +25,7 @@ jobs:
 
   # fondu/client against the browsers themselves (apps/conformance): Chromium, Firefox and WebKit
   conformance:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04 # Playwright 1.56's browsers and their system dependencies: Ubuntu 24.04 at most
     steps:
       - uses: actions/checkout@v7
         with:
