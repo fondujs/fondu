@@ -9,10 +9,10 @@
  * - `_middleware.ts` applies to its directory
  */
 export function routePatterns(file: string): string[] {
-  const segments = file
-    .replace(ROUTE_EXTENSION, '')
-    .split('/')
-    .filter((s) => s !== '' && s !== 'index' && !/^\(.+\)$/.test(s))
+  const parts = file.replace(ROUTE_EXTENSION, '').split('/')
+  // the file named index is its directory; a directory named index is a segment like any other
+  if (parts.at(-1) === 'index') parts.pop()
+  const segments = parts.filter((s) => s !== '' && !/^\(.+\)$/.test(s))
   const optional = segments.filter((s) => /^\[\[(?:\.\.\.)?\w+\]\]$/.test(s))
   if (optional.some((s) => s.startsWith('[[...')))
     throw new Error(
@@ -85,18 +85,27 @@ export function fillPattern(pattern: string, params: Record<string, string | num
   })
 }
 
+/** fondu/client's scroll positions: each history entry's key in `history.state`, its position in sessionStorage */
+export const SCROLL_KEY = '__fondu'
+export const SCROLL_STORAGE = 'fondu-scroll:'
+
 /** where prerendered pages keep their page objects (`fondu({ prerender: true })`) */
 export const PAGE_DATA = '/_fondu/pages'
 
-/** a page's URL path → the URL of its page object: `/docs/intro` → `/_fondu/pages/docs/intro.json` (`/` → `/index`) */
+/**
+ * a page's URL path → the URL of its page object: `/docs/intro` → `/_fondu/pages/docs/intro.json`, `/` →
+ * `/_fondu/pages.json`. A trailing slash is left out: an app's pages have one or don't (`trailingSlash`), so
+ * `/docs/` and `/docs` are never two pages, while `/docs/index` (a param's value) is another one
+ */
 export function pageDataPath(path: string): string {
-  return `${PAGE_DATA}${path.endsWith('/') ? path + 'index' : path}.json`
+  return `${PAGE_DATA}${path.replace(/\/$/, '')}.json`
 }
 
-/** the other way: `/_fondu/pages/docs/intro.json` → `/docs/intro`; null for any other path */
-export function pathOfPageData(pathname: string): string | null {
-  const m = pathname.match(/^\/_fondu\/pages(\/.+)\.json$/)
-  return m ? m[1]!.replace(/\/index$/, '/') : null
+/** the other way, for an app whose pages end with a slash (`append`) or don't; null for any other path */
+export function pathOfPageData(pathname: string, append = false): string | null {
+  const m = pathname.match(/^\/_fondu\/pages((?:\/.+)?)\.json$/)
+  if (!m) return null
+  return append ? `${m[1]}/` : m[1] || '/'
 }
 
 /** the files of a prerendered page: `/docs/intro` → `docs/intro.html` and `_fondu/pages/docs/intro.json` (decoded) */

@@ -17,4 +17,6 @@ export const actions = {
     ),
   ),
   fragment: defineHandler((c) => c.redirect('/notes#end', 303)),
+  // relative: to /notes, as this request's URL (/redirect) resolves it
+  relative: defineHandler((c) => c.redirect('notes?a=1#end', 303)),
 }

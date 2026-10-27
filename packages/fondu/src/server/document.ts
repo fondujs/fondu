@@ -5,6 +5,7 @@ import { assetTags } from 'virtual:fondu/assets'
 import { renderMarkup, renderPage } from 'virtual:fondu/ssr'
 
 import type { Page } from '../client/navigation.js'
+import { SCROLL_KEY, SCROLL_STORAGE } from '../paths.js'
 
 /**
  * The HTML document around a page: `{head}` and `{body}` (in JSX, or `${head}` in a string) are where the page goes.
@@ -45,6 +46,14 @@ export const withoutSsr = (): MiddlewareHandler => async (c, next) => {
 const pageScript = (page: Page) =>
   `<script data-page="app" type="application/json">${JSON.stringify(page).replace(/\//g, '\\/').replace(/</g, '\\u003c')}</script>`
 
+/**
+ * A reload, Back to a page of another site: this entry's position, where fondu/client left it, before the first
+ * paint (the stylesheets are in: the page is laid out). The browser may not restore it itself (Safari: the client's
+ * own restoration, off until the page is left, is still off for it), and the client would only once it runs.
+ */
+const restoreScroll = (nonce: string | undefined) =>
+  `<script${nonce ? ` nonce="${nonce}"` : ''}>try{var k=history.state&&history.state[${JSON.stringify(SCROLL_KEY)}],p=k&&JSON.parse(sessionStorage.getItem(${JSON.stringify(SCROLL_STORAGE)}+k));p&&!scrollY&&scrollTo(+p.x||0,+p.y||0)}catch(e){}</script>`
+
 // where the page goes, in the document a template returns: replaced before the page is in, so a page's content is
 // never read as one
 const HEAD = 'fondu:document-head'
@@ -81,7 +90,8 @@ export async function renderDocument(c: Context, page: Page): Promise<string> {
   }
   // the page data first: the client reads the first `script[data-page]` in the document, so nothing in the page's
   // content can come before it
-  const body = pageScript(page) + (ssr?.body ?? '<div id="app"></div>')
+  // the position back for a page rendered here (one rendered in the browser has nothing to scroll yet)
+  const body = pageScript(page) + (ssr ? ssr.body + restoreScroll(nonce) : '<div id="app"></div>')
   const template = settings.get(c)?.document ?? defaultTemplate
   const html = await shell(template, c, nonce)
   const [before, between, after, ...more] = html.split(new RegExp(`${HEAD}|${BODY}`))
@@ -89,5 +99,20 @@ export async function renderDocument(c: Context, page: Page): Promise<string> {
     throw new Error(
       'fondu: the document must have `head` once, in <head>, and `body` once, in <body>',
     )
-  return before + (ssr?.head ?? '') + assetTags(page.component, nonce) + between + body + after
+  // the stylesheets first, right after <meta charset>: found, and asked for, before anything else of the head, the
+  // document's own tags included (React puts a JSX document's links and metas before `head`). A browser that lays
+  // the page out early (Firefox's, with its tools open) has them sooner
+  const tags = assetTags(page.component, nonce)
+  const css = tags.match(/<link rel="stylesheet"[^>]*>/g)?.join('') ?? ''
+  const charset = /<meta charset=[^>]*>/i
+  const top =
+    css && charset.test(before) ? before.replace(charset, (meta) => meta + css) : before + css
+  return (
+    top +
+    tags.replace(/<link rel="stylesheet"[^>]*>/g, '') +
+    (ssr?.head ?? '') +
+    between +
+    body +
+    after
+  )
 }

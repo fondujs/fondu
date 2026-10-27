@@ -10,6 +10,10 @@ describe('routes/ files', () => {
   test('file -> URL pattern', () => {
     expect(routePatterns('index.ts')).toEqual(['/'])
     expect(routePatterns('users/index.ts')).toEqual(['/users'])
+    // a directory named index is a segment
+    expect(routePatterns('index/detail.tsx')).toEqual(['/index/detail'])
+    expect(routePatterns('search/index/results.tsx')).toEqual(['/search/index/results'])
+    expect(routePatterns('index/index.tsx')).toEqual(['/index'])
     expect(routePatterns('users/[id].ts')).toEqual(['/users/:id'])
     expect(routePatterns('users/[id].tsx')).toEqual(['/users/:id']) // a page
     expect(routePatterns('docs/index.mdx')).toEqual(['/docs'])
@@ -106,8 +110,24 @@ describe('form bodies', () => {
       (Object.prototype.hasOwnProperty as unknown as Record<string, unknown>).x,
     ).toBeUndefined()
   })
-  test('JSON as it is', async () => {
+  test('a name given again is a list at any depth; [] goes after the highest index', async () => {
+    const form = 'application/x-www-form-urlencoded'
+    expect(await read('a%5Bb%5D=1&a%5Bb%5D=2', form)).toEqual({ a: { b: ['1', '2'] } })
+    expect(await read('a%5B1%5D=x&a%5B%5D=y', form)).toEqual({ a: { 1: 'x', 2: 'y' } })
+    expect(await read('a%5B%5D=x&a%5B5%5D=y&a%5B%5D=z', form)).toEqual({
+      a: { 0: 'x', 5: 'y', 6: 'z' },
+    })
+  })
+  test('many [] fields: read in linear time', async () => {
+    const many = 'a%5B%5D=1&'.repeat(100_000)
+    const started = performance.now()
+    const body = (await read(many, 'application/x-www-form-urlencoded')) as { a: string[] }
+    expect(body.a).toHaveLength(100_000)
+    expect(performance.now() - started).toBeLessThan(3000)
+  })
+  test('JSON as it is, whatever the case of its type', async () => {
     expect(await read('{"a":[1]}', 'application/json')).toEqual({ a: [1] })
+    expect(await read('{"a":[1]}', 'Application/JSON; charset=utf-8')).toEqual({ a: [1] })
   })
   test('a body that cannot be one object: 400', async () => {
     const status = async (body: string, type = 'application/x-www-form-urlencoded') => {
@@ -120,6 +140,8 @@ describe('form bodies', () => {
     expect(await status(`a${'%5Bb%5D'.repeat(40)}=1`)).toBe(400)
     expect(await status(`a${'%5Bb%5D'.repeat(20)}=1`)).toBe(200)
     expect(await status('{"a":', 'application/json')).toBe(400)
+    expect(await status('broken', 'multipart/form-data')).toBe(400)
+    expect(await status('broken', 'multipart/form-data; boundary=test')).toBe(400)
   })
 })
 

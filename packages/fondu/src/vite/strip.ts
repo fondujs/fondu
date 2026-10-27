@@ -180,7 +180,7 @@ interface Part {
 
 /**
  * The browser's copy of a page's route file: its server exports removed (`loader`, `action`, `actions`…), then
- * what only they used: imports and top-level declarations no other code names, until none is left. Conservative: a
+ * what only they used: the imports and top-level declarations the code kept doesn't reach. Conservative: a
  * name the code kept refers to keeps its declaration, so what is left over is at worst unused code, which
  * Fondu's server-only guard stops when it is server code (`*.server.ts`, `routes/*.ts`). Lines stay where they were.
  */
@@ -230,26 +230,29 @@ export function stripServerCode(code: string, program: { body: Node[] }, file: s
       part.declares = bound(node)
   }
 
-  // what nobody names goes, until nothing more does
-  for (let changed = true; changed;) {
-    changed = false
-    const live = (part: Part) => part.text !== ''
-    for (const part of parts) {
-      if (!live(part) || !part.declares.length) continue
-      const used = (name: string) =>
-        parts.some((other) => other !== part && live(other) && other.uses.has(name))
-      if (part.node.type === 'ImportDeclaration') {
-        const specifiers = part.node.specifiers as Array<Node & { local: Name }>
-        const kept = specifiers.filter((s) => used(nameOf(s.local)))
-        if (kept.length === part.declares.length) continue
-        changed = true
-        part.declares = kept.map((s) => nameOf(s.local))
-        part.text = kept.length ? importOf(code, part.node, kept) : ''
-      } else if (!part.declares.some(used)) {
-        changed = true
-        part.text = ''
-      }
+  // what the code kept reaches stays, the rest goes: declarations that only name each other (a loader's helpers
+  // calling one another) go together
+  const kept = (part: Part) => part.text !== ''
+  const live = new Set(parts.filter((part) => kept(part) && !part.declares.length))
+  const reached = new Set<string>()
+  for (const queue = [...live]; queue.length;)
+    for (const name of queue.pop()!.uses) {
+      if (reached.has(name)) continue
+      reached.add(name)
+      for (const part of parts)
+        if (kept(part) && !live.has(part) && part.declares.includes(name)) {
+          live.add(part)
+          queue.push(part)
+        }
     }
+  for (const part of parts) {
+    if (!kept(part) || !part.declares.length) continue
+    if (part.node.type === 'ImportDeclaration') {
+      const specifiers = part.node.specifiers as Array<Node & { local: Name }>
+      const used = specifiers.filter((s) => reached.has(nameOf(s.local)))
+      if (used.length < specifiers.length)
+        part.text = used.length ? importOf(code, part.node, used) : ''
+    } else if (!live.has(part)) part.text = ''
   }
 
   for (const part of parts)

@@ -307,6 +307,15 @@ ok(
     (await page.$eval('[data-testid=add-contact] input[name=name]', (e) => e.value)) === '',
 )
 {
+  // sent as the browser would: a form without enctype, URL-encoded
+  const sent = fetches.findLast((f) => f.method === 'POST')
+  ok(
+    "a form's fields, as the browser sends them: application/x-www-form-urlencoded by default",
+    sent?.headers['content-type']?.startsWith('application/x-www-form-urlencoded'),
+    JSON.stringify(sent?.headers['content-type']),
+  )
+}
+{
   // the same address again, typed in capitals: refused by the server's schema
   await setValue('[data-testid=add-contact] input[name=name]', 'Grace Again')
   await setValue('[data-testid=add-contact] input[name=email]', graceEmail.toUpperCase())
@@ -557,6 +566,15 @@ ok(
   ok(
     'SSR: a document is server-rendered',
     /<div id="app"><\w/.test(ssr) && ssr.includes('Server-side rendering</h1>'),
+  )
+  ok(
+    "the stylesheets first in <head>, right after <meta charset>, before the document's own links",
+    /^<!doctype html><html[^>]*><head><meta charSet="utf-8"\/><link rel="stylesheet"/i.test(ssr),
+    ssr.slice(0, 200),
+  )
+  ok(
+    'SSR: then a script that puts a reloaded page back where it was scrolled, with the nonce',
+    /<\/div><script nonce="[^"]+">try\{var k=history\.state&&history\.state\["__fondu"\]/.test(ssr),
   )
   ok(
     'withoutSsr(): this route is rendered in the browser only (the page data, an empty #app)',
@@ -943,6 +961,27 @@ await page.waitForFunction(
       (await text()).includes('Received note.txt, 1 kB') &&
       (await page.$('[data-testid=err-file]')) === null,
     JSON.stringify([missing, big]),
+  )
+  const sent = fetches.findLast((f) => f.method === 'POST')
+  ok(
+    'uploads: enctype=multipart/form-data, sent as it',
+    sent?.headers['content-type']?.startsWith('multipart/form-data'),
+    JSON.stringify(sent?.headers['content-type']),
+  )
+}
+
+// ---- a #fragment that doesn't decode (#100%): the page all the same
+{
+  const before = problems.length
+  await page.goto(BASE + '/#100%', { waitUntil: 'networkidle0' })
+  await page
+    .waitForFunction(() => document.querySelector('#app h1'), { timeout: 8000 })
+    .catch(() => {})
+  ok(
+    "a #fragment that doesn't decode: the page hydrated, no error",
+    (await page.evaluate(() => document.querySelector('#app')?.textContent?.length ?? 0)) > 0 &&
+      problems.length === before,
+    problems.slice(before).join(' | '),
   )
 }
 

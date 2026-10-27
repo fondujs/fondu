@@ -70,6 +70,16 @@ export default () => null
       "import './page.css'\nimport { track } from 'z'\ntrack('page')\nexport default () => null",
     )
   })
+  test("the loader's helpers that call each other go, with what they import", () => {
+    const out = strip(`
+import { db } from '#/lib/db.ts'
+function a(n) { return n ? b(n - 1) : db.query() }
+function b(n) { return a(n) }
+export const loader = () => a(2)
+export default function Page() { return null }
+`)
+    expect(out.trim()).toBe('export default function Page() { return null }')
+  })
   test('export lists, and the lines of the rest where they were', () => {
     const code = `import { h } from 'h'\nconst loader = () => h\n\nexport { loader }\nexport default function P() {}\n`
     const out = stripServerCode(code, parseAst(code) as never, 'p.tsx')

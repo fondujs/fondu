@@ -1,7 +1,9 @@
-import { createApp } from 'fondu'
+import { createApp, defineHandler, ValidationError } from 'fondu'
+import { Hono } from 'hono'
 import { createElement as h } from 'react'
 // Fondu's protocol and the app conventions, on test/app/ with `app.request()`
 import { afterEach, describe, expect, test, vi } from 'vitest'
+import * as z from 'zod/mini'
 
 const app = createApp()
 const ORIGIN = 'http://localhost'
@@ -40,6 +42,8 @@ describe('pages', () => {
     expect(body).toMatch(
       /<script data-page="app" type="application\/json">.*<\/script><div id="app"><\/div>/,
     )
+    // no server render here: no scroll position to put back before the page is in (the e2e tests have one)
+    expect(body).not.toContain('history.state')
     expect(res.headers.get('vary')).toContain('X-Fondu')
     expect(res.headers.get('cache-control')).toBe('private, no-cache')
     expect(res.headers.get('referrer-policy')).toBe('same-origin')
@@ -174,6 +178,12 @@ describe('routes', () => {
       headers: { Origin: ORIGIN },
     })
     expect([res.status, res.headers.get('location')]).toEqual([303, '/notes#end'])
+    // relative: resolved from the request's URL here (the client would from the page on the screen)
+    const relative = await app.request('/redirect?relative', {
+      method: 'POST',
+      headers: { ...fondu(), Origin: ORIGIN, Referer: `${ORIGIN}/deep/page` },
+    })
+    expect(relative.headers.get('x-fondu-redirect')).toBe('/notes?a=1#end')
   })
   test('trailing slash: trimmed (Hono), the redirect stays on this site', async () => {
     const res = await app.request('/items/?x=1', { headers: html })
@@ -251,6 +261,24 @@ describe('withValidator', () => {
     })
     expect(res.status).toBe(422)
     expect(Object.keys(((await res.json()) as { errors: object }).errors)).toEqual(['n'])
+  })
+  test('a field named like what objects inherit: its error stops the handler like any other', async () => {
+    for (const name of ['toString', 'constructor', 'hasOwnProperty']) {
+      let ran = false
+      const schema = z.object({ [name]: z.string().check(z.minLength(5)) })
+      const handlers = defineHandler.withValidator({ body: schema })(
+        (c) => ((ran = true), c.text('ran')),
+      )
+      const api = new Hono()
+        .onError((error, c) => c.json((error as ValidationError).errors, 422))
+        .post('/', ...(handlers as [never]))
+      const res = await api.request('/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [name]: 'x' }),
+      })
+      expect([ran, res.status, Object.keys(await res.json())]).toEqual([false, 422, [name]])
+    }
   })
   test('params and query, typed after the schema; params that do not fit: 404', async () => {
     expect(await (await app.request('/users/7?full=1')).json()).toEqual({ id: 7, full: '1' })

@@ -1,4 +1,4 @@
-import { pageDataPath } from '../paths.js'
+import { pageDataPath, SCROLL_KEY, SCROLL_STORAGE } from '../paths.js'
 
 /** what the server sends for a page: its id (its route file, `users/[id]`), its props, its URL, the build's version */
 export interface Page {
@@ -28,7 +28,7 @@ interface Visit {
   /** where the page goes in the history once it is on the screen: a new entry, this one, or none (Back, reload()) */
   history: 'push' | 'replace' | 'none'
   /** a POST form's body, from its form */
-  body?: FormData
+  body?: FormData | URLSearchParams | string
   form?: HTMLFormElement
   /** Back and Forward: where the entry was scrolled; reload(): undefined, the scroll stays */
   scroll?: { x: number; y: number } | null
@@ -224,10 +224,19 @@ export function startNavigation({ initial, show, prerender, pending, preload }: 
     if (url.origin !== location.origin || !isWebUrl(url.href)) return
     event.preventDefault()
     const data = new FormData(form, submitter)
-    if (method === 'post') return visit!(url.href, { history: 'push', body: data, form })
-    url.search = new URLSearchParams(
-      [...data].map(([k, v]) => [k, typeof v === 'string' ? v : v.name]),
-    ).toString()
+    // as the browser would send them: a file by its name in a URL or plain text
+    const fields = [...data].map(([k, v]) => [k, typeof v === 'string' ? v : v.name])
+    if (method === 'post') {
+      const enctype = attr('enctype', 'formenctype').toLowerCase()
+      const body =
+        enctype === 'multipart/form-data'
+          ? data
+          : enctype === 'text/plain'
+            ? fields.map(([k, v]) => `${k}=${v}\r\n`).join('')
+            : new URLSearchParams(fields)
+      return visit!(url.href, { history: 'push', body, form })
+    }
+    url.search = new URLSearchParams(fields).toString()
     visit!(url.href, { history: 'push', form })
   })
 
@@ -263,8 +272,8 @@ export function startNavigation({ initial, show, prerender, pending, preload }: 
  * the browser has started a traversal away from it.
  */
 function scrollPositions() {
-  const KEY = '__fondu'
-  const STORAGE = 'fondu-scroll:'
+  const KEY = SCROLL_KEY
+  const STORAGE = SCROLL_STORAGE
   const positions = new Map<string, { x: number; y: number }>()
   const keyOf = (state: unknown) =>
     state &&
@@ -330,7 +339,8 @@ function scrollPositions() {
      * left by a reload): an entry this client pushed, loaded again (Back from another site past it)
      */
     start() {
-      const restored = history.scrollRestoration === 'auto'
+      // restored already: by the browser, or the document's own script (the page's position, before its first paint)
+      const restored = history.scrollRestoration === 'auto' || scrollX !== 0 || scrollY !== 0
       history.scrollRestoration = 'manual'
       commit()
       return restored ? null : read(rendered)
@@ -361,9 +371,20 @@ function restore(
   first = false,
 ) {
   if (position) return window.scrollTo(position.x, position.y)
-  const target = hash && document.getElementById(decodeURIComponent(hash.slice(1)))
+  const target = hash && fragmentTarget(hash.slice(1))
   if (target) return target.scrollIntoView()
   if (!first) window.scrollTo(0, 0)
+}
+
+/** the element a #fragment names: decoded, or as it is (`#100%` doesn't decode); null for none */
+function fragmentTarget(fragment: string): HTMLElement | null {
+  try {
+    return (
+      document.getElementById(decodeURIComponent(fragment)) ?? document.getElementById(fragment)
+    )
+  } catch {
+    return document.getElementById(fragment)
+  }
 }
 
 /** the new page's title, for screen readers: a navigation in place is otherwise silent */

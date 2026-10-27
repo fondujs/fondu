@@ -51,8 +51,10 @@ import Document from '#/document.tsx'
 export default createApp({ document: Document })
 ```
 
-- `head`: the tags the page renders (`<title>`, `<meta>`), then its styles and scripts. Put it last in `<head>`.
-- `body`: the page data (`<script data-page>`) and the rendered page (`<div id="app">`). Put it alone in `<body>`.
+- `head`: the page's scripts, then the tags it renders (`<title>`, `<meta>`). Put it last in `<head>`. Its
+  stylesheets go first in `<head>`, right after `<meta charset>`: the browser asks for them before anything else.
+- `body`: the page data (`<script data-page>`), the rendered page (`<div id="app">`) and, after a server render, a
+  small script that puts a reloaded page back where it was scrolled before its first paint. Put it alone in `<body>`.
 - `c`: the request's Hono context: a cookie, a header, the user. Above, `theme(c)` reads the theme a visitor chose,
   so the first paint has it.
 - `nonce`: the request's Content Security Policy nonce, for a string document's scripts (below).

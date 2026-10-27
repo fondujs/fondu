@@ -48,20 +48,25 @@ const DEPTH = 32
 
 /**
  * A request body as one object: JSON, or form fields with PHP-style names, as forms write them (`notify[]`,
- * `user[name]`); files are `File`s, empty file inputs are left out. Names that would change the object itself
- * (`__proto__`…) are ignored. A body that can't be one object (JSON that doesn't parse, `a=1&a[b]=2`, names nested
- * deeper than 32) is a 400.
+ * `user[name]`); files are `File`s, empty file inputs are left out. A name given again is a list (`a=1&a=2`,
+ * `a[b]=1&a[b]=2`); `[]` is the index after the highest one so far. Names that would change the object itself
+ * (`__proto__`…) are ignored. A body that can't be one object (JSON or form data that doesn't parse,
+ * `a=1&a[b]=2`, names nested deeper than 32) is a 400.
  */
 export async function readBody(c: Context): Promise<unknown> {
   const malformed = (why: string) =>
     new HTTPException(400, { message: `Malformed request body: ${why}` })
-  const type = c.req.header('content-type') ?? ''
+  const type = (c.req.header('content-type') ?? '').toLowerCase()
   if (type.includes('application/json'))
     return c.req.json().catch(() => Promise.reject(malformed('invalid JSON')))
   if (!type.includes('multipart/form-data') && !type.includes('application/x-www-form-urlencoded'))
     return {}
-  const form = await c.req.formData()
+  const form = await c.req.formData().catch(() => Promise.reject(malformed('invalid form data')))
   const body: Record<string, unknown> = Object.create(null)
+  // `a[]`: each object's next index, the highest one so far + 1 (counted, not looked for: a body of many is linear)
+  const next = new WeakMap<object, number>()
+  const isObject = (v: unknown) =>
+    typeof v === 'object' && !(v instanceof File) && !Array.isArray(v)
   for (const [key, value] of form.entries()) {
     if (typeof value !== 'string' && value.size === 0 && value.name === '') continue
     const path = key.replace(/\]/g, '').split('[')
@@ -69,25 +74,16 @@ export async function readBody(c: Context): Promise<unknown> {
     if (path.some((p) => p === '__proto__' || p === 'constructor' || p === 'prototype')) continue
     let target = body
     path.forEach((segment, i) => {
-      const name = segment === '' ? String(Object.keys(target).length) : segment // `a[]`: the next index
+      const name = segment === '' ? String(next.get(target) ?? 0) : segment
+      if (/^\d+$/.test(name)) next.set(target, Math.max(next.get(target) ?? 0, Number(name) + 1))
       const has = Object.hasOwn(target, name)
       if (i === path.length - 1) {
-        if (
-          has &&
-          typeof target[name] === 'object' &&
-          !(target[name] instanceof File) &&
-          !Array.isArray(target[name])
-        )
+        if (has && isObject(target[name]))
           throw malformed(`\`${key}\` is both a value and an object`)
-        if (has && path.length === 1) target[name] = [target[name], value].flat() // `a=1&a=2`
-        else target[name] = value
+        target[name] = has ? [target[name], value].flat() : value // given again: a list
       } else {
         if (!has) target[name] = Object.create(null)
-        else if (
-          typeof target[name] !== 'object' ||
-          target[name] instanceof File ||
-          Array.isArray(target[name])
-        )
+        else if (!isObject(target[name]))
           throw malformed(`\`${key}\` is both a value and an object`)
         target = target[name] as Record<string, unknown>
       }
@@ -132,8 +128,9 @@ export function validator<S extends Schemas>(
       query: () => c.req.query(),
       params: () => c.req.param(),
     }
-    const input: Record<string, unknown> = {}
-    const errors: Record<string, string> = {}
+    // no prototype: a field named `toString` or `constructor` is a field like any other
+    const input: Record<string, unknown> = Object.create(null)
+    const errors: Record<string, string> = Object.create(null)
     for (const key of Object.keys(schemas) as Array<keyof Schemas>) {
       const result = await schemas[key]!['~standard'].validate(await values[key]())
       // route params that don't fit: the URL names nothing here

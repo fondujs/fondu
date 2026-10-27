@@ -161,7 +161,10 @@ export function useSchemaForm(schema: z.ZodMiniObject, errors: Errors) {
   // the browser's messages, for these server errors: a new answer of the server starts over
   const [checked, setChecked] = useState({ for: errors, messages: {} as Errors })
   const own = checked.for === errors ? checked.messages : {}
-  const error = (name: string) => (name in own ? own[name] : errors[name]) || undefined
+  // own keys only: a field may be named like what objects inherit (`toString`)
+  const error = (name: string) =>
+    (Object.hasOwn(own, name) ? own[name] : Object.hasOwn(errors, name) ? errors[name] : '') ||
+    undefined
   const check = (name: string, value: string) => {
     const shape = schema.def.shape as Record<string, z.ZodMiniType>
     const result = shape[name] ? z.safeParse(shape[name], value) : null

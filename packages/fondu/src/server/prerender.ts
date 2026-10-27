@@ -1,4 +1,4 @@
-import type { ExecutionContext, Hono } from 'hono'
+import type { Context, ExecutionContext, Hono } from 'hono'
 
 import { fillPattern, PAGE_DATA, pathOfPageData, staticFiles } from '../paths.js'
 import { isPageRequest } from './http.js'
@@ -64,7 +64,12 @@ export async function prerenderPaths(
  * `fondu({ prerender: true })`: the page object of a page without a static file (`/_fondu/pages/x.json` → `/x`, as
  * a navigation), and, while the build prerenders (`FONDU_PRERENDER` set), the paths to write.
  */
-export function prerenderRoutes(app: Hono, routes: () => PrerenderRoute[], version: string | null) {
+export function prerenderRoutes(
+  app: Hono,
+  routes: () => PrerenderRoute[],
+  version: string | null,
+  append: boolean,
+) {
   // Node / Bun: a prerendered page from its file, before the routes and behind the app's security headers (on
   // Cloudflare, Workers Static Assets serve the files before the Worker runs). The built server says how to read them.
   app.use(async (c, next) => {
@@ -97,10 +102,10 @@ export function prerenderRoutes(app: Hono, routes: () => PrerenderRoute[], versi
       'Content-Type': data ? 'application/json' : 'text/html; charset=UTF-8',
     })
   })
-  app.get(`${PAGE_DATA}/*`, (c) => {
-    const path = pathOfPageData(c.req.path)
+  const pageObject = (c: Context) => {
+    const path = pathOfPageData(c.req.path, append)
     // a page object's own URL is not a page: no page object of a page object (and so on)
-    if (!path || path.startsWith(`${PAGE_DATA}/`)) return c.notFound()
+    if (!path || path.startsWith('/_fondu/')) return c.notFound()
     const url = new URL(c.req.url)
     url.pathname = path
     const headers = new Headers(c.req.raw.headers)
@@ -110,7 +115,9 @@ export function prerenderRoutes(app: Hono, routes: () => PrerenderRoute[], versi
       ctx = c.executionCtx
     } catch {} // none outside a Worker
     return app.fetch(new Request(url, { headers }), c.env, ctx)
-  })
+  }
+  app.get(`${PAGE_DATA}.json`, pageObject) // the home page's
+  app.get(`${PAGE_DATA}/*`, pageObject)
   app.get('/__fondu/prerender', async (c) => {
     // set for the build only: a Worker binding, or the environment of `node` / `bun dist/server/index.js`
     const env =
