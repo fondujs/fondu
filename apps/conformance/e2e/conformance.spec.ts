@@ -153,6 +153,64 @@ test.describe('forms', () => {
     })
 })
 
+test.describe('useForm: the browser checks a form as the server does', () => {
+  const checked = (page: Page) =>
+    page.evaluate(() => ({
+      url: location.pathname + location.search,
+      errors: document.querySelector('#errors')?.textContent,
+      received: document.querySelector('#received')?.textContent,
+    }))
+  test('a valid form, its nested and listed fields: sent, read as the server reads it', async ({
+    browser,
+  }) => {
+    await both(browser, async (page) => {
+      await open(page, '/checked')
+      await page.click('#checked button')
+      await settle(page)
+      return checked(page)
+    })
+  })
+  test("an invalid one: the browser's errors are the server's", async ({ browser }) => {
+    await both(browser, async (page) => {
+      await open(page, '/checked')
+      await page.fill('[name=name]', ' ')
+      await page.uncheck('[name="tags[]"][value=c]')
+      await page.fill('[name="user[email]"]', 'nope')
+      await page.click('#checked button')
+      await settle(page)
+      return checked(page)
+    })
+  })
+  test('in the browser: not sent, the first field to fix focused, a fixed one without its message', async ({
+    page,
+  }) => {
+    let posts = 0
+    page.on('request', (r) => void (r.method() === 'POST' && posts++))
+    await open(page, '/checked')
+    await page.fill('[name=name]', '')
+    await page.fill('[name="user[email]"]', 'nope')
+    await page.click('#checked button')
+    await expect(page.locator('#errors')).toHaveText(
+      '{"name":"A name, please","user.email":"An email address"}',
+    )
+    expect(await page.evaluate(() => (document.activeElement as HTMLInputElement).name)).toBe(
+      'name',
+    )
+    await expect(page.locator('[name=name]')).toHaveAttribute('aria-invalid', 'true')
+    // fixed as it is typed
+    await page.fill('[name=name]', 'Ada')
+    await expect(page.locator('#errors')).toHaveText('{"user.email":"An email address"}')
+    await expect(page.locator('[name=name]')).not.toHaveAttribute('aria-invalid')
+    expect(posts).toBe(0)
+    await page.fill('[name="user[email]"]', 'ada@example.com')
+    await page.click('#checked button')
+    await expect(page.locator('#received')).toHaveText(
+      '{"name":"Ada","tags":["a","c"],"user":{"email":"ada@example.com"}}',
+    )
+    expect(posts).toBe(1)
+  })
+})
+
 test.describe('scroll positions', () => {
   test('a reload: where the page was left', async ({ browser }) => {
     await both(browser, async (page) => {

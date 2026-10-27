@@ -1,17 +1,10 @@
 import { desc, eq } from 'drizzle-orm'
 import { back, defineHandler, flash, render } from 'fondu'
-import { type Errors, href, useNavigation, usePage } from 'fondu/client'
+import { href, useForm, useNavigation, usePage } from 'fondu/client'
 import { Trash2Icon } from 'lucide-react'
 import * as z from 'zod/mini'
 
-import {
-  DemoCard,
-  SignInFirst,
-  SubmitButton,
-  TextField,
-  Title,
-  useSchemaForm,
-} from '#/components/demo.tsx'
+import { DemoCard, SignInFirst, SubmitButton, TextField, Title } from '#/components/demo.tsx'
 import {
   AlertDialog,
   AlertDialogClose,
@@ -59,11 +52,11 @@ export const actions = {
 
 type Contact = { id: number; name: string; email: string }
 
-export default function Contacts({ contacts, errors }: { contacts: Contact[]; errors: Errors }) {
+export default function Contacts({ contacts }: { contacts: Contact[] }) {
   const { auth } = usePage().props
   // the action's schema, in the browser too: an invalid form isn't sent; the server checks again (and what only it
   // can, an address already taken)
-  const { form, field } = useSchemaForm(contactSchema, errors)
+  const { form, field, errors } = useForm(contactSchema)
   // a contact being deleted: the form being sent is its form, the trash button shows it
   const sending = useNavigation().form
   return (
@@ -86,8 +79,13 @@ export default function Contacts({ contacts, errors }: { contacts: Contact[]; er
               data-testid="add-contact"
               {...form}
             >
-              <TextField label="Name" {...field('name')} testid="err-name" />
-              <TextField label="Email" {...field('email')} testid="err-email" />
+              <TextField label="Name" {...field('name')} error={errors.name} testid="err-name" />
+              <TextField
+                label="Email"
+                {...field('email')}
+                error={errors.email}
+                testid="err-email"
+              />
               <SubmitButton>Add contact</SubmitButton>
             </form>
           </DemoCard>

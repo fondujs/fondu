@@ -71,36 +71,43 @@ and check the form before it is sent. It is still a plain form: when the check p
 doesn't, the submit is stopped and the errors shown. The server checks again, and what only it can (an address
 already taken).
 
+`useForm(schema)` from `fondu/client` does it. It reads the fields as the server does (`tags[]`, `user[name]`), so
+the browser's check and the server's agree:
+
 ```tsx
-import type { Errors } from 'fondu/client'
-import { useState, type SubmitEvent } from 'react'
-import * as z from 'zod'
+import { useForm } from 'fondu/client'
 
 import { contactSchema } from '#/modules/contacts/schemas.ts'
 
-export default function NewContact({ errors }: { errors: Errors }) {
-  const [checked, setChecked] = useState<Errors>({})
-  const check = (event: SubmitEvent<HTMLFormElement>) => {
-    const result = contactSchema.safeParse(Object.fromEntries(new FormData(event.currentTarget)))
-    if (result.success) return setChecked({}) // sent, by Fondu's client
-    event.preventDefault()
-    const fields = z.flattenError(result.error).fieldErrors
-    setChecked(Object.fromEntries(Object.entries(fields).map(([name, messages]) => [name, messages?.[0] ?? ''])))
-  }
-  const shown = { ...errors, ...checked } // the server's, and the browser's
+export default function NewContact() {
+  const { form, field, errors, submitting } = useForm(contactSchema)
   return (
-    <form method="post" onSubmit={check}>
-      <input name="email" aria-invalid={!!shown.email} />
-      {shown.email && <p>{shown.email}</p>}
-      <button>Add</button>
+    <form method="post" {...form}>
+      <input {...field('email')} />
+      {errors.email && <p>{errors.email}</p>}
+      <button disabled={submitting}>Add</button>
     </form>
   )
 }
 ```
 
-A field can be checked the same way as it is left, with its own part of the schema (`schema.shape.email`), and again
-as it changes while it is wrong, so a fixed field loses its message. Without JavaScript, the form is sent as it is,
-and the server's check answers.
+| From `useForm()` | Is                                                                                                |
+| ---------------- | ------------------------------------------------------------------------------------------------- |
+| `form`           | for the `<form>`: checks it on submit; an invalid one isn't sent, its first field to fix focused  |
+| `field(name)`    | for a field: its `name`, `aria-invalid`, and its checks as it is left and changed                 |
+| `errors`         | the server's (the page's `errors` prop), and the browser's: `errors.email`, `errors['user.name']` |
+| `submitting`     | this form is being sent                                                                           |
+
+- A field is checked as it is left for another with something typed, and again as it changes while it is wrong,
+  so a fixed field loses its message. Not as it is left for the submit button: the message would move the button
+  from under the pointer.
+- A server's error stays until its field is checked again. Back with the server's errors, the first field to fix
+  gets the focus.
+- Any [Standard Schema](https://standardschema.dev) works, an async one too. Without a schema, `useForm()` gives
+  the server's errors and `submitting` only.
+- `errors` has the server's keys: a field's path, joined with dots (`user[name]` is `user.name`).
+- Your own handlers go next to it: `onChange={(e) => { field('email').onChange(e); … }}`.
+- Without JavaScript, the form is sent as it is, and the server's check answers.
 
 ## While it is sent
 
@@ -114,7 +121,7 @@ form[aria-busy='true'] button[type='submit'] {
 }
 ```
 
-In a component, `useNavigation().form` is the form being sent:
+In a component, `useForm().submitting` says it, or `useNavigation().form`, the form being sent:
 
 ```tsx
 import { useNavigation } from 'fondu/client'

@@ -84,5 +84,6 @@ export {
   type Errors,
   type Navigation,
 } from './client/app.js'
+export { useForm } from './client/form.js'
 export { loadDocument, navigate, type Page } from './client/navigation.js'
 export type { ProgressOptions } from './client/progress.js'

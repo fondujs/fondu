@@ -30,13 +30,15 @@ swaps the page in place (the History API); Back and Forward restore the scroll p
   `{ children }` and stays mounted while pages change; the root layout imports the CSS.
 - Editor snippets (VS Code): `.vscode/fondu.code-snippets`, `/route`, `/loader`, `/action`, `/page`…
 - Links and forms: `<a href>` and `<form method="post">`, URLs from `href('/users/:id', { id })` (`fondu/client`,
-  typed after `app/routes/`; `{ query, hash }` too, the query typed by the route's `withValidator({ query })`;
-  a redirect: `c.redirect(href(…), 303)`). A form's errors: the page's `errors` prop. From `fondu/client` too: `usePage()` (props,
-  shared props, `url`, `flash`), `useNavigation()` (pending UI: `{ state, to, form }`), `reload()` (the props again). In code,
-  `navigate(href(…))` navigates as a link would (`{ replace: true }`: no new history entry); `loadDocument(href(…))`
-  loads a document instead, as `<a target="_top">` does. Only links to the app's pages are the client's. A
-  progress bar shows during slow navigations: `fondu({ progress: { color, delay, forms } })` in `vite.config.ts`,
-  or `progress: false`. A form being sent has `aria-busy="true"`: its submit button's pending state.
+  typed after `app/routes/`; `{ query, hash }` too, the query typed by the route's `withValidator({ query })`; a
+  redirect: `c.redirect(href(…), 303)`). A form's errors: the page's `errors` prop. From `fondu/client` too:
+  `usePage()` (props, shared props, `url`, `flash`), `useNavigation()` (pending UI: `{ state, to, form }`),
+  `reload()` (the props again). In code, `navigate(href(…))` navigates as a link would (`{ replace: true }`: no new
+  history entry); `loadDocument(href(…))` loads a document instead, as `<a target="_top">` does. Only links to the
+  app's pages are the client's. A progress bar shows during slow navigations: `fondu({ progress: { color, delay,
+  forms } })` in `vite.config.ts`, or `progress: false`. A form being sent has `aria-busy="true"`: its submit
+  button's pending state. `useForm(schema)` checks a form in the browser with its action's schema, as the server
+  reads it: `{ form, field, errors, submitting }`.
 - The head: a page renders `<title>` and `<meta>` where it likes; React puts them in `<head>`. A title is one string:
   ``<title>{`${user.name} · Fondu`}</title>``.
 - Server-only code: the `.ts` files of `app/routes/`, `app/server.ts`, files named `*.server.ts`, and `fondu`

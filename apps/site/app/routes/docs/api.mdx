@@ -79,15 +79,16 @@ createApp({
 
 For the browser.
 
-| Export                         | Is                                                                                                                               |
-| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
-| `href(path, params?)`          | a URL of `app/routes/`, typed: `href('/users/:id', { id: 7, query?, hash? })` ([Type safety](/docs/type-safety#urls))            |
-| `usePage()`                    | the page on screen: `component`, `props`, `url`, `flash`                                                                         |
-| `useNavigation()`              | the navigation on its way: `{ state, to, form }`, `state` `'idle'`, `'loading'` or `'submitting'`                                |
-| `reload()`                     | the page's props again, its state and scroll position kept                                                                       |
-| `navigate(href, { replace? })` | goes to `href` as a link would: a page in place, anything else as a document ([Navigation](/docs/navigation#navigating-in-code)) |
-| `loadDocument(href)`           | a document load, for what a page can't change in place                                                                           |
-| `Errors`                       | the type of a page's `errors` prop                                                                                               |
+| Export                         | Is                                                                                                                                                |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `href(path, params?)`          | a URL of `app/routes/`, typed: `href('/users/:id', { id: 7, query?, hash? })` ([Type safety](/docs/type-safety#urls))                             |
+| `usePage()`                    | the page on screen: `component`, `props`, `url`, `flash`                                                                                          |
+| `useNavigation()`              | the navigation on its way: `{ state, to, form }`, `state` `'idle'`, `'loading'` or `'submitting'`                                                 |
+| `useForm(schema?)`             | a form checked in the browser by its action's schema: `{ form, field, errors, submitting }` ([Forms](/docs/forms#the-same-schema-in-the-browser)) |
+| `reload()`                     | the page's props again, its state and scroll position kept                                                                                        |
+| `navigate(href, { replace? })` | goes to `href` as a link would: a page in place, anything else as a document ([Navigation](/docs/navigation#navigating-in-code))                  |
+| `loadDocument(href)`           | a document load, for what a page can't change in place                                                                                            |
+| `Errors`                       | the type of a page's `errors` prop                                                                                                                |
 
 ## `fondu/vite`
 
