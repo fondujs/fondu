@@ -2,6 +2,7 @@
 declare module 'fondu' {
   interface Register {
     routes: {
+      "/checked": typeof import("./routes/checked")
       "/csr": typeof import("./routes/csr")
       "/echo": typeof import("./routes/echo")
       "/form": typeof import("./routes/form")
