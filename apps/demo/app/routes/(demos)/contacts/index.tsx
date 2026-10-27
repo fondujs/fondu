@@ -1,6 +1,6 @@
 import { desc, eq } from 'drizzle-orm'
 import { back, defineHandler, flash, render } from 'fondu'
-import { type Errors, href, useNavigating, usePage } from 'fondu/client'
+import { type Errors, href, useNavigation, usePage } from 'fondu/client'
 import { Trash2Icon } from 'lucide-react'
 import * as z from 'zod/mini'
 
@@ -64,8 +64,8 @@ export default function Contacts({ contacts, errors }: { contacts: Contact[]; er
   // the action's schema, in the browser too: an invalid form isn't sent; the server checks again (and what only it
   // can, an address already taken)
   const { form, field } = useSchemaForm(contactSchema, errors)
-  // a contact being deleted: its form is aria-busy (Fondu's client), the trash button shows it
-  const navigating = useNavigating()
+  // a contact being deleted: the form being sent is its form, the trash button shows it
+  const sending = useNavigation().form
   return (
     <>
       <Title>Forms & validation</Title>
@@ -126,10 +126,7 @@ export default function Contacts({ contacts, errors }: { contacts: Contact[]; er
                           variant="ghost"
                           size="icon-sm"
                           aria-label={`Delete ${contact.name}`}
-                          loading={
-                            navigating &&
-                            document.getElementById(`delete-${contact.id}`)?.ariaBusy === 'true'
-                          }
+                          loading={sending?.id === `delete-${contact.id}`}
                         />
                       }
                     >

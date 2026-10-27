@@ -629,7 +629,7 @@ ok('a link to the same page mounts it anew', (await testid('clicks')) === '0')
     () => document.querySelector('[data-testid=navigating]').textContent === 'idle',
     { timeout: 5000 },
   )
-  ok('useNavigating(): true while the next page is on its way', during === 'navigating')
+  ok('useNavigation(): loading while the next page is on its way', during === 'loading')
 }
 {
   const served = await testid('served-at')

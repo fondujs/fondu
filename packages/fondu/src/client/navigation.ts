@@ -18,8 +18,8 @@ interface Options {
   show: (page: Page, fresh: boolean, stale: () => boolean) => Promise<void>
   /** `fondu({ prerender: true })`: GET navigations read `/_fondu/pages/<path>.json` */
   prerender: boolean
-  /** a navigation started (true; `form`: a form's submission) or ended (false) */
-  pending: (pending: boolean, form: boolean) => void
+  /** a navigation started (to `to`: a path, its query and fragment; `form`: a form's submission) or ended (null) */
+  pending: (navigation: { to: string; form: HTMLFormElement | null; post: boolean } | null) => void
   /** a GET navigation to `pathname` started: its page's modules may load with its data */
   preload: (pathname: string) => void
   /** a URL path is one of the app's pages (by the route files' patterns): its links are the client's */
@@ -96,13 +96,13 @@ export function startNavigation({
     // a kept page is on the screen at once: the server's comes quietly, no pending state (the navigation it
     // interrupted, aborted, ends here)
     const shown = options.kept
-    // the form being sent is aria-busy: for its submit buttons' pending state (CSS, or useNavigating()), and for
+    // the form being sent is aria-busy: for its submit buttons' pending state (CSS, or useNavigation()), and for
     // assistive technology
     form?.setAttribute('aria-busy', 'true')
-    pending(!shown, form !== null)
+    pending(shown ? null : { to: url.pathname + url.search + url.hash, form, post })
     const done = () => {
       form?.removeAttribute('aria-busy')
-      if (!shown && current === controller) pending(false, false)
+      if (!shown && current === controller) pending(null)
     }
     if (!post) preload(url.pathname)
     const from =

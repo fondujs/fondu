@@ -81,9 +81,9 @@ For the browser.
 
 | Export                         | Is                                                                                                                               |
 | ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
-| `href(path, params?)`          | a URL of `app/routes/`, typed: `href('/users/:id', { id: 7 })`                                                                   |
+| `href(path, params?)`          | a URL of `app/routes/`, typed: `href('/users/:id', { id: 7, query?, hash? })` ([Type safety](/docs/type-safety#urls))            |
 | `usePage()`                    | the page on screen: `component`, `props`, `url`, `flash`                                                                         |
-| `useNavigating()`              | `true` from a click or a submit until the next page is on the screen                                                             |
+| `useNavigation()`              | the navigation on its way: `{ state, to, form }`, `state` `'idle'`, `'loading'` or `'submitting'`                                |
 | `reload()`                     | the page's props again, its state and scroll position kept                                                                       |
 | `navigate(href, { replace? })` | goes to `href` as a link would: a page in place, anything else as a document ([Navigation](/docs/navigation#navigating-in-code)) |
 | `loadDocument(href)`           | a document load, for what a page can't change in place                                                                           |

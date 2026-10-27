@@ -19,7 +19,16 @@ export function UserLink({ user }: { user: { id: number; name: string } }) {
 ```
 
 When the link is clicked, the client loads `/users/7` in place. The new page starts at the top, or at its
-`#fragment` (`/docs#setup`).
+`#fragment` (`/docs#setup`). A query and a fragment are `href()`'s too:
+`href('/search', { query: { q }, hash: 'results' })`.
+
+A link to the page on the screen can say so with `aria-current`, which CSS can style (`a[aria-current='page']`):
+
+```tsx
+const { url } = usePage()
+const to = href('/users')
+return <a href={to} aria-current={url === to ? 'page' : undefined}>Users</a>
+```
 
 The client takes a click only when it is a link to one of the app's pages, as the files in `app/routes/` define
 them. The browser handles every other link, as it would without Fondu:
@@ -60,7 +69,7 @@ import { href, navigate } from 'fondu/client'
 
 // the results page, as you type: one history entry for the search, not one per letter
 function Search() {
-  const search = (q: string) => navigate(`${href('/search')}?q=${encodeURIComponent(q)}`, { replace: true })
+  const search = (q: string) => navigate(href('/search', { query: { q } }), { replace: true })
   return <input type="search" onChange={(event) => search(event.target.value)} />
 }
 ```
@@ -97,13 +106,20 @@ them (or signed the user out).
 
 ## While a page loads
 
-`useNavigating()` from `fondu/client` is `true` from a click or a submit until the next page is on the screen:
+`useNavigation()` from `fondu/client` says what is on its way, from a click or a submit until the next page is on
+the screen:
+
+| Field   | Is                                                                                       |
+| ------- | ---------------------------------------------------------------------------------------- |
+| `state` | `'idle'`; `'submitting'`, a form's POST; `'loading'`, any other (a link, `navigate()`…)  |
+| `to`    | where to: a path with its query and fragment (`/users/7?tab=posts`), or `null` when idle |
+| `form`  | the form being sent (a GET form's too), or `null`                                        |
 
 ```tsx
-import { useNavigating } from 'fondu/client'
+import { useNavigation } from 'fondu/client'
 
 export function Spinner() {
-  return useNavigating() ? <span aria-label="Loading">…</span> : null
+  return useNavigation().state !== 'idle' ? <span aria-label="Loading">…</span> : null
 }
 ```
 
@@ -121,7 +137,7 @@ fondu({
 })
 ```
 
-`progress: false` removes it, when your own indicator uses `useNavigating()`.
+`progress: false` removes it, when your own indicator uses `useNavigation()`.
 
 ## Other answers
 

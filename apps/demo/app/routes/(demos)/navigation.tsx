@@ -1,12 +1,12 @@
 import { defineHandler, render } from 'fondu'
-import { href, reload, useNavigating } from 'fondu/client'
+import { href, reload, useNavigation } from 'fondu/client'
 import { useState } from 'react'
 
 import { DemoCard, Title } from '#/components/demo.tsx'
 import { Badge } from '#/components/ui/badge.tsx'
 import { Button } from '#/components/ui/button.tsx'
 
-// ?slow: answered a second later, to watch useNavigating()
+// ?slow: answered a second later, to watch useNavigation()
 export const loader = defineHandler(async (c) => {
   if (c.req.query('slow') !== undefined) await new Promise((r) => setTimeout(r, 1000))
   return render(c, Navigation, { servedAt: new Date().toISOString().slice(11, 23) })
@@ -14,7 +14,7 @@ export const loader = defineHandler(async (c) => {
 
 export default function Navigation({ servedAt }: { servedAt: string }) {
   const [clicks, setClicks] = useState(0)
-  const navigating = useNavigating()
+  const navigating = useNavigation().state !== 'idle'
   return (
     <>
       <Title>Navigation</Title>
@@ -38,16 +38,16 @@ export default function Navigation({ servedAt }: { servedAt: string }) {
             Props
           </Button>
         </DemoCard>
-        <DemoCard title="Pending" tag="useNavigating()">
+        <DemoCard title="Pending" tag="useNavigation()">
           <p className="mb-4 text-muted-foreground">
-            True from the click until the next page is on the screen:{' '}
+            Loading from the click until the next page is on the screen:{' '}
             <Badge variant={navigating ? 'warning' : 'secondary'} data-testid="navigating">
-              {navigating ? 'navigating' : 'idle'}
+              {navigating ? 'loading' : 'idle'}
             </Badge>
           </p>
           <Button
             variant="outline"
-            render={<a href={`${href('/navigation')}?slow`} />}
+            render={<a href={href('/navigation', { query: { slow: 1 } })} />}
             data-testid="slow"
           >
             This page, in a second

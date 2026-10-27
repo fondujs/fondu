@@ -30,8 +30,9 @@ swaps the page in place (the History API); Back and Forward restore the scroll p
   `{ children }` and stays mounted while pages change; the root layout imports the CSS.
 - Editor snippets (VS Code): `.vscode/fondu.code-snippets`, `/route`, `/loader`, `/action`, `/page`…
 - Links and forms: `<a href>` and `<form method="post">`, URLs from `href('/users/:id', { id })` (`fondu/client`,
-  typed after `app/routes/`). A form's errors: the page's `errors` prop. From `fondu/client` too: `usePage()` (props,
-  shared props, `url`, `flash`), `useNavigating()` (pending UI), `reload()` (the props again). In code,
+  typed after `app/routes/`; `{ query, hash }` too, the query typed by the route's `withValidator({ query })`;
+  a redirect: `c.redirect(href(…), 303)`). A form's errors: the page's `errors` prop. From `fondu/client` too: `usePage()` (props,
+  shared props, `url`, `flash`), `useNavigation()` (pending UI: `{ state, to, form }`), `reload()` (the props again). In code,
   `navigate(href(…))` navigates as a link would (`{ replace: true }`: no new history entry); `loadDocument(href(…))`
   loads a document instead, as `<a target="_top">` does. Only links to the app's pages are the client's. A
   progress bar shows during slow navigations: `fondu({ progress: { color, delay, forms } })` in `vite.config.ts`,

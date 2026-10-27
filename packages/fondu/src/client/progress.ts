@@ -12,7 +12,7 @@ export interface ProgressOptions {
  * The bar: shown once a navigation has run for `delay`, growing towards the end while it runs (one long CSS
  * transition, slower as it gets there), filled, then faded out, when it is done. Drawn with CSSOM styles (no
  * stylesheet, nothing for a Content Security Policy to refuse), above the page, out of the accessibility tree:
- * `useNavigating()` is the app's way to say it in its own words. With reduced motion, a still bar.
+ * `useNavigation()` is the app's way to say it in its own words. With reduced motion, a still bar.
  */
 export function progressBar(
   { delay = 350, color = 'currentColor' }: ProgressOptions,

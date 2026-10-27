@@ -7,10 +7,12 @@ import * as z from 'zod/mini'
 
 import type { href, usePage } from '../src/client.js'
 import type { flash } from '../src/server/flash.js'
-import type { defineHandler } from '../src/server/handler.js'
+import type { defineHandler, Validated } from '../src/server/handler.js'
 import type { render, share } from '../src/server/protocol.js'
 
 type Auth = { user: string | null }
+const searchQuery = z.object({ q: z.string(), page: z.optional(z.coerce.number()) })
+const listQuery = z.object({ sort: z.optional(z.enum(['name', 'date'])) })
 declare module '../src/types.js' {
   interface Register {
     shared: { auth: Auth }
@@ -21,6 +23,12 @@ declare module '../src/types.js' {
       '/:lang/about': object
       '/users/:id': { actions: { rename: unknown; delete: unknown } }
       '/files/:path{.+}': object
+      '/search': { loader: Validated<{ query: typeof searchQuery }> }
+      '/teams/:id': {
+        loader: Validated<{ query: typeof listQuery }>
+        actions: { invite: Validated<{ query: typeof searchQuery }> }
+      }
+      '/api/items': { GET: Validated<{ query: typeof listQuery }> }
     }
   }
 }
@@ -86,6 +94,25 @@ const hrefs = [
   typed(({ href }) => href('/user/:id', { id: 7 })),
   // @ts-expect-error no such action
   typed(({ href }) => href('/users/:id?archive', { id: 7 })),
+  // a query and a fragment: any query without a schema
+  typed(({ href }) => href('/', { query: { tab: 'new', page: 2 }, hash: 'top' })),
+  typed(({ href }) => href('/users/:id', { id: 7, query: { tab: 'posts' } })),
+  // a query by its schema (the loader's, a .ts file's GET, the action's); a coerced field takes any value
+  typed(({ href }) => href('/search', { query: { q: 'ada', page: 2 } })),
+  typed(({ href }) => href('/teams/:id', { id: 1, query: { sort: 'date' } })),
+  typed(({ href }) => href('/teams/:id', { id: 1 })),
+  typed(({ href }) => href('/teams/:id?invite', { id: 1, query: { q: 'ada' } })),
+  typed(({ href }) => href('/api/items', { query: { sort: 'name' } })),
+  // @ts-expect-error the schema requires q: the query is required
+  typed(({ href }) => href('/search')),
+  // @ts-expect-error the schema requires q
+  typed(({ href }) => href('/search', { query: { page: 2 } })),
+  // @ts-expect-error a value the schema doesn't take
+  typed(({ href }) => href('/teams/:id', { id: 1, query: { sort: 'size' } })),
+  // @ts-expect-error a field the schema doesn't have
+  typed(({ href }) => href('/api/items', { query: { order: 'name' } })),
+  // @ts-expect-error the action's schema, not the loader's
+  typed(({ href }) => href('/teams/:id?invite', { id: 1, query: { sort: 'date' } })),
 ]
 
 const shared = [
@@ -149,5 +176,5 @@ const validated = [
 ]
 
 test('the types above are checked by tsc', () => {
-  expect([...renders, ...hrefs, ...shared, ...validated]).toHaveLength(36)
+  expect([...renders, ...hrefs, ...shared, ...validated]).toHaveLength(48)
 })

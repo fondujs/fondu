@@ -8,12 +8,22 @@ const factory = createFactory()
 type Final<S extends Schemas> = (c: Context, input: Input<S>) => Response | Promise<Response>
 type Handlers = Array<Handler | MiddlewareHandler>
 
+/** @internal a type only, never a value: the schemas a `withValidator` handler checks, for `href()`'s `query` */
+export declare const schemasOf: unique symbol
+/** handlers of `withValidator`: with their schemas, in the type only (`href()` types the query by them) */
+export type Validated<S extends Schemas> = Handlers & { readonly [schemasOf]?: S }
+
 /** overloads, as Hono's `createHandlers` has them: the last handler's parameters are typed reliably */
 interface WithInput<S extends Schemas> {
-  (handler: Final<S>): Handlers
-  (m1: MiddlewareHandler, handler: Final<S>): Handlers
-  (m1: MiddlewareHandler, m2: MiddlewareHandler, handler: Final<S>): Handlers
-  (m1: MiddlewareHandler, m2: MiddlewareHandler, m3: MiddlewareHandler, handler: Final<S>): Handlers
+  (handler: Final<S>): Validated<S>
+  (m1: MiddlewareHandler, handler: Final<S>): Validated<S>
+  (m1: MiddlewareHandler, m2: MiddlewareHandler, handler: Final<S>): Validated<S>
+  (
+    m1: MiddlewareHandler,
+    m2: MiddlewareHandler,
+    m3: MiddlewareHandler,
+    handler: Final<S>,
+  ): Validated<S>
 }
 
 /**
