@@ -27,6 +27,35 @@ const check = (name, ok, detail = '') => {
   failed ||= !ok
 }
 
+// without a terminal (stdin not one), or with --yes: nothing asked; where the app runs has to be given
+{
+  const run = (...args) => {
+    const cwd = mkdtempSync(join(work, 'cli-'))
+    try {
+      execFileSync('node', [join(here, 'index.js'), ...args, '--no-install', '--no-git'], {
+        cwd,
+        stdio: ['ignore', 'pipe', 'pipe'],
+        timeout: 20_000,
+      })
+      return { status: 0, made: existsSync(join(cwd, 'my-app')) }
+    } catch (error) {
+      return { status: error.status, made: existsSync(join(cwd, 'my-app')) }
+    }
+  }
+  const asked = [run('--yes'), run('my-app'), run('--target', 'constructor', '--yes')]
+  check(
+    'cli: no --target with --yes or without a terminal, or an unknown one: exit 1, nothing made',
+    asked.every((r) => r.status === 1 && !r.made),
+    JSON.stringify(asked),
+  )
+  const given = run('--target', 'node')
+  check(
+    'cli: no terminal, --target given: my-app made',
+    given.status === 0 && given.made,
+    JSON.stringify(given),
+  )
+}
+
 for (const target of Object.keys(production).filter(
   (t) => !process.argv[2] || t === process.argv[2],
 )) {

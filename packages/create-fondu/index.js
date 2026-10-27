@@ -36,7 +36,7 @@ const HELP = `Create a Fondu app: full-stack React on Hono and Vite.
 
   create-fondu [dir] [options]
 
-  --target bun|cloudflare|node   where the app runs (asked otherwise)
+  --target bun|cloudflare|node   where the app runs (asked otherwise; needed with --yes)
   --checks, --no-checks          code checks: oxfmt, oxlint, git hooks (lefthook, commitlint)
   --git, --no-git                a git repository (unless the folder is in one)
   --no-install                   don't install the dependencies
@@ -79,9 +79,9 @@ p.intro(`create-fondu ${own.version}`)
 
 const dir =
   positionals[0] ??
-  (values.yes
-    ? 'my-app'
-    : done(await p.text({ message: 'Where?', placeholder: 'my-app', defaultValue: 'my-app' })))
+  (asking
+    ? done(await p.text({ message: 'Where?', placeholder: 'my-app', defaultValue: 'my-app' }))
+    : 'my-app')
 const root = resolve(dir)
 if (existsSync(root) && (!statSync(root).isDirectory() || readdirSync(root).length > 0)) {
   p.cancel(`${dir} is not an empty directory`)
@@ -89,8 +89,15 @@ if (existsSync(root) && (!statSync(root).isDirectory() || readdirSync(root).leng
 }
 
 let target = values.target
-if (target && !(target in TARGETS)) {
+if (target && !Object.hasOwn(TARGETS, target)) {
   p.cancel(`--target: ${Object.keys(TARGETS).join(', ')}`)
+  process.exit(1)
+}
+// where the app runs has no default: without anyone to ask, it is an option to give
+if (!target && !asking) {
+  p.cancel(
+    `--target ${Object.keys(TARGETS).join('|')}: where the app runs (--yes, or no terminal, asks nothing)`,
+  )
   process.exit(1)
 }
 target ??= done(
