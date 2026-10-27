@@ -40,6 +40,9 @@ same-origin links and forms through the History API; it does not require the Nav
 
 - A link fetches the next page; the layouts stay mounted, with their state. The page starts at the top, or at its
   `#fragment`.
+- A link to a URL that is none of the app's pages, by the route files (a file such as `/llms.txt`, a `.ts` route, a
+  URL of nothing), is the browser's: it loads as a document. A file a catch-all page's URLs would cover
+  (`docs/[...slug].tsx`, `/docs/manual.pdf`) takes `download` or `target="_top"` on its link.
 - A form's answer at the same URL (back with errors, `back(c)`) replaces the page where it is, the scroll position kept;
   with errors, the page keeps its state too, what was typed included. Elsewhere, it's a new page in the history.
 - Back and Forward show the page as it was left, at once, where it was scrolled, then the server's in its place. The

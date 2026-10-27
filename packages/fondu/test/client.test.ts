@@ -71,4 +71,8 @@ test("a URL's page, guessed to load its modules with its data: static segments f
   expect(pageAt('/files/a/b')).toBe('files/[...path]')
   expect(pageAt('/files')).toBeUndefined()
   expect(pageAt('/nope/nope')).toBeUndefined()
+  // none of the pages: a file, a route without a page, a URL of nothing (their links are the browser's)
+  expect(pageAt('/llms.txt')).toBeUndefined()
+  expect(pageAt('/api/health')).toBeUndefined()
+  expect(pageAt('/users/7/edit')).toBeUndefined()
 })

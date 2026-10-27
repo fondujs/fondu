@@ -816,8 +816,10 @@ await page.waitForFunction(
     })
     .catch(() => {})
   ok(
-    "an answer that isn't a page, to a link: loaded as a document",
-    (await path()) === '/errors/proxy' && docs.some((d) => d.endsWith('/errors/proxy')),
+    "a link to a URL that is none of the pages (an HTTP route): the browser's, a document, no fetch first",
+    (await path()) === '/errors/proxy' &&
+      docs.some((d) => d.endsWith('/errors/proxy')) &&
+      !fetches.some((f) => f.url.startsWith('/errors/proxy')),
     JSON.stringify(docs),
   )
   await page.goto(BASE + '/errors', { waitUntil: 'networkidle0' })

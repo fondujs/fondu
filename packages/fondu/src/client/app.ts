@@ -116,7 +116,8 @@ class Failed extends Component<
 
 /**
  * @internal The page a URL most likely is, by its route file's patterns (static segments first): its modules load with its
- * data. Only a guess (a param's listed values are the server's), so the page shown is the one the server says.
+ * data, and a link to a URL that is none (a file, an HTTP route) is left to the browser. Only a guess (a param's
+ * listed values are the server's), so the page shown is the one the server says.
  */
 export function pageAt(pathname: string): string | undefined {
   const parts = pathname.split('/').filter(Boolean)
@@ -187,6 +188,7 @@ function start(settings: { prerender: boolean; progress: ProgressOptions | false
           const page = pageAt(pathname)
           if (page) load(page).catch(() => {})
         },
+        isPage: (pathname) => pageAt(pathname) !== undefined,
         async show(page, fresh, stale) {
           const view = await load(page.component)
           if (stale()) return

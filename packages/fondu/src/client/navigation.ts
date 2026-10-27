@@ -22,6 +22,8 @@ interface Options {
   pending: (pending: boolean, form: boolean) => void
   /** a GET navigation to `pathname` started: its page's modules may load with its data */
   preload: (pathname: string) => void
+  /** a URL path is one of the app's pages (by the route files' patterns): its links are the client's */
+  isPage: (pathname: string) => boolean
 }
 
 interface Visit {
@@ -45,7 +47,7 @@ let visit: ((url: string, options: Visit) => void) | undefined
  * as JSON, its URL in the history, the page shown in place, then the scroll position (Fondu's own, per history entry:
  * the browsers' differ). What isn't for it (another site, a new tab, a download, a modified click) is the browser's.
  */
-export function startNavigation({ initial, show, prerender, pending, preload }: Options) {
+export function startNavigation({ initial, show, prerender, pending, preload, isPage }: Options) {
   const scroll = scrollPositions()
   let version = initial.version
   let current: AbortController | undefined
@@ -101,18 +103,12 @@ export function startNavigation({ initial, show, prerender, pending, preload }: 
           announce()
           restore(options.scroll, url.hash)
         }
-        let response = await fetch(from, {
+        const response = await fetch(from, {
           method: post ? 'POST' : 'GET',
           body: options.body,
           headers: headers(),
           signal,
         })
-        // no page object (prerender): the URL may be a file of the site, not a page (/llms.txt), so it is asked for
-        // itself; a page (a 404 one too) comes back as one, anything else is loaded as a document below
-        if (from !== url.pathname + url.search && response.status === 404) {
-          void response.body?.cancel()
-          response = await fetch(url.pathname + url.search, { headers: headers(), signal })
-        }
         if (signal.aborted) return
         if (post) kept.clear()
         // a new build, another site: the document
@@ -211,6 +207,8 @@ export function startNavigation({ initial, show, prerender, pending, preload }: 
       scroll.save()
       return
     }
+    // a URL that is none of the app's pages (a file, /llms.txt; an HTTP route; nothing at all): the browser's
+    if (!isPage(url.pathname)) return
     event.preventDefault()
     visit!(url.href, { history: url.href === location.href ? 'replace' : 'push' })
   })
