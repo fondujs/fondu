@@ -31,12 +31,13 @@ jobs:
     # nothing is downloaded on each run
     container:
       image: mcr.microsoft.com/playwright:v1.56.0-noble
-      options: --user 1001
+    env:
+      HOME: /root # Firefox, run as root in the container
     steps:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: oven-sh/setup-bun@v2
+      - run: npm install --global bun # the image has no unzip, which setup-bun needs
       - run: bun install --frozen-lockfile
       - run: bun run test
         working-directory: apps/conformance
