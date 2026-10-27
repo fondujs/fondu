@@ -1,11 +1,18 @@
-## Pages
-
-A page is a React component, the default export of its route file: `app/routes/users/[id].tsx` is the page at
-`/users/:id`. The component's props are the page's props:
+A page is a React component: the default export of a route file. `app/routes/users/[id].tsx` is the page at
+`/users/:id`, and its loader, in the same file, renders it with its props.
 
 ```tsx
 // app/routes/users/[id].tsx
-export default function Show({ user }: { user: User }) {
+import { defineHandler, render } from 'fondu'
+
+// GET /users/7, on the server
+export const loader = defineHandler(async (c) => {
+  const user = await getUser(c.req.param('id'))
+  return render(c, Show, { user: { name: user.name } })
+})
+
+// the page: the part of the file the browser gets
+export default function Show({ user }: { user: { name: string } }) {
   return (
     <>
       <title>{`${user.name} · My app`}</title>
@@ -15,61 +22,46 @@ export default function Show({ user }: { user: User }) {
 }
 ```
 
-A page renders its own `<title>`, `<meta>` and `<link>` where it likes: React puts them in `<head>`, on the server too.
-A title is one string, hence the template literal. A page can also be [MDX](/docs/mdx); [layouts](/docs/layouts) are
-`_layout.tsx` files in the directories of `app/routes/`.
+A page can also be an [MDX](/docs/mdx) file. The parts around pages are [layouts](/docs/layouts). How the app moves
+from one page to the next is in [Navigation](/docs/navigation).
 
-## `render()`
+## Props
 
-The loader renders its file's page, with its props:
+The props are what the loader gives `render()`. They are the page's only data from the server.
 
 ```ts
 render(c, Show, { user })
-render(c, Show, { user }, { status: 201 })
+render(c, Show, { user }, { status: 201 }) // another status
 ```
 
-It takes the props the component takes: a missing prop or one of the wrong type is a type error. The props arrive as
-JSON: a `Date` for a `string` prop is fine, a `Map` is a type error. It renders the page of its own route file only;
-another route's page is its own too once it is that file's default export:
-`export { default } from './index.tsx'`.
+- `render()` is type-checked against the component: a missing prop, or one of the wrong type, is an error.
+- The props travel as JSON. A `Date` arrives as a string, so the page types it `string`. A `Map`, a `Set` or a
+  function can't be sent: typing a prop that way is an error. [Type safety](/docs/type-safety) has the details.
+- The props are written into the page's HTML and JSON: anyone who can see the page can read them. Send what the page
+  shows (`{ name: user.name }`), not whole records.
+- A route file renders its own page only. To use another route's page, make it this file's default export too:
+  `export { default } from './index.tsx'`.
 
-## Links and forms
+A page without a loader is rendered on GET with no props of its own.
 
-Links are `<a href>`, forms `<form method="post">`, with URLs from [`href()`](/docs/type-safety). Fondu enhances
-same-origin links and forms through the History API; it does not require the Navigation API. In the browser:
+## Title and meta tags
 
-- A link fetches the next page; the layouts stay mounted, with their state. The page starts at the top, or at its
-  `#fragment`.
-- A link to a URL that is none of the app's pages, by the route files (a file such as `/llms.txt`, a `.ts` route, a
-  URL of nothing), is the browser's: it loads as a document. A file a catch-all page's URLs would cover
-  (`docs/[...slug].tsx`, `/docs/manual.pdf`) takes `download` or `target="_top"` on its link.
-- A form's answer at the same URL (back with errors, `back(c)`) replaces the page where it is, the scroll position kept;
-  with errors, the page keeps its state too, what was typed included. Elsewhere, it's a new page in the history.
-- Back and Forward show the page as it was left, at once, where it was scrolled, then the server's in its place. The
-  pages kept for it are in memory only, and forgotten once a form is sent (what it changed, a signed-out user's
-  pages).
-- Screen readers hear the new page's title.
-- An answer that isn't a page (a file, a proxy's error, a redirect to another site) is shown as the browser would
-  show it.
-- A navigation that takes a while shows a progress bar at the top of the page. In `vite.config.ts`,
-  `fondu({ progress })` sets its `color` (the page's text color by default), the `delay` before it shows (350 ms),
-  and whether forms' submissions show it too (`forms: false` when their buttons do); `progress: false` leaves it
-  out, for your own with `useNavigating()`.
+A page renders its own `<title>`, `<meta>` and `<link>` tags where it likes; React moves them into `<head>`, on the
+server too. A title is one string, hence the template literal above.
 
-From `fondu/client`:
+```tsx
+<>
+  <title>{`${post.title} · Blog`}</title>
+  <meta name="description" content={post.summary} />
+  <link rel="canonical" href={`https://example.com/posts/${post.slug}`} />
+</>
+```
 
-|                      |                                                                                 |
-| -------------------- | ------------------------------------------------------------------------------- |
-| `usePage()`          | the page on screen: `props` (shared ones and `errors` included), `url`, `flash` |
-| `useNavigating()`    | `true` from a click or a submit until the next page is on the screen            |
-| `reload()`           | the page's props again, its state and scroll position kept                      |
-| `loadDocument(href)` | a document load: for what a page can't change in place (`<html lang>`)          |
-
-In code, `location.assign(url)` navigates as a link would.
+What every page shares (the charset, icons, fonts) goes in [the document](/docs/document).
 
 ## Shared props
 
-Props every page gets, such as the signed-in user, are shared from a middleware with `share()`:
+Props every page gets, such as the signed-in user, are set once in a middleware with `share()`:
 
 ```ts
 // app/routes/_middleware.ts
@@ -82,11 +74,24 @@ export default defineMiddleware(async (c, next) => {
 })
 ```
 
-A value can be a function: it runs when a page renders, not for the other requests. The page reads them with
-`usePage().props`. [Type safety](/docs/type-safety) shows how to type them.
+A shared value can be a function: it runs only when a page renders, not for API requests. Pages and layouts read
+shared props with `usePage().props`. [Type safety](/docs/type-safety) shows how to type them.
 
-## After an action
+## Reading the page in a component
 
-- `back(c)`: a redirect to the page the request came from.
-- `flash(c, { message: 'Saved' })`: data for the next page only, in `usePage().flash`.
-- `c.redirect(url, 303)`: to another page, a file or another site; the browser shows what is there.
+`usePage()` from `fondu/client` returns the page on the screen, in any component:
+
+| Field   | Is                                                               |
+| ------- | ---------------------------------------------------------------- |
+| `props` | the page's props, with the shared props and `errors`             |
+| `url`   | the page's URL (path and query)                                  |
+| `flash` | the data an action left for this page with `flash()`, shown once |
+
+```tsx
+import { usePage } from 'fondu/client'
+
+export function Greeting() {
+  const { props } = usePage()
+  return props.auth.user ? <p>Hello, {props.auth.user.name}</p> : null
+}
+```

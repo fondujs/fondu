@@ -1,3 +1,5 @@
+import { navigate } from 'fondu/client'
+
 export const prerender = true
 
 const links = [
@@ -24,6 +26,15 @@ export default function Home() {
           </li>
         ))}
       </ul>
+      <button id="navigate" onClick={() => navigate('/long')}>
+        navigate('/long')
+      </button>
+      <button id="navigate-replace" onClick={() => navigate('/long', { replace: true })}>
+        navigate('/long', {'{'} replace: true {'}'})
+      </button>
+      <button id="navigate-file" onClick={() => navigate('/notes.txt')}>
+        navigate('/notes.txt')
+      </button>
     </>
   )
 }

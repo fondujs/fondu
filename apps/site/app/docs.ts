@@ -43,7 +43,12 @@ export const sections: Array<{ title: string; docs: Doc[] }> = [
       {
         slug: 'pages',
         title: 'Pages and props',
-        description: 'React pages, their props, links and forms.',
+        description: 'React pages, their props, title and meta tags.',
+      },
+      {
+        slug: 'navigation',
+        title: 'Navigation',
+        description: 'Links, forms and Back in place; navigate() in code; scroll positions.',
       },
       {
         slug: 'layouts',

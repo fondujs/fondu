@@ -218,6 +218,32 @@ test.describe('with fondu/client only', () => {
     await settle(page)
     expect(await page.evaluate(() => (window as unknown as { kept?: boolean }).kept)).toBe(true)
   })
+  test('navigate(): as the link would, in place; replace: no new history entry; a file: the browser loads it', async ({
+    page,
+  }) => {
+    for (const [button, link, replaced] of [
+      ['#navigate', 'a[href="/long"]', false],
+      ['#navigate-replace', 'a[href="/long"]', true],
+      ['#navigate-file', 'a[href="/notes.txt"]', false],
+    ] as const) {
+      await open(page, '/')
+      await page.evaluate(() => ((window as unknown as { kept: boolean }).kept = true))
+      const before = (await state(page)).entries
+      await page.click(button)
+      await settle(page)
+      const { entries, timeline: _, ...navigated } = await state(page)
+      const kept = await page.evaluate(
+        () => (window as unknown as { kept?: boolean }).kept === true,
+      )
+      await open(page, '/')
+      await page.click(link)
+      await settle(page)
+      const { entries: __, timeline: ___, ...clicked } = await state(page)
+      expect(navigated).toEqual(clicked)
+      expect(kept).toBe(button !== '#navigate-file') // a page in place; a file is a document load
+      expect(entries - before).toBe(replaced ? 0 : 1)
+    }
+  })
   test('a reload of a page rendered in the browser only: where it was left', async ({ page }) => {
     await page.addInitScript(timeline)
     await open(page, '/csr')

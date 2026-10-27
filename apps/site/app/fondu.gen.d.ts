@@ -12,6 +12,7 @@ declare module 'fondu' {
       "/docs": typeof import("./routes/docs/index.mdx")
       "/docs/layouts": typeof import("./routes/docs/layouts.mdx")
       "/docs/mdx": typeof import("./routes/docs/mdx.mdx")
+      "/docs/navigation": typeof import("./routes/docs/navigation.mdx")
       "/docs/pages": typeof import("./routes/docs/pages.mdx")
       "/docs/project-structure": typeof import("./routes/docs/project-structure.mdx")
       "/docs/quick-start": typeof import("./routes/docs/quick-start.mdx")
