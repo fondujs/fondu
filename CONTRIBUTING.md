@@ -65,7 +65,7 @@ A pull request says which of these it checked.
 ## The protocol
 
 A page is answered as a document, or as JSON to Fondu's client: the server side is `server/protocol.ts` (with
-`server/flash.ts`, `server/http.ts`, `server/validate.ts`), the browser side `client/navigation.ts`, on the Navigation
+`server/flash.ts`, `server/http.ts`, `server/validate.ts`), the browser side `client/navigation.ts`, on the History
 API. A change to it:
 
 - has its server case tested in `packages/fondu/test/protocol.test.ts`;

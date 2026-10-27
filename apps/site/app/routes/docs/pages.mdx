@@ -35,7 +35,8 @@ another route's page is its own too once it is that file's default export:
 
 ## Links and forms
 
-Links are `<a href>`, forms `<form method="post">`, with URLs from [`href()`](/docs/type-safety). In the browser:
+Links are `<a href>`, forms `<form method="post">`, with URLs from [`href()`](/docs/type-safety). Fondu enhances
+same-origin links and forms through the History API; it does not require the Navigation API. In the browser:
 
 - A link fetches the next page; the layouts stay mounted, with their state. The page starts at the top, or at its
   `#fragment`.

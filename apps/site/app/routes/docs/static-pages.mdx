@@ -53,8 +53,28 @@ props included. So the build stops, naming the route, when a page:
 - answers with a status other than 200, such as a redirect;
 - takes POSTs at its URL (an `action` or `actions`): Cloudflare answers those with 405 for a static file, so Fondu
   refuses them on every target;
-- has a URL ending in `index` (`/index`, `/blog/index`, a param's value): its file would be its directory's page,
-  `index.html`. Such a URL is always answered by its route, on Cloudflare too (`run_worker_first`).
+- has a URL whose final decoded path segment is exactly `index`, without a trailing slash (`/index`,
+  `/blog/index`, `/blog/%69ndex`): with the current static-file layout, it would use its directory's `index.html`.
+
+Leave those URLs out of the `prerender` list; their routes can still render them dynamically, subject to the Cloudflare
+routing limitation below. This concerns URLs, not filenames: `routes/index.tsx` at `/` and `routes/blog/index.tsx` at
+`/blog` can be prerendered. `/blog/my-index` is not excluded. `/blog/index/` uses a different file,
+`blog/index/index.html`, when that is the app's canonical URL.
+
+### Cloudflare routing
+
+With prerendering enabled, Fondu adds `/index` and `/*/index` to `assets.run_worker_first` in the built
+`wrangler.json`, merging the app's list or keeping an existing `true`. These literal paths reach the Worker instead
+of being redirected to their directory by Static Assets.
+
+Percent-encoded spellings such as `/%69ndex` can still receive a 307 redirect to `/` before the Worker runs. The
+Worker-first patterns match the raw path, while Static Assets recognize the decoded `index`. A client navigation
+may therefore reach the page even when a direct document load is redirected. Bun and Node do not have this
+asset-layer limitation.
+
+If accepting those spellings is required, use a [Worker-first routing design](https://developers.cloudflare.com/workers/static-assets/routing/worker-script/)
+that handles the path and deliberately delegates static assets through an assets binding. Setting
+`run_worker_first: true` alone is not a drop-in fix: the Worker then receives asset requests too.
 
 ## Headers
 
