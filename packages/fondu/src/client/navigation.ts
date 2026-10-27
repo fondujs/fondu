@@ -276,7 +276,10 @@ export function startNavigation({
   // document's script: a reload, Back from another site), else at its #fragment (the browser). One rendered here has
   // its content only now: its entry's position, or its #fragment's target
   const position = scroll.start()
-  if (!hydrated) restore(position, location.hash, true)
+  if (!hydrated) {
+    restore(position, location.hash, true)
+    if (position) holdUntilLoaded(position)
+  }
   keep(initial)
 }
 
@@ -386,6 +389,20 @@ function restore(
   const target = hash && fragmentTarget(hash.slice(1))
   if (target) return target.scrollIntoView()
   if (!first) window.scrollTo(0, 0)
+}
+
+/**
+ * A position kept until the page has loaded: browsers scroll on their own until then (Firefox, a page rendered in
+ * the browser back to the top), as the document's script does it for a page rendered on the server. Not once the
+ * visitor has scrolled, typed or clicked.
+ */
+function holdUntilLoaded(position: { x: number; y: number }) {
+  if (document.readyState === 'complete') return
+  let held = true
+  const off = () => (held = false)
+  for (const type of ['wheel', 'touchstart', 'keydown', 'mousedown'])
+    addEventListener(type, off, { once: true, passive: true })
+  addEventListener('load', () => setTimeout(() => held && window.scrollTo(position.x, position.y)))
 }
 
 /** the element a #fragment names: decoded, or as it is (`#100%` doesn't decode); null for none */

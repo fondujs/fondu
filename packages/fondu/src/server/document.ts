@@ -48,11 +48,12 @@ const pageScript = (page: Page) =>
 
 /**
  * A reload, Back to a page of another site: this entry's position, where fondu/client left it, before the first
- * paint (the stylesheets are in: the page is laid out). fondu/client keeps the browser's restoration off, and the
- * browser may have scrolled to the #fragment meanwhile (WebKit, as it parses its target): the entry's position wins.
+ * paint (the stylesheets are in: the page is laid out), and again once the page has loaded: browsers scroll on
+ * their own until then (to the #fragment, WebKit and Firefox), fondu/client keeping their restoration off. Not once
+ * the visitor has scrolled, typed or clicked: their own scrolling wins.
  */
 const restoreScroll = (nonce: string | undefined) =>
-  `<script${nonce ? ` nonce="${nonce}"` : ''}>try{var k=history.state&&history.state[${JSON.stringify(SCROLL_KEY)}],p=k&&JSON.parse(sessionStorage.getItem(${JSON.stringify(SCROLL_STORAGE)}+k));p&&scrollTo(+p.x||0,+p.y||0)}catch(e){}</script>`
+  `<script${nonce ? ` nonce="${nonce}"` : ''}>try{var k=history.state&&history.state[${JSON.stringify(SCROLL_KEY)}],p=k&&JSON.parse(sessionStorage.getItem(${JSON.stringify(SCROLL_STORAGE)}+k));if(p){var go=function(){scrollTo(+p.x||0,+p.y||0)},off=function(){go=0};go();["wheel","touchstart","keydown","mousedown"].forEach(function(t){addEventListener(t,off,{once:!0,passive:!0})});addEventListener("load",function(){setTimeout(function(){go&&go()})})}}catch(e){}</script>`
 
 // where the page goes, in the document a template returns: replaced before the page is in, so a page's content is
 // never read as one
