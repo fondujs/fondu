@@ -62,7 +62,19 @@ function timeline() {
   } catch {}
   addEventListener('scroll', () => at('scroll'), { passive: true })
   addEventListener('DOMContentLoaded', () => at('DOMContentLoaded'))
-  addEventListener('load', () => (at('load'), setTimeout(() => at('load+0'))))
+  addEventListener(
+    'load',
+    () => (at(`load state=${JSON.stringify(history.state)}`), setTimeout(() => at('load+0'))),
+  )
+}
+
+/**
+ * A reload as the visitor's (`location.reload()`, the document's own): Playwright's `page.reload()` is the
+ * browser's, which Firefox does without the entry's `history.state`
+ */
+async function reload(page: Page) {
+  await Promise.all([page.waitForEvent('load'), page.evaluate(() => location.reload())])
+  await settle(page)
 }
 
 async function open(page: Page, url: string) {
@@ -147,8 +159,7 @@ test.describe('scroll positions', () => {
       await open(page, '/long')
       await page.evaluate(() => scrollTo(0, 1200))
       await page.waitForTimeout(300)
-      await page.reload()
-      await settle(page)
+      await reload(page)
       return state(page)
     })
   })
@@ -162,8 +173,7 @@ test.describe('scroll positions', () => {
         await open(page, '/long#end')
         await page.evaluate(() => scrollTo(0, 1200))
         await page.waitForTimeout(300)
-        await page.reload()
-        await settle(page)
+        await reload(page)
         return state(page)
       },
       { y: 1200 },
@@ -213,8 +223,7 @@ test.describe('with fondu/client only', () => {
     await open(page, '/csr')
     await page.evaluate(() => scrollTo(0, 1200))
     await page.waitForTimeout(300)
-    await page.reload()
-    await settle(page)
+    await reload(page)
     const { y, timeline: scrolls } = await state(page)
     expect(y, JSON.stringify(scrolls)).toBe(1200)
   })
