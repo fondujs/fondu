@@ -4,6 +4,7 @@ import { ChevronDown, ChevronLeft, ChevronRight, Menu } from 'lucide-react'
 import { useEffect, useState, type ComponentProps, type ReactNode } from 'react'
 
 import { CodeTabs, Pre } from '#/components/code.tsx'
+import { CopyPrompt } from '#/components/copy-prompt.tsx'
 import { External } from '#/components/external.tsx'
 import { MarkdownActions } from '#/components/markdown-actions.tsx'
 import { Meta } from '#/components/meta.tsx'
@@ -18,7 +19,7 @@ import { Menu as Dropdown, MenuItem, MenuPopup, MenuTrigger } from '#/components
 import { docOf, docs, docUrl, markdownUrl, sections, type Doc, type TocItem } from '#/docs.ts'
 
 // What the Markdown becomes: links within the site are navigations, others open in a new tab; headings link to
-// themselves; code blocks get a copy button, and <CodeTabs> groups them
+// themselves; code blocks get a copy button, and <CodeTabs> groups them; <CopyPrompt> is the home page's button
 const heading =
   (Tag: 'h2' | 'h3') =>
   ({ id, children }: ComponentProps<'h2'>) => (
@@ -39,6 +40,7 @@ const components = {
   h3: heading('h3'),
   pre: Pre,
   CodeTabs,
+  CopyPrompt,
 }
 
 // A page of the docs, inside the site's layout. Large screens: the sidebar, the page, its headings. Small ones: a bar

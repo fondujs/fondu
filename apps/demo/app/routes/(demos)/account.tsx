@@ -1,5 +1,5 @@
 import { back, defineHandler, flash, render } from 'fondu'
-import { type Errors, href } from 'fondu/client'
+import { href, useForm } from 'fondu/client'
 import * as z from 'zod/mini'
 
 import { DemoCard, SubmitButton, TextField, Title } from '#/components/demo.tsx'
@@ -30,10 +30,10 @@ export const action = defineHandler.withValidator({
 
 interface Props {
   account: { name: string; email: string; role: string }
-  errors: Errors
 }
 
-export default function Account({ account, errors }: Props) {
+export default function Account({ account }: Props) {
+  const { form, field, errors, submitting } = useForm()
   return (
     <>
       <Title>Account</Title>
@@ -44,15 +44,15 @@ export default function Account({ account, errors }: Props) {
       </p>
       <div className="grid gap-4 md:grid-cols-[1fr_16rem]">
         <DemoCard title="Profile">
-          <form action={href('/account')} method="post" className="grid gap-4">
+          <form action={href('/account')} method="post" className="grid gap-4" {...form}>
             <TextField
               label="Display name"
-              name="name"
+              {...field('name')}
               defaultValue={account.name}
               error={errors.name}
               testid="err-name"
             />
-            <SubmitButton>Save profile</SubmitButton>
+            <SubmitButton loading={submitting}>Save profile</SubmitButton>
           </form>
         </DemoCard>
         <Card className="h-fit">

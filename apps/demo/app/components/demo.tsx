@@ -1,6 +1,12 @@
 import { href, useNavigation, usePage } from 'fondu/client'
 import { InfoIcon } from 'lucide-react'
-import { useEffect, useRef, useSyncExternalStore, type HTMLAttributes, type ReactNode } from 'react'
+import {
+  useCallback,
+  useState,
+  useSyncExternalStore,
+  type HTMLAttributes,
+  type ReactNode,
+} from 'react'
 
 import { Alert, AlertDescription } from '#/components/ui/alert.tsx'
 import { Badge } from '#/components/ui/badge.tsx'
@@ -104,33 +110,22 @@ export function TextField({
   )
 }
 
-/** whether a form is being sent */
-export function useSending(form: () => HTMLFormElement | null | undefined): boolean {
-  const navigation = useNavigation()
-  return navigation.form !== null && navigation.form === form()
-}
-
 /**
- * A form's submit button, busy while its form is sent. When the answer comes back with errors, the first field to fix
- * gets the focus. For a request of the page's own (fetch), pass `processing`.
+ * A form's submit button, busy while its form is sent: `loading`, from `useForm().submitting` or a request of the
+ * page's own (fetch); else the form Fondu's client is sending (`useNavigation().form`) when it is this button's.
  */
-export function SubmitButton({ processing, ...props }: ButtonProps & { processing?: boolean }) {
-  const ref = useRef<HTMLButtonElement>(null)
-  const sending = useSending(() => ref.current?.form)
-  const sent = useRef(false)
-  const { errors } = usePage().props
-  // the answer to this form is on the screen: the focus to the first field to fix
-  useEffect(() => {
-    if (sending) {
-      sent.current = true
-      return
-    }
-    if (!sent.current) return
-    sent.current = false
-    if (Object.keys(errors).length)
-      ref.current?.form?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus()
-  }, [sending, errors])
-  return <Button ref={ref} type="submit" loading={processing ?? sending} {...props} />
+export function SubmitButton({ loading, ...props }: ButtonProps) {
+  const [form, setForm] = useState<HTMLFormElement | null>(null)
+  const ref = useCallback((button: HTMLButtonElement | null) => setForm(button?.form ?? null), [])
+  const sending = useNavigation().form
+  return (
+    <Button
+      ref={ref}
+      type="submit"
+      loading={loading ?? (sending !== null && sending === form)}
+      {...props}
+    />
+  )
 }
 
 /** For guests, in place of forms whose actions need an account (requireUser): the way in, and back here */

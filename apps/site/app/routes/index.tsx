@@ -15,20 +15,9 @@ import {
 } from 'lucide-react'
 import { useState, type ComponentProps, type ReactNode } from 'react'
 
-import {
-  Bun,
-  Claude,
-  Codex,
-  Cursor,
-  Hono,
-  Npm,
-  Pi,
-  Pnpm,
-  React as ReactMark,
-  Vite,
-  Yarn,
-} from '#/components/brands.tsx'
+import { Bun, Hono, Npm, Pnpm, React as ReactMark, Vite, Yarn } from '#/components/brands.tsx'
 import { CodeTabs, useGroup } from '#/components/code.tsx'
+import { CopyPrompt } from '#/components/copy-prompt.tsx'
 import { External } from '#/components/external.tsx'
 import { Logo } from '#/components/logo.tsx'
 import { Meta } from '#/components/meta.tsx'
@@ -42,7 +31,6 @@ import {
 } from '#/components/ui/menu.tsx'
 import Code from '#/landing/code.mdx'
 import { cn } from '#/lib/utils.ts'
-import { PROMPT } from '#/prompt.ts'
 
 // the package managers, as the quick start's tabs name them (their choice is shared: `group="pm"`)
 const managers = {
@@ -348,30 +336,5 @@ function CreateCommand() {
         )}
       </button>
     </div>
-  )
-}
-
-/** Copies the prompt that sets up Fondu with a coding agent (the quick start's "Automatic installation") */
-function CopyPrompt() {
-  const [copied, setCopied] = useState(false)
-  const copy = async () => {
-    await navigator.clipboard.writeText(PROMPT)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1500)
-  }
-  return (
-    <Button variant="outline" size="lg" onClick={copy} title="Sets Fondu up with your coding agent">
-      {copied ? (
-        <Check className="text-brand-foreground" />
-      ) : (
-        <span className="flex items-center gap-1 [&_svg]:mx-0 [&_svg]:size-4 [&_svg]:opacity-100">
-          <Claude className="text-[#D97757]" />
-          <Codex />
-          <Cursor />
-          <Pi />
-        </span>
-      )}
-      {copied ? 'Copied' : 'Copy prompt'}
-    </Button>
   )
 }

@@ -1,5 +1,5 @@
 import { defineHandler, flash, render } from 'fondu'
-import { type Errors, href } from 'fondu/client'
+import { href, useForm } from 'fondu/client'
 import { InfoIcon } from 'lucide-react'
 import * as z from 'zod/mini'
 
@@ -36,7 +36,9 @@ export const action = defineHandler.withValidator({
   return c.redirect(safeNext(c, body.next), 303)
 })
 
-export default function Login({ next, errors }: { next: string; errors: Errors }) {
+export default function Login({ next }: { next: string }) {
+  // the server's errors on its fields, the first to fix focused
+  const { form, field, errors, submitting } = useForm()
   return (
     <div className="max-w-sm">
       <Title>Sign in</Title>
@@ -52,11 +54,11 @@ export default function Login({ next, errors }: { next: string; errors: Errors }
         </AlertDescription>
       </Alert>
       {/* wrong credentials: back to this page with the errors, what was typed kept */}
-      <form action={href('/login')} method="post" className="grid gap-4">
+      <form action={href('/login')} method="post" className="grid gap-4" {...form}>
         <input type="hidden" name="next" value={next} />
         <TextField
           label="Email"
-          name="email"
+          {...field('email')}
           type="email"
           autoComplete="username"
           error={errors.email}
@@ -64,13 +66,13 @@ export default function Login({ next, errors }: { next: string; errors: Errors }
         />
         <TextField
           label="Password"
-          name="password"
+          {...field('password')}
           type="password"
           autoComplete="current-password"
           error={errors.password}
           testid="err-password"
         />
-        <SubmitButton>Sign in</SubmitButton>
+        <SubmitButton loading={submitting}>Sign in</SubmitButton>
       </form>
       <p className="mt-4 text-sm text-muted-foreground">
         No account? <a href={href('/signup')}>Create one</a>
