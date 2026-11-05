@@ -35,7 +35,10 @@ export function formObject(entries: Iterable<Entry>): Record<string, unknown> {
       if (i === path.length - 1) {
         if (has && isObject(target[name]))
           throw new MalformedForm(`\`${key}\` is both a value and an object`)
-        target[name] = has ? [target[name], value].flat() : value // given again: a list
+        // Append in place: copying the list on every repeated name makes a small body quadratic work.
+        const previous = target[name]
+        if (Array.isArray(previous)) previous.push(value)
+        else target[name] = has ? [previous, value] : value
       } else {
         if (!has) target[name] = Object.create(null)
         else if (!isObject(target[name]))
