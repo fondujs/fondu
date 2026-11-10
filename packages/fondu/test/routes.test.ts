@@ -170,6 +170,16 @@ describe('one file per URL', () => {
   })
 })
 
+describe('the error page', () => {
+  test("one for the app: a directory's own would never be shown, and fails", () => {
+    expect(() => table({ ...files('index.ts'), '_error.tsx': {} })).not.toThrow()
+    for (const file of ['docs/_error.tsx', '(site)/admin/_error.jsx'])
+      expect(() => table({ ...files('index.ts'), [file]: {} })).toThrow(
+        `routes/${file} is never shown`,
+      )
+  })
+})
+
 describe('in the app', async () => {
   const { createApp } = await import('fondu')
   const app = createApp()

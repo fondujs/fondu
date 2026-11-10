@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { posix } from 'node:path'
+import { win32 } from 'node:path'
 
 import { createApp } from 'fondu'
 // fondu({ prerender: true }): the files, the paths, the page objects of the pages without a file.
@@ -7,7 +7,7 @@ import { describe, expect, test } from 'vitest'
 
 import { pageDataPath, pathOfPageData, staticFiles } from '../src/paths.js'
 import { prerenderPaths, type PrerenderRoute } from '../src/server/prerender.js'
-import { ownScripts, staticPolicy, withHeaderRules } from '../src/vite/prerender.js'
+import { ownScripts, prerender, staticPolicy, withHeaderRules } from '../src/vite/prerender.js'
 
 const route = (
   file: string,
@@ -156,6 +156,36 @@ describe('paths', () => {
   })
 })
 
+describe('the build', () => {
+  // a built server that lists one page, and answers it as given
+  const build = (doc: Response, visit: Response) =>
+    prerender(
+      async () => ({
+        fetch: async (path, headers = {}) =>
+          path === '/__fondu/prerender'
+            ? Response.json({ version: 'v1', paths: ['/x'], problems: [] })
+            : 'X-Fondu' in headers
+              ? visit
+              : doc,
+        dispose: async () => {},
+      }),
+      '/nowhere',
+      { error() {}, warn() {}, info() {} } as never,
+      false,
+    )
+  const page = () => Response.json({ component: 'x' })
+  test('a page that is not a 200 fails it, saying to which request: the document, or the navigation', async () => {
+    const away = new Response(null, { status: 302, headers: { Location: '/login' } })
+    await expect(build(away, page())).rejects.toThrow('/x: 302 → /login as a document')
+    await expect(build(new Response('<html>'), away)).rejects.toThrow(
+      '/x: 302 → /login as a navigation',
+    )
+    await expect(build(new Response('', { status: 500 }), away)).rejects.toThrow(
+      '/x: 500 as a document',
+    )
+  })
+})
+
 describe('the app', () => {
   const app = createApp()
   test('the paths, only while the build prerenders', async () => {
@@ -198,7 +228,8 @@ describe('the app', () => {
     const g = globalThis as unknown as Record<symbol, unknown>
     // as the built server's entry reads them: the path joined to the client build's folder, nothing above it
     g[key] = async (file: string) => {
-      const to = posix.normalize(file)
+      // on Windows, `\\` separates segments too
+      const to = win32.normalize(file).replaceAll('\\', '/')
       return !to.startsWith('../') && to in files ? new TextEncoder().encode(files[to]) : null
     }
     try {
@@ -231,6 +262,7 @@ describe('the app', () => {
       for (const path of [
         '/_fondu/pages/..%2f..%2f.vite%2fmanifest.json',
         '/_fondu/pages/%2e%2e/%2e%2e/.vite/manifest.json',
+        '/_fondu/pages/x%5C..%5C..%5C..%5C.vite%5Cmanifest.json',
       ]) {
         const res = await app.request(path, { headers: { 'X-Fondu': 'true' } })
         expect(await res.text(), path).not.toContain('secret')

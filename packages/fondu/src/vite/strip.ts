@@ -2,22 +2,10 @@ import { relative, sep } from 'node:path'
 
 import type { Plugin } from 'vite'
 
-import { isPageFile } from '../paths.js'
+import { CONFIG, HANDLERS, isPageFile, METHODS } from '../paths.js'
 
 /** the exports of a page's route file that are server code: the browser gets the page (default) alone */
-const SERVER_EXPORTS = new Set([
-  'loader',
-  'action',
-  'actions',
-  'prerender',
-  'params',
-  'GET',
-  'POST',
-  'PUT',
-  'PATCH',
-  'DELETE',
-  'OPTIONS',
-])
+const SERVER_EXPORTS = new Set<string>([...HANDLERS, ...CONFIG, ...METHODS])
 
 type Node = { type: string; start: number; end: number; [key: string]: unknown }
 type Name = { name?: string; value?: string }

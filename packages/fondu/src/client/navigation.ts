@@ -1,3 +1,4 @@
+import { crlf } from '../form.js'
 import { pageDataPath, SCROLL_KEY, SCROLL_STORAGE } from '../paths.js'
 
 /** what the server sends for a page: its id (its route file, `users/[id]`), its props, its URL, the build's version */
@@ -241,8 +242,7 @@ export function startNavigation({
     if (url.origin !== location.origin || !isWebUrl(url.href)) return
     event.preventDefault()
     const data = new FormData(form, submitter)
-    // as the browser would send them: a file by its name in a URL or plain text, line breaks as CRLF (a <textarea>'s)
-    const crlf = (text: string) => text.replace(/\r\n|\r|\n/g, '\r\n')
+    // as the browser would send them: a file by its name in a URL or plain text, line breaks as CRLF
     const fields = [...data].map(([k, v]) => [crlf(k), crlf(typeof v === 'string' ? v : v.name)])
     if (method === 'post') {
       const enctype = attr('enctype', 'formenctype').toLowerCase()

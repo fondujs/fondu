@@ -135,9 +135,11 @@ export async function prerender(
         ...(version && { 'X-Fondu-Version': version }),
       })
       if (doc.status !== 200 || visit.status !== 200) {
-        const to = doc.headers.get('location')
+        // the request that failed: the document's, else the navigation's
+        const [failed, as] = doc.status !== 200 ? [doc, 'a document'] : [visit, 'a navigation']
+        const to = failed.headers.get('location')
         errors.push(
-          `${path}: ${doc.status}${to ? ` → ${to}` : ''} (a prerendered page must answer 200 to anyone)`,
+          `${path}: ${failed.status}${to ? ` → ${to}` : ''} as ${as} (a prerendered page must answer 200 to anyone)`,
         )
         continue
       }

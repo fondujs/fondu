@@ -7,6 +7,10 @@ export const isPageRequest = (c: Context) => c.req.header('x-fondu') === 'true'
 export const wantsPage = (c: Context) =>
   isPageRequest(c) || (c.req.header('accept') ?? '').includes('text/html')
 
+/** the request's Content Security Policy nonce (hono/secure-headers'), if it has one */
+export const nonceOf = (c: Context) =>
+  (c.get as (key: string) => unknown)('secureHeadersNonce') as string | undefined
+
 /** `url` as a URL of this site, or null (another site, unparsable) */
 export function sameOrigin(c: Context, url: string | undefined): URL | null {
   if (!url) return null

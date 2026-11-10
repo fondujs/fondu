@@ -126,7 +126,7 @@ const run = (script) =>
 const name =
   basename(root)
     .toLowerCase()
-    .replace(/[^a-z0-9._~-]+/g, '-')
+    .replace(/[^a-z0-9._-]+/g, '-')
     .replace(/^[._-]+/, '') || 'fondu-app'
 cpSync(new URL('base/', template), root, { recursive: true })
 const layers = [target, ...(checks ? ['checks'] : [])]

@@ -9,7 +9,7 @@ import {
   type FormEvent,
 } from 'react'
 
-import { fieldKey, formObject, issueErrors, MalformedForm, type Issue } from '../form.js'
+import { crlf, fieldKey, formObject, issueErrors, MalformedForm, type Issue } from '../form.js'
 import { useNavigation, usePage, type Errors } from './app.js'
 
 /** A Standard Schema (zod, valibot, arktype…), the part `useForm` uses */
@@ -23,8 +23,6 @@ type StandardResult = { readonly issues?: ReadonlyArray<Issue> | undefined }
 /** a form's fields as the server reads them: its body for a POST (`withValidator({ body })`), its query for a GET */
 function fieldsOf(form: HTMLFormElement, submitter?: HTMLElement | null): unknown {
   const data = new FormData(form, submitter ?? undefined)
-  // as the browser sends them: line breaks as CRLF (a <textarea>'s)
-  const crlf = (text: string) => text.replace(/\r\n|\r|\n/g, '\r\n')
   const entries = [...data].map(
     ([k, v]) => [crlf(k), typeof v === 'string' ? crlf(v) : v] as [string, FormDataEntryValue],
   )

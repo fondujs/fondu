@@ -23,6 +23,7 @@ __entry(
     '/app/routes/(site)/users/new.tsx': async () => ({ default: Plain }),
     '/app/routes/(site)/index.tsx': async () => ({ default: Plain }),
     '/app/routes/files/[...path].tsx': async () => ({ default: Plain }),
+    '/app/routes/café.tsx': async () => ({ default: Plain }),
     '/app/routes/_error.tsx': async () => ({ default: Plain }),
   },
   {
@@ -75,4 +76,8 @@ test("a URL's page, guessed to load its modules with its data: static segments f
   expect(pageAt('/llms.txt')).toBeUndefined()
   expect(pageAt('/api/health')).toBeUndefined()
   expect(pageAt('/users/7/edit')).toBeUndefined()
+  // a segment as the browser writes it, encoded: the page the server matches; one that doesn't decode is none
+  expect(pageAt('/caf%C3%A9')).toBe('café')
+  expect(pageAt('/café')).toBe('café')
+  expect(pageAt('/%E0%A4%A')).toBeUndefined()
 })

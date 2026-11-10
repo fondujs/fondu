@@ -3,7 +3,7 @@ import { HTTPException } from 'hono/http-exception'
 import type { ContentfulStatusCode } from 'hono/utils/http-status'
 
 import { settings } from './document.js'
-import { wantsPage } from './http.js'
+import { nonceOf, wantsPage } from './http.js'
 import { renderPage } from './protocol.js'
 
 /** the error page's id: `app/routes/_error.tsx` */
@@ -58,7 +58,7 @@ function report(c: Context, error: unknown): string {
     .slice(1)
     .map((line) => line.trim())
     .filter(Boolean)
-  const nonce = (c.get as (key: string) => unknown)('secureHeadersNonce') as string | undefined
+  const nonce = nonceOf(c)
   const url = new URL(c.req.url)
   const frame = (line: string) => {
     const own = /\/app\//.test(line) && !line.includes('node_modules')

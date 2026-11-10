@@ -56,6 +56,11 @@ export function isRouteFile(file: string): boolean {
   )
 }
 
+/** what a route file exports for the server, besides its page: HTTP methods, a page's handlers, its settings */
+export const METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'] as const
+export const HANDLERS = ['loader', 'action', 'actions'] as const
+export const CONFIG = ['prerender', 'params'] as const
+
 /** a route file that is a page (React: `.tsx`, `.jsx`, `.mdx`), not server code only (`.ts`) */
 export const isPageFile = (file: string) => isRouteFile(file) && !file.endsWith('.ts')
 
@@ -115,7 +120,7 @@ export function pageDataPath(path: string): string {
 }
 
 /** a URL segment decoded, or as it is if it doesn't decode */
-function decoded(segment: string): string {
+export function decoded(segment: string): string {
   try {
     return decodeURIComponent(segment)
   } catch {

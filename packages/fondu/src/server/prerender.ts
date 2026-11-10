@@ -1,7 +1,7 @@
 import type { ExecutionContext, Hono } from 'hono'
 
 import { endsInIndex, fillPattern, PAGE_DATA, pathOfPageData, staticFiles } from '../paths.js'
-import { isPageRequest } from './http.js'
+import { isPageRequest, nonceOf } from './http.js'
 
 /** `export const prerender` of a route or a `_middleware.ts`: the params of a dynamic route's pages, or on / off */
 export type Prerender =
@@ -22,8 +22,12 @@ export interface PrerenderRoute {
 /** Node / Bun: reads a file of the client build (`docs/intro.html`), or null; set by the built server's entry */
 const STATIC_FILES = Symbol.for('fondu.staticFiles')
 type StaticFiles = (file: string) => Promise<Uint8Array | null>
-/** a page's file: no hidden one (`.vite/manifest.json`), nothing above the client build (`..`), no empty segment */
-const isPageFile = (file: string) => file.split('/').every((s) => s !== '' && !s.startsWith('.'))
+/**
+ * a prerendered page's file: no hidden one (`.vite/manifest.json`), nothing above the client build (`..`), no empty segment; `\\`
+ * separates segments too (Windows)
+ */
+const isStaticFile = (file: string) =>
+  file.split(/[\\/]/).every((s) => s !== '' && !s.startsWith('.'))
 
 /** The paths to prerender, and what stops a route from being prerendered (the build fails on those) */
 export async function prerenderPaths(
@@ -89,14 +93,14 @@ export function prerenderRoutes(app: Hono, routes: () => PrerenderRoute[], versi
     } catch {
       return next() // not a path a file could have
     }
-    if (!isPageFile(file)) return next()
+    if (!isStaticFile(file)) return next()
     const body = await read(file)
     if (!body) return next()
     c.header('Cache-Control', 'private, no-cache')
     if (data) c.header('X-Fondu', 'true')
     // the document's own tags have the build's nonce (the build dropped any other): this response's instead, as the
     // security headers give it a new one
-    const nonce = (c.get as (key: string) => unknown)('secureHeadersNonce') as string | undefined
+    const nonce = nonceOf(c)
     if (!data && nonce) {
       const html = new TextDecoder()
         .decode(body)
