@@ -43,10 +43,16 @@ const SEGMENT = /^[\w.~-]+$/
  * The routes of `app/routes/` (`modules`: file inside routes/ → its module), in the order Hono gets them: segment
  * by segment, static before a param with listed values, before any param, before a catch-all. Throws, at startup,
  * on what would answer the wrong way: two files for the same URLs (one would never answer, or answer without the
- * other's middleware), `params` that no route takes or that aren't single segments.
+ * other's middleware), `params` that no route takes or that aren't single segments, an error page other than the
+ * app's.
  */
 export function routeTable(modules: Record<string, RouteModule>, append: boolean): Route[] {
   const files = Object.keys(modules)
+  const nested = files.find((f) => /\/_error\.[jt]sx$/.test(f))
+  if (nested)
+    throw new Error(
+      `fondu: routes/${nested} is never shown: the error page is routes/_error.tsx, one for the app`,
+    )
   const middlewareFiles = files.filter((f) => f.endsWith('/_middleware.ts'))
   const used = new Set<string>() // `${file}:${name}`: a `params` entry that applies to a route
   const routes: Route[] = []

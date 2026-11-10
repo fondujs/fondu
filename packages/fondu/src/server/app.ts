@@ -6,7 +6,7 @@ import { NONCE, secureHeaders } from 'hono/secure-headers'
 import { appendTrailingSlash, trimTrailingSlash } from 'hono/trailing-slash'
 import { prerender, version } from 'virtual:fondu/assets'
 
-import { isPageFile, isRouteFile, pageId } from '../paths.js'
+import { CONFIG, HANDLERS, isPageFile, isRouteFile, METHODS, pageId } from '../paths.js'
 import { settings, type DocumentTemplate } from './document.js'
 import { errorResponse } from './errors.js'
 import { prerenderRoutes, type PrerenderRoute } from './prerender.js'
@@ -46,9 +46,6 @@ const CSP = {
 } satisfies SecureHeadersOptions['contentSecurityPolicy']
 
 const ROOT = '/app/routes/'
-const METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'] as const
-const HANDLERS = ['loader', 'action', 'actions'] as const
-const CONFIG = ['prerender', 'params'] as const
 
 /**
  * What a file of `app/routes/` may export, and what to do with anything else: a page's route file is its page and

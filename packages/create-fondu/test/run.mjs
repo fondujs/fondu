@@ -59,7 +59,8 @@ const check = (name, ok, detail = '') => {
 for (const target of Object.keys(production).filter(
   (t) => !process.argv[2] || t === process.argv[2],
 )) {
-  const app = join(work, `my_app.${target}-2.0`) // a name with characters a Worker's name may not have
+  // a name with characters a Worker's name may not have, and one a package's may not (~)
+  const app = join(work, `my_app~.${target}-2.0`)
   sh('node', [join(here, 'index.js'), app, '--target', target, '--no-install'], work)
   const agents = readFileSync(join(app, 'AGENTS.md'), 'utf8')
   check(
@@ -68,6 +69,11 @@ for (const target of Object.keys(production).filter(
   )
   const greeting = target === 'cloudflare' ? 'Hello from Cloudflare' : 'Hello from Fondu' // a Worker variable
   const pkg = JSON.parse(readFileSync(join(app, 'package.json'), 'utf8'))
+  check(
+    `${target}: the package named after its folder`,
+    pkg.name === `my_app-.${target}-2.0`,
+    pkg.name,
+  )
   pkg.dependencies.fondu = `file:${tarball}`
   writeFileSync(join(app, 'package.json'), JSON.stringify(pkg, null, 2))
   sh('bun', ['install'], app)

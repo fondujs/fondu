@@ -6,6 +6,7 @@ import { renderMarkup, renderPage } from 'virtual:fondu/ssr'
 
 import type { Page } from '../client/navigation.js'
 import { SCROLL_KEY, SCROLL_STORAGE } from '../paths.js'
+import { nonceOf } from './http.js'
 
 /**
  * The HTML document around a page: `{head}` and `{body}` (in JSX, or `${head}` in a string) are where the page goes.
@@ -77,7 +78,7 @@ async function shell(
 }
 
 export async function renderDocument(c: Context, page: Page): Promise<string> {
-  const nonce = (c.get as (key: string) => unknown)('secureHeadersNonce') as string | undefined
+  const nonce = nonceOf(c)
   let ssr: { head: string; body: string } | null = null
   try {
     // the page as the browser gets it, through JSON (a Date a string): the markup is the same on both sides

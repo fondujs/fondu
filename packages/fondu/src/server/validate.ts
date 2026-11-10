@@ -1,7 +1,7 @@
 import type { Context, MiddlewareHandler } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 
-import { formObject, issueErrors, MalformedForm } from '../form.js'
+import { formObject, issueErrors, MalformedForm, type Issue } from '../form.js'
 import { flashErrors } from './flash.js'
 import { back, wantsPage } from './http.js'
 
@@ -16,12 +16,7 @@ export interface StandardSchemaV1<Input = unknown, Output = Input> {
 }
 type StandardResult<Output> =
   | { readonly value: Output; readonly issues?: undefined }
-  | {
-      readonly issues: ReadonlyArray<{
-        readonly message: string
-        readonly path?: ReadonlyArray<PropertyKey | { readonly key: PropertyKey }>
-      }>
-    }
+  | { readonly issues: ReadonlyArray<Issue> }
 type InferOutput<S> = S extends StandardSchemaV1<unknown, infer O> ? O : never
 
 /**

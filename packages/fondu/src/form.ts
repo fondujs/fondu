@@ -11,6 +11,9 @@ export class MalformedForm extends Error {}
 
 type Entry = [string, FormDataEntryValue]
 
+/** a field's text as the browser sends it: line breaks as CRLF (a <textarea>'s) */
+export const crlf = (text: string) => text.replace(/\r\n|\r|\n/g, '\r\n')
+
 /**
  * Form fields with PHP-style names, as forms write them (`notify[]`, `user[name]`); files are `File`s, empty file
  * inputs are left out. A name given again is a list (`a=1&a=2`, `a[b]=1&a[b]=2`); `[]` is the index after the

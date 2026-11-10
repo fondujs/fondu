@@ -15,7 +15,7 @@ import {
 import { flushSync } from 'react-dom'
 import { createRoot, hydrateRoot } from 'react-dom/client'
 
-import { layoutsOf, pageId, routePatterns } from '../paths.js'
+import { decoded, layoutsOf, pageId, routePatterns } from '../paths.js'
 import type { Flash, Shared } from '../types.js'
 import { again, startNavigation, type Page } from './navigation.js'
 import { progressBar, type ProgressOptions } from './progress.js'
@@ -30,6 +30,8 @@ const ERROR = '_error'
 // set by the app's entry (the Vite plugin's): the pages and layouts of app/routes/, and the build's settings
 let pages = new Map<string, Loader>()
 let layoutModules: Record<string, Loader> = {}
+/** each page's URL patterns, segment by segment: for `pageAt` */
+let patterns: Array<{ id: string; segments: string[] }> = []
 
 /**
  * @internal the app's entry (the Vite plugin writes it), in the browser and for the server render: `import.meta.glob`
@@ -45,6 +47,9 @@ export function __entry(
     Object.entries(pageModules).map(([key, loader]) => [pageId(key.slice(ROUTES.length)), loader]),
   )
   layoutModules = layouts
+  patterns = [...pages.keys()]
+    .filter((id) => !id.split('/').some((s) => s.startsWith('_'))) // the error page is no URL
+    .flatMap((id) => routePatterns(id).map((p) => ({ id, segments: p.split('/').filter(Boolean) })))
   if (typeof document !== 'undefined') start(settings)
 }
 
@@ -120,25 +125,22 @@ class Failed extends Component<
  * listed values are the server's), so the page shown is the one the server says.
  */
 export function pageAt(pathname: string): string | undefined {
-  const parts = pathname.split('/').filter(Boolean)
+  // decoded, as the server matches them (`/caf%C3%A9` is `café.tsx`)
+  const parts = pathname.split('/').filter(Boolean).map(decoded)
   let best: { id: string; score: number } | undefined
-  for (const id of pages.keys()) {
-    if (id.split('/').some((s) => s.startsWith('_'))) continue
-    for (const pattern of routePatterns(id)) {
-      const segments = pattern.split('/').filter(Boolean)
-      let score = 0
-      let i = 0
-      for (const s of segments) {
-        const part = parts[i]
-        if (part === undefined) score = -1
-        else if (s.endsWith('{.+}')) score += 1 // a catch-all: the rest
-        else if (s.startsWith(':')) score += 2
-        else score += s === part ? 3 : -Infinity
-        i = s.endsWith('{.+}') ? parts.length : i + 1
-        if (score < 0) break
-      }
-      if (score >= 0 && i === parts.length && (!best || score > best.score)) best = { id, score }
+  for (const { id, segments } of patterns) {
+    let score = 0
+    let i = 0
+    for (const s of segments) {
+      const part = parts[i]
+      if (part === undefined) score = -1
+      else if (s.endsWith('{.+}')) score += 1 // a catch-all: the rest
+      else if (s.startsWith(':')) score += 2
+      else score += s === part ? 3 : -Infinity
+      i = s.endsWith('{.+}') ? parts.length : i + 1
+      if (score < 0) break
     }
+    if (score >= 0 && i === parts.length && (!best || score > best.score)) best = { id, score }
   }
   return best?.id
 }
