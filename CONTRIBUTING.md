@@ -7,6 +7,49 @@ Pull requests are opened by the repository's collaborators. To report a bug or p
 [issue](https://github.com/fondujs/fondu/issues): a reproduction for a bug, the case for a feature. Once the approach is
 agreed, a maintainer makes the change, or invites you to.
 
+## Scope
+
+Fondu is small on purpose: server routes, React pages, and one JSON page object between them. One person can read the
+whole package. A change keeps it that way, or it isn't made.
+
+What it does:
+
+- the files of `app/routes/` are the URLs; a loader gives its page props, an action takes its form;
+- forms and validation: one schema, checked on the server and in the browser, and a form that works without
+  JavaScript;
+- typed URLs (`href()`) and typed props (`render()`), from the route files themselves;
+- server rendering, static pages, MDX pages;
+- safe defaults: CSRF protection, security headers, a Content Security Policy;
+- its own navigation and scroll restoration, tested in three browser engines;
+- Bun, Cloudflare Workers and Node.
+
+What it leaves to the app, or to another library:
+
+- sessions and authentication, a data layer;
+- a client-side cache, optimistic updates, real-time data;
+- a client-side router, nested routes with data of their own (a layout has no loader: `share()` gives it props).
+
+A feature that needs one of these is not a feature of Fondu. The question for every proposal: would it turn Fondu
+into another large framework? Then no.
+
+How a change is decided:
+
+- **One way to write a thing.** A page's route file has `loader` and `action` or `actions`; a `.ts` file has the HTTP
+  methods. A second spelling of something is removed, not documented.
+- **The protocol stays as it is.** A page is one JSON object, the same for a document and for a navigation. A feature
+  that needs a second format for one of them is designed again until it doesn't (deferred props: a second request,
+  not a stream of its own).
+- **The loader decides the answer.** The status, a redirect, the cookies are known before the first byte is sent.
+  Nothing that renders later may need to change them.
+- **What would answer the wrong way fails at startup**, with a message that says what to write instead. Nothing is
+  ignored without a word.
+- **A proven design before a new one.** Inertia, Laravel and React Router have solved most of this: follow the one
+  that fits, and say which.
+- **An option earns its place.** Kept, though small: `trailingSlash: 'append'` (an app can't set it up itself) and
+  `loadDocument()` (the name for a document load of a page). Removed: `.jsx` route files, `loader` in a `.ts` file.
+- **Breaking changes come together**, in one minor version before 1.0, each with the message that tells an app what
+  to change.
+
 ## Setup
 
 [Bun](https://bun.sh) 1.3.14 or later (and Node 20.19 or later for the Node example).
