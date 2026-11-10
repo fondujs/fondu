@@ -14,15 +14,17 @@ type Actions = {
 }[Keys]
 export type Href = [Keys] extends [never] ? string : Keys | Actions
 
-type ParamNames<P extends string> = P extends `${string}:${infer Name}{${string}}${infer Rest}`
-  ? Name | ParamNames<Rest>
-  : P extends `${string}:${infer Name}/${infer Rest}`
-    ? Name | ParamNames<`/${Rest}`>
-    : P extends `${string}:${infer Name}?${string}`
-      ? Name
-      : P extends `${string}:${infer Name}`
-        ? Name
-        : never
+/** the params of a URL pattern, without its action (`?name`): `/users/:id/files/:path{.+}` → id, path */
+type ParamNames<P extends string> = P extends `${infer Path}?${string}`
+  ? PathParams<Path>
+  : PathParams<P>
+type PathParams<P extends string> = P extends `${string}:${infer Rest}`
+  ? Rest extends `${infer Segment}/${infer More}`
+    ? ParamName<Segment> | PathParams<More>
+    : ParamName<Rest>
+  : never
+/** a param's name, without its pattern (a catch-all's `{.+}`) */
+type ParamName<S extends string> = S extends `${infer Name}{${string}` ? Name : S
 
 /** the handlers answering a GET of the URL (its page's `loader`, a `.ts` file's `GET`), or the action's */
 type HandlersOf<P extends string> = P extends `${infer K}?${infer A}`
