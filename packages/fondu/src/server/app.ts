@@ -1,4 +1,5 @@
 import { Hono, type Context, type Handler, type MiddlewareHandler } from 'hono'
+import { bodyLimit } from 'hono/body-limit'
 import { every } from 'hono/combine'
 import { csrf } from 'hono/csrf'
 import { HTTPException } from 'hono/http-exception'
@@ -21,6 +22,8 @@ export interface CreateAppOptions {
   trailingSlash?: 'trim' | 'append'
   /** `hono/csrf`'s options; `false`: off */
   csrf?: Parameters<typeof csrf>[0] | false
+  /** the largest request body, in bytes (default: 10 MB), then 413: `hono/body-limit`; `false`: no limit */
+  bodyLimit?: number | false
   /**
    * `hono/secure-headers`' options; `false`: off. Defaults: `referrerPolicy: 'same-origin'` (which `back()` needs) and
    * a Content Security Policy whose directives yours replace one by one; `contentSecurityPolicy: false`: none
@@ -128,7 +131,7 @@ function actionName(url: string): string | null {
  * - server code, `.ts`: HTTP handlers only, `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS` (not `loader`,
  *   `action`, `actions`: those are a page's)
  * `_middleware.ts` applies to its directory and below (`routes/_middleware.ts`: every request, 404s included).
- * Built in: CSRF protection, security headers, one URL per page (trailing slash), the error page. Your own 404 /
+ * Built in: CSRF protection, security headers, a request body limit, one URL per page (trailing slash), the error page. Your own 404 /
  * error handling: Hono's `app.notFound()` / `app.onError()` on the returned app.
  */
 export function createApp(options: CreateAppOptions = {}): Hono {
@@ -173,6 +176,16 @@ export function createApp(options: CreateAppOptions = {}): Hono {
     )
   }
   if (options.csrf !== false) app.use(csrf(options.csrf))
+  if (options.bodyLimit !== false)
+    app.use(
+      bodyLimit({
+        maxSize: options.bodyLimit ?? 10 * 1024 * 1024,
+        // Fondu's own answer: the error page for a visitor, the status alone for an API client
+        onError: () => {
+          throw new HTTPException(413)
+        },
+      }),
+    )
   const prerendered: PrerenderRoute[] = []
   if (prerender) prerenderRoutes(app, () => prerendered, version)
   app.use(append ? appendTrailingSlash() : trimTrailingSlash(), ...protocol)
