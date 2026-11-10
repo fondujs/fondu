@@ -18,7 +18,7 @@ describe('a route file has one spelling per handler', () => {
   })
   test('a .ts file with actions: a file per action, or a page’s route file', () => {
     expect(() => checkExports('a.ts', { actions: { x: handler } })).toThrow(
-      '(`actions`: a .ts file has one `POST`: a file per action, or a page’s route file (.tsx))',
+      "(`actions`: a .ts file has one `POST`: a file per action, or a page's route file (.tsx))",
     )
   })
   test('each offending export is named', () => {

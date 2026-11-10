@@ -173,10 +173,30 @@ describe('one file per URL', () => {
 describe('the error page', () => {
   test("one for the app: a directory's own would never be shown, and fails", () => {
     expect(() => table({ ...files('index.ts'), '_error.tsx': {} })).not.toThrow()
-    for (const file of ['docs/_error.tsx', '(site)/admin/_error.jsx'])
+    for (const file of ['docs/_error.tsx', '(site)/admin/_error.tsx'])
       expect(() => table({ ...files('index.ts'), [file]: {} })).toThrow(
         `routes/${file} is never shown`,
       )
+  })
+})
+
+describe('.jsx files', () => {
+  test('a route file, a layout or the error page fails, and says to rename it', () => {
+    expect(() => table({ ...files('index.ts'), 'about.jsx': {} })).toThrow(
+      'fondu: routes/about.jsx: route files are TypeScript; rename it to about.tsx',
+    )
+    for (const [file, tsx] of [
+      ['docs/_layout.jsx', 'docs/_layout.tsx'],
+      ['_error.jsx', '_error.tsx'],
+      ['docs/_error.jsx', 'docs/_error.tsx'],
+    ])
+      expect(() => table({ ...files('index.ts'), [file!]: {} })).toThrow(`rename it to ${tsx}`)
+  })
+  test("a directory's own file may be .jsx, and a .tsx set is fine", () => {
+    expect(() => table({ ...files('index.ts'), 'docs/_badge.jsx': {} })).not.toThrow()
+    expect(() =>
+      table({ ...files('index.ts', 'about.tsx'), 'docs/_layout.tsx': {}, '_error.tsx': {} }),
+    ).not.toThrow()
   })
 })
 

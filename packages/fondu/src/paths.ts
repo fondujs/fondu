@@ -40,10 +40,10 @@ export function routePatterns(file: string): string[] {
   return optional.length ? [pattern(false), pattern(true)] : [pattern(true)]
 }
 
-const ROUTE_EXTENSION = /\.(?:ts|[jt]sx|mdx)$/
+const ROUTE_EXTENSION = /\.(?:tsx?|mdx)$/
 
 /**
- * a path inside `routes/` that is a route file: `.ts` (server code: handlers) or `.tsx`, `.jsx`, `.mdx` (a page), but
+ * a path inside `routes/` that is a route file: `.ts` (server code: handlers) or `.tsx`, `.mdx` (a page), but
  * tests and declarations, and neither its name nor a directory on its path starting with `_` (`_middleware.ts`,
  * `_layout.tsx`, `_parts/badge.tsx`)
  */
@@ -51,7 +51,7 @@ export function isRouteFile(file: string): boolean {
   return (
     ROUTE_EXTENSION.test(file) &&
     !file.endsWith('.d.ts') &&
-    !/\.(?:test|spec)\.(?:ts|[jt]sx)$/.test(file) &&
+    !/\.(?:test|spec)\.tsx?$/.test(file) &&
     !file.split('/').some((s) => s.startsWith('_'))
   )
 }
@@ -61,7 +61,7 @@ export const METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'] as c
 export const HANDLERS = ['loader', 'action', 'actions'] as const
 export const CONFIG = ['prerender', 'params'] as const
 
-/** a route file that is a page (React: `.tsx`, `.jsx`, `.mdx`), not server code only (`.ts`) */
+/** a route file that is a page (React: `.tsx`, `.mdx`), not server code only (`.ts`) */
 export const isPageFile = (file: string) => isRouteFile(file) && !file.endsWith('.ts')
 
 /** a page's id, its route file without the extension: `users/[id].tsx` → `users/[id]` (the client's name for it) */

@@ -5,13 +5,14 @@ import { isPageFile, layoutsOf, pageId } from '../src/paths.js'
 import { stripServerCode } from '../src/vite/strip.js'
 
 describe('pages in routes/', () => {
-  test('a page: a route file of React (.tsx, .jsx, .mdx); .ts is server code', () => {
+  test('a page: a route file of React (.tsx, .mdx); .ts is server code', () => {
     expect(isPageFile('users/[id].tsx')).toBe(true)
     expect(isPageFile('docs/intro.mdx')).toBe(true)
     expect(isPageFile('users/[id].ts')).toBe(false)
     expect(isPageFile('_layout.tsx')).toBe(false)
     expect(isPageFile('admin/_parts/badge.tsx')).toBe(false)
     expect(isPageFile('users/show.test.tsx')).toBe(false)
+    expect(isPageFile('users/form.jsx')).toBe(false)
   })
   test('its id: its route file without the extension', () => {
     expect(pageId('(site)/users/[id].tsx')).toBe('(site)/users/[id]')

@@ -56,7 +56,7 @@ function exportsOf(file: string): { allowed: readonly string[]; hint: string } {
   const name = file.split('/').at(-1)!
   if (name === '_middleware.ts')
     return { allowed: ['default', ...CONFIG], hint: 'its middleware (default), prerender, params' }
-  if (/^_(?:layout|error)\.[jt]sx$/.test(name))
+  if (/^_(?:layout|error)\.tsx$/.test(name))
     return { allowed: ['default'], hint: 'its component only (default)' }
   if (file.endsWith('.mdx'))
     return {
@@ -78,7 +78,7 @@ function exportsOf(file: string): { allowed: readonly string[]; hint: string } {
 const INSTEAD = {
   loader: 'in a .ts file it is `GET`',
   action: 'in a .ts file it is `POST`',
-  actions: 'a .ts file has one `POST`: a file per action, or a page’s route file (.tsx)',
+  actions: "a .ts file has one `POST`: a file per action, or a page's route file (.tsx)",
 }
 
 export function checkExports(file: string, mod: Record<string, unknown>) {
@@ -96,7 +96,7 @@ export function checkExports(file: string, mod: Record<string, unknown>) {
         (renamed.length ? ` (${renamed.map((k) => `\`${k}\`: ${INSTEAD[k]}`).join('; ')})` : ''),
     )
   }
-  if (/\.(?:[jt]sx|mdx)$/.test(file) && typeof mod.default !== 'function')
+  if (/\.(?:tsx|mdx)$/.test(file) && typeof mod.default !== 'function')
     throw new Error(
       `fondu: routes/${file} is a page: its default export is the component (code for the server only: a .ts file)`,
     )
@@ -138,7 +138,7 @@ export function createApp(options: CreateAppOptions = {}): Hono {
       // without a type argument: Vitest's module cache leaves out a module with `import.meta.glob(` only
       import.meta.glob(
         [
-          '/app/routes/**/*.{ts,tsx,jsx,mdx}',
+          '/app/routes/**/*.{ts,tsx,jsx,mdx}', // a .jsx file is found to be refused (routeTable)
           '!/app/routes/**/*.d.ts',
           '!/app/routes/**/*.{test,spec}.{ts,tsx,jsx}', // test files aren't the app's
           '!/app/routes/**/_*/**', // nor what a directory keeps beside its routes
@@ -148,17 +148,14 @@ export function createApp(options: CreateAppOptions = {}): Hono {
     ).map(([path, mod]) => [path.slice(ROOT.length), mod]),
   )
   for (const [file, mod] of Object.entries(modules)) {
-    if (
-      !isRouteFile(file) &&
-      !/(?:^|\/)_(?:middleware\.ts|layout\.[jt]sx|error\.[jt]sx)$/.test(file)
-    )
+    if (!isRouteFile(file) && !/(?:^|\/)_(?:middleware\.ts|layout\.tsx|error\.tsx)$/.test(file))
       continue // a file of a directory's own (`_badge.tsx`)
     checkExports(file, mod as Record<string, unknown>)
     if (isPageFile(file)) registerPage(mod.default as object, pageId(file))
   }
   const own = {
     document: options.document,
-    errorPage: Boolean(modules['_error.tsx'] ?? modules['_error.jsx']),
+    errorPage: Boolean(modules['_error.tsx']),
   }
   const append = options.trailingSlash === 'append'
   app.use(async (c, next) => {

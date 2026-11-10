@@ -280,7 +280,7 @@ function importOf(code: string, node: Node, kept: Array<Node & { local: Name }>)
   return `import ${clauses.join(', ')} from ${source};`
 }
 
-/** The browser's copy of every page's route file (`.tsx`, `.jsx` in `app/routes/`): its server code removed */
+/** The browser's copy of every page's route file (`.tsx` in `app/routes/`): its server code removed */
 export function stripRoutes(): Plugin {
   let root = process.cwd()
   return {

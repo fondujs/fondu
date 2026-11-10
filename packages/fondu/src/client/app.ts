@@ -60,12 +60,8 @@ async function load(component: string): Promise<Shown['view']> {
   const page = pages.get(component)
   if (!page) throw new Error(`fondu: there is no page "${component}" in app/routes/`)
   const chain = layoutsOf(component)
-    .map((dir) =>
-      ['tsx', 'jsx']
-        .map((ext) => `${ROUTES}${dir ? `${dir}/` : ''}_layout.${ext}`)
-        .find((k) => k in layoutModules),
-    )
-    .filter((k) => k !== undefined)
+    .map((dir) => `${ROUTES}${dir ? `${dir}/` : ''}_layout.tsx`)
+    .filter((k) => k in layoutModules)
   const [Component, ...layouts] = await Promise.all([
     defaultOf(page) as Promise<PageComponent>,
     ...chain.map((k) => defaultOf(layoutModules[k]!) as Promise<Layout>),
