@@ -68,7 +68,7 @@ export interface Issue {
 }
 
 /** an issue's field: its path joined with dots (`user.name`, `tags.0`); the form's own issues are `''` */
-export const issueKey = (path: Issue['path']) =>
+const issueKey = (path: Issue['path']) =>
   (path ?? []).map((p) => String(typeof p === 'object' ? p.key : p)).join('.')
 
 /** a field name's key in the errors: `user[name]` → `user.name`, `tags[]` → `tags` */

@@ -5,7 +5,7 @@ import type { Plugin } from 'vite'
 import { isPageFile } from '../paths.js'
 
 /** the exports of a page's route file that are server code: the browser gets the page (default) alone */
-export const SERVER_EXPORTS = new Set([
+const SERVER_EXPORTS = new Set([
   'loader',
   'action',
   'actions',

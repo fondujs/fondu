@@ -21,8 +21,7 @@ import { isPageFile, layoutsOf, pageId } from '../paths.js'
 import { hmr, PAGE_EXPORTS, PROPS_EVENT } from './hmr.js'
 import { nodeServer, prerender, worker } from './prerender.js'
 import { stripRoutes, stripServerCode } from './strip.js'
-import { typegen } from './typegen.js'
-import { walk as walkFiles } from './typegen.js'
+import { typegen, walk as walkFiles } from './typegen.js'
 
 /**
  * `vite.config.ts`: `plugins: [fondu({ target: 'node' })]` (or `'bun'`; for Cloudflare: `cloudflare()` and

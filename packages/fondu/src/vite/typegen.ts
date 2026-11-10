@@ -21,7 +21,7 @@ export function walk(dir: string, out: string[] = [], base = dir): string[] {
  * The registry the types are read from: URL pattern → route module (`href()`). Only `typeof import`s; an MDX page's
  * keeps its extension, which `declare module '*.mdx'` (@types/mdx) types.
  */
-export function generateTypes(root: string): string {
+function generateTypes(root: string): string {
   const routes = walk(join(root, 'app/routes')).filter(isRouteFile).sort()
   const line = (key: string, path: string) =>
     `      ${JSON.stringify(key)}: typeof import(${JSON.stringify(path)})`
@@ -46,7 +46,7 @@ function patternsOf(file: string): string[] {
   }
 }
 
-export function writeTypes(root: string) {
+function writeTypes(root: string) {
   const file = join(root, OUT)
   const content = generateTypes(root)
   if (!existsSync(file) || readFileSync(file, 'utf8') !== content) writeFileSync(file, content)

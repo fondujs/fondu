@@ -5,9 +5,9 @@ import { createApp } from 'fondu'
 // fondu({ prerender: true }): the files, the paths, the page objects of the pages without a file.
 import { describe, expect, test } from 'vitest'
 
-import { pageDataPath, pathOfPageData } from '../src/paths.js'
+import { pageDataPath, pathOfPageData, staticFiles } from '../src/paths.js'
 import { prerenderPaths, type PrerenderRoute } from '../src/server/prerender.js'
-import { ownScripts, staticFiles, staticPolicy, withHeaderRules } from '../src/vite/prerender.js'
+import { ownScripts, staticPolicy, withHeaderRules } from '../src/vite/prerender.js'
 
 const route = (
   file: string,
