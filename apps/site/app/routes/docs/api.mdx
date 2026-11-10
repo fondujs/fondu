@@ -11,6 +11,7 @@ The server's API, for `app/server.ts`, routes and middleware.
 | `document`      | the HTML around pages, `({ head, body, c, nonce })` to JSX or a string: [The document](/docs/document) |
 | `trailingSlash` | `'trim'` (default: `/users/` redirects to `/users`) or `'append'`                                      |
 | `csrf`          | `hono/csrf`'s options, or `false`                                                                      |
+| `bodyLimit`     | the largest request body in bytes (default 10 MB, then 413: `hono/body-limit`), or `false`             |
 | `secureHeaders` | `hono/secure-headers`' options, or `false`                                                             |
 
 The Content Security Policy by default: `default-src 'self'`; scripts of the site or with the request's nonce (a JSX

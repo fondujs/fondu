@@ -67,7 +67,8 @@ export default function Uploads() {
     ),
 })`}</pre>
           <p className="mt-3 text-xs text-muted-foreground">
-            The body is read in memory: cap its size with Hono&apos;s <code>bodyLimit</code>.
+            The body is read in memory: bodies over 10 MB are refused by default, and the{' '}
+            <code>bodyLimit</code> option of <code>createApp</code> changes that.
           </p>
         </DemoCard>
       </div>

@@ -101,6 +101,7 @@ for (const target of Object.keys(production).filter(
       !output().includes('optimized dependencies changed'),
       output(),
     )
+    await bodyLimit(base, output, target, 'dev')
   })
 
   // the home page prerendered
@@ -164,6 +165,7 @@ for (const target of Object.keys(production).filter(
       `${target} ${script}: an unknown URL, the error page with 404`,
       missing.status === 404 && (await missing.text()).includes('"component":"_error"'),
     )
+    await bodyLimit(base, output, target, script)
     const csp = home.headers.get('content-security-policy') ?? ''
     // a static page has no nonce: its policy comes from _headers
     check(
@@ -239,6 +241,40 @@ process.exit(failed ? 1 : 0)
 /** a document without its nonces: a static page gets the response's */
 function unNonced(html) {
   return html.replace(/ nonce="[^"]*"/g, '')
+}
+
+// a body over 10 MB is refused (createApp's bodyLimit), a small one is not. An URL of no page, so that a prerendered
+// home (a static file on Cloudflare, answered 405 to a POST) doesn't hide the app
+async function bodyLimit(base, log, target, script) {
+  const json = { 'Content-Type': 'application/json' }
+  let status, error
+  try {
+    const big = await fetch(base + '/nope', {
+      method: 'POST',
+      headers: json,
+      body: 'a'.repeat(10 * 1024 * 1024 + 1),
+    })
+    await big.text()
+    status = big.status
+  } catch (e) {
+    error = e.message
+  }
+  // Cloudflare's local preview: the Worker answers 413 before the upload ends; the preview's proxy then fails the
+  // request it was still sending (500), which a deployed Worker's client does not see. So the Worker's answer is
+  // read from its log
+  let logged = false
+  if (target === 'cloudflare' && script === 'preview' && status !== 413)
+    for (let i = 0; i < 20 && !logged; i++) {
+      logged = /POST \/nope 413/.test(log())
+      if (!logged) await new Promise((r) => setTimeout(r, 100))
+    }
+  const small = await fetch(base + '/nope', { method: 'POST', headers: json, body: '{}' })
+  await small.text()
+  check(
+    `${target} ${script}: a request body over 10 MB is refused with 413, a small one is not`,
+    (status === 413 || logged) && small.status !== 413,
+    `over 10 MB: ${status ?? `no status (${error})`}, the Worker's log has its 413: ${logged}, small: ${small.status}`,
+  )
 }
 
 /** `bun run <script>` in the app until `test` is done, with what it printed */

@@ -321,6 +321,88 @@ describe('errors', () => {
   })
 })
 
+describe('the request body limit', () => {
+  const small = createApp({ bodyLimit: 100 })
+  const json = { 'Content-Type': 'application/json' }
+  const body = (n: number) => JSON.stringify({ name: 'a'.repeat(n - 11) }) // n bytes: {"name":""} is 11
+  const stream = (text: string) =>
+    new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode(text))
+        controller.close()
+      },
+    })
+  const post = (a: Hono, text: string, headers: Record<string, string> = json) =>
+    a.request('/items', { method: 'POST', headers: { Origin: ORIGIN, ...headers }, body: text })
+
+  test('over the limit, an API client: 413, the handler does not run', async () => {
+    const res = await post(small, body(101))
+    expect([res.status, res.headers.get('location'), await res.text()]).toEqual([413, null, ''])
+  })
+  test('over the limit, with no Content-Length: counted as it is read, 413', async () => {
+    const req = new Request(`${ORIGIN}/items`, {
+      method: 'POST',
+      headers: { Origin: ORIGIN, ...json },
+      body: stream(body(101)),
+      duplex: 'half',
+    } as RequestInit)
+    expect(req.headers.has('content-length')).toBe(false)
+    const res = await small.request(req)
+    expect([res.status, res.headers.get('location'), await res.text()]).toEqual([413, null, ''])
+  })
+  test('a stream within the limit reaches the handler, with its body', async () => {
+    const req = new Request(`${ORIGIN}/items`, {
+      method: 'POST',
+      headers: { Origin: ORIGIN, ...json },
+      body: stream(body(100)),
+      duplex: 'half',
+    } as RequestInit)
+    expect((await small.request(req)).status).not.toBe(413)
+  })
+  test("over the limit, a visitor's form: the error page; a navigation: its page object", async () => {
+    const form = {
+      Origin: ORIGIN,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    }
+    const doc = await small.request('/tasks?remove', {
+      method: 'POST',
+      headers: { ...form, ...html },
+      body: 'a=' + 'b'.repeat(100),
+    })
+    expect([doc.status, (await doc.text()).includes('"component":"_error"')]).toEqual([413, true])
+    const navigation = await small.request('/tasks?remove', {
+      method: 'POST',
+      headers: { ...form, ...fondu() },
+      body: 'a=' + 'b'.repeat(100),
+    })
+    expect(navigation.status).toBe(413)
+    expect(await page(navigation)).toMatchObject({
+      component: '_error',
+      props: { status: 413 },
+    })
+  })
+  test('exactly the limit: the handler answers', async () => {
+    const res = await post(small, body(100))
+    expect(res.status).not.toBe(413)
+    expect(res.status).toBe(303)
+  })
+  test('no body: unaffected', async () => {
+    expect((await small.request('/')).status).toBe(200)
+    expect((await small.request('/items')).status).not.toBe(413)
+  })
+  test('bodyLimit: false: no limit', async () => {
+    const res = await post(createApp({ bodyLimit: false }), body(101))
+    expect(res.status).toBe(303)
+  })
+  test('the default: 10 MB', async () => {
+    const MB = 10 * 1024 * 1024
+    const over = await post(app, 'a'.repeat(MB + 1))
+    expect(over.status).toBe(413)
+    const at = await post(app, 'a'.repeat(MB))
+    expect(at.status).not.toBe(413)
+  })
+})
+
 test('each app keeps its own document', async () => {
   const a = createApp({ document: ({ head, body }) => `<main id="a">${head}${body}</main>` })
   const b = createApp({ document: ({ head, body }) => `<main id="b">${head}${body}</main>` })
