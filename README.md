@@ -19,7 +19,7 @@ bun dev
 ```
 
 It asks where the app runs (Bun, Cloudflare Workers or Node; or `--target bun|cloudflare|node`) and whether to add
-code checks (oxfmt, oxlint, lefthook, commitlint; or `--checks`), and writes a small app: a route, its page, the
+code checks (oxfmt, oxlint; or `--checks`), and writes a small app: a route, its page, the
 error page, Tailwind CSS, editor snippets and an `AGENTS.md` for coding agents. `--yes` asks nothing more.
 
 [demo.fondu.dev](https://demo.fondu.dev) ([apps/demo](https://github.com/fondujs/fondu/tree/main/apps/demo)) shows Fondu's features, one page each,

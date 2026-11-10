@@ -12,9 +12,8 @@ pnpm create fondu@latest my-app
 Options (`--help` lists them):
 
 - `--target bun|cloudflare|node`: where the app runs (asked otherwise; needed with `--yes` or without a terminal)
-- `--checks` / `--no-checks`: code checks: oxfmt and oxlint, git hooks that run them and check commit messages
-  (lefthook, commitlint), VS Code settings that format on save
-- `--git` / `--no-git`: a git repository, where the install sets up the hooks
+- `--checks` / `--no-checks`: code checks: oxfmt and oxlint, VS Code settings that format on save
+- `--git` / `--no-git`: a git repository
 - `--no-install`
 - `-y`, `--yes`: the defaults for what the options don't say (my-app, no checks, git, install), without asking
 

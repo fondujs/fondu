@@ -10,14 +10,14 @@ import { stripVTControlCharacters } from 'node:util'
 
 const here = fileURLToPath(new URL('..', import.meta.url))
 const windows = process.platform === 'win32'
-const shell = windows // npm, bun and bunx are .cmd shims on Windows; node and git are programs
+const shell = windows // npm, bun and bunx are .cmd shims on Windows; node is a program
 const work = mkdtempSync(join(tmpdir(), 'create-fondu-'))
 const sh = (cmd, args, cwd) =>
   execFileSync(cmd, args, {
     cwd,
     stdio: ['ignore', 'pipe', 'inherit'],
     encoding: 'utf8',
-    shell: shell && !['node', 'git'].includes(cmd),
+    shell: shell && cmd !== 'node',
   })
 const tarball = join(
   work,
@@ -184,7 +184,7 @@ for (const target of Object.keys(production).filter(
     check(`${target} ${script}: says where it listens`, output().includes(says), output())
   })
 }
-// --checks: oxfmt and oxlint pass on the app as created; AGENTS.md says how to run them and set up the hooks
+// --checks: oxfmt and oxlint pass on the app as created; AGENTS.md says how to run them; no git hooks
 if (!process.argv[2] || process.argv[2] === 'node') {
   const app = join(work, 'checked')
   sh(
@@ -195,13 +195,7 @@ if (!process.argv[2] || process.argv[2] === 'node') {
   const pkg = JSON.parse(readFileSync(join(app, 'package.json'), 'utf8'))
   pkg.dependencies.fondu = `file:${tarball}`
   writeFileSync(join(app, 'package.json'), JSON.stringify(pkg, null, 2) + '\n')
-  // lefthook's install sets up no hooks in CI unless LEFTHOOK is set
-  execFileSync('bun', ['install'], {
-    cwd: app,
-    stdio: 'ignore',
-    shell,
-    env: { ...process.env, LEFTHOOK: '1' },
-  })
+  execFileSync('bun', ['install'], { cwd: app, stdio: 'ignore', shell })
   const passes = (cmd, ...args) => {
     try {
       sh(cmd, args, app)
@@ -218,30 +212,25 @@ if (!process.argv[2] || process.argv[2] === 'node') {
     !readFileSync(join(app, '.oxlintrc.json'), 'utf8').includes('worker-configuration'),
   )
   check(
-    'checks: --yes makes a git repository, and the install sets up the hooks',
-    ['pre-commit', 'commit-msg'].every((hook) => existsSync(join(app, '.git/hooks', hook))),
+    "checks: --yes makes a git repository, with no hooks of the app's",
+    existsSync(join(app, '.git')) &&
+      ['pre-commit', 'commit-msg'].every((hook) => !existsSync(join(app, '.git/hooks', hook))),
   )
-  // a commit of files the linter ignores only (the generated types): nothing to lint, not a failure (#81)
-  const types = join(app, 'app/fondu.gen.d.ts')
-  writeFileSync(types, (existsSync(types) ? readFileSync(types, 'utf8') : '') + '// types\n')
+  const devDependencies = Object.keys(
+    JSON.parse(readFileSync(join(app, 'package.json'), 'utf8')).devDependencies,
+  )
   check(
-    'checks: a commit of ignored files only passes the hooks',
-    passes('git', 'add', 'app/fondu.gen.d.ts') &&
-      passes(
-        'git',
-        '-c',
-        'user.name=Fondu',
-        '-c',
-        'user.email=test@fondu.dev',
-        'commit',
-        '-m',
-        'chore: types',
-      ),
+    'checks: no git hook or commit message tools in the app',
+    !existsSync(join(app, 'lefthook.yml')) &&
+      !existsSync(join(app, 'commitlint.config.js')) &&
+      !devDependencies.some((d) => d.includes('lefthook') || d.includes('commitlint')) &&
+      devDependencies.includes('oxfmt') &&
+      devDependencies.includes('oxlint'),
   )
   const agents = readFileSync(join(app, 'AGENTS.md'), 'utf8')
   check(
     'checks: AGENTS.md says how',
-    agents.includes('Code checks') && agents.includes('lefthook install'),
+    agents.includes('Code checks') && !agents.includes('lefthook') && !agents.includes('hooks'),
   )
 }
 rmSync(work, { recursive: true, force: true })
