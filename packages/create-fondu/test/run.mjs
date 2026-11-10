@@ -5,12 +5,20 @@ import { execFileSync, spawn } from 'node:child_process'
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { stripVTControlCharacters } from 'node:util'
 
-const here = new URL('..', import.meta.url).pathname
+const here = fileURLToPath(new URL('..', import.meta.url))
+const windows = process.platform === 'win32'
+const shell = windows // npm, bun and bunx are .cmd shims on Windows; node and git are programs
 const work = mkdtempSync(join(tmpdir(), 'create-fondu-'))
 const sh = (cmd, args, cwd) =>
-  execFileSync(cmd, args, { cwd, stdio: ['ignore', 'pipe', 'inherit'], encoding: 'utf8' })
+  execFileSync(cmd, args, {
+    cwd,
+    stdio: ['ignore', 'pipe', 'inherit'],
+    encoding: 'utf8',
+    shell: shell && !['node', 'git'].includes(cmd),
+  })
 const tarball = join(
   work,
   sh('npm', ['pack', '--silent', '--pack-destination', work], join(here, '../fondu')).trim(),
@@ -95,28 +103,51 @@ for (const target of Object.keys(production).filter(
     )
   })
 
-  // Node / Bun: the home page prerendered (Cloudflare's static pages are checked by fondu.dev's build)
-  const prerendered = target !== 'cloudflare'
-  if (prerendered) {
-    const config = join(app, 'vite.config.ts')
-    writeFileSync(
-      config,
-      readFileSync(config, 'utf8').replace(
-        `target: '${target}' }`,
-        `target: '${target}', prerender: true }`,
-      ),
-    )
-    writeFileSync(
-      join(app, 'app/routes/index.tsx'),
-      readFileSync(join(app, 'app/routes/index.tsx'), 'utf8') + 'export const prerender = true\n',
-    )
-  }
+  // the home page prerendered
+  const config = join(app, 'vite.config.ts')
+  writeFileSync(
+    config,
+    readFileSync(config, 'utf8').replace(
+      `target: '${target}' }`,
+      `target: '${target}', prerender: true }`,
+    ),
+  )
+  writeFileSync(
+    join(app, 'app/routes/index.tsx'),
+    readFileSync(join(app, 'app/routes/index.tsx'), 'utf8') + 'export const prerender = true\n',
+  )
   sh('bun', ['run', 'build'], app)
-  if (target === 'cloudflare')
+  const dist = join(app, 'dist/client')
+  const staticHome = existsSync(join(dist, 'index.html'))
+    ? readFileSync(join(dist, 'index.html'), 'utf8')
+    : ''
+  if (target === 'cloudflare') {
+    check('cloudflare build: the home page prerendered, its file', staticHome.includes(greeting))
+    const pageFile = join(dist, '_fondu/pages/index.json')
+    check(
+      'cloudflare build: the home page object, its JSON',
+      existsSync(pageFile) && JSON.parse(readFileSync(pageFile, 'utf8')).component === 'index',
+    )
+    const headersFile = join(dist, '_headers')
+    const headers = existsSync(headersFile) ? readFileSync(headersFile, 'utf8') : ''
+    const rule = (path) =>
+      headers.match(new RegExp(`^${path.replace('*', '\\*')}\\n((?:[ \\t]+.*\\n?)*)`, 'm'))?.[1] ??
+      ''
+    check(
+      'cloudflare build: _headers, a Content Security Policy without a nonce for /*',
+      /Content-Security-Policy/i.test(rule('/*')) && !rule('/*').includes("'nonce-"),
+      headers,
+    )
+    check(
+      'cloudflare build: _headers, X-Fondu for /_fondu/pages/*',
+      /X-Fondu: true/i.test(rule('/_fondu/pages/*')),
+      headers,
+    )
     check(
       'cloudflare build: the client manifest is not deployed',
-      readFileSync(join(app, 'dist/client/.assetsignore'), 'utf8').split('\n').includes('.vite'),
+      readFileSync(join(dist, '.assetsignore'), 'utf8').split('\n').includes('.vite'),
     )
+  }
   // Cloudflare: the Worker's types first (create-fondu writes them after its own install)
   if (target === 'cloudflare') sh('bun', ['run', 'cf-typegen'], app)
   sh('bun', ['run', 'typecheck'], app) // after the build: it writes app/fondu.gen.d.ts
@@ -133,11 +164,16 @@ for (const target of Object.keys(production).filter(
       `${target} ${script}: an unknown URL, the error page with 404`,
       missing.status === 404 && (await missing.text()).includes('"component":"_error"'),
     )
+    const csp = home.headers.get('content-security-policy') ?? ''
+    // a static page has no nonce: its policy comes from _headers
     check(
       `${target} ${script}: a Content Security Policy`,
-      /script-src 'self' 'nonce-/.test(home.headers.get('content-security-policy') ?? ''),
+      target === 'cloudflare'
+        ? csp !== '' && !csp.includes("'nonce-")
+        : /script-src 'self' 'nonce-/.test(csp),
+      csp,
     )
-    if (prerendered)
+    if (target !== 'cloudflare')
       check(
         `${target} ${script}: the home page from its prerendered file, with the security headers (its nonce)`,
         unNonced(html) === unNonced(readFileSync(join(app, 'dist/client/index.html'), 'utf8')) &&
@@ -163,6 +199,7 @@ if (!process.argv[2] || process.argv[2] === 'node') {
   execFileSync('bun', ['install'], {
     cwd: app,
     stdio: 'ignore',
+    shell,
     env: { ...process.env, LEFTHOOK: '1' },
   })
   const passes = (cmd, ...args) => {
@@ -218,14 +255,16 @@ function unNonced(html) {
 /** `bun run <script>` in the app until `test` is done, with what it printed */
 async function run(app, script, port, test) {
   const args = script === 'start' ? ['run', script] : ['run', script, '--port', String(port)] // start: PORT, default 3000
-  const server = spawn('bun', args, { cwd: app, detached: true })
+  const server = spawn('bun', args, { cwd: app, detached: !windows, shell })
   let log = ''
   for (const stream of [server.stdout, server.stderr]) stream.on('data', (chunk) => (log += chunk))
   try {
     await page(`http://localhost:${port}/`)
     await test(`http://localhost:${port}`, () => stripVTControlCharacters(log))
   } finally {
-    process.kill(-server.pid)
+    if (windows)
+      execFileSync('taskkill', ['/pid', String(server.pid), '/T', '/F'], { stdio: 'ignore' })
+    else process.kill(-server.pid) // the process group
     await new Promise((r) => server.on('exit', r))
   }
 }

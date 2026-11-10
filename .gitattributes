@@ -1,0 +1,2 @@
+# the template's placeholders and the formatter expect LF
+* text=auto eol=lf

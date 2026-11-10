@@ -23,6 +23,23 @@ jobs:
       - run: bun run test
       - run: bun run --filter create-fondu test # an app per target, built and served
 
+  # the Vite plugin's paths and the built server on Windows: the protocol tests, and an app on the Node target
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - run: bun install --frozen-lockfile
+      - run: bun run test
+      - run: node test/run.mjs node
+        working-directory: packages/create-fondu
+
   # fondu/client against the browsers themselves (apps/conformance): Chromium, Firefox and WebKit
   conformance:
     runs-on: ubuntu-latest
