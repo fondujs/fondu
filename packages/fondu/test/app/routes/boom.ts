@@ -1,5 +1,5 @@
 import { defineHandler } from 'fondu'
 
-export const loader = defineHandler(() => {
+export const GET = defineHandler(() => {
   throw new Error('the database is down')
 })

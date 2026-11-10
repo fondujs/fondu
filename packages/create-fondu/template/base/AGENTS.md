@@ -11,8 +11,8 @@ swaps the page in place (the History API); Back and Forward restore the scroll p
     forms: `<form method="post" action="?name">`; not both), and the page component as its default export. Without
     a loader, the page is rendered on GET. The browser gets the page alone: the other exports are server code,
     removed from its copy, with the imports only they use.
-  - A `.ts` file is server code only: `loader`, `action`/`actions`, or plain HTTP handlers `GET`, `POST`, `PUT`,
-    `PATCH`, `DELETE`, `OPTIONS` (an API, a file).
+  - A `.ts` file is server code only: the HTTP handlers `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS` (an API,
+    a file); `loader`, `action` and `actions` are a page's.
   - `.mdx` files are pages too. A route file exports nothing else (`prerender` and `params` aside): put shared
     code in another file (`app/lib/`, `app/components/`).
   - `_middleware.ts` (default export) runs for its directory and below. Files and directories starting with `_` are

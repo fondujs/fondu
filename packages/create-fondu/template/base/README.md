@@ -14,5 +14,5 @@ app/
   styles/app.css  Tailwind CSS
 ```
 
-`loader` is GET, `action` POST, `actions.name` POST `?name`; plain HTTP routes are `.ts` files exporting `GET`,
-`POST`… Everything else (props, validation, errors, server rendering): the [Fondu docs](https://fondu.dev/docs).
+In a page, `loader` is GET, `action` POST, `actions.name` POST `?name`; plain HTTP routes are `.ts` files exporting
+`GET`, `POST`… Everything else (props, validation, errors, server rendering): the [Fondu docs](https://fondu.dev/docs).

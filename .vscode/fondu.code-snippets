@@ -35,13 +35,13 @@
     ],
   },
   "loader": {
-    "scope": "typescript,typescriptreact",
+    "scope": "typescriptreact",
     "prefix": "/loader",
     "description": "GET: render this file's page",
     "body": ["export const loader = defineHandler((c) => render(c, ${1:Page}${2:, { \\}}))$0"],
   },
   "action": {
-    "scope": "typescript,typescriptreact",
+    "scope": "typescriptreact",
     "prefix": "/action",
     "description": "POST: validated input, then back to the page",
     "body": [
@@ -52,7 +52,7 @@
     ],
   },
   "actions": {
-    "scope": "typescript,typescriptreact",
+    "scope": "typescriptreact",
     "prefix": "/actions",
     "description": "POST ?name: one of several form actions",
     "body": [

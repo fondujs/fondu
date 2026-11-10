@@ -48,8 +48,9 @@ const CSP = {
 const ROOT = '/app/routes/'
 
 /**
- * What a file of `app/routes/` may export, and what to do with anything else: a page's route file is its page and
- * the handlers of its URL; the rest of its code goes to modules of its own (the browser gets the page alone)
+ * What a file of `app/routes/` may export, and what to do with anything else: one spelling per kind of file. A
+ * page's route file (`.tsx`) is its page and `loader`, `action` or `actions`; a `.ts` file is server code, with the
+ * HTTP methods. The rest of a page's code goes to modules of its own (the browser gets the page alone)
  */
 function exportsOf(file: string): { allowed: readonly string[]; hint: string } {
   const name = file.split('/').at(-1)!
@@ -64,8 +65,8 @@ function exportsOf(file: string): { allowed: readonly string[]; hint: string } {
     }
   if (file.endsWith('.ts'))
     return {
-      allowed: [...HANDLERS, ...METHODS, ...CONFIG],
-      hint: 'loader, action or actions, GET, POST…, prerender, params',
+      allowed: [...METHODS, ...CONFIG],
+      hint: 'GET, POST, PUT, PATCH, DELETE, OPTIONS, prerender, params',
     }
   return {
     allowed: ['default', ...HANDLERS, ...CONFIG],
@@ -73,16 +74,28 @@ function exportsOf(file: string): { allowed: readonly string[]; hint: string } {
   }
 }
 
-function checkExports(file: string, mod: Record<string, unknown>) {
+/** what a page's handler is called in a `.ts` file */
+const INSTEAD = {
+  loader: 'in a .ts file it is `GET`',
+  action: 'in a .ts file it is `POST`',
+  actions: 'a .ts file has one `POST`: a file per action, or a page’s route file (.tsx)',
+}
+
+export function checkExports(file: string, mod: Record<string, unknown>) {
   const { allowed, hint } = exportsOf(file)
   const mdx = file.endsWith('.mdx')
   const extra = Object.keys(mod).filter((k) =>
     mdx ? [...HANDLERS, ...METHODS, ...CONFIG].includes(k as never) : !allowed.includes(k),
   )
-  if (extra.length)
+  if (extra.length) {
+    const renamed = file.endsWith('.ts')
+      ? extra.filter((k): k is keyof typeof INSTEAD => k in INSTEAD)
+      : []
     throw new Error(
-      `fondu: routes/${file} exports ${extra.map((k) => `\`${k}\``).join(', ')}. It exports ${hint}`,
+      `fondu: routes/${file} exports ${extra.map((k) => `\`${k}\``).join(', ')}. It exports ${hint}` +
+        (renamed.length ? ` (${renamed.map((k) => `\`${k}\`: ${INSTEAD[k]}`).join('; ')})` : ''),
     )
+  }
   if (/\.(?:[jt]sx|mdx)$/.test(file) && typeof mod.default !== 'function')
     throw new Error(
       `fondu: routes/${file} is a page: its default export is the component (code for the server only: a .ts file)`,
@@ -111,8 +124,9 @@ function actionName(url: string): string | null {
 /**
  * The Hono app from `app/routes/` (found by Vite, no generated code). Each file is a URL:
  * - a page, `.tsx` or `.mdx`: its component (default), `loader` (GET; without one, the page with no props of its
- *   own), `action` (POST) or `actions` (POST `?name`)
- * - server code, `.ts`: the same handlers, or plain HTTP ones: `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS`
+ *   own), `action` (POST) or `actions` (POST `?name`); `.mdx` has no handlers
+ * - server code, `.ts`: HTTP handlers only, `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS` (not `loader`,
+ *   `action`, `actions`: those are a page's)
  * `_middleware.ts` applies to its directory and below (`routes/_middleware.ts`: every request, 404s included).
  * Built in: CSRF protection, security headers, one URL per page (trailing slash), the error page. Your own 404 /
  * error handling: Hono's `app.notFound()` / `app.onError()` on the returned app.
@@ -195,15 +209,6 @@ export function createApp(options: CreateAppOptions = {}): Hono {
         ...METHODS.filter((m) => m !== 'GET' && m !== 'POST' && mod[m]),
       ],
     })
-    const conflict = (a: keyof RouteModule, b: keyof RouteModule) => {
-      if (mod[a] && mod[b])
-        throw new Error(
-          `fondu: routes/${file} exports both \`${a}\` and \`${b}\`, which handle the same requests`,
-        )
-    }
-    conflict('loader', 'GET')
-    conflict('action', 'POST')
-    conflict('actions', 'POST')
     if (mod.action && mod.actions)
       throw new Error(
         `fondu: routes/${file} exports both \`action\` and \`actions\`: one form posts to \`action\`, several each to one of \`actions\` (?name)`,

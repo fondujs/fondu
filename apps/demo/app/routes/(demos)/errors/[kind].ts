@@ -29,7 +29,7 @@ const proxyPage = `<!doctype html>
 </html>`
 
 // GET /errors/:kind — each one fails in its own way
-export const loader = defineHandler((c) => {
+export const GET = defineHandler((c) => {
   switch (c.req.param('kind')) {
     case 'loader':
       throw new Error('The loader failed: the database did not answer')
@@ -43,7 +43,7 @@ export const loader = defineHandler((c) => {
 })
 
 // POST /errors/proxy — the proxy's page after a form
-export const action = defineHandler((c) => {
+export const POST = defineHandler((c) => {
   if (c.req.param('kind') !== 'proxy') throw new HTTPException(404)
   return c.html(proxyPage, 502)
 })
