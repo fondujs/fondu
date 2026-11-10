@@ -1,5 +1,5 @@
 import { defineHandler, flash, render } from 'fondu'
-import { useForm, usePage } from 'fondu/client'
+import { useForm, useNavigation, usePage } from 'fondu/client'
 
 // One schema, the browser's (useForm) and the server's (withValidator): what each says of the same form must be the
 // same, nested fields and lists included. A Standard Schema of its own: any library's works.
@@ -32,7 +32,8 @@ export const loader = defineHandler((c) => render(c, Checked))
 
 export default function Checked() {
   const { flash } = usePage()
-  const { form, field, errors } = useForm(schema)
+  const { form, field, errors, failed } = useForm(schema)
+  const { state } = useNavigation()
   return (
     <>
       <title>Checked</title>
@@ -51,6 +52,8 @@ export default function Checked() {
         <button>Save</button>
       </form>
       <pre id="errors">{JSON.stringify(Object.fromEntries(Object.entries(errors).sort()))}</pre>
+      <pre id="state">{state}</pre>
+      <pre id="failed">{String(failed)}</pre>
       <pre id="received">{(flash as { received?: string }).received ?? ''}</pre>
     </>
   )

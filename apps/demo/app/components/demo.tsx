@@ -117,7 +117,8 @@ export function TextField({
 export function SubmitButton({ loading, ...props }: ButtonProps) {
   const [form, setForm] = useState<HTMLFormElement | null>(null)
   const ref = useCallback((button: HTMLButtonElement | null) => setForm(button?.form ?? null), [])
-  const sending = useNavigation().form
+  const { form: sent, state } = useNavigation()
+  const sending = state === 'failed' ? null : sent // a form not sent is not busy
   return (
     <Button
       ref={ref}

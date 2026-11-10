@@ -109,19 +109,24 @@ them (or signed the user out).
 `useNavigation()` from `fondu/client` says what is on its way, from a click or a submit until the next page is on
 the screen:
 
-| Field   | Is                                                                                       |
-| ------- | ---------------------------------------------------------------------------------------- |
-| `state` | `'idle'`; `'submitting'`, a form's POST; `'loading'`, any other (a link, `navigate()`…)  |
-| `to`    | where to: a path with its query and fragment (`/users/7?tab=posts`), or `null` when idle |
-| `form`  | the form being sent (a GET form's too), or `null`                                        |
+| Field   | Is                                                                                                                                                   |
+| ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `state` | `'idle'`; `'submitting'`, a form's POST; `'loading'`, any other (a link, `navigate()`…); `'failed'`, a form's POST that could not be sent (offline…) |
+| `to`    | where to: a path with its query and fragment (`/users/7?tab=posts`), or `null` when idle                                                             |
+| `form`  | the form being sent (a GET form's too), or `null`                                                                                                    |
 
 ```tsx
 import { useNavigation } from 'fondu/client'
 
 export function Spinner() {
-  return useNavigation().state !== 'idle' ? <span aria-label="Loading">…</span> : null
+  const { state } = useNavigation()
+  return state === 'loading' || state === 'submitting' ? <span aria-label="Loading">…</span> : null
 }
 ```
+
+`failed` lasts until the next navigation starts; the form stays as it was, to send again. A GET that fails is loaded as
+a document instead, where the browser says what is wrong. Code that read "not `idle`" as "pending" compares with
+`loading` and `submitting`.
 
 A navigation that takes longer than 350 ms also shows a thin progress bar at the top of the page. Configure it in
 `vite.config.ts`:

@@ -20,7 +20,14 @@ interface Options {
   /** `fondu({ prerender: true })`: GET navigations read `/_fondu/pages/<path>.json` */
   prerender: boolean
   /** a navigation started (to `to`: a path, its query and fragment; `form`: a form's submission) or ended (null) */
-  pending: (navigation: { to: string; form: HTMLFormElement | null; post: boolean } | null) => void
+  pending: (
+    navigation: {
+      to: string
+      form: HTMLFormElement | null
+      post: boolean
+      failed?: boolean
+    } | null,
+  ) => void
   /** a GET navigation to `pathname` started: its page's modules may load with its data */
   preload: (pathname: string) => void
   /** a URL path is one of the app's pages (by the route files' patterns): its links are the client's */
@@ -100,10 +107,13 @@ export function startNavigation({
     // the form being sent is aria-busy: for its submit buttons' pending state (CSS, or useNavigation()), and for
     // assistive technology
     form?.setAttribute('aria-busy', 'true')
-    pending(shown ? null : { to: url.pathname + url.search + url.hash, form, post })
+    const to = url.pathname + url.search + url.hash
+    pending(shown ? null : { to, form, post })
+    let failed = false
     const done = () => {
       form?.removeAttribute('aria-busy')
-      if (!shown && current === controller) pending(null)
+      if (!shown && current === controller)
+        pending(failed ? { to, form, post, failed: true } : null)
     }
     if (!post) preload(url.pathname)
     const from =
@@ -199,7 +209,11 @@ export function startNavigation({
         restore(options.history === 'none' ? options.scroll : null, url.hash)
       } catch (error) {
         if ((error as Error).name === 'AbortError' || shown) return // offline, Back: the kept page stays
-        if (post) throw error // the form stays, to send again
+        // the form stays, to send again: the state says so
+        if (post) {
+          failed = true
+          return
+        }
         documentLoad(url.href, options.history !== 'push') // offline: the browser says so
       } finally {
         done()

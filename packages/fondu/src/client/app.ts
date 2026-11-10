@@ -154,6 +154,12 @@ export type Navigation =
       /** the form being sent (a GET form's too), else null */
       form: HTMLFormElement | null
     }
+  | {
+      /** a form's POST that could not be sent, or whose answer could not be read: the form stays, to send again */
+      state: 'failed'
+      to: string
+      form: HTMLFormElement | null
+    }
 
 const IDLE: Navigation = { state: 'idle', to: null, form: null }
 let navigation: Navigation = IDLE
@@ -162,9 +168,15 @@ const subscribe = (listener: () => void) => {
   listeners.add(listener)
   return () => listeners.delete(listener)
 }
-function setNavigation(next: { to: string; form: HTMLFormElement | null; post: boolean } | null) {
+function setNavigation(
+  next: { to: string; form: HTMLFormElement | null; post: boolean; failed?: boolean } | null,
+) {
   navigation = next
-    ? { state: next.post ? 'submitting' : 'loading', to: next.to, form: next.form }
+    ? {
+        state: next.failed ? 'failed' : next.post ? 'submitting' : 'loading',
+        to: next.to,
+        form: next.form,
+      }
     : IDLE
   for (const l of listeners) l()
 }
@@ -178,7 +190,9 @@ function start(settings: { prerender: boolean; progress: ProgressOptions | false
     subscribe(
       progressBar(
         progress,
-        () => navigation.state !== 'idle' && (progress.forms !== false || navigation.form === null),
+        () =>
+          (navigation.state === 'loading' || navigation.state === 'submitting') &&
+          (progress.forms !== false || navigation.form === null),
       ),
     )
   const data = document.querySelector('script[data-page="app"]')?.textContent
@@ -251,6 +265,9 @@ export function usePage<P = Shared>(): {
 /**
  * The navigation on its way: `state` is `idle`, `loading` (a link, `navigate()`…) or `submitting` (a form's POST),
  * from the click or the submit until the next page is on the screen; `to`, where to; `form`, the form being sent.
+ * `failed` is a form's POST that could not be sent, or whose answer could not be read (offline): the form stays, to
+ * send again, and the state lasts until the next navigation starts. A GET that fails is loaded as a document instead,
+ * where the browser says what is wrong.
  */
 export function useNavigation(): Navigation {
   return useSyncExternalStore(

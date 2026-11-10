@@ -68,8 +68,9 @@ const within = (key: string, errorKey: string) =>
  * - `errors`: the server's (the page's `errors` prop), each until its field is checked again, and the browser's;
  *   by the server's keys (`email`, `user.name`)
  * - `submitting`: this form is being sent
+ * - `failed`: this form could not be sent (offline…): it stays, to send again
  *
- * Without a schema: the server's errors and `submitting` only. Without JavaScript, the form is sent as it is, and the
+ * Without a schema: the server's errors, `submitting` and `failed` only. Without JavaScript, the form is sent as it is, and the
  * server's check answers.
  */
 export function useForm(schema?: Schema): {
@@ -85,6 +86,7 @@ export function useForm(schema?: Schema): {
   }
   errors: Errors
   submitting: boolean
+  failed: boolean
 } {
   const server = usePage().props.errors
   const navigation = useNavigation()
@@ -146,8 +148,10 @@ export function useForm(schema?: Schema): {
     [validates],
   )
 
-  const submitting = navigation.form !== null && navigation.form === element
-  // back with the server's errors: the first field to fix gets the focus
+  const mine = navigation.form !== null && navigation.form === element
+  const submitting = mine && navigation.state !== 'failed'
+  const failed = mine && navigation.state === 'failed'
+  // back with the server's errors: the first field to fix gets the focus (not for a form that was not sent: no answer)
   const sent = useRef(false)
   useEffect(() => {
     if (submitting) {
@@ -156,8 +160,9 @@ export function useForm(schema?: Schema): {
     }
     if (!sent.current) return
     sent.current = false
+    if (failed) return
     if (element && Object.keys(server).length) focusFirst(element, server)
-  }, [submitting, server, element])
+  }, [submitting, failed, server, element])
 
   const checkField = (form: HTMLFormElement, key: string) => {
     if (!schema) return
@@ -226,5 +231,6 @@ export function useForm(schema?: Schema): {
     },
     errors,
     submitting,
+    failed,
   }
 }
