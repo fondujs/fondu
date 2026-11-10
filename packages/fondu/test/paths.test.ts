@@ -46,6 +46,7 @@ describe('routes/ files', () => {
     expect(isRouteFile('users/form.tsx')).toBe(true) // a page
     expect(isRouteFile('docs/intro.mdx')).toBe(true)
     expect(isRouteFile('users/form.test.tsx')).toBe(false)
+    expect(isRouteFile('users/form.jsx')).toBe(false) // route files are TypeScript
   })
   test('middleware applies to its directory and below, outermost first', () => {
     const files = ['_middleware.ts', 'users/_middleware.ts', 'admin/_middleware.ts']

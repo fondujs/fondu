@@ -29,7 +29,7 @@ __entry(
   {
     '/app/routes/(site)/_layout.tsx': async () => ({ default: Inner }),
     '/app/routes/admin/_layout.tsx': async () => ({ default: Outer }),
-    '/app/routes/admin/users/_layout.jsx': async () => ({ default: Inner }),
+    '/app/routes/admin/users/_layout.tsx': async () => ({ default: Inner }),
   },
   { prerender: false, progress: false },
 )

@@ -46,11 +46,20 @@ const SEGMENT = /^[\w.~-]+$/
  * by segment, static before a param with listed values, before any param, before a catch-all. Throws, at startup,
  * on what would answer the wrong way: two files for the same URLs (one would never answer, or answer without the
  * other's middleware), `params` that no route takes or that aren't single segments, an error page other than the
- * app's.
+ * app's, a `.jsx` file that would be a route, a layout or the error page (route files are TypeScript).
  */
 export function routeTable(modules: Record<string, RouteModule>, append: boolean): Route[] {
   const files = Object.keys(modules)
-  const nested = files.find((f) => /\/_error\.[jt]sx$/.test(f))
+  const jsx = files.find(
+    (f) =>
+      f.endsWith('.jsx') &&
+      (isRouteFile(f.replace(/\.jsx$/, '.tsx')) || /(?:^|\/)_(?:layout|error)\.jsx$/.test(f)),
+  )
+  if (jsx)
+    throw new Error(
+      `fondu: routes/${jsx}: route files are TypeScript; rename it to ${jsx.replace(/\.jsx$/, '.tsx')}`,
+    )
+  const nested = files.find((f) => f.endsWith('/_error.tsx'))
   if (nested)
     throw new Error(
       `fondu: routes/${nested} is never shown: the error page is routes/_error.tsx, one for the app`,

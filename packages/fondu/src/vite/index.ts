@@ -76,15 +76,15 @@ const resolved = (id: string) => '\0' + id
 
 /** the pages, for the app's entry: the route files of `app/routes/` that are React, but what isn't a route */
 const PAGES_GLOB = [
-  '/app/routes/**/*.{tsx,jsx,mdx}',
+  '/app/routes/**/*.{tsx,mdx}',
   '!/app/routes/**/_*',
   '!/app/routes/**/_*/**',
-  '!/app/routes/**/*.{test,spec}.{tsx,jsx}',
+  '!/app/routes/**/*.{test,spec}.tsx',
 ]
 /** the error page (`_error.tsx`: a page, though its name says it is no URL) */
-const ERROR_GLOB = '/app/routes/_error.{tsx,jsx}'
+const ERROR_GLOB = '/app/routes/_error.tsx'
 /** and the layouts (`_layout.tsx`): the client puts a page in those of its directories */
-const LAYOUTS_GLOB = ['/app/routes/**/_layout.{tsx,jsx}', '!/app/routes/**/_*/**']
+const LAYOUTS_GLOB = ['/app/routes/**/_layout.tsx', '!/app/routes/**/_*/**']
 
 /**
  * For the dependency scan: a page's route file as the browser gets it, its server code removed. The scan would find
@@ -94,12 +94,12 @@ function scanRoutes(root: () => string): Plugin {
   return {
     name: 'fondu:scan-routes',
     load: {
-      filter: { id: /\/app\/routes\/.*\.[jt]sx$/ },
+      filter: { id: /\/app\/routes\/.*\.tsx$/ },
       async handler(id) {
         const file = relative(`${root()}/app/routes`, id).split(sep).join('/')
         if (file.startsWith('..') || !isPageFile(file)) return
         const { code } = await transformWithOxc(readFileSync(id, 'utf8'), id, {
-          lang: id.endsWith('.jsx') ? 'jsx' : 'tsx',
+          lang: 'tsx',
           jsx: { runtime: 'automatic' },
         })
         return {
@@ -409,7 +409,7 @@ function core(options: FonduOptions): Plugin {
     // so the first page is not reloaded once they are optimized. The scan reads JavaScript: an MDX page is compiled
     // for it by the app's @mdx-js/rollup; the browser's, a page's route file without its server code
     configEnvironment(name, env) {
-      const pages = ['app/routes/**/*.{tsx,jsx,mdx}']
+      const pages = ['app/routes/**/*.{tsx,mdx}']
       const mdx = { extensions: ['.mdx'], rolldownOptions: { plugins: [scanMdx(() => config)] } }
       if (name === 'client')
         return {
@@ -455,7 +455,7 @@ function core(options: FonduOptions): Plugin {
         try {
           const layouts = walkFiles(resolve(config.root, 'app/routes')).filter(
             (f) =>
-              /(?:^|\/)_layout\.[jt]sx$/.test(f) &&
+              /(?:^|\/)_layout\.tsx$/.test(f) &&
               !f
                 .split('/')
                 .slice(0, -1)
@@ -647,12 +647,10 @@ function productionAssets(config: ResolvedConfig, options: FonduOptions): string
   const pages: Record<string, { css: string[]; js: string[] }> = {}
   for (const key of Object.keys(manifest)) {
     const file = key.startsWith('app/routes/') ? key.slice('app/routes/'.length) : undefined
-    if (!file || !(isPageFile(file) || /^_error\.[jt]sx$/.test(file))) continue
+    if (!file || !(isPageFile(file) || /^_error\.tsx$/.test(file))) continue
     // the page's chunk, and its layouts' (loaded with it)
     const around = layoutsOf(file)
-      .flatMap((dir) =>
-        ['tsx', 'jsx'].map((ext) => `app/routes/${dir ? `${dir}/` : ''}_layout.${ext}`),
-      )
+      .map((dir) => `app/routes/${dir ? `${dir}/` : ''}_layout.tsx`)
       .filter((k) => k in manifest)
     const all = [...around, key].map(tags)
     pages[pageId(file)] = { css: all.flatMap((t) => t.css), js: all.flatMap((t) => t.js) }

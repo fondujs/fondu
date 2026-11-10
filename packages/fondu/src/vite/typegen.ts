@@ -29,7 +29,7 @@ function generateTypes(root: string): string {
 declare module 'fondu' {
   interface Register {
     routes: {
-${routes.flatMap((f) => patternsOf(f).map((p) => line(p, `./routes/${f.replace(/\.(?:ts|[jt]sx)$/, '')}`))).join('\n')}
+${routes.flatMap((f) => patternsOf(f).map((p) => line(p, `./routes/${f.replace(/\.tsx?$/, '')}`))).join('\n')}
     }
   }
 }
