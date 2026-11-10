@@ -221,15 +221,22 @@ export function startNavigation({
     })()
   }
 
-  // links: a plain click on a same-origin <a href>, which the page let through
-  document.addEventListener('click', (event) => {
-    if (event.defaultPrevented || event.button !== 0) return
-    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
-    const link = (event.target as Element | null)?.closest?.('a[href]')
+  /** the URL of a link the client may follow itself: same origin, this window, no download */
+  const linkOf = (target: EventTarget | null): URL | undefined => {
+    const link = (target as Element | null)?.closest?.('a[href]')
     if (!(link instanceof HTMLAnchorElement)) return
     if ((link.target && link.target !== '_self') || link.hasAttribute('download')) return
     const url = new URL(link.href)
     if (url.origin !== location.origin || !isWebUrl(url.href)) return
+    return url
+  }
+
+  // links: a plain click on a same-origin <a href>, which the page let through
+  document.addEventListener('click', (event) => {
+    if (event.defaultPrevented || event.button !== 0) return
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+    const url = linkOf(event.target)
+    if (!url) return
     // a #fragment of this page: the browser scrolls to it (the position left saved for Back)
     if (url.pathname + url.search === location.pathname + location.search && url.hash) {
       scroll.save()
@@ -240,6 +247,28 @@ export function startNavigation({
     event.preventDefault()
     visit!(url.href, { history: url.href === location.href ? 'replace' : 'push' })
   })
+
+  // a link's page modules load before the click: when the pointer rests on it (80 ms), or a touch starts on it. The
+  // modules only, not the page's data: a loader runs for a visit, never for a page that may not be visited. Not
+  // when the visitor asked to save data; not for the keyboard (tabbing passes many links)
+  if (!(navigator as { connection?: { saveData?: boolean } }).connection?.saveData) {
+    const RESTING = 80 // milliseconds the pointer rests
+    let timer: ReturnType<typeof setTimeout> | undefined
+    document.addEventListener('mouseover', (event) => {
+      const url = linkOf(event.target)
+      clearTimeout(timer)
+      if (url && isPage(url.pathname)) timer = setTimeout(() => preload(url.pathname), RESTING)
+    })
+    document.addEventListener('mouseout', () => clearTimeout(timer))
+    document.addEventListener(
+      'touchstart',
+      (event) => {
+        const url = linkOf(event.target)
+        if (url && isPage(url.pathname)) preload(url.pathname)
+      },
+      { passive: true },
+    )
+  }
 
   // forms: GET and POST to this origin, in this window, which the page let through
   document.addEventListener('submit', (event) => {

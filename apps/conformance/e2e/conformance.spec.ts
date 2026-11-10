@@ -302,6 +302,37 @@ test.describe('with fondu/client only', () => {
     await settle(page)
     expect(await page.evaluate(() => (window as unknown as { kept?: boolean }).kept)).toBe(true)
   })
+  test("a link the pointer rests on: its page's modules loaded before the click, no data asked for", async ({
+    page,
+  }) => {
+    await open(page, '/')
+    await page.waitForLoadState('networkidle')
+    const scripts: string[] = []
+    const data: string[] = []
+    page.on('request', (r) => {
+      if (r.resourceType() === 'script') scripts.push(r.url())
+      if (r.headers()['x-fondu']) data.push(r.url())
+    })
+    await page.hover('a[href="/long"]')
+    await expect.poll(() => scripts.length).toBeGreaterThan(0)
+    expect(data).toEqual([])
+    expect(new URL(page.url()).pathname).toBe('/')
+    await page.click('a[href="/long"]')
+    await settle(page)
+    expect(await page.evaluate(() => document.querySelector('h1')?.textContent)).toBe('Long')
+    expect(data).toHaveLength(1)
+  })
+  test('a link to a file: the pointer rests on it, nothing loaded', async ({ page }) => {
+    await open(page, '/')
+    await page.waitForLoadState('networkidle')
+    const asked: string[] = []
+    page.on('request', (r) => {
+      if (r.resourceType() === 'script' || r.headers()['x-fondu']) asked.push(r.url())
+    })
+    await page.hover('a[href="/notes.txt"]')
+    await page.waitForTimeout(300)
+    expect(asked).toEqual([])
+  })
   test('navigate(): as the link would, in place; replace: no new history entry; a file: the browser loads it', async ({
     page,
   }) => {
