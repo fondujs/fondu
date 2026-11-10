@@ -23,6 +23,7 @@ declare module '../src/types.js' {
       '/:lang/about': object
       '/users/:id': { actions: { rename: unknown; delete: unknown } }
       '/files/:path{.+}': object
+      '/users/:id/files/:path{.+}': { actions: { remove: unknown } }
       '/search': { loader: Validated<{ query: typeof searchQuery }> }
       '/teams/:id': {
         loader: Validated<{ query: typeof listQuery }>
@@ -84,6 +85,13 @@ const hrefs = [
   typed(({ href }) => href('/:lang/about', { lang: 'de' })),
   // a catch-all, named without its pattern
   typed(({ href }) => href('/files/:path{.+}', { path: 'a/b' })),
+  // a param before a catch-all: each its own name, with an action too
+  typed(({ href }) => href('/users/:id/files/:path{.+}', { id: 7, path: 'a/b' })),
+  typed(({ href }) => href('/users/:id/files/:path{.+}?remove', { id: 7, path: 'a/b' })),
+  // @ts-expect-error the param before the catch-all is missing
+  typed(({ href }) => href('/users/:id/files/:path{.+}', { path: 'a/b' })),
+  // @ts-expect-error the catch-all is missing
+  typed(({ href }) => href('/users/:id/files/:path{.+}', { id: 7 })),
   // @ts-expect-error the param is missing
   typed(({ href }) => href('/users/:id')),
   // @ts-expect-error a param named otherwise
@@ -176,5 +184,5 @@ const validated = [
 ]
 
 test('the types above are checked by tsc', () => {
-  expect([...renders, ...hrefs, ...shared, ...validated]).toHaveLength(48)
+  expect([...renders, ...hrefs, ...shared, ...validated]).toHaveLength(52)
 })
