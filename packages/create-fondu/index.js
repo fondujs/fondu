@@ -230,7 +230,7 @@ const install = values['no-install']
   ? false
   : !asking || done(await p.confirm({ message: `Install the dependencies with ${pm}?` }))
 // after the install: the git hooks (lefthook's own install script is one pnpm skips), and the
-// Worker's types (worker-configuration.d.ts: \`env\` from cloudflare:workers, the runtime's APIs)
+// Worker's types (worker-configuration.d.ts: `env` from cloudflare:workers, the runtime's APIs)
 const exec = (command) =>
   spawnSync(command, { cwd: root, stdio: 'ignore', shell: true }).status === 0
 const hooksCommand = checks && initGit && repo ? hooks : null

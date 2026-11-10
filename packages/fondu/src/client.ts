@@ -2,12 +2,6 @@ import { fillPattern } from './paths.js'
 import type { schemasOf } from './server/handler.js'
 import type { Routes } from './types.js'
 
-/**
- * Typed URLs from `app/routes/` (as React Router's `href`): `href('/users/:id', { id })` → `'/users/7'`;
- * one of a file's `actions`: `href('/users/:id?delete', { id })`. Only patterns that exist; params are required.
- * A form's action too: `<form method="post" action={href('/logout')}>`. With `query` (typed by the route's
- * `withValidator({ query })`, if it has one) and `hash`: `href('/search', { query: { q }, hash: 'results' })`.
- */
 type Keys = keyof Routes & string
 type Actions = {
   [P in Keys]: Routes[P] extends { actions: infer A } ? `${P}?${keyof A & string}` : never
@@ -60,6 +54,12 @@ type Args<P extends string> = [ParamNames<P>] extends [never]
     : [options: Extra<P>]
   : [params: { [K in ParamNames<P>]: string | number } & Extra<P>]
 
+/**
+ * Typed URLs from `app/routes/` (as React Router's `href`): `href('/users/:id', { id })` → `'/users/7'`;
+ * one of a file's `actions`: `href('/users/:id?delete', { id })`. Only patterns that exist; params are required.
+ * A form's action too: `<form method="post" action={href('/logout')}>`. With `query` (typed by the route's
+ * `withValidator({ query })`, if it has one) and `hash`: `href('/search', { query: { q }, hash: 'results' })`.
+ */
 export function href<P extends Href>(path: P, ...[options]: Args<P>): string {
   const { query, hash, ...params } = (options ?? {}) as {
     query?: Record<string, unknown>

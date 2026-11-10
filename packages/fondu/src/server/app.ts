@@ -115,7 +115,7 @@ function actionName(url: string): string | null {
  * The Hono app from `app/routes/` (found by Vite, no generated code). Each file is a URL:
  * - a page, `.tsx` or `.mdx`: its component (default), `loader` (GET; without one, the page with no props of its
  *   own), `action` (POST) or `actions` (POST `?name`)
- * - server code, `.ts`: the same handlers, or plain HTTP ones: `GET`, `POST`, `PUT`, `PATCH`, `DELETE`
+ * - server code, `.ts`: the same handlers, or plain HTTP ones: `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS`
  * `_middleware.ts` applies to its directory and below (`routes/_middleware.ts`: every request, 404s included).
  * Built in: CSRF protection, security headers, one URL per page (trailing slash), the error page. Your own 404 /
  * error handling: Hono's `app.notFound()` / `app.onError()` on the returned app.
