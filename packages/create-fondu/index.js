@@ -37,14 +37,13 @@ const HELP = `Create a Fondu app: full-stack React on Hono and Vite.
   create-fondu [dir] [options]
 
   --target bun|cloudflare|node   where the app runs (asked otherwise; needed with --yes)
-  --checks, --no-checks          code checks: oxfmt, oxlint, git hooks (lefthook, commitlint)
+  --checks, --no-checks          code checks: oxfmt, oxlint
   --git, --no-git                a git repository (unless the folder is in one)
   --no-install                   don't install the dependencies
   -y, --yes                      the defaults for what isn't given: my-app, no checks, git, install
   -h, --help                     this
 
 https://fondu.dev/docs/quick-start`
-const EXEC = { bun: 'bunx', pnpm: 'pnpm exec', yarn: 'yarn', npm: 'npx' }
 
 const template = new URL('./template/', import.meta.url)
 const own = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'))
@@ -113,7 +112,7 @@ const checks = values.checks
     ? false
     : done(
         await p.confirm({
-          message: 'Add code checks? oxfmt and oxlint, and git hooks (lefthook, commitlint)',
+          message: 'Add code checks? oxfmt and oxlint',
           initialValue: false,
         }),
       )
@@ -160,7 +159,6 @@ const readme = readFileSync(join(root, 'README.md'), 'utf8')
       .join('\n'),
   )
 writeFileSync(join(root, 'README.md'), readme)
-const hooks = `${EXEC[pm] ?? 'npx'} lefthook install` // in a git repository only
 const agents = join(root, 'AGENTS.md')
 const environment =
   target === 'cloudflare'
@@ -175,15 +173,11 @@ writeFileSync(
       '{{checks}}\n',
       checks
         ? `- Code checks: \`${run('check')}\` formats (oxfmt), lints (oxlint) and typechecks: run it before finishing;
-  the formatting is oxfmt's (\`.oxfmtrc.json\`), not by hand. Git hooks (lefthook; in a git repository,
-  \`${hooks}\` sets them up) format and lint each commit, and check its message: Conventional Commits
-  (\`feat: …\`, \`fix: …\`).\n`
+  the formatting is oxfmt's (\`.oxfmtrc.json\`), not by hand.\n`
         : '',
     ),
 )
 if (checks) {
-  const file = join(root, 'lefthook.yml')
-  writeFileSync(file, readFileSync(file, 'utf8').replaceAll('__EXEC__', EXEC[pm] ?? 'npx'))
   // the Worker's generated types: not the app's code
   if (target === 'cloudflare')
     for (const config of ['.oxfmtrc.json', '.oxlintrc.json']) {
@@ -210,8 +204,7 @@ if (target === 'cloudflare') {
   )
 }
 
-// a git repository: asked for unless the app is in one already (or git isn't there); made before the install, so
-// lefthook's own install sets up the hooks
+// a git repository: asked for unless the app is in one already (or git isn't there)
 const git = (args) => spawnSync('git', args, { cwd: root, stdio: 'ignore' })
 const inRepo = git(['rev-parse', '--is-inside-work-tree']).status === 0
 const gitThere = inRepo || !git(['--version']).error
@@ -224,16 +217,13 @@ const initGit =
       ? false
       : done(await p.confirm({ message: 'Initialize a git repository?' })))
 if (initGit && git(['init', '--quiet']).status !== 0) p.log.warn('git init failed')
-const repo = inRepo || (initGit && git(['rev-parse', '--git-dir']).status === 0)
 
 const install = values['no-install']
   ? false
   : !asking || done(await p.confirm({ message: `Install the dependencies with ${pm}?` }))
-// after the install: the git hooks (lefthook's own install script is one pnpm skips), and the
-// Worker's types (worker-configuration.d.ts: `env` from cloudflare:workers, the runtime's APIs)
+// after the install: the Worker's types (worker-configuration.d.ts: `env` from cloudflare:workers, the runtime's APIs)
 const exec = (command) =>
   spawnSync(command, { cwd: root, stdio: 'ignore', shell: true }).status === 0
-const hooksCommand = checks && initGit && repo ? hooks : null
 const typesCommand = target === 'cloudflare' ? run('cf-typegen') : null
 let installed = false
 if (install) {
@@ -245,7 +235,6 @@ if (install) {
   installed = result.status === 0
   if (!installed) p.log.warn(`${pm} install failed: run it in ${dir}`)
 }
-const hooksDone = installed && hooksCommand !== null && exec(hooksCommand)
 const typesDone = installed && typesCommand !== null && exec(typesCommand)
 
 const cd = relative(process.cwd(), root) || '.'
@@ -255,12 +244,7 @@ p.outro(
     'Next:',
     cd === '.' ? null : `  cd ${cd}`,
     installed ? null : `  ${pm} install`,
-    hooksCommand && !hooksDone ? `  ${hooksCommand}${note('sets up the git hooks')}` : null,
-    checks && !repo ? `  git init && ${hooks}${note('sets up the git hooks')}` : null,
     typesCommand && !typesDone ? `  ${typesCommand}${note('types for the Worker')}` : null,
-    checks && inRepo
-      ? note("the git hooks run from the repository's root: lefthook.yml goes there")
-      : null,
     `  ${run('dev')}`,
   ]
     .filter(Boolean)
