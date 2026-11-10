@@ -97,6 +97,7 @@ export default function NewContact() {
 | `field(name)` | for a field: its `name`, `aria-invalid`, and its checks as it is left and changed                 |
 | `errors`      | the server's (the page's `errors` prop), and the browser's: `errors.email`, `errors['user.name']` |
 | `submitting`  | this form is being sent                                                                           |
+| `failed`      | this form could not be sent (offline…): it stays, to send again                                   |
 
 - A field is checked as it is left for another with something typed, and again as it changes while it is wrong,
   so a fixed field loses its message. Not as it is left for the submit button: the message would move the button
@@ -104,7 +105,7 @@ export default function NewContact() {
 - A server's error stays until its field is checked again. Back with the server's errors, the first field to fix
   gets the focus.
 - Any [Standard Schema](https://standardschema.dev) works, an async one too. Without a schema, `useForm()` gives
-  the server's errors and `submitting` only.
+  the server's errors, `submitting` and `failed` only.
 - `errors` has the server's keys: a field's path, joined with dots (`user[name]` is `user.name`).
 - Your own handlers go next to it: `onChange={(e) => { field('email').onChange(e); … }}`.
 - Without JavaScript, the form is sent as it is, and the server's check answers.
@@ -128,10 +129,17 @@ import { useNavigation } from 'fondu/client'
 
 export function SubmitButton(props: ComponentProps<'button'>) {
   const ref = useRef<HTMLButtonElement>(null)
-  const { form } = useNavigation()
-  const sending = form !== null && form === ref.current?.form
+  const { form, state } = useNavigation()
+  const sending = state !== 'failed' && form !== null && form === ref.current?.form
   return <button ref={ref} type="submit" disabled={sending} {...props} />
 }
+```
+
+A form that could not be sent (offline, the connection lost) stays as it was, and `useForm().failed` says so until the
+next navigation starts:
+
+```tsx
+{failed && <p role="alert">Not sent. Check your connection and try again.</p>}
 ```
 
 The progress bar shows for submissions too; `fondu({ progress: { forms: false } })` leaves it to the buttons.

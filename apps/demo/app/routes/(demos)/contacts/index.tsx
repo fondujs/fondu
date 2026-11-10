@@ -58,7 +58,8 @@ export default function Contacts({ contacts }: { contacts: Contact[] }) {
   // can, an address already taken)
   const { form, field, errors, submitting } = useForm(contactSchema)
   // a contact being deleted: the form being sent is its form, the trash button shows it
-  const sending = useNavigation().form
+  const { form: sent, state } = useNavigation()
+  const sending = state === 'failed' ? null : sent
   return (
     <>
       <Title>Forms & validation</Title>

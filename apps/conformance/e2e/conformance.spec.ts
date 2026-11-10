@@ -209,6 +209,32 @@ test.describe('useForm: the browser checks a form as the server does', () => {
     )
     expect(posts).toBe(1)
   })
+  test("a form that can't be sent: failed, the form as it was; sent again, its answer", async ({
+    page,
+  }) => {
+    const errors: string[] = []
+    page.on('pageerror', (error) => errors.push(error.message))
+    await open(page, '/checked')
+    await page.fill('[name=name]', 'Grace')
+    await page.route('**/checked', (route) =>
+      route.request().method() === 'POST' ? route.abort('internetdisconnected') : route.continue(),
+    )
+    await page.click('#checked button')
+    await expect(page.locator('#state')).toHaveText('failed')
+    await expect(page.locator('#failed')).toHaveText('true')
+    await expect(page.locator('#checked')).not.toHaveAttribute('aria-busy')
+    await expect(page.locator('[name=name]')).toHaveValue('Grace')
+    expect(new URL(page.url()).pathname).toBe('/checked')
+    // sent again, once the connection is back
+    await page.unroute('**/checked')
+    await page.click('#checked button')
+    await expect(page.locator('#received')).toHaveText(
+      '{"name":"Grace","tags":["a","c"],"user":{"email":"ada@example.com"}}',
+    )
+    await expect(page.locator('#state')).toHaveText('idle')
+    await expect(page.locator('#failed')).toHaveText('false')
+    expect(errors).toEqual([])
+  })
 })
 
 test.describe('scroll positions', () => {

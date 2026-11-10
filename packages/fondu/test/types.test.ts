@@ -5,7 +5,7 @@ import type { Context } from 'hono'
 import { expect, test } from 'vitest'
 import * as z from 'zod/mini'
 
-import type { href, usePage } from '../src/client.js'
+import type { href, useForm, useNavigation, usePage } from '../src/client.js'
 import type { flash } from '../src/server/flash.js'
 import type { defineHandler, Validated } from '../src/server/handler.js'
 import type { render, share } from '../src/server/protocol.js'
@@ -41,6 +41,8 @@ type Api = {
   share: typeof share
   flash: typeof flash
   usePage: typeof usePage
+  useNavigation: typeof useNavigation
+  useForm: typeof useForm
   defineHandler: typeof defineHandler
 }
 const typed = (call: (api: Api, c: Context) => unknown) => call
@@ -183,6 +185,39 @@ const validated = [
   ),
 ]
 
+// the browser's hooks: a navigation that failed has a place to go, an idle one has none
+const navigation = [
+  typed(({ useNavigation }) => {
+    const nav = useNavigation()
+    if (nav.state === 'failed') {
+      const to: string = nav.to
+      const form: HTMLFormElement | null = nav.form
+      return [to, form]
+    }
+  }),
+  typed(({ useNavigation }) => {
+    const nav = useNavigation()
+    if (nav.state === 'idle') {
+      const to: null = nav.to
+      // @ts-expect-error an idle navigation goes nowhere
+      const place: string = nav.to
+      return [to, place]
+    }
+  }),
+  typed(({ useNavigation }) => {
+    const nav = useNavigation()
+    if (nav.state === 'loading' || nav.state === 'submitting') return nav.to.length
+  }),
+  typed(({ useForm }) => {
+    const { failed, submitting } = useForm()
+    const a: boolean = failed
+    const b: boolean = submitting
+    // @ts-expect-error failed is a boolean
+    const c: string = failed
+    return [a, b, c]
+  }),
+]
+
 test('the types above are checked by tsc', () => {
-  expect([...renders, ...hrefs, ...shared, ...validated]).toHaveLength(52)
+  expect([...renders, ...hrefs, ...shared, ...validated, ...navigation]).toHaveLength(56)
 })

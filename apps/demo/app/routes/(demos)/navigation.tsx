@@ -14,7 +14,8 @@ export const loader = defineHandler(async (c) => {
 
 export default function Navigation({ servedAt }: { servedAt: string }) {
   const [clicks, setClicks] = useState(0)
-  const navigating = useNavigation().state !== 'idle'
+  const { state } = useNavigation()
+  const navigating = state === 'loading' || state === 'submitting'
   return (
     <>
       <Title>Navigation</Title>
