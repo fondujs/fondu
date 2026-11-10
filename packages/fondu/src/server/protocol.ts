@@ -175,7 +175,7 @@ export async function renderPage(
     component: id,
     props: { ...Object.fromEntries(fromShared), ...props, errors: carried.errors },
     url: pageUrl(c),
-    version: version ?? null,
+    version,
     flash: carried.flash,
   }
   // a page is this visitor's: not stored by shared caches, revalidated by the browser (unless the route said otherwise)

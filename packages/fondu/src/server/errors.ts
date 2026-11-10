@@ -7,7 +7,7 @@ import { wantsPage } from './http.js'
 import { renderPage } from './protocol.js'
 
 /** the error page's id: `app/routes/_error.tsx` */
-export const ERROR_PAGE = '_error'
+const ERROR_PAGE = '_error'
 
 const TEXT: Record<number, string> = {
   401: 'Unauthorized',

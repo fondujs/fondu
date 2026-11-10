@@ -10,8 +10,6 @@ import type { Logger } from 'vite'
 
 import { PAGE_DATA, staticFiles } from '../paths.js'
 
-export { staticFiles }
-
 /** the response headers a static document keeps: the security headers (hono/secure-headers' and the like) */
 const SECURITY_HEADERS =
   /^(content-security-policy(-report-only)?|strict-transport-security|referrer-policy|permissions-policy|x-content-type-options|x-frame-options|x-xss-protection|x-dns-prefetch-control|x-download-options|x-permitted-cross-domain-policies|origin-agent-cluster|cross-origin-(opener|embedder|resource)-policy)$/i

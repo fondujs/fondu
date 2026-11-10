@@ -27,7 +27,7 @@ const state = (c: Context): State => {
 }
 
 /** https, directly or behind a proxy that says so */
-export const isSecure = (c: Context) =>
+const isSecure = (c: Context) =>
   new URL(c.req.url).protocol === 'https:' ||
   c.req.header('x-forwarded-proto')?.split(',')[0]?.trim() === 'https'
 const cookieName = (c: Context) => (isSecure(c) ? '__Host-fondu-flash' : 'fondu-flash')
