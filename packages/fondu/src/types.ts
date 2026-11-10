@@ -6,7 +6,7 @@
  * `share()` gives every page; `flash`, what `flash()` takes. `c.get()` / `c.set()` are typed by Hono's own
  * `ContextVariableMap`.
  */
-// biome-ignore lint: augmented by generated code
+// empty here: augmented by the generated code, and by the app
 export interface Register {}
 
 export type Routes = Register extends { routes: infer R } ? R : Record<string, unknown>

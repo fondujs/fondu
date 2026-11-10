@@ -46,7 +46,10 @@ export interface FonduOptions {
    * time, and navigations read them; the server (the Worker) answers the other pages
    */
   prerender?: boolean
-  /** the bar at the top of the page while a navigation is on its way: its `delay` (ms) and `color`; `false`: none */
+  /**
+   * the bar at the top of the page while a navigation is on its way: its `delay` (ms), its `color`, and whether forms'
+   * submissions show it (`forms`); `false`: none
+   */
   progress?: ProgressOptions | false
 }
 
