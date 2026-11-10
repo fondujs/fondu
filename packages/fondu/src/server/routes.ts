@@ -15,9 +15,11 @@ export interface RouteModule {
   params?: Params
   /** a `_middleware.ts`: the middleware; a page: its component */
   default?: Handlers
+  /** a page's route file (`.tsx`): GET, POST, POST `?name` */
   loader?: Handlers
   action?: Handlers
   actions?: Record<string, Handlers>
+  /** a `.ts` route file: the HTTP methods */
   GET?: Handlers
   POST?: Handlers
   PUT?: Handlers

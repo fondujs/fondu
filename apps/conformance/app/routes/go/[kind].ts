@@ -7,7 +7,7 @@ const to: Record<string, string> = {
   file: '/notes.txt',
 }
 
-export const loader = defineHandler((c) => {
+export const GET = defineHandler((c) => {
   const target = to[c.req.param('kind') ?? '']
   return target ? c.redirect(target, 302) : c.notFound()
 })

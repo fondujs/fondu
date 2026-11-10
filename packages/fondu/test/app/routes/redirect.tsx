@@ -20,3 +20,7 @@ export const actions = {
   // relative: to /notes, as this request's URL (/redirect) resolves it
   relative: defineHandler((c) => c.redirect('notes?a=1#end', 303)),
 }
+
+export default function Redirect() {
+  return null
+}

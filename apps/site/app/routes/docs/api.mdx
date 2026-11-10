@@ -55,9 +55,9 @@ createApp({
 | Export                                             | Is                                                                                       |
 | -------------------------------------------------- | ---------------------------------------------------------------------------------------- |
 | `default` (in a `.tsx` file)                       | the page, rendered by `render()`, or on GET without a loader                             |
-| `loader`                                           | GET                                                                                      |
-| `action`                                           | POST                                                                                     |
-| `actions = { name }`                               | POST `?name` (`action` or `actions`, not both)                                           |
+| `loader` (in a `.tsx` file)                        | GET                                                                                      |
+| `action` (in a `.tsx` file)                        | POST                                                                                     |
+| `actions = { name }` (in a `.tsx` file)            | POST `?name` (`action` or `actions`, not both)                                           |
 | `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS` | HTTP handlers (in a `.ts` file)                                                          |
 | `prerender`                                        | `true`, `false` or a function listing params: a [static page](/docs/static-pages)        |
 | `params`                                           | `{ name: ['value', …] }`: the [values a param takes](/docs/routes#the-values-of-a-param) |
@@ -68,7 +68,7 @@ createApp({
 | File                   | Is                                                                                    |
 | ---------------------- | ------------------------------------------------------------------------------------- |
 | `name.tsx`, `name.mdx` | a page and its handlers ([what each exports](/docs/routes#what-a-route-file-exports)) |
-| `name.ts`              | server code only: handlers, HTTP handlers                                             |
+| `name.ts`              | server code only: HTTP handlers                                                       |
 | `_middleware.ts`       | the middleware of its directory and below                                             |
 | `_layout.tsx`          | the [layout](/docs/layouts) of the pages in its directory and below                   |
 | `_error.tsx`           | the [error page](/docs/errors)                                                        |

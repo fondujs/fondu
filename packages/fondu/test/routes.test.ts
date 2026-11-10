@@ -4,7 +4,7 @@ import { describe, expect, test } from 'vitest'
 
 import { routeTable, type RouteModule } from '../src/server/routes.js'
 
-const page: RouteModule = { loader: (c) => c.text('page') }
+const page: RouteModule = { GET: (c) => c.text('page') }
 const files = (...names: string[]) => Object.fromEntries(names.map((n) => [n, page]))
 const table = (modules: Record<string, RouteModule>, append = false) =>
   routeTable(modules, append).map((r) => r.pattern)
