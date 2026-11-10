@@ -320,7 +320,7 @@ function core(options: FonduOptions): Plugin {
       isBuild = env.command === 'build'
       const client = {
         manifest: true,
-        rollupOptions: {
+        rolldownOptions: {
           input: V.entry,
           // a page's or a layout's chunk named after its route file: (site)/users/[id].tsx is site-users-id
           output: {
@@ -378,7 +378,7 @@ function core(options: FonduOptions): Plugin {
               emptyOutDir: true,
               copyPublicDir: false,
               minify: true,
-              rollupOptions: {
+              rolldownOptions: {
                 input: V.serverEntry,
                 external: [
                   ...builtinModules,
