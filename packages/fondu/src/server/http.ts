@@ -40,3 +40,10 @@ export function appendHeader(c: Context, name: string, value: string) {
     c.header(name, value, { append: true })
   }
 }
+
+/** the build is prerendering (`FONDU_PRERENDER`: a Worker binding, or the environment of `node` / `bun dist/server/index.js`) */
+export const isPrerendering = (c: Context) =>
+  Boolean(
+    (c.env as Record<string, unknown> | undefined)?.FONDU_PRERENDER ??
+    globalThis.process?.env?.FONDU_PRERENDER,
+  )

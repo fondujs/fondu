@@ -56,7 +56,11 @@ createApp({
 })
 ```
 
-A directive given replaces Fondu's one, so keep `'self'` and the nonce in `scriptSrc`.
+A directive given replaces Fondu's one, so keep `'self'` and the nonce in `scriptSrc`: the nonce also
+allows the scripts React sends with a streamed Suspense boundary.
+
+Pages are streamed, so a proxy in front of the app must not buffer responses for the visitor to get the first bytes
+early (nginx: `proxy_buffering off`).
 
 ## Caching
 

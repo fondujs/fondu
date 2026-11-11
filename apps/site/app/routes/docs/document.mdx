@@ -54,7 +54,8 @@ export default createApp({ document: Document })
 - `head`: the page's scripts, then the tags it renders (`<title>`, `<meta>`). Put it last in `<head>`. Its
   stylesheets go first in `<head>`, right after `<meta charset>`: the browser asks for them before anything else.
 - `body`: the page data (`<script data-page>`), the rendered page (`<div id="app">`) and, after a server render, a
-  small script that puts a reloaded page back where it was scrolled before its first paint. Put it alone in `<body>`.
+  small script that puts a reloaded page back where it was scrolled before its first paint. Put it alone in `<body>`:
+  what follows it in the template is sent last, after the page's [Suspense boundaries](/docs/ssr#streaming).
 - `c`: the request's Hono context: a cookie, a header, the user. Above, `theme(c)` reads the theme a visitor chose,
   so the first paint has it.
 - `nonce`: the request's Content Security Policy nonce, for a string document's scripts (below).
@@ -104,7 +105,8 @@ style attributes), `'self'` and `data:` for fonts.
 ## Scripts in the document
 
 The policy runs scripts of the site's own files, or with the request's nonce. Fondu gives the nonce to the inline
-scripts of a JSX document, so one runs as it is, before the page paints:
+scripts of a JSX document, so one runs as it is, before the page paints. React's own scripts, which put a streamed
+Suspense boundary in place, carry it too:
 
 ```tsx
 // sets the theme a visitor chose (a cookie) before the first paint
@@ -122,4 +124,4 @@ document: ({ head, body, nonce }) =>
 ```
 
 On a [static page](/docs/static-pages) too, where there is no nonce: the scripts that had it are allowed by their
-hashes. A script from another origin (`<script src="https://…">`) needs that origin in `scriptSrc`.
+hashes (a static page waits for every Suspense boundary, so it has none of React's). A script from another origin (`<script src="https://…">`) needs that origin in `scriptSrc`.

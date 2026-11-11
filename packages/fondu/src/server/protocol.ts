@@ -7,7 +7,7 @@ import type { Page } from '../client/navigation.js'
 import type { Shared } from '../types.js'
 import { renderDocument } from './document.js'
 import { flashCookie, takeCarried } from './flash.js'
-import { appendHeader, back, isPageRequest, sameOrigin } from './http.js'
+import { appendHeader, back, isPageRequest, isPrerendering, sameOrigin } from './http.js'
 
 /**
  * Fondu's protocol: a document gets the HTML page, a navigation of fondu/client (`X-Fondu`) the page as JSON.
@@ -184,7 +184,11 @@ export async function renderPage(
     c.header('X-Fondu', 'true')
     return c.json(page, (options.status ?? 200) as 200)
   }
-  return c.html(await renderDocument(c, page), (options.status ?? 200) as 200)
+  const status = (options.status ?? 200) as 200
+  const document = await renderDocument(c, page, isPrerendering(c))
+  return typeof document === 'string'
+    ? c.html(document, status)
+    : c.body(document, status, { 'Content-Type': 'text/html; charset=UTF-8' })
 }
 
 /** an http(s) URL, as `to` resolves from the request's */

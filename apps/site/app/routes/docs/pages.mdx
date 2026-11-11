@@ -47,7 +47,7 @@ A page without a loader is rendered on GET with no props of its own.
 ## Title and meta tags
 
 A page renders its own `<title>`, `<meta>` and `<link>` tags where it likes; React moves them into `<head>`, on the
-server too. A title is one string, hence the template literal above.
+server too (a tag in a Suspense boundary that resolves later is sent in `<body>`). A title is one string, hence the template literal above.
 
 ```tsx
 <>

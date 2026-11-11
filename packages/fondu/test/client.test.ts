@@ -1,6 +1,6 @@
 // The server render of fondu/client's app: the page in its directories' layouts, the tags it renders hoisted out of #app
 import { createElement as h, type ReactNode } from 'react'
-import { renderToString } from 'react-dom/server'
+import { renderToReadableStream } from 'react-dom/server'
 import { expect, test } from 'vitest'
 
 import { __entry, renderPage, usePage } from '../src/client.js'
@@ -34,14 +34,18 @@ __entry(
   { prerender: false, progress: false },
 )
 
+// the page's stream, read whole: the tags it hoists (before `<div id="app"`) and the page
+const render = async (component: string, props = {}) => {
+  const stream = await renderPage(page(component, props), (el) => renderToReadableStream(el))
+  const html = await new Response(stream).text()
+  const at = html.indexOf('<div id="app"')
+  return { head: html.slice(0, at), body: html.slice(at) }
+}
 const page = (component: string, props = {}) =>
   ({ component, props, url: '/users/7', version: null, flash: {} }) as const
 
 test("a page in its directory's _layout.tsx (a group's too); the page's tags before #app", async () => {
-  const { head, body } = await renderPage(
-    page('(site)/users/[id]', { name: 'Ada' }),
-    renderToString,
-  )
+  const { head, body } = await render('(site)/users/[id]', { name: 'Ada' })
   expect(head).toBe('<title>User Ada</title>')
   expect(body).toBe(
     '<div id="app"><div id="inner"><h1>Ada<!-- --> at <!-- -->/users/7</h1></div></div>',
@@ -49,19 +53,19 @@ test("a page in its directory's _layout.tsx (a group's too); the page's tags bef
 })
 
 test('the _layout.tsx of each directory, outermost first', async () => {
-  const { body } = await renderPage(page('admin/users/list'), renderToString)
+  const { body } = await render('admin/users/list')
   expect(body).toBe(
     '<div id="app"><section id="outer"><div id="inner"><p>plain</p></div></section></div>',
   )
 })
 
 test('a page with no _layout.tsx above it: as it is', async () => {
-  const { head, body } = await renderPage(page('about'), renderToString)
+  const { head, body } = await render('about')
   expect([head, body]).toEqual(['', '<div id="app"><p>plain</p></div>'])
 })
 
 test('a page that is not there: said so', async () => {
-  await expect(renderPage(page('nope'), renderToString)).rejects.toThrow('there is no page "nope"')
+  await expect(render('nope')).rejects.toThrow('there is no page "nope"')
 })
 
 test("a URL's page, guessed to load its modules with its data: static segments first", () => {
