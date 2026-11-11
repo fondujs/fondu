@@ -6,7 +6,7 @@ import { HTTPException } from 'hono/http-exception'
 import { expect, test } from 'vitest'
 import * as z from 'zod/mini'
 
-import type { fetch, href, useForm, useNavigation, usePage } from '../src/client.js'
+import type { fetch, href, navigate, useForm, useNavigation, usePage } from '../src/client.js'
 import type { flash } from '../src/server/flash.js'
 import {
   defineHandler as define,
@@ -100,6 +100,7 @@ type Api = {
   render: typeof render
   defer: typeof defer
   href: typeof href
+  navigate: typeof navigate
   fetch: typeof fetch
   share: typeof share
   flash: typeof flash
@@ -311,6 +312,15 @@ const navigation = [
   }),
 ]
 
+// navigate(): replace and keep are optional booleans
+const navigations = [
+  typed(({ navigate }) => navigate('/x')),
+  typed(({ navigate }) => navigate('/x', { keep: true })),
+  typed(({ navigate }) => navigate('/x', { replace: true, keep: true })),
+  // @ts-expect-error keep is a boolean
+  typed(({ navigate }) => navigate('/x', { keep: 'yes' })),
+]
+
 // is the type exactly T (both ways: `any` and a wider type are not)
 type Equal<A, B> =
   (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false
@@ -452,5 +462,6 @@ test('the types above are checked by tsc', () => {
     ...fetches,
     ...answers,
     ...navigation,
-  ]).toHaveLength(117)
+    ...navigations,
+  ]).toHaveLength(121)
 })

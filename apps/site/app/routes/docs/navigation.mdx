@@ -72,23 +72,65 @@ A catch-all page route (`docs/[...slug].tsx`) covers every URL below it, files i
 ```tsx
 import { href, navigate } from 'fondu/client'
 
-// the results page, as you type: one history entry for the search, not one per letter
-function Search() {
-  const search = (q: string) => navigate(href('/search', { query: { q } }), { replace: true })
-  return <input type="search" onChange={(event) => search(event.target.value)} />
-}
+navigate(href('/orders', { query: { page: 2 } }))
 ```
 
 - A page of the app loads in place, in a new history entry.
 - `{ replace: true }` replaces the current history entry instead, so Back skips it.
+- `{ keep: true }` shows the answer as `reload()` does: the page keeps its state (a focused input, what was typed) and
+  the scroll position, and nothing is announced. The loader still runs for `url`. If another page answers, it is shown
+  as any navigation's, from the top.
 - Any other URL loads as a document.
 
-| Export                        | Does                                                                              |
-| ----------------------------- | --------------------------------------------------------------------------------- |
-| `navigate(url, { replace? })` | goes to `url` as a link would                                                     |
-| `loadDocument(url)`           | loads `url` as a document (a full page load)                                      |
-| `reload()`                    | asks for the current page's props again; state and scroll stay                    |
-| `reload({ only: ['stats'] })` | asks for those props alone, quietly: [deferred props](/docs/pages#deferred-props) |
+### Search as you type
+
+An input whose value goes into the URL, and a loader that answers the results. Without `keep`, each new query would
+mount the page anew: the input would lose its focus and what was typed meanwhile.
+
+```tsx
+import { defineHandler, render } from 'fondu'
+import { href, navigate } from 'fondu/client'
+import { useRef, useState } from 'react'
+
+export const loader = defineHandler((c) => {
+  const q = new URL(c.req.url).searchParams.get('q') ?? ''
+  return render(c, Search, { q, results: findProducts(q) })
+})
+
+export default function Search({ q, results }: { q: string; results: string[] }) {
+  const [value, setValue] = useState(q)
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined)
+  const change = (next: string) => {
+    setValue(next)
+    clearTimeout(timer.current)
+    timer.current = setTimeout(
+      () => navigate(href('/search', { query: { q: next } }), { replace: true, keep: true }),
+      250,
+    )
+  }
+  return (
+    <>
+      <input type="search" value={value} onChange={(event) => change(event.target.value)} />
+      <ul>
+        {results.map((name) => (
+          <li key={name}>{name}</li>
+        ))}
+      </ul>
+    </>
+  )
+}
+```
+
+`replace` makes one history entry for the search, not one per letter. A navigation in flight is aborted by the next,
+so a fast typist sees only the last answer. Why not `fetch()` from an effect: the URL holds the search, so Back, a
+reload and a shared link all work, and the loader is the one place the results are computed.
+
+| Export                               | Does                                                                                           |
+| ------------------------------------ | ---------------------------------------------------------------------------------------------- |
+| `navigate(url, { replace?, keep? })` | goes to `url` as a link would; `keep`: the page keeps its state and scroll, as `reload()` does |
+| `loadDocument(url)`                  | loads `url` as a document (a full page load)                                                   |
+| `reload()`                           | asks for the current page's props again; state and scroll stay                                 |
+| `reload({ only: ['stats'] })`        | asks for those props alone, quietly: [deferred props](/docs/pages#deferred-props)              |
 
 ## Forms
 
@@ -99,12 +141,12 @@ actions, errors and pending states.
 
 ## Scroll positions
 
-| After                                          | The page is                             |
-| ---------------------------------------------- | --------------------------------------- |
-| a link, or `navigate()`                        | at the top, or at the URL's `#fragment` |
-| Back or Forward                                | where it was when you left it           |
-| a reload                                       | where it was when you left it           |
-| a form's answer at the same URL, or `reload()` | where it is                             |
+| After                                                                    | The page is                             |
+| ------------------------------------------------------------------------ | --------------------------------------- |
+| a link, or `navigate()`                                                  | at the top, or at the URL's `#fragment` |
+| Back or Forward                                                          | where it was when you left it           |
+| a reload                                                                 | where it was when you left it           |
+| a form's answer at the same URL, `reload()`, or `navigate()` with `keep` | where it is                             |
 
 Back and Forward show the page at once, as it was left, then put the server's fresh page in its place. The pages
 kept for this are in memory only, and they are all forgotten once a form is sent, as the form may have changed

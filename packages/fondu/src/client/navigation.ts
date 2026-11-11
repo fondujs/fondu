@@ -46,7 +46,7 @@ interface Visit {
   form?: HTMLFormElement
   /** Back and Forward: where the entry was scrolled; reload(): undefined, the scroll stays */
   scroll?: { x: number; y: number } | null
-  /** reload(): the page keeps its state */
+  /** reload(), navigate(…, { keep }): the page keeps its state and the scroll, if the same component answers */
   keep?: boolean
   /** Back and Forward: the page the entry showed, put on the screen at once, then the server's in its place */
   kept?: Page
@@ -291,7 +291,9 @@ export function startNavigation({
         const errors = Object.keys((page.props.errors as object | undefined) ?? {}).length > 0
         const asked = url.pathname + url.search
         // the kept page's entry: the server's page in its place, its state kept; redirected (signed out), anew
-        const fresh = shown ? asked !== page.url : !options.keep && !(same && errors)
+        // kept: the same component answers (another one mounts anew, and is scrolled to the top as a navigation's)
+        const stay = options.keep && page.component === on.component
+        const fresh = shown ? asked !== page.url : !stay && !(same && errors)
         // the page stays (reload(), Back's, a form's answer): what it asked for isn't taken away while it is asked again
         if (!fresh && page.deferred)
           for (const name of page.deferred)
@@ -314,9 +316,9 @@ export function startNavigation({
         keep(page)
         if (page.deferred?.length) ask!(page.deferred)
         if (shown && !fresh) return
-        if (!options.keep) announce()
-        // a page asked for again stays where it is: reload(), a form's answer at its URL
-        if (options.keep || same) return
+        if (!stay) announce()
+        // a page asked for again stays where it is: reload(), navigate() with `keep`, a form's answer at its URL
+        if (stay || same) return
         // at once, the page in the DOM (show() renders it synchronously): no frame drawn where it doesn't belong
         restore(options.history === 'none' ? options.scroll : null, url.hash)
       } catch (error) {
@@ -640,14 +642,19 @@ export function loadDocument(href: string) {
 
 /**
  * `href` visited as a link to it would be: a page of the app in place (a new history entry, or this one's with
- * `replace`), anything else as a document
+ * `replace`), anything else as a document. `keep`: the answer is shown as `reload()` shows its own, the page keeps
+ * its state (a focused input, what was typed) and the scroll position, nothing is announced: a search box that
+ * `navigate()`s to its query as it is typed. Another page's component is shown as any navigation's.
  */
-export function navigate(href: string, { replace = false }: { replace?: boolean } = {}) {
+export function navigate(
+  href: string,
+  { replace = false, keep = false }: { replace?: boolean; keep?: boolean } = {},
+) {
   const url = new URL(href, location.href)
   const here = url.pathname + url.search === location.pathname + location.search
   if (!visit || url.origin !== location.origin || !isAppPage?.(url.pathname) || (here && url.hash))
     return replace ? location.replace(url.href) : location.assign(url.href) // a #fragment of this page: the browser's
-  visit(url.href, { history: replace || url.href === location.href ? 'replace' : 'push' })
+  visit(url.href, { history: replace || url.href === location.href ? 'replace' : 'push', keep })
 }
 
 /** the page asked for again, its state and the scroll position kept */

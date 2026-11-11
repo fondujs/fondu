@@ -37,7 +37,7 @@ swaps the page in place (the History API); Back and Forward restore the scroll p
   `usePage()` (props, shared props, `url`, `flash`), `useNavigation()` (pending UI: `{ state, to, form }`, `state` may be `failed`),
   `reload()` (the props again). `fetch('/api/usage', { method?, query?, body? })` calls a `.ts` route from an effect or
   an event, typed by its file (a non-2xx answer throws `FetchError`; a page's data is its loader's). In code, `navigate(href(…))` navigates as a link would (`{ replace: true }`: no new
-  history entry); `loadDocument(href(…))` loads a document instead, as `<a target="_top">` does. Only links to the
+  history entry; `{ keep: true }`: the page keeps its state and scroll, as `reload()` does: search as you type); `loadDocument(href(…))` loads a document instead, as `<a target="_top">` does. Only links to the
   app's pages are the client's. A progress bar shows during slow navigations: `fondu({ progress: { color, delay,
   forms } })` in `vite.config.ts`, or `progress: false`. A form being sent has `aria-busy="true"`: its submit
   button's pending state. `useForm(schema)` checks a form in the browser with its action's schema, as the server
