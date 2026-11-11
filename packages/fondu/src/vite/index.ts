@@ -3,11 +3,12 @@ import { appendFileSync, existsSync, readdirSync, readFileSync, writeFileSync } 
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { builtinModules, createRequire } from 'node:module'
 import { dirname, join, relative, resolve, sep } from 'node:path'
-import { pathToFileURL } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 
 import devServer, { defaultOptions as devServerDefaults } from '@hono/vite-dev-server'
 import react, { type Options as ReactOptions } from '@vitejs/plugin-react'
 import {
+  normalizePath,
   parseAst,
   transformWithOxc,
   type Plugin,
@@ -73,6 +74,8 @@ const V = {
   ssr: 'virtual:fondu/ssr',
   serverEntry: 'virtual:fondu/server-entry',
 }
+/** fondu's own `server/static.js`, imported by the built server's entry (by its path: it is not an export of the package) */
+const staticModule = normalizePath(fileURLToPath(new URL('../server/static.js', import.meta.url)))
 const resolved = (id: string) => '\0' + id
 
 /** the pages, for the app's entry: the route files of `app/routes/` that are React, but what isn't a route */
@@ -180,6 +183,8 @@ function dependencies(root = ''): string[] {
  * server bundle wherever it runs from; hashed files never change), then the app. Node: @hono/node-server's serve()
  * on `PORT` (else the option), saying where it listens, with a graceful shutdown on SIGTERM / SIGINT (10 s). Bun
  * serves the default export itself and reads `PORT` (with the app's `websocket`, if it has one).
+ * With `prerender`, the pages the build wrote are served from their files first, with the headers it decided
+ * (`prerender.json`, next to this entry).
  */
 function serverEntry(options: FonduOptions): Plugin {
   let root = process.cwd()
@@ -209,15 +214,17 @@ function serverEntry(options: FonduOptions): Plugin {
           `const clientRoot = fileURLToPath(new URL('../client', import.meta.url))`,
           `const main = new Hono()`,
           `main.use('/assets/*', async (c, next) => { await next(); if (c.res.ok) c.header('Cache-Control', 'public, max-age=31536000, immutable') })`,
-          ...paths.map((p) => `main.use(${JSON.stringify(p)}, serveStatic({ root: clientRoot }))`),
-          // prerender: how the app reads the prerendered pages (fondu's server/prerender.ts)
+          // prerender: the pages the build wrote are files, with the headers it decided (prerender.json, written after
+          // this server was built: not there while the build prerenders, so the app renders them then)
           ...(options.prerender
             ? [
-                `import { readFile } from 'node:fs/promises'`,
-                `import { join as joinPath, sep } from 'node:path'`,
-                `globalThis[Symbol.for('fondu.staticFiles')] = (file) => { const to = joinPath(clientRoot, file); return to.startsWith(clientRoot + sep) ? readFile(to).catch(() => null) : Promise.resolve(null) }`,
+                `import { existsSync, readFileSync } from 'node:fs'`,
+                `import { staticPages } from ${JSON.stringify(staticModule)}`,
+                `const prerendered = fileURLToPath(new URL('./prerender.json', import.meta.url))`,
+                `if (existsSync(prerendered)) main.use('*', staticPages(serveStatic, clientRoot, JSON.parse(readFileSync(prerendered, 'utf8')).headers))`,
               ]
             : []),
+          ...paths.map((p) => `main.use(${JSON.stringify(p)}, serveStatic({ root: clientRoot }))`),
           `main.all('*', (c) => app.fetch(c.req.raw, c.env))`,
           ...(bun
             ? [
@@ -355,7 +362,9 @@ function core(options: FonduOptions): Plugin {
                 const wrangler = resolve(config.root, env.config.build.outDir, 'wrangler.json')
                 if (options.prerender && existsSync(wrangler)) {
                   const clientDir = resolve(config.root, client.config.build.outDir)
-                  await prerender(worker(config.root, wrangler), clientDir, config.logger, true)
+                  await prerender(worker(config.root, wrangler), clientDir, config.logger, {
+                    headersFile: true,
+                  })
                   workerFirstForIndex(wrangler)
                 }
               }
@@ -400,7 +409,7 @@ function core(options: FonduOptions): Plugin {
                 nodeServer(config.root, target),
                 resolve(config.root, 'dist/client'),
                 config.logger,
-                false,
+                { serverDir: resolve(config.root, 'dist/server') },
               )
           },
         },

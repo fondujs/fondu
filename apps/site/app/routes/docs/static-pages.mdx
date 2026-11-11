@@ -36,7 +36,7 @@ to prerender, and writes each twice in the client build:
 Then:
 
 - On Cloudflare, Workers Static Assets serve the files without running the Worker.
-- On Bun and Node, the server answers a static page from its file before the routes, with the app's security headers.
+- On Bun and Node, the built server serves the files before the app (Hono's `serveStatic`).
 
 The server still answers every other URL, a page that isn't static or one that doesn't exist. In development, it
 answers all of them.
@@ -57,12 +57,15 @@ props included. So the build stops, naming the route, when a page:
 
 ## Headers
 
-On Bun and Node, a static page gets the headers of any page of the app, the Content Security Policy with a fresh nonce
-included, and its scripts that had the build's nonce get this one.
+A static page is a file served with the headers the build decided: the security headers of the app's pages, one set
+for all of them. The Content Security Policy has no nonce, as a file served to everyone can't have one: the scripts that
+had it are allowed by their hashes instead, so an inline script of [the document](/docs/document) runs on a static
+page too. A page object has the same headers, with `X-Fondu`.
 
-On Cloudflare, the pages' security headers are written to `_headers`, which Workers Static Assets apply to static
-files. The policy drops its nonce there, as a file served to everyone can't have one: the scripts that had it are
-allowed by their hashes instead, so an inline script of [the document](/docs/document) runs on a static page too.
+The build keeps that set where the target serves the files from:
+
+- On Cloudflare, in `_headers`, which Workers Static Assets apply to static files.
+- On Bun and Node, in `dist/server/prerender.json`, next to the built server, which reads it at start.
 
 ## A new deploy
 
