@@ -1,11 +1,18 @@
 import { href, usePage } from 'fondu/client'
-import { LogOut } from 'lucide-react'
+import { LogOut, Settings } from 'lucide-react'
 import { useRef } from 'react'
 
 import { ThemeMenu } from '#/components/theme-menu.tsx'
 import { Avatar, AvatarFallback } from '#/components/ui/avatar.tsx'
 import { Button } from '#/components/ui/button.tsx'
-import { Menu, MenuItem, MenuPopup, MenuSeparator, MenuTrigger } from '#/components/ui/menu.tsx'
+import {
+  Menu,
+  MenuItem,
+  MenuLinkItem,
+  MenuPopup,
+  MenuSeparator,
+  MenuTrigger,
+} from '#/components/ui/menu.tsx'
 
 /** The theme, and who is signed in (a shared prop: in the server-rendered HTML, never loading) or the way in */
 export function AccountMenu() {
@@ -39,6 +46,10 @@ export function AccountMenu() {
               <span className="truncate text-xs text-muted-foreground">{user.email}</span>
             </div>
             <MenuSeparator />
+            {/* a link to a #fragment of this page: the settings dialog (components/settings-dialog.tsx) opens */}
+            <MenuLinkItem render={<a href="#settings/profile" />} data-testid="settings-link">
+              <Settings /> Settings
+            </MenuLinkItem>
             {/* POST /logout: the form below, sent by the menu item */}
             <MenuItem onClick={() => signOut.current?.requestSubmit()} data-testid="sign-out">
               <LogOut /> Sign out

@@ -29,6 +29,7 @@ declare module 'fondu' {
       "/api/contacts": typeof import("./routes/api/contacts/index")
       "/api/health": typeof import("./routes/api/health")
       "/logout": typeof import("./routes/logout")
+      "/settings/name": typeof import("./routes/settings/name")
     }
   }
 }
