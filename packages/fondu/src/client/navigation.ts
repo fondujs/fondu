@@ -103,23 +103,26 @@ export function startNavigation({
   const source = (url: URL) =>
     prerender ? pageDataPath(url.pathname) + url.search : url.pathname + url.search
 
-  // What a link's page answered when asked early (`prerender`), by the URL a navigation would ask: its file (a
-  // Response, read into memory), or null (no file: 204, its data is asked for at the click, when its loader should
-  // run). A file runs nothing, so asking early costs the app nothing. Asked once in 30 seconds (TanStack Router's
-  // default: a deploy in between is found at the click); the click waits for an answer on its way and reads a file
-  // once, its version checked as for any page object. The last 20
+  // What a link's page answered when asked early (`prerender`), by the URL a navigation would ask: its file (the
+  // text and the headers, read into memory), or null (no file: 204, its data is asked for at the click, when its
+  // loader should run). A file runs nothing, so asking early costs the app nothing. Asked once in 30 seconds
+  // (TanStack Router's default: a deploy in between is found at the click); the click waits for an answer on its
+  // way, and every click in the 30 seconds uses it, its version checked as for any page object. The last 20
   const freshFor = 30_000
-  const prefetched = new Map<string, { answer: Promise<Response | null>; at: number }>()
+  const prefetched = new Map<
+    string,
+    { answer: Promise<{ body: string; headers: Headers } | null>; at: number }
+  >()
   const prefetch = (url: URL) => {
     if (!prerender) return
     const key = source(url)
     const entry = prefetched.get(key)
     if (entry && Date.now() - entry.at < freshFor) return
-    const answer = (async (): Promise<Response | null> => {
+    const answer = (async () => {
       try {
         const response = await fetch(key, { headers: { ...headers(), 'X-Fondu-Prefetch': 'true' } })
         if (response.status === 200 && response.headers.has('X-Fondu'))
-          return new Response(await response.text(), { headers: response.headers })
+          return { body: await response.text(), headers: response.headers }
       } catch {
         // offline: asked for again
         prefetched.delete(key)
@@ -228,16 +231,14 @@ export function startNavigation({
         // the file asked for early, waited for if it is on its way; none (null): the app is asked
         const early = entry ? await entry.answer : null
         if (signal.aborted) return
-        // a Response is read once; a null stays, so the rests that follow ask nothing
-        if (early && prefetched.get(from) === entry) prefetched.delete(from)
-        const response =
-          early ??
-          (await fetch(from, {
-            method: post ? 'POST' : 'GET',
-            body: options.body,
-            headers: headers(),
-            signal,
-          }))
+        const response = early
+          ? new Response(early.body, { headers: early.headers })
+          : await fetch(from, {
+              method: post ? 'POST' : 'GET',
+              body: options.body,
+              headers: headers(),
+              signal,
+            })
         if (signal.aborted) return
         if (post) kept.clear()
         // a new build, another site: the document

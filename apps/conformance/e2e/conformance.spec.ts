@@ -365,6 +365,61 @@ test.describe('with fondu/client only', () => {
     expect(await page.evaluate(() => document.querySelector('h1')?.textContent)).toBe('Long')
     expect(asked).toEqual(['/_fondu/pages/long.json', '/_fondu/pages/long.json'])
   })
+  test('a static page visited, left and clicked again within 30 seconds: its file asked for once', async ({
+    page,
+  }) => {
+    await open(page, '/')
+    await page.waitForLoadState('networkidle')
+    const asked: string[] = []
+    page.on('request', (r) => {
+      const { pathname } = new URL(r.url())
+      if (pathname === '/_fondu/pages/long.json') asked.push(pathname)
+    })
+    const file = page.waitForResponse(
+      (r) => new URL(r.url()).pathname === '/_fondu/pages/long.json',
+    )
+    await page.hover('a[href="/long"]')
+    expect((await file).status()).toBe(200)
+    await page.click('a[href="/long"]')
+    await settle(page)
+    expect(await page.evaluate(() => document.querySelector('h1')?.textContent)).toBe('Long')
+    await page.goBack()
+    await expect.poll(() => new URL(page.url()).pathname).toBe('/')
+    await settle(page)
+    await page.hover('a[href="/long"]')
+    await page.click('a[href="/long"]')
+    await settle(page)
+    expect(await page.evaluate(() => document.querySelector('h1')?.textContent)).toBe('Long')
+    expect(asked).toEqual(['/_fondu/pages/long.json'])
+  })
+  test('a static page visited, left and clicked again after 30 seconds: its file asked for again', async ({
+    page,
+  }) => {
+    await page.clock.install()
+    await open(page, '/')
+    await page.waitForLoadState('networkidle')
+    const asked: string[] = []
+    page.on('request', (r) => {
+      const { pathname } = new URL(r.url())
+      if (pathname === '/_fondu/pages/long.json') asked.push(pathname)
+    })
+    await page.hover('a[href="/long"]')
+    await expect.poll(() => asked).toEqual(['/_fondu/pages/long.json'])
+    await page.click('a[href="/long"]')
+    await settle(page)
+    await page.goBack()
+    await expect.poll(() => new URL(page.url()).pathname).toBe('/')
+    await settle(page)
+    // the pointer is over the link again once the page is back: it leaves and returns, a new rest
+    await page.mouse.move(0, 0)
+    await page.clock.fastForward(31_000)
+    await page.hover('a[href="/long"]')
+    await expect.poll(() => asked).toHaveLength(2)
+    await page.click('a[href="/long"]')
+    await settle(page)
+    expect(await page.evaluate(() => document.querySelector('h1')?.textContent)).toBe('Long')
+    expect(asked).toEqual(['/_fondu/pages/long.json', '/_fondu/pages/long.json'])
+  })
   test('a page without a file: the prefetch is answered 204, the click asks for the page', async ({
     page,
   }) => {

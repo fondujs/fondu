@@ -23,7 +23,7 @@ When the link is clicked, the client loads `/users/7` in place. The new page sta
 `href('/search', { query: { q }, hash: 'results' })`.
 
 The page's code is loaded before the click, once the pointer rests on the link or a touch starts on it, so the click
-has less to wait for. The data of a static page is asked for then too (its file, which runs nothing); another page's data is asked for
+has less to wait for. The data of a static page is asked for then too (its file, which runs nothing, used by the clicks of the next 30 seconds); another page's data is asked for
 at the click, and its loader runs for a visit only.
 Nothing is loaded ahead when the browser's data saver is on.
 
