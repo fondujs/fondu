@@ -12,13 +12,12 @@ import { PAGE_DATA, staticFiles } from '../paths.js'
 
 /** the response headers a static document keeps: the security headers (hono/secure-headers' and the like) */
 const SECURITY_HEADERS =
-  /^(content-security-policy(-report-only)?|strict-transport-security|referrer-policy|permissions-policy|x-content-type-options|x-frame-options|x-xss-protection|x-dns-prefetch-control|x-download-options|x-permitted-cross-domain-policies|origin-agent-cluster|cross-origin-(opener|embedder|resource)-policy)$/i
+  /^(content-security-policy(-report-only)?|strict-transport-security|referrer-policy|permissions-policy|reporting-endpoints|report-to|x-content-type-options|x-frame-options|x-xss-protection|x-dns-prefetch-control|x-download-options|x-permitted-cross-domain-policies|origin-agent-cluster|cross-origin-(opener|embedder|resource)-policy)$/i
 
 /**
- * A static document's own tags: those with the build's nonce (its Content Security Policy's). The nonce of a static
- * document is replaced (Cloudflare: its inline scripts by their hashes; Node / Bun: by each response's nonce), which
- * only these may get: a `nonce` the document has otherwise (in a page's markup) is dropped. Then the hashes of these
- * inline scripts.
+ * A static document's own tags: those with the build's nonce (its Content Security Policy's). The policy of a static
+ * document has no nonce: its inline scripts are allowed by their hashes instead, and only these tags may have had the
+ * nonce: a `nonce` the document has otherwise (in a page's markup) is dropped. Then the hashes of these inline scripts.
  */
 export function ownScripts(
   html: string,
@@ -95,14 +94,15 @@ interface Server {
 /**
  * After the build: the built server (the Worker in wrangler, or `node` / `bun dist/server/index.js`), started with
  * `FONDU_PRERENDER` set, lists the pages to prerender (`/__fondu/prerender`); each is asked for as a document and as
- * a navigation, and both are written to the client build. Cloudflare serves them before the Worker, with the security
- * headers written to `_headers`; Node and Bun before the routes, behind the app's own headers.
+ * a navigation, and both are written to the client build, with the security headers the build decided for them: one
+ * set, in `_headers` (Cloudflare serves the files before the Worker) or in `prerender.json` next to the built server
+ * (Node and Bun: its entry serves the files before the app).
  */
 export async function prerender(
   start: () => Promise<Server>,
   clientDir: string,
   logger: Logger,
-  headersFile: boolean,
+  where: { headersFile: true } | { serverDir: string },
 ) {
   const fail = (lines: string[]): never => {
     for (const line of lines) logger.error(`fondu: ${line}`)
@@ -156,7 +156,7 @@ export async function prerender(
             /^content-security-policy/i.test(name) ? staticPolicy(value, hashes) : value,
           ]),
       )
-      if (headersFile && security && JSON.stringify(headers) !== JSON.stringify(security)) {
+      if (security && JSON.stringify(headers) !== JSON.stringify(security)) {
         errors.push(
           `${path}: its security headers differ from ${paths[0]}'s; one set is written for all`,
         )
@@ -169,7 +169,9 @@ export async function prerender(
       logger.info(`fondu: prerendered ${path}`)
     }
     if (errors.length) return fail(errors)
-    if (headersFile) {
+    if ('serverDir' in where) {
+      write(where.serverDir, 'prerender.json', JSON.stringify({ headers: security ?? {} }))
+    } else {
       const file = join(clientDir, '_headers')
       const own = existsSync(file) ? readFileSync(file, 'utf8') : ''
       writeFileSync(file, withHeaderRules(own, security ?? {}))

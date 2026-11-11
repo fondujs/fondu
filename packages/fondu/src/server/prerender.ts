@@ -1,7 +1,6 @@
 import type { ExecutionContext, Hono } from 'hono'
 
-import { endsInIndex, fillPattern, PAGE_DATA, pathOfPageData, staticFiles } from '../paths.js'
-import { isPageRequest, nonceOf } from './http.js'
+import { endsInIndex, fillPattern, PAGE_DATA, pathOfPageData } from '../paths.js'
 
 /** `export const prerender` of a route or a `_middleware.ts`: the params of a dynamic route's pages, or on / off */
 export type Prerender =
@@ -18,16 +17,6 @@ export interface PrerenderRoute {
   /** the other methods it answers: a static file would answer them 405 */
   others: string[]
 }
-
-/** Node / Bun: reads a file of the client build (`docs/intro.html`), or null; set by the built server's entry */
-const STATIC_FILES = Symbol.for('fondu.staticFiles')
-type StaticFiles = (file: string) => Promise<Uint8Array | null>
-/**
- * a prerendered page's file: no hidden one (`.vite/manifest.json`), nothing above the client build (`..`), no empty segment; `\\`
- * separates segments too (Windows)
- */
-const isStaticFile = (file: string) =>
-  file.split(/[\\/]/).every((s) => s !== '' && !s.startsWith('.'))
 
 /** The paths to prerender, and what stops a route from being prerendered (the build fails on those) */
 export async function prerenderPaths(
@@ -77,40 +66,6 @@ export async function prerenderPaths(
  * a navigation), and, while the build prerenders (`FONDU_PRERENDER` set), the paths to write.
  */
 export function prerenderRoutes(app: Hono, routes: () => PrerenderRoute[], version: string | null) {
-  // Node / Bun: a prerendered page from its file, before the routes and behind the app's security headers (on
-  // Cloudflare, Workers Static Assets serve the files before the Worker runs). The built server says how to read them.
-  app.use(async (c, next) => {
-    const read = (globalThis as Record<symbol, unknown>)[STATIC_FILES] as StaticFiles | undefined
-    if (!read || (c.req.method !== 'GET' && c.req.method !== 'HEAD')) return next()
-    const data = pathOfPageData(c.req.path) !== null // a navigation, rewritten to the page object by fondu/client
-    if (!data && (isPageRequest(c) || !(c.req.header('accept') ?? '').includes('text/html')))
-      return next()
-    // a URL ending in index is never a static document: that file is its directory's page (the routes answer it)
-    if (!data && endsInIndex(c.req.path)) return next()
-    let file: string
-    try {
-      file = data ? decodeURIComponent(c.req.path).slice(1) : staticFiles(c.req.path).html
-    } catch {
-      return next() // not a path a file could have
-    }
-    if (!isStaticFile(file)) return next()
-    const body = await read(file)
-    if (!body) return next()
-    c.header('Cache-Control', 'private, no-cache')
-    if (data) c.header('X-Fondu', 'true')
-    // the document's own tags have the build's nonce (the build dropped any other): this response's instead, as the
-    // security headers give it a new one
-    const nonce = nonceOf(c)
-    if (!data && nonce) {
-      const html = new TextDecoder()
-        .decode(body)
-        .replace(/(<(?:script|link)\b[^>]*\snonce=")[^"]*"/gi, `$1${nonce}"`)
-      return c.html(html, 200)
-    }
-    return c.body(body as Uint8Array<ArrayBuffer>, 200, {
-      'Content-Type': data ? 'application/json' : 'text/html; charset=UTF-8',
-    })
-  })
   app.get(`${PAGE_DATA}/*`, (c) => {
     const path = pathOfPageData(c.req.path)
     // a page object's own URL is not a page: no page object of a page object (and so on)

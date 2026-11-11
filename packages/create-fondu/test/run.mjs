@@ -2,7 +2,9 @@
 // runs it in development (`dev`), then builds, typechecks and runs it in production (`start` / `preview`): the home
 // page server-rendered, a 404 page, the server saying where it listens. `bun run test [target]` here.
 import { execFileSync, spawn } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { request } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -122,8 +124,18 @@ for (const target of Object.keys(production).filter(
   const staticHome = existsSync(join(dist, 'index.html'))
     ? readFileSync(join(dist, 'index.html'), 'utf8')
     : ''
+  check(`${target} build: the home page prerendered, its file`, staticHome.includes(greeting))
+  if (target !== 'cloudflare') {
+    const file = join(app, 'dist/server/prerender.json')
+    const written = existsSync(file) ? (JSON.parse(readFileSync(file, 'utf8')).headers ?? {}) : {}
+    const policy = written['content-security-policy'] ?? ''
+    check(
+      `${target} build: dist/server/prerender.json has the headers, a Content Security Policy with hashes and no nonce`,
+      /script-src 'self' 'sha256-/.test(policy) && !policy.includes("'nonce-"),
+      policy,
+    )
+  }
   if (target === 'cloudflare') {
-    check('cloudflare build: the home page prerendered, its file', staticHome.includes(greeting))
     const pageFile = join(dist, '_fondu/pages/index.json')
     check(
       'cloudflare build: the home page object, its JSON',
@@ -167,22 +179,13 @@ for (const target of Object.keys(production).filter(
     )
     await bodyLimit(base, output, target, script)
     const csp = home.headers.get('content-security-policy') ?? ''
-    // a static page has no nonce: its policy comes from _headers
+    // a static page has no nonce: its policy comes from _headers (Cloudflare) or dist/server/prerender.json
     check(
-      `${target} ${script}: a Content Security Policy`,
-      target === 'cloudflare'
-        ? csp !== '' && !csp.includes("'nonce-")
-        : /script-src 'self' 'nonce-/.test(csp),
+      `${target} ${script}: a Content Security Policy without a nonce`,
+      csp !== '' && !csp.includes("'nonce-"),
       csp,
     )
-    if (target !== 'cloudflare')
-      check(
-        `${target} ${script}: the home page from its prerendered file, with the security headers (its nonce)`,
-        unNonced(html) === unNonced(readFileSync(join(app, 'dist/client/index.html'), 'utf8')) &&
-          [...html.matchAll(/ nonce="([^"]+)"/g)].every(([, n]) =>
-            home.headers.get('content-security-policy')?.includes(`'nonce-${n}'`),
-          ),
-      )
+    if (target !== 'cloudflare') await staticPages(base, app, target, script, home, html, check)
     check(`${target} ${script}: says where it listens`, output().includes(says), output())
   })
 }
@@ -238,9 +241,134 @@ if (!process.argv[2] || process.argv[2] === 'node') {
 rmSync(work, { recursive: true, force: true })
 process.exit(failed ? 1 : 0)
 
-/** a document without its nonces: a static page gets the response's */
-function unNonced(html) {
-  return html.replace(/ nonce="[^"]*"/g, '')
+/**
+ * Node / Bun: the prerendered home page is a file with the build's headers (dist/server/prerender.json), served by
+ * the built server's serveStatic before the app; what it must not serve, and what the app answers instead
+ */
+async function staticPages(base, app, target, script, home, html, check) {
+  // the 10 MB upload above may have left a connection the server closed: undici would reuse it once
+  const send = async (url, init) => {
+    try {
+      return await fetch(url, init)
+    } catch {
+      return fetch(url, init)
+    }
+  }
+  const name = (what) => `${target} ${script}: ${what}`
+  const file = (...path) => readFileSync(join(app, ...path), 'utf8')
+  const headers = JSON.parse(file('dist/server/prerender.json')).headers
+  const csp = home.headers.get('content-security-policy') ?? ''
+  const hashes = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/g)]
+    .filter(([, attrs]) => / nonce="/.test(attrs) && !/\ssrc=/.test(attrs))
+    .map(([, , code]) => `'sha256-${createHash('sha256').update(code).digest('base64')}'`)
+  check(
+    name('the home page from its prerendered file, a hash-based policy and no nonce'),
+    html === file('dist/client/index.html') &&
+      /script-src 'self' 'sha256-/.test(csp) &&
+      !csp.includes("'nonce-") &&
+      hashes.length > 0 &&
+      hashes.every((h) => csp.includes(h)) &&
+      Object.entries(headers).every(([k, v]) => home.headers.get(k) === v) &&
+      home.headers.get('cache-control') === 'private, no-cache' &&
+      (home.headers.get('content-type') ?? '').startsWith('text/html'),
+    `${csp} | ${JSON.stringify(Object.fromEntries(home.headers))}`,
+  )
+  const object = await send(`${base}/_fondu/pages/index.json`)
+  const text = await object.text()
+  check(
+    name("the home page's page object, from its file, with X-Fondu and the security headers"),
+    object.status === 200 &&
+      object.headers.get('x-fondu') === 'true' &&
+      object.headers.get('content-type') === 'application/json' &&
+      object.headers.get('cache-control') === 'private, no-cache' &&
+      Object.entries(headers).every(([k, v]) => object.headers.get(k) === v) &&
+      text === file('dist/client/_fondu/pages/index.json') &&
+      JSON.parse(text).component === 'index',
+    `${object.status} ${JSON.stringify(Object.fromEntries(object.headers))}`,
+  )
+  const head = await send(base + '/', { method: 'HEAD', headers: { Accept: 'text/html' } })
+  check(
+    name('HEAD of the home page: its headers'),
+    head.status === 200 && head.headers.get('content-security-policy') === csp,
+  )
+  const version = JSON.parse(text).version
+  const visit = await send(base + '/', {
+    headers: { 'X-Fondu': 'true', ...(version && { 'X-Fondu-Version': version }) },
+  })
+  const visited = await visit.text()
+  check(
+    name("a navigation to the home page's own URL is answered by the app, not its file"),
+    visit.status === 200 &&
+      JSON.parse(visited).component === 'index' &&
+      (visit.headers.get('vary') ?? '').includes('X-Fondu') &&
+      (visit.headers.get('content-security-policy') ?? '').includes("'nonce-"),
+    `${visit.status} ${visited.slice(0, 80)}`,
+  )
+  const answers = []
+  for (const path of ['/index', '/%69ndex']) {
+    const res = await page(base + path)
+    const body = await res.text()
+    answers.push(
+      res.status === 404 &&
+        body.includes('"component":"_error"') &&
+        (res.headers.get('content-security-policy') ?? '').includes("'nonce-"),
+    )
+  }
+  check(
+    name('a URL ending in index is answered by the app, never by the home page file'),
+    answers.every(Boolean),
+    String(answers),
+  )
+  // the client's manifest: a string only it has
+  const manifest = file('dist/client/.vite/manifest.json')
+  const only = '"isEntry"'
+  const url = new URL(base)
+  const outside = []
+  for (const path of [
+    '/.vite/manifest.json',
+    '/_fondu/pages/%2e%2e/%2e%2e/.vite/manifest.json',
+    '/_fondu/pages/x%5C..%5C..%5C..%5C.vite%5Cmanifest.json',
+    '/_fondu/pages/..%2f..%2f.vite%2fmanifest.json',
+    '/_fondu/pages/../../.vite/manifest.json',
+    '/%2e%2e/secret',
+    '/%00',
+    '/_fondu/pages/index%00.json',
+  ])
+    for (const headers of [{ Accept: 'text/html' }, { 'X-Fondu': 'true' }]) {
+      const res = await raw(url, path, headers)
+      outside.push(
+        res.status < 500 &&
+          (res.status !== 200) === true &&
+          !res.body.includes(only) &&
+          res.body !== manifest,
+      )
+      if (!outside.at(-1))
+        console.log(
+          `  ${path} ${JSON.stringify(headers)} -> ${res.status} ${res.body.slice(0, 80)}`,
+        )
+    }
+  check(
+    name('the client manifest and files outside the build are not served (the path as sent)'),
+    manifest.includes(only) && outside.every(Boolean),
+    String(outside),
+  )
+}
+
+/** a request with its path exactly as given (`fetch` would normalize `%2e%2e`) */
+function raw(url, path, headers) {
+  return new Promise((resolve, reject) => {
+    const req = request(
+      { host: url.hostname, port: url.port, path, method: 'GET', headers },
+      (res) => {
+        let body = ''
+        res.setEncoding('utf8')
+        res.on('data', (d) => (body += d))
+        res.on('end', () => resolve({ status: res.statusCode, body }))
+      },
+    )
+    req.on('error', reject)
+    req.end()
+  })
 }
 
 // a body over 10 MB is refused (createApp's bodyLimit), a small one is not. An URL of no page, so that a prerendered

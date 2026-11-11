@@ -142,10 +142,17 @@ export function pathOfPageData(pathname: string): string | null {
   return m[1]!.replace(/(?<=\/)index$/, '').replace(/(?<=\/)~(~*index)$/, '$1')
 }
 
+/**
+ * a prerendered page's document file from its path as a server reads it (decoded): `/docs/intro` → `docs/intro.html`,
+ * `/docs/` → `docs/index.html`
+ */
+export const htmlFile = (decodedPath: string) =>
+  (decodedPath.endsWith('/') ? `${decodedPath}index.html` : `${decodedPath}.html`).slice(1)
+
 /** the files of a prerendered page: `/docs/intro` → `docs/intro.html` and `_fondu/pages/docs/intro.json` (decoded) */
 export function staticFiles(path: string): { html: string; json: string } {
-  const html = decodeURIComponent(path.endsWith('/') ? path + 'index.html' : path + '.html').slice(
-    1,
-  )
-  return { html, json: decodeURIComponent(pageDataPath(path)).slice(1) }
+  return {
+    html: htmlFile(decodeURIComponent(path)),
+    json: decodeURIComponent(pageDataPath(path)).slice(1),
+  }
 }
