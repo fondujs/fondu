@@ -1,6 +1,6 @@
 /// <reference path="../virtual.d.ts" />
 import type { Context, MiddlewareHandler } from 'hono'
-import type { ReactElement } from 'react'
+import { createElement, type ReactElement } from 'react'
 import { assetTags } from 'virtual:fondu/assets'
 import { renderMarkup, renderPage } from 'virtual:fondu/ssr'
 
@@ -53,8 +53,7 @@ const pageScript = (page: Page) =>
  * their own until then (to the #fragment, WebKit and Firefox), fondu/client keeping their restoration off. Not once
  * the visitor has scrolled, typed or clicked: their own scrolling wins.
  */
-const restoreScroll = (nonce: string | undefined) =>
-  `<script${nonce ? ` nonce="${nonce}"` : ''}>try{var k=history.state&&history.state[${JSON.stringify(SCROLL_KEY)}],p=k&&JSON.parse(sessionStorage.getItem(${JSON.stringify(SCROLL_STORAGE)}+k));if(p){var go=function(){scrollTo(+p.x||0,+p.y||0)},off=function(){go=0};go();["wheel","touchstart","keydown","mousedown"].forEach(function(t){addEventListener(t,off,{once:!0,passive:!0})});addEventListener("load",function(){setTimeout(function(){go&&go()})})}}catch(e){}</script>`
+const restoreScroll = `try{var k=history.state&&history.state[${JSON.stringify(SCROLL_KEY)}],p=k&&JSON.parse(sessionStorage.getItem(${JSON.stringify(SCROLL_STORAGE)}+k));if(p){var go=function(){scrollTo(+p.x||0,+p.y||0)},off=function(){go=0};go();["wheel","touchstart","keydown","mousedown"].forEach(function(t){addEventListener(t,off,{once:!0,passive:!0})});addEventListener("load",function(){setTimeout(function(){go&&go()})})}}catch(e){}`
 
 // where the page goes, in the document a template returns: replaced before the page is in, so a page's content is
 // never read as one
@@ -77,12 +76,54 @@ async function shell(
   return html.replace(/<script\b(?![^>]*\s(?:src|nonce)=)/gi, `<script nonce="${nonce}"`)
 }
 
-export async function renderDocument(c: Context, page: Page): Promise<string> {
+/**
+ * The document, streamed. First: the template's start, the stylesheets and the client's tags, the tags the page hoists
+ * (React writes them before the page), the page data and the page's shell. Then what React adds as the Suspense
+ * boundaries of the page resolve. Last: the template's end. The status and the headers are the loader's: sent with the
+ * first byte. A string for a page that is not rendered here (`withoutSsr`, a shell that failed to render, a HEAD).
+ * `whole`: wait for every boundary first (a prerendered page: no scripts of React's in the file, what
+ * `renderToString` gave).
+ */
+export async function renderDocument(
+  c: Context,
+  page: Page,
+  whole = false,
+): Promise<string | ReadableStream<Uint8Array>> {
   const nonce = nonceOf(c)
-  let ssr: { head: string; body: string } | null = null
+  // the template first: one that is wrong fails before anything renders (no stream left running)
+  const template = settings.get(c)?.document ?? defaultTemplate
+  const html = await shell(template, c, nonce)
+  const [before, between, after, ...more] = html.split(new RegExp(`${HEAD}|${BODY}`))
+  if (after === undefined || more.length || html.indexOf(HEAD) > html.indexOf(BODY))
+    throw new Error(
+      'fondu: the document must have `head` once, in <head>, and `body` once, in <body>',
+    )
+  let ssr: ReadableStream<string> | null = null
+  // what fails in a boundary is for the browser to render, and is logged. The shell's failure is logged below, once:
+  // React reports it to `onError` too, so what it reports is held until the shell is known to be there
+  const pending: unknown[] = []
+  let live = false
+  const late = (error: unknown) =>
+    console.error(
+      `[fondu] a Suspense boundary of "${page.component}" failed on the server, the browser renders it:`,
+      error,
+    )
   try {
-    // the page as the browser gets it, through JSON (a Date a string): the markup is the same on both sides
-    if (renderPage && !browserOnly.has(c)) ssr = await renderPage(JSON.parse(JSON.stringify(page)))
+    // a HEAD: Hono drops its body without cancelling it, so React would keep rendering for nothing
+    if (renderPage && !browserOnly.has(c) && c.req.method !== 'HEAD') {
+      // the page as the browser gets it, through JSON (a Date a string): the markup is the same on both sides
+      const stream = await renderPage(
+        JSON.parse(JSON.stringify(page)),
+        { nonce, onError: (error) => (live ? late(error) : void pending.push(error)) },
+        // the position back for a page rendered here (one rendered in the browser has nothing to scroll yet): in the
+        // shell, right after the page, before what the boundaries add
+        createElement('script', { nonce, dangerouslySetInnerHTML: { __html: restoreScroll } }),
+      )
+      if (whole) await stream.allReady
+      ssr = stream.pipeThrough(new TextDecoderStream() as ReadableWritablePair<string, Uint8Array>)
+      for (const error of pending) late(error)
+      live = true
+    }
   } catch (error) {
     // like Laravel: a page that fails to render on the server is still sent, and rendered in the browser
     console.error(
@@ -92,15 +133,7 @@ export async function renderDocument(c: Context, page: Page): Promise<string> {
   }
   // the page data first: the client reads the first `script[data-page]` in the document, so nothing in the page's
   // content can come before it
-  // the position back for a page rendered here (one rendered in the browser has nothing to scroll yet)
-  const body = pageScript(page) + (ssr ? ssr.body + restoreScroll(nonce) : '<div id="app"></div>')
-  const template = settings.get(c)?.document ?? defaultTemplate
-  const html = await shell(template, c, nonce)
-  const [before, between, after, ...more] = html.split(new RegExp(`${HEAD}|${BODY}`))
-  if (after === undefined || more.length || html.indexOf(HEAD) > html.indexOf(BODY))
-    throw new Error(
-      'fondu: the document must have `head` once, in <head>, and `body` once, in <body>',
-    )
+  const data = pageScript(page)
   // the stylesheets first, right after <meta charset>: found, and asked for, before anything else of the head, the
   // document's own tags included (React puts a JSX document's links and metas before `head`). A browser that lays
   // the page out early (Firefox's, with its tools open) has them sooner
@@ -109,12 +142,33 @@ export async function renderDocument(c: Context, page: Page): Promise<string> {
   const charset = /<meta charset=[^>]*>/i
   const top =
     css && charset.test(before) ? before.replace(charset, (meta) => meta + css) : before + css
-  return (
-    top +
-    tags.replace(/<link rel="stylesheet"[^>]*>/g, '') +
-    (ssr?.head ?? '') +
-    between +
-    body +
-    after
-  )
+  const start = top + tags.replace(/<link rel="stylesheet"[^>]*>/g, '')
+  if (!ssr) return start + between + data + '<div id="app"></div>' + after
+  // React's own: the tags the page hoists, then the page (`<div id="app"`), found across chunks
+  const reader = ssr.getReader()
+  let text = ''
+  let at = -1
+  while (at < 0) {
+    const { done, value } = await reader.read()
+    if (done) break
+    text += value
+    at = text.indexOf('<div id="app"')
+  }
+  const out = new TextEncoder()
+  return new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(out.encode(start + text.slice(0, at) + between + data + text.slice(at)))
+    },
+    async pull(controller) {
+      const { done, value } = await reader.read()
+      if (!done) return controller.enqueue(out.encode(value))
+      controller.enqueue(out.encode(after))
+      controller.close()
+    },
+    // the visitor left: React stops (its abort reaches `onError`: not an error of the page)
+    cancel(reason) {
+      live = false
+      return reader.cancel(reason)
+    },
+  })
 }

@@ -26,6 +26,29 @@ const tarball = join(
   sh('npm', ['pack', '--silent', '--pack-destination', work], join(here, '../fondu')).trim(),
 )
 
+// streamed (not prerendered): the boundary waits 2 s on the server
+const SLOW = `import { Suspense, use } from 'react'
+
+export default function Slow() {
+  const wait =
+    typeof document === 'undefined' ? new Promise<void>((r) => setTimeout(r, 2000)) : undefined
+  return (
+    <>
+      <title>Slow</title>
+      <h1>Shell</h1>
+      <Suspense fallback={<p id="fallback">Loading</p>}>
+        <Later wait={wait} />
+      </Suspense>
+    </>
+  )
+}
+
+function Later({ wait }: { wait?: Promise<void> }) {
+  if (wait) use(wait)
+  return <p id="late">Late content</p>
+}
+`
+
 const production = {
   node: { script: 'start', port: 3000, says: 'Listening on http://localhost:3000' },
   bun: { script: 'start', port: 3000, says: 'Started server: http://localhost:3000' },
@@ -87,6 +110,9 @@ for (const target of Object.keys(production).filter(
   pkg.dependencies.fondu = `file:${tarball}`
   writeFileSync(join(app, 'package.json'), JSON.stringify(pkg, null, 2))
   sh('bun', ['install'], app)
+  // a page with a Suspense boundary that is slow on the server: streamed; and a copy of it that is prerendered
+  writeFileSync(join(app, 'app/routes/slow.tsx'), SLOW)
+  writeFileSync(join(app, 'app/routes/slow-static.tsx'), SLOW + 'export const prerender = true\n')
 
   // development: the page renders, and every module the browser would load is served without Vite finding a
   // dependency late (which reloads the page)
@@ -104,6 +130,7 @@ for (const target of Object.keys(production).filter(
       output(),
     )
     await bodyLimit(base, output, target, 'dev')
+    await streams(base, target, 'dev')
   })
 
   // the home page prerendered
@@ -125,6 +152,16 @@ for (const target of Object.keys(production).filter(
     ? readFileSync(join(dist, 'index.html'), 'utf8')
     : ''
   check(`${target} build: the home page prerendered, its file`, staticHome.includes(greeting))
+  const staticSlow = existsSync(join(dist, 'slow-static.html'))
+    ? readFileSync(join(dist, 'slow-static.html'), 'utf8')
+    : ''
+  check(
+    `${target} build: a prerendered page with a slow Suspense boundary has its content and no script of React's`,
+    staticSlow.includes('<p id="late">Late content</p>') &&
+      !staticSlow.includes('id="fallback"') &&
+      !staticSlow.includes('$RC'),
+    staticSlow.slice(0, 300),
+  )
   if (target !== 'cloudflare') {
     const file = join(app, 'dist/server/prerender.json')
     const written = existsSync(file) ? (JSON.parse(readFileSync(file, 'utf8')).headers ?? {}) : {}
@@ -178,6 +215,7 @@ for (const target of Object.keys(production).filter(
       missing.status === 404 && (await missing.text()).includes('"component":"_error"'),
     )
     await bodyLimit(base, output, target, script)
+    await streams(base, target, script)
     const csp = home.headers.get('content-security-policy') ?? ''
     // a static page has no nonce: its policy comes from _headers (Cloudflare) or dist/server/prerender.json
     check(
@@ -420,6 +458,38 @@ async function run(app, script, port, test) {
     else process.kill(-server.pid) // the process group
     await new Promise((r) => server.on('exit', r))
   }
+}
+
+/**
+ * A document read chunk by chunk: the shell is sent at once and the boundary 2 s later, so the first chunk has the
+ * fallback and not the content, and the last comes at least 1.5 s after it (a gap: a cold start doesn't matter).
+ * Where a target buffers, assert the full body only, and say which target in a comment.
+ */
+async function streams(base, target, script) {
+  await (await page(base + '/slow')).text() // dev compiles the page on its first request
+  const res = await page(base + '/slow')
+  const reader = res.body.getReader()
+  const decoder = new TextDecoder()
+  const chunks = []
+  const t0 = Date.now()
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    chunks.push({ at: Date.now() - t0, text: decoder.decode(value, { stream: true }) })
+  }
+  const text = chunks.map((c) => c.text).join('')
+  const first = chunks[0]
+  const last = chunks.at(-1)
+  check(
+    `${target} ${script}: a page with a slow Suspense boundary streams: the shell first, the boundary after its data`,
+    res.status === 200 &&
+      chunks.length >= 2 &&
+      first.text.includes('id="fallback"') &&
+      !first.text.includes('Late content') &&
+      text.includes('<p id="late">Late content</p>') &&
+      last.at - first.at >= 1500,
+    JSON.stringify(chunks.map((c) => [c.at, c.text.length])),
+  )
 }
 
 /** a document request, retried while the server starts */

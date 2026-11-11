@@ -1,6 +1,7 @@
 import type { ExecutionContext, Hono } from 'hono'
 
 import { endsInIndex, fillPattern, PAGE_DATA, pathOfPageData } from '../paths.js'
+import { isPrerendering } from './http.js'
 
 /** `export const prerender` of a route or a `_middleware.ts`: the params of a dynamic route's pages, or on / off */
 export type Prerender =
@@ -82,10 +83,7 @@ export function prerenderRoutes(app: Hono, routes: () => PrerenderRoute[], versi
   })
   app.get('/__fondu/prerender', async (c) => {
     // set for the build only: a Worker binding, or the environment of `node` / `bun dist/server/index.js`
-    const env =
-      (c.env as Record<string, unknown> | undefined)?.FONDU_PRERENDER ??
-      globalThis.process?.env?.FONDU_PRERENDER
-    if (!env) return c.notFound()
+    if (!isPrerendering(c)) return c.notFound()
     return c.json({ version, ...(await prerenderPaths(routes())) })
   })
 }

@@ -9,6 +9,7 @@ declare module 'fondu' {
       "/go/:kind": typeof import("./routes/go/[kind]")
       "/": typeof import("./routes/index")
       "/long": typeof import("./routes/long")
+      "/slow": typeof import("./routes/slow")
     }
   }
 }

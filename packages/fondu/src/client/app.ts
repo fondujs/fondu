@@ -2,6 +2,7 @@ import {
   Component,
   createContext,
   createElement,
+  Fragment,
   useContext,
   useLayoutEffect,
   useState,
@@ -233,18 +234,32 @@ function start(settings: { prerender: boolean; progress: ProgressOptions | false
   })
 }
 
-/** @internal the server render of a page: the head tags its components render (`<title>`…), and `<div id="app">` */
+/** what `react-dom/server`'s `renderToReadableStream` gives: the bytes of the HTML, and when all of it is rendered */
+export type Rendered = ReadableStream<Uint8Array> & { allReady: Promise<void> }
+
+/**
+ * @internal the server render of a page, streamed: the tags its components hoist (`<title>`…) first, then
+ * `<div id="app">`, then `after` (markup of the document's, in the shell: right after the page), then what the
+ * Suspense boundaries that were not ready add. Rejects if the shell fails to render.
+ */
 export async function renderPage(
   page: Page,
-  renderToString: (element: ReactElement) => string,
-): Promise<{ head: string; body: string }> {
+  render: (element: ReactElement) => Promise<Rendered>,
+  after?: ReactElement,
+): Promise<Rendered> {
   const view = await load(page.component)
-  const html = renderToString(
-    createElement('div', { id: 'app' }, createElement(App, { initial: { page, view, mounts: 0 } })),
+  return render(
+    createElement(
+      Fragment,
+      null,
+      createElement(
+        'div',
+        { id: 'app' },
+        createElement(App, { initial: { page, view, mounts: 0 } }),
+      ),
+      after,
+    ),
   )
-  // React puts the tags it hoists (`<title>`, `<meta>`, `<link>`) before the root's markup
-  const at = html.indexOf('<div id="app"')
-  return { head: html.slice(0, at), body: html.slice(at) }
 }
 
 /** a form's field errors, as a page gets them (its `errors` prop): field name → message */

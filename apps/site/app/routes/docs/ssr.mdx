@@ -4,6 +4,20 @@ A document request (a first visit, a reload, a link opened in a new tab) is rend
 process as the routes: the HTML of the page, the tags it renders for `<head>`, and the page data. The browser shows it
 at once, then React hydrates it. The navigations after that are rendered in the browser.
 
+## Streaming
+
+The document is streamed. The first bytes are the start of the document, the tags the page renders for `<head>`
+(`<title>`, `<meta>`), the page data and the page's shell: everything outside a `<Suspense>` boundary. A boundary whose
+data is not there yet shows its fallback, and is sent when it resolves; React puts it in place with a small script.
+
+The loader decides the answer, so the status, the headers, redirects and cookies are sent with the first byte, before
+anything renders later. A navigation gets its JSON as before, and a [static page](/docs/static-pages) waits for every
+boundary.
+
+What renders later is the page's to handle. Tags a boundary renders (`<title>`, `<meta>`) land in `<body>`, and the
+first `<title>` of the document wins. Without JavaScript the fallback stays. A component that suspends outside any
+boundary holds the whole page until it resolves, so wrap what is slow in `<Suspense>`.
+
 There is no separate render server to run, on any target: on Cloudflare the render is part of the Worker.
 
 ## Turning it off
@@ -39,3 +53,6 @@ mounted: after an effect, or with `useSyncExternalStore` and a server snapshot o
 If a page throws while rendering on the server, Fondu logs the error and sends the page to render in the browser
 instead, so the visitor still gets it. Fix it all the same: the page loses what the server render gives it, a fast
 first paint and HTML for search engines.
+
+A `<Suspense>` boundary that throws after the shell is sent is rendered in the browser instead, and logged. The status
+was sent with the shell, so it stays as it was.

@@ -12,13 +12,27 @@ const virtual: Plugin = {
     if (id === '\0virtual:fondu/assets')
       return `export const version = 'v1'; export const prerender = true; export const assetTags = () => ''`
     if (id === '\0virtual:fondu/ssr')
-      return "export const renderPage = null; export { renderToStaticMarkup as renderMarkup } from 'react-dom/server'"
+      return [
+        `import { renderToReadableStream, renderToStaticMarkup } from 'react-dom/server'`,
+        `import { __entry, renderPage as render } from 'fondu/client'`,
+        `__entry(import.meta.glob(['/app/routes/**/*.tsx', '!/app/routes/**/_layout.tsx']), import.meta.glob('/app/routes/**/_layout.tsx'), { prerender: false, progress: false })`,
+        `export const renderPage = (page, options, after) => render(page, (el) => renderToReadableStream(el, options), after)`,
+        `export { renderToStaticMarkup as renderMarkup }`,
+      ].join('\n')
   },
 }
 
 export default defineConfig({
   root: fileURLToPath(new URL('./test', import.meta.url)),
   plugins: [virtual],
-  resolve: { alias: { fondu: fileURLToPath(new URL('./src/index.ts', import.meta.url)) } },
+  resolve: {
+    alias: [
+      {
+        find: /^fondu\/client$/,
+        replacement: fileURLToPath(new URL('./src/client.ts', import.meta.url)),
+      },
+      { find: /^fondu$/, replacement: fileURLToPath(new URL('./src/index.ts', import.meta.url)) },
+    ],
+  },
   test: { include: ['*.test.ts'] },
 })

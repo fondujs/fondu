@@ -47,7 +47,7 @@ machine, a `localhost` site URL say, ends up in production. Keep what static pag
 
 ## What a static page can be
 
-A static page is the same for everyone. It is rendered once, for a visitor with no cookies and no query string, shared
+A static page is the same for everyone. It is rendered once, with every Suspense boundary resolved, for a visitor with no cookies and no query string, shared
 props included. So the build stops, naming the route, when a page:
 
 - answers with a status other than 200, such as a redirect;
