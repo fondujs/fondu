@@ -8,6 +8,8 @@ export interface Page {
   url: string
   version: string | null
   flash: Record<string, unknown>
+  /** the props left out, to come with a request of their own (`defer()`); the client's: those not there yet */
+  deferred?: string[]
 }
 
 interface Options {
@@ -51,6 +53,8 @@ interface Visit {
 }
 
 let visit: ((url: string, options: Visit) => void) | undefined
+/** the props of the page on the screen asked for, quietly (`defer()`, `reload({ only })`) */
+let ask: ((names: string[]) => void) | undefined
 /** a URL path is one of the app's pages (the client's, once it has started) */
 let isAppPage: ((pathname: string) => boolean) | undefined
 
@@ -82,7 +86,71 @@ export function startNavigation({
     if (kept.size > 50) kept.delete(kept.keys().next().value!)
   }
 
+  // the page on the screen, and how many were put there (an answer for another is dropped)
+  let on = initial
+  let shows = 0
+  const asking = new Set<AbortController>()
+  const put = async (page: Page, fresh: boolean, stale: () => boolean) => {
+    await show(page, fresh, stale)
+    if (stale()) return
+    on = page
+    shows++
+    // the page they were for is gone
+    for (const quiet of asking) quiet.abort()
+  }
   const headers = () => ({ 'X-Fondu': 'true', ...(version && { 'X-Fondu-Version': version }) })
+  /** where a page's JSON is: its URL, or its file (a prerendered build) */
+  const source = (url: URL) =>
+    prerender ? pageDataPath(url.pathname) + url.search : url.pathname + url.search
+
+  /**
+   * Props of the page on the screen, asked for with a request of its own: the loader's answer for the same
+   * component, with these props only. Quiet: no navigation state, no history entry, no scroll; it is aborted when
+   * another page is put on the screen, and an answer for a page no longer there is dropped; whatever isn't the
+   * page's answer is a failure, never a navigation. What came is merged into the page, its state kept; what didn't is no longer pending (`<Deferred>`
+   * says it failed)
+   */
+  ask = async (names) => {
+    const at = shows
+    const page = on
+    const controller = new AbortController()
+    asking.add(controller)
+    // a prop asked for that is neither here nor coming (it failed): pending again, `<Deferred>` shows its fallback
+    const absent = names.filter((n) => !(n in page.props) && !page.deferred?.includes(n))
+    if (absent.length)
+      void show(
+        (on = { ...page, deferred: [...(page.deferred ?? []), ...absent] }),
+        false,
+        () => shows !== at,
+      )
+    let got: Record<string, unknown> = {}
+    try {
+      const response = await fetch(source(new URL(page.url, location.href)), {
+        headers: {
+          ...headers(),
+          'X-Fondu-Only': names.join(','),
+          'X-Fondu-Component': page.component,
+        },
+        signal: controller.signal,
+      })
+      const answer =
+        response.ok && response.headers.has('X-Fondu') ? ((await response.json()) as Page) : null
+      if (answer?.component === page.component)
+        got = Object.fromEntries(
+          Object.entries(answer.props).filter(([key]) => names.includes(key)),
+        )
+    } catch {} // offline, aborted
+    asking.delete(controller)
+    if (controller.signal.aborted || shows !== at) return
+    const next: Page = {
+      ...on,
+      props: { ...on.props, ...got },
+      deferred: on.deferred?.filter((n) => !names.includes(n)),
+    }
+    on = next // before the module is awaited: another answer merges into this one
+    await show(next, false, () => shows !== at)
+    if (shows === at) keep(next)
+  }
   /** a document load: in place of this entry, or after it */
   const documentLoad = (url: string, replace: boolean) => {
     // http(s) only: a header's URL never runs as `javascript:` (an app's redirect to a URL it was given)
@@ -116,13 +184,12 @@ export function startNavigation({
         pending(failed ? { to, form, post, failed: true } : null)
     }
     if (!post) preload(url.pathname)
-    const from =
-      !post && prerender ? pageDataPath(url.pathname) + url.search : url.pathname + url.search
+    const from = !post && prerender ? source(url) : url.pathname + url.search
     void (async () => {
       try {
         if (shown) {
           scroll.commit()
-          await show(shown, true, () => signal.aborted)
+          await put(shown, true, () => signal.aborted)
           if (signal.aborted) return
           announce()
           restore(options.scroll, url.hash)
@@ -186,6 +253,10 @@ export function startNavigation({
         const asked = url.pathname + url.search
         // the kept page's entry: the server's page in its place, its state kept; redirected (signed out), anew
         const fresh = shown ? asked !== page.url : !options.keep && !(same && errors)
+        // the page stays (reload(), Back's, a form's answer): what it asked for isn't taken away while it is asked again
+        if (!fresh && page.deferred)
+          for (const name of page.deferred)
+            if (name in on.props) page.props[name] ??= on.props[name]
         // its URL first, as the browser's own navigations: a page's render reads it (`location`, a URL's language);
         // a redirect's, the fragment asked for if it is still this page's
         const target = page.url + (asked === page.url ? url.hash : '')
@@ -198,9 +269,10 @@ export function startNavigation({
               : options.history
         if (history !== 'none') scroll.write(target, history === 'replace')
         scroll.commit()
-        await show(page, fresh, () => signal.aborted)
+        await put(page, fresh, () => signal.aborted)
         if (signal.aborted) return
         keep(page)
+        if (page.deferred?.length) ask!(page.deferred)
         if (shown && !fresh) return
         if (!options.keep) announce()
         // a page asked for again stays where it is: reload(), a form's answer at its URL
@@ -208,7 +280,12 @@ export function startNavigation({
         // at once, the page in the DOM (show() renders it synchronously): no frame drawn where it doesn't belong
         restore(options.history === 'none' ? options.scroll : null, url.hash)
       } catch (error) {
-        if ((error as Error).name === 'AbortError' || shown) return // offline, Back: the kept page stays
+        if ((error as Error).name === 'AbortError') return
+        if (shown) {
+          // offline, Back: the kept page stays; what it was still waiting for is asked now, to fail rather than wait
+          if (on.deferred?.length) ask!(on.deferred)
+          return
+        }
         // the form stays, to send again: the state says so
         if (post) {
           failed = true
@@ -327,6 +404,7 @@ export function startNavigation({
     if (position) holdUntilLoaded(position)
   }
   keep(initial)
+  if (initial.deferred?.length) ask(initial.deferred)
 }
 
 /**
@@ -522,7 +600,8 @@ export function navigate(href: string, { replace = false }: { replace?: boolean 
 }
 
 /** the page asked for again, its state and the scroll position kept */
-export function again() {
-  if (visit) visit(location.href, { history: 'none', keep: true })
-  else location.reload()
+export function again(only?: string[]) {
+  if (!visit) return location.reload()
+  if (!only) return visit(location.href, { history: 'none', keep: true })
+  if (only.length) ask!(only)
 }

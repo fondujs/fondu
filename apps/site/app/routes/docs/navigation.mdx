@@ -82,11 +82,12 @@ function Search() {
 - `{ replace: true }` replaces the current history entry instead, so Back skips it.
 - Any other URL loads as a document.
 
-| Export                        | Does                                                           |
-| ----------------------------- | -------------------------------------------------------------- |
-| `navigate(url, { replace? })` | goes to `url` as a link would                                  |
-| `loadDocument(url)`           | loads `url` as a document (a full page load)                   |
-| `reload()`                    | asks for the current page's props again; state and scroll stay |
+| Export                        | Does                                                                              |
+| ----------------------------- | --------------------------------------------------------------------------------- |
+| `navigate(url, { replace? })` | goes to `url` as a link would                                                     |
+| `loadDocument(url)`           | loads `url` as a document (a full page load)                                      |
+| `reload()`                    | asks for the current page's props again; state and scroll stay                    |
+| `reload({ only: ['stats'] })` | asks for those props alone, quietly: [deferred props](/docs/pages#deferred-props) |
 
 ## Forms
 

@@ -23,6 +23,35 @@ export function share(c: Context, props: Shareable<Shared>) {
   shared.set(c, { ...shared.get(c), ...props })
 }
 
+// ---- deferred props (`defer`): left out of a page, asked for by a request of their own
+// As Inertia's deferred props, with rescue always on (a function that throws is logged and its prop left out); no groups
+
+/** a prop the page gets with a second request: `defer(fn)` in `render()`'s props */
+class DeferredProp<T> {
+  declare readonly type?: T // phantom: what `fn` gives (no toJSON: a deferred prop is no JSON input)
+  readonly load: () => T | PromiseLike<T>
+  constructor(load: () => T | PromiseLike<T>) {
+    this.load = load
+  }
+}
+Object.defineProperty(DeferredProp.prototype, 'toJSON', {
+  value() {
+    throw new Error(
+      'fondu: defer() is for a prop of render(), at the top (not in share(), not inside a prop)',
+    )
+  },
+})
+export type { DeferredProp }
+
+/**
+ * A prop of the page that is not sent with it: `render(c, Page, { user, stats: defer(() => loadStats()) })`. The page
+ * renders without it (optional in the component's props); the client asks for it once the page is on the screen, and
+ * `fn` runs only for that request.
+ */
+export function defer<T>(fn: () => T | PromiseLike<T>): DeferredProp<T> {
+  return new DeferredProp(fn)
+}
+
 // ---- render
 
 /** a page: a component, its props what it receives (a function component, or a class one) */
@@ -98,8 +127,11 @@ type NotJsonError =
   'fondu: the page receives this prop as JSON (a Date as a string, a Map as {}): type it as such'
 /** a page's props as `render` takes them: what becomes each as JSON, or an error for a type JSON can't deliver */
 export type Delivered<P> = {
-  [K in keyof P]: Arrives<P[K]> extends true ? JsonInput<P[K]> : NotJsonError
+  [K in keyof P]: Arrives<P[K]> extends true ? JsonInput<P[K]> | Deferrable<P, K> : NotJsonError
 }
+/** `defer()` for a prop the page takes as optional: it renders without it */
+type Deferrable<P, K extends keyof P> =
+  {} extends Pick<P, K> ? DeferredProp<JsonInput<Exclude<P[K], undefined>>> : never
 type RequiredKeys<T> = { [K in keyof T]-?: object extends Pick<T, K> ? never : K }[keyof T]
 
 export interface RenderOptions {
@@ -164,19 +196,60 @@ export async function renderPage(
   props: Record<string, unknown>,
   options: RenderOptions = {},
 ): Promise<Response> {
-  const carried = takeCarried(c)
-  const fromShared = await Promise.all(
-    Object.entries(shared.get(c) ?? {}).map(async ([key, value]) => [
-      key,
-      typeof value === 'function' ? await value() : value,
-    ]),
-  )
-  const page: Page = {
-    component: id,
-    props: { ...Object.fromEntries(fromShared), ...props, errors: carried.errors },
-    url: pageUrl(c),
-    version,
-    flash: carried.flash,
+  const only = askedFor(c, id)
+  const deferred = Object.keys(props).filter((k) => props[k] instanceof DeferredProp)
+  let page: Page
+  if (only) {
+    // a partial request: what was asked for, and nothing the page already has (no shared props, no errors, no flash:
+    // the cookie is the next page's)
+    const wanted = only.filter((k) => Object.hasOwn(props, k))
+    const entries = await Promise.all(
+      wanted.map(async (key) => {
+        const value = props[key]
+        if (!(value instanceof DeferredProp)) return [[key, value]]
+        try {
+          return [[key, await value.load()]]
+        } catch (error) {
+          console.error(`[fondu] the deferred prop "${key}" of "${id}" failed:`, error)
+          return []
+        }
+      }),
+    )
+    page = {
+      component: id,
+      props: Object.fromEntries(entries.flat()),
+      url: pageUrl(c),
+      version,
+      flash: {},
+    }
+  } else {
+    const carried = takeCarried(c)
+    const fromShared = await Promise.all(
+      Object.entries(shared.get(c) ?? {}).map(async ([key, value]) => [
+        key,
+        typeof value === 'function' ? await value() : value,
+      ]),
+    )
+    // a static page has all its data: what is deferred is awaited
+    const now = isPrerendering(c)
+    const own = Object.fromEntries(
+      await Promise.all(
+        Object.entries(props)
+          .filter(([key]) => now || !deferred.includes(key))
+          .map(async ([key, value]) => [
+            key,
+            value instanceof DeferredProp ? await value.load() : value,
+          ]),
+      ),
+    )
+    page = {
+      component: id,
+      props: { ...Object.fromEntries(fromShared), ...own, errors: carried.errors },
+      url: pageUrl(c),
+      version,
+      flash: carried.flash,
+      ...(deferred.length && !now && { deferred }),
+    }
   }
   // a page is this visitor's: not stored by shared caches, revalidated by the browser (unless the route said otherwise)
   if (!c.res.headers.has('Cache-Control')) c.header('Cache-Control', 'private, no-cache')
@@ -189,6 +262,25 @@ export async function renderPage(
   return typeof document === 'string'
     ? c.html(document, status)
     : c.body(document, status, { 'Content-Type': 'text/html; charset=UTF-8' })
+}
+
+/**
+ * The props a partial request asks for (`X-Fondu-Only: stats,feed`), if it is one: a navigation, a GET, for the
+ * component this route renders
+ */
+function askedFor(c: Context, id: string): string[] | undefined {
+  const only = c.req.header('x-fondu-only')
+  if (
+    !only ||
+    c.req.method !== 'GET' ||
+    !isPageRequest(c) ||
+    c.req.header('x-fondu-component') !== id
+  )
+    return
+  return only
+    .split(',')
+    .map((name) => name.trim())
+    .filter(Boolean)
 }
 
 /** an http(s) URL, as `to` resolves from the request's */
@@ -214,7 +306,7 @@ const versionCheck: MiddlewareHandler = async (c, next) => {
   }
   await next()
   // a URL answers a navigation and a document differently: caches keep them apart
-  appendHeader(c, 'Vary', 'X-Fondu')
+  appendHeader(c, 'Vary', isPageRequest(c) ? 'X-Fondu, X-Fondu-Only' : 'X-Fondu')
   // an empty answer to a form (an action that returns nothing to show, `c.body(null)`): back to the page. Its body
   // isn't read to tell (a stream's would be, to its end)
   if (isPageRequest(c) && c.res.status === 200 && !c.res.headers.has('x-fondu') && !c.res.body)

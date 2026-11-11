@@ -8,7 +8,7 @@ import * as z from 'zod/mini'
 import type { href, useForm, useNavigation, usePage } from '../src/client.js'
 import type { flash } from '../src/server/flash.js'
 import type { defineHandler, Validated } from '../src/server/handler.js'
-import type { render, share } from '../src/server/protocol.js'
+import type { defer, render, share } from '../src/server/protocol.js'
 
 type Auth = { user: string | null }
 const searchQuery = z.object({ q: z.string(), page: z.optional(z.coerce.number()) })
@@ -37,6 +37,7 @@ declare module '../src/types.js' {
 // type-checked only, never called
 type Api = {
   render: typeof render
+  defer: typeof defer
   href: typeof href
   share: typeof share
   flash: typeof flash
@@ -52,6 +53,11 @@ declare function Bare(): null
 declare function Titled(props: { title: string; auth: Auth }): null
 declare function Clashing(props: { auth: string }): null
 declare function Errors(props: { errors?: Record<string, string> }): null
+
+type Stats = { total: number }
+declare function Dashboard(props: { title: string; stats?: Stats; at?: string }): null
+declare function Maybe(props: { stats: Stats | undefined }): null
+declare function Dated(props: { when?: Date }): null
 
 const renders = [
   typed(({ render }, c) => render(c, Bare)),
@@ -74,6 +80,31 @@ const renders = [
   typed(({ render }, c) => render(c, 'titled', { title: 'Hello' })),
   // a page's errors come from the form's action: not given
   typed(({ render }, c) => render(c, Errors)),
+  // defer(): a prop the page takes as optional; the function gives what the prop is, sync or async, or what JSON makes it
+  typed(({ render, defer }, c) =>
+    render(c, Dashboard, { title: 'x', stats: defer(() => ({ total: 1 })) }),
+  ),
+  typed(({ render, defer }, c) =>
+    render(c, Dashboard, { title: 'x', stats: defer(async () => ({ total: 1 })) }),
+  ),
+  typed(({ render, defer }, c) =>
+    render(c, Dashboard, { title: 'x', at: defer(() => new Date()) }),
+  ),
+  // a deferred prop's own value, or none, as for any optional prop
+  typed(({ render }, c) => render(c, Dashboard, { title: 'x', stats: { total: 1 } })),
+  typed(({ render }, c) => render(c, Dashboard, { title: 'x' })),
+  // @ts-expect-error a required prop is not deferred: the page renders without it
+  typed(({ render, defer }, c) => render(c, Dashboard, { title: defer(() => 'x') })),
+  // @ts-expect-error required, though it may be undefined
+  typed(({ render, defer }, c) => render(c, Maybe, { stats: defer(() => ({ total: 1 })) })),
+  // @ts-expect-error what the function gives is not the prop's type
+  typed(({ render, defer }, c) => render(c, Dashboard, { title: 'x', stats: defer(() => 1) })),
+  // @ts-expect-error a prop JSON can't deliver can't be deferred either
+  typed(({ render, defer }, c) => render(c, Dated, { when: defer(() => 1) })),
+  // @ts-expect-error defer() takes a function
+  typed(({ defer }) => defer({ total: 1 })),
+  // @ts-expect-error a shared prop is on every page: not deferred
+  typed(({ share, defer }, c) => share(c, { auth: defer(async () => ({ user: null })) })),
 ]
 
 const hrefs = [
@@ -219,5 +250,5 @@ const navigation = [
 ]
 
 test('the types above are checked by tsc', () => {
-  expect([...renders, ...hrefs, ...shared, ...validated, ...navigation]).toHaveLength(56)
+  expect([...renders, ...hrefs, ...shared, ...validated, ...navigation]).toHaveLength(67)
 })

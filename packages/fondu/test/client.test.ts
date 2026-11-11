@@ -3,7 +3,7 @@ import { createElement as h, type ReactNode } from 'react'
 import { renderToReadableStream } from 'react-dom/server'
 import { expect, test } from 'vitest'
 
-import { __entry, renderPage, usePage } from '../src/client.js'
+import { __entry, Deferred, renderPage, usePage } from '../src/client.js'
 import { pageAt } from '../src/client/app.js'
 
 const Outer = ({ children }: { children: ReactNode }) => h('section', { id: 'outer' }, children)
@@ -13,6 +13,12 @@ const Show = ({ name }: { name: string }) => [
   h('h1', { key: 'h' }, name, ' at ', usePage().url),
 ]
 const Plain = () => h('p', null, 'plain')
+const Board = () =>
+  h(
+    Deferred,
+    { data: ['a', 'b'], fallback: h('i', null, 'wait'), failed: h('b', null, 'failed') },
+    'done',
+  )
 
 // on the server, the entry only keeps the modules (no document to start the app in)
 __entry(
@@ -25,6 +31,7 @@ __entry(
     '/app/routes/files/[...path].tsx': async () => ({ default: Plain }),
     '/app/routes/café.tsx': async () => ({ default: Plain }),
     '/app/routes/_error.tsx': async () => ({ default: Plain }),
+    '/app/routes/board.tsx': async () => ({ default: Board }),
   },
   {
     '/app/routes/(site)/_layout.tsx': async () => ({ default: Inner }),
@@ -35,8 +42,10 @@ __entry(
 )
 
 // the page's stream, read whole: the tags it hoists (before `<div id="app"`) and the page
-const render = async (component: string, props = {}) => {
-  const stream = await renderPage(page(component, props), (el) => renderToReadableStream(el))
+const render = async (component: string, props = {}, deferred?: string[]) => {
+  const stream = await renderPage({ ...page(component, props), deferred }, (el) =>
+    renderToReadableStream(el),
+  )
   const html = await new Response(stream).text()
   const at = html.indexOf('<div id="app"')
   return { head: html.slice(0, at), body: html.slice(at) }
@@ -62,6 +71,15 @@ test('the _layout.tsx of each directory, outermost first', async () => {
 test('a page with no _layout.tsx above it: as it is', async () => {
   const { head, body } = await render('about')
   expect([head, body]).toEqual(['', '<div id="app"><p>plain</p></div>'])
+})
+
+test('Deferred: the fallback while a prop is pending, failed when it is neither there nor pending, the children once all are there', async () => {
+  const body = async (props: object, deferred?: string[]) =>
+    (await render('board', props, deferred)).body
+  expect(await body({}, ['a', 'b'])).toBe('<div id="app"><i>wait</i></div>')
+  expect(await body({ a: 1 }, ['b'])).toBe('<div id="app"><i>wait</i></div>')
+  expect(await body({ a: 1 })).toBe('<div id="app"><b>failed</b></div>')
+  expect(await body({ a: 1, b: null })).toBe('<div id="app">done</div>')
 })
 
 test('a page that is not there: said so', async () => {

@@ -24,6 +24,8 @@ swaps the page in place (the History API); Back and Forward restore the scroll p
   `flash(c, { … })` for the next page; `throw new HTTPException(404)` (from `hono/http-exception`) for errors.
 - Shared props, every page's: `share(c, { … })` in a `_middleware.ts` (a function value is computed when a page
   renders), typed by `declare module 'fondu' { interface Register { shared: { … }; flash: { … } } }`.
+- Slow data: `defer(() => …)` for an optional prop of `render()`; the page renders without it and asks for it once shown
+  (`<Deferred data="stats" fallback={…}>` from `fondu/client`); `reload({ only: ['stats'] })` asks again.
 - A page's props are its component's: `render()` checks them. `routes/_error.tsx` is the error page, `{ status }`.
 - Layouts: `app/routes/_layout.tsx` wraps every page; a directory's `_layout.tsx` wraps its pages, inside the outer
   ones (a `(group)/` directory gives pages a layout without a URL segment). A layout's default export takes

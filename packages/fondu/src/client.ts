@@ -81,6 +81,7 @@ export {
   usePage,
   useNavigation,
   reload,
+  Deferred,
   __entry,
   renderPage,
   type Errors,

@@ -77,6 +77,54 @@ export default defineMiddleware(async (c, next) => {
 A shared value can be a function: it runs only when a page renders, not for API requests. Pages and layouts read
 shared props with `usePage().props`. [Type safety](/docs/type-safety) shows how to type them.
 
+## Deferred props
+
+A slow prop need not hold the page. `defer()` marks a prop of `render()`: the page is sent and rendered without it, and
+the browser asks for it once the page is on the screen.
+
+```tsx
+// app/routes/dashboard.tsx
+import { defer, defineHandler, render } from 'fondu'
+import { Deferred } from 'fondu/client'
+
+export const loader = defineHandler((c) =>
+  render(c, Dashboard, { user, stats: defer(() => loadStats()) }),
+)
+
+export default function Dashboard({ user, stats }: { user: User; stats?: Stats }) {
+  return (
+    <>
+      <h1>{user.name}</h1>
+      <Deferred data="stats" fallback={<p>Loading…</p>} failed={<p>The stats are not available.</p>}>
+        <Chart stats={stats!} />
+      </Deferred>
+    </>
+  )
+}
+```
+
+- The function runs only for the request that asks for the prop, never for the document or a navigation. Until the
+  prop arrives it is `undefined`, so the page types it as optional (`stats?: Stats`): `render()` accepts `defer()` for
+  optional props only, and a required prop is a type error. A page may read the prop itself, without `<Deferred>`.
+- `<Deferred data="stats">` shows its children once the prop is there, `fallback` while it is asked for, and `failed`
+  (default: `fallback`) when it could not be had. `data` may be a list: `data={['stats', 'feed']}`. In the document, and
+  without JavaScript, the page shows the fallback.
+- The request is quiet: no `useNavigation()` state, no progress bar, no new history entry, no scroll change. A
+  navigation cancels it, and an answer for a page that is no longer on the screen is dropped. Back to a page asks again.
+- `reload({ only: ['stats'] })` asks for those props again, deferred or not, in the same way; the page keeps its state.
+  `reload()` asks for everything, as a navigation does, and the deferred props keep their last values until the new ones
+  arrive.
+- The request is the page's URL with the headers `X-Fondu-Only` (the props) and `X-Fondu-Component` (the page). The
+  **whole loader runs again**, so what it awaits before `render()` is awaited each time: put slow work inside `defer()`.
+  It answers only the props asked for, no shared props. If the loader redirects, throws or renders another page, the
+  usual answer is sent and the browser treats the props as failed.
+- A function that throws is logged (`[fondu] the deferred prop "stats" of "dashboard" failed:`), its prop is left out
+  and the other props are still sent, with status 200. A prop the loader leaves out altogether, or does not give for
+  that request, shows `failed` too.
+- What decides the status or a redirect (whether the record exists, whether the visitor may see it) is awaited in the
+  loader, never deferred.
+- A [static page](/docs/static-pages) has all its data: its deferred props are evaluated when it is built.
+
 ## Reading the page in a component
 
 `usePage()` from `fondu/client` returns the page on the screen, in any component:
