@@ -131,8 +131,8 @@ function actionName(url: string): string | null {
  * - server code, `.ts`: HTTP handlers only, `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS` (not `loader`,
  *   `action`, `actions`: those are a page's)
  * `_middleware.ts` applies to its directory and below (`routes/_middleware.ts`: every request, 404s included).
- * Built in: CSRF protection, security headers, a request body limit, one URL per page (trailing slash), the error page. Your own 404 /
- * error handling: Hono's `app.notFound()` / `app.onError()` on the returned app.
+ * Built in: CSRF protection, security headers, a request body limit, one URL per page (trailing slash), the error
+ * page. Your own 404 / error handling: Hono's `app.notFound()` / `app.onError()` on the returned app.
  */
 export function createApp(options: CreateAppOptions = {}): Hono {
   const app = new Hono()
