@@ -1,6 +1,6 @@
 import { defineHandler, render } from 'fondu'
 import { href } from 'fondu/client'
-import { useSyncExternalStore } from 'react'
+import { Suspense, use, useSyncExternalStore } from 'react'
 
 import { DemoCard, Title } from '#/components/demo.tsx'
 import { Button } from '#/components/ui/button.tsx'
@@ -25,6 +25,28 @@ function Mounted() {
     <p className="text-muted-foreground">Rendered on the server: no window here.</p>
   ) : (
     <p data-testid="mounted">Window width: {width}px</p>
+  )
+}
+
+/** what is slow, on the server only: a client navigation has no wait (`wait` is undefined) */
+function Late({ wait }: { wait?: Promise<unknown> }) {
+  if (wait) use(wait)
+  return <p data-testid="streamed">This part came after the shell, in the same response.</p>
+}
+
+function Streamed() {
+  // made once per render on the server (no document there); the browser renders it at once
+  const wait = typeof document === 'undefined' ? new Promise((r) => setTimeout(r, 1500)) : undefined
+  return (
+    <Suspense
+      fallback={
+        <p className="text-muted-foreground" data-testid="streamed-fallback">
+          Waiting for the server…
+        </p>
+      }
+    >
+      <Late wait={wait} />
+    </Suspense>
   )
 }
 
@@ -56,6 +78,23 @@ export default function Ssr({ ssr }: { ssr: boolean }) {
         </DemoCard>
         <DemoCard title="Browser-only parts" tag="useSyncExternalStore">
           <Mounted />
+        </DemoCard>
+        <DemoCard title="Streamed" tag="<Suspense>" className="sm:col-span-2">
+          <p className="mb-3 text-muted-foreground">
+            The shell and this page&apos;s title arrive at once; the part in{' '}
+            <code>&lt;Suspense&gt;</code> follows when its data is there, in the same response. The
+            status was the loader&apos;s, sent with the first byte.
+          </p>
+          <div className="mb-3">
+            <Streamed />
+          </div>
+          {code([
+            "const wait = typeof document === 'undefined' ? slowQuery() : undefined // the server only",
+            '',
+            '<Suspense fallback={<Loading />}>',
+            '  <Late wait={wait} /> // use(wait) inside',
+            '</Suspense>',
+          ])}
         </DemoCard>
         <DemoCard title="Some routes without SSR" className="sm:col-span-2">
           <p className="mb-3 text-muted-foreground">

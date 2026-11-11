@@ -64,7 +64,7 @@ export const groups: Array<[group: string, demos: Demo[]]> = [
       [
         href('/navigation'),
         'Navigation',
-        'Links and forms swapped in place: Back, the scroll position, pending state.',
+        'Links and forms swapped in place: Back, the scroll position, pending and failed state, preloading.',
       ],
       [href('/versioning'), 'Asset versioning', 'A version mismatch forces a full page reload.'],
     ],
@@ -75,7 +75,7 @@ export const groups: Array<[group: string, demos: Demo[]]> = [
       [
         href('/ssr'),
         'Server-side rendering',
-        'Rendered on the server and hydrated, or in the browser only, per route.',
+        'Rendered on the server, streamed and hydrated, or in the browser only, per route.',
       ],
     ],
   ],

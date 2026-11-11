@@ -592,6 +592,41 @@ ok(
     'a browser-only part: the fallback is in the server HTML, the browser part is not',
     ssr.includes('Rendered on the server: no window here.') && !ssr.includes('Window width'),
   )
+  // the document is streamed: the shell at once, the <Suspense> part (the server waits 1.5 s) in the same response
+  {
+    const t0 = Date.now()
+    const res = await fetch(BASE + '/ssr')
+    const reader = res.body.getReader()
+    const decoder = new TextDecoder()
+    const chunks = []
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      chunks.push({ at: Date.now() - t0, text: decoder.decode(value, { stream: true }) })
+    }
+    const line = 'This part came after the shell'
+    const first = chunks[0]?.text ?? ''
+    const whole = chunks.map((c) => c.text).join('')
+    const span = (chunks.at(-1)?.at ?? 0) - (chunks[0]?.at ?? 0)
+    ok(
+      "streaming: the first chunk has the page's <title>, not the <Suspense> part",
+      res.status === 200 && first.includes('<title>Server-side rendering') && !first.includes(line),
+      first.slice(0, 120),
+    )
+    ok('streaming: the whole body has the <Suspense> part', whole.includes(line))
+    ok(
+      'streaming: the part in <Suspense> comes at least a second after the first chunk',
+      span >= 1000,
+      JSON.stringify(chunks.map((c) => c.at)),
+    )
+  }
+  await page.goto(BASE + '/ssr', { waitUntil: 'domcontentloaded' })
+  ok(
+    'streaming: in the browser, the <Suspense> part appears',
+    Boolean(
+      await page.waitForSelector('[data-testid=streamed]', { timeout: 8000 }).catch(() => null),
+    ),
+  )
 }
 
 // ---- navigation
@@ -655,6 +690,78 @@ ok('a link to the same page mounts it anew', (await testid('clicks')) === '0')
       docs.length === 0,
     JSON.stringify({ atOnce, served, docs }),
   )
+}
+
+// ---- a link's page modules are loaded when the pointer rests on it, before the click
+{
+  await page.goto(BASE + '/navigation', { waitUntil: 'networkidle0' })
+  const loaded = []
+  const onRequest = (r) => loaded.push({ url: r.url(), fondu: Boolean(r.headers()['x-fondu']) })
+  page.on('request', onRequest)
+  fetches.length = 0
+  await page.hover('aside a[href="/uploads"]')
+  await page.waitForRequest((r) => r.url().includes('uploads'), { timeout: 2000 }).catch(() => {})
+  page.off('request', onRequest)
+  ok(
+    "preloading: hovering a link loads its page's module, before any click",
+    loaded.some((r) => r.url.includes('uploads') && !r.fondu) && (await path()) === '/navigation',
+    JSON.stringify(loaded.map((r) => r.url.replace(BASE, ''))),
+  )
+  ok(
+    'preloading: the hover asks for no page object (the data is asked for at the click)',
+    fetches.length === 0 && !loaded.some((r) => r.fondu),
+    JSON.stringify(fetches.map((f) => f.url)),
+  )
+}
+
+// ---- a form that can't be sent (offline): it stays as it was, to send again
+{
+  await page.goto(BASE + '/navigation', { waitUntil: 'networkidle0' })
+  await setValue('[data-testid=note-form] input[name=note]', 'Typed offline')
+  const posts = []
+  await page.setRequestInterception(true)
+  const onRequest = (r) => {
+    if (r.method() === 'POST' && r.url().includes('/navigation?note')) {
+      posts.push(r.url())
+      if (posts.length === 1) return r.abort('internetdisconnected')
+    }
+    r.continue()
+  }
+  page.on('request', onRequest)
+  try {
+    await page.click('[data-testid=send-note]')
+    const alert = await page
+      .waitForSelector('[data-testid=not-sent]', { timeout: 5000 })
+      .catch(() => null)
+    ok(
+      "a form that can't be sent: the alert shows, the field keeps what was typed, the page stays",
+      Boolean(alert) &&
+        (await testid('not-sent')) === 'Not sent. Check your connection and try again.' &&
+        (await page.$eval('[data-testid=note-form] input[name=note]', (e) => e.value)) ===
+          'Typed offline' &&
+        (await path()) === '/navigation',
+      JSON.stringify(posts),
+    )
+    await page.click('[data-testid=send-note]')
+    const toast = await page
+      .waitForFunction(
+        () =>
+          [...document.querySelectorAll('[data-slot=toast-title]')].some(
+            (e) => e.textContent === 'Sent: Typed offline',
+          ),
+        { timeout: 5000 },
+      )
+      .then(() => true)
+      .catch(() => false)
+    ok(
+      'a form sent again: the flash message shows, the alert is gone',
+      toast && (await page.$('[data-testid=not-sent]')) === null && posts.length === 2,
+      JSON.stringify(posts),
+    )
+  } finally {
+    page.off('request', onRequest)
+    await page.setRequestInterception(false)
+  }
 }
 
 // ---- deferred props: the page first, the prop a request later, quietly
