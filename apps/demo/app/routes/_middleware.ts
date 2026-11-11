@@ -1,4 +1,5 @@
 import { defineMiddleware, share } from 'fondu'
+import { logger } from 'hono/logger'
 
 import { themeOf } from '#/lib/theme.server.ts'
 import { auth, type User } from '#/modules/auth/auth.server.ts'
@@ -21,7 +22,7 @@ declare module 'fondu' {
 }
 
 // Every request (404s too): who is signed in, the theme
-export default defineMiddleware(async (c, next) => {
+const visitor = defineMiddleware(async (c, next) => {
   const session = await auth.api.getSession({ headers: c.req.raw.headers })
   const user = session?.user ?? null
   c.set('user', user)
@@ -38,3 +39,10 @@ export default defineMiddleware(async (c, next) => {
   })
   await next()
 })
+
+export default [
+  // Development: each request and its status in the terminal (production has Workers observability; tests have their
+  // own report)
+  ...(import.meta.env.MODE === 'development' ? [logger()] : []),
+  visitor,
+]
