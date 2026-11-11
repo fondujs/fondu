@@ -291,8 +291,9 @@ export function startNavigation({
           for (const name of page.deferred)
             if (Object.hasOwn(on.props, name)) page.props[name] ??= on.props[name]
         // its URL first, as the browser's own navigations: a page's render reads it (`location`, a URL's language);
-        // a redirect's, the fragment asked for if it is still this page's
-        const target = page.url + (asked === page.url ? url.hash : '')
+        // a redirect's, the fragment asked for if it is still this page's; a form's answer to the page it was sent
+        // from: its #fragment stays, a dialog the fragment opened with it
+        const target = page.url + (same ? location.hash : asked === page.url ? url.hash : '')
         // a form's answer at its URL replaces the entry; Back's or reload()'s page redirected elsewhere too
         const history =
           options.history === 'push' && same
@@ -421,7 +422,11 @@ export function startNavigation({
   // Back and Forward: the entry's page, where it was scrolled
   window.addEventListener('popstate', (event) => {
     const popped = scroll.pop(event.state)
-    if (popped.fragment) return restore(popped.position, location.hash)
+    if (popped.fragment) {
+      // a #fragment that names no element (a dialog's `#settings/account`) leaves the page where it is, as the browser does
+      if (!popped.position && location.hash && !fragmentTarget(location.hash.slice(1))) return
+      return restore(popped.position, location.hash)
+    }
     visit!(location.href, {
       history: 'none',
       scroll: popped.position,

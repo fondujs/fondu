@@ -920,6 +920,97 @@ await page.waitForFunction(
   () => document.querySelector('[data-testid=user]')?.ariaLabel === 'Demo User',
 )
 
+// ---- the settings dialog: a #fragment of the URL opens it, over any page (components/settings-dialog.tsx)
+{
+  const hash = () => page.evaluate(() => location.hash)
+  const dialog = '[data-testid=settings]'
+  const gone = () =>
+    page.waitForFunction(() => !document.querySelector('[data-testid=settings]'), { timeout: 4000 })
+  const submit = () => page.click(`${dialog} button[type=submit]`)
+  const menuLabel = () => page.$eval('[data-testid=user]', (e) => e.getAttribute('aria-label'))
+  const openFromMenu = async () => {
+    await page.click('[data-testid=user]')
+    await (await page.waitForSelector('[data-testid=settings-link]')).click()
+    await page.waitForSelector(dialog)
+  }
+  docs.length = 0
+  await openFromMenu()
+  ok(
+    "settings: the account menu opens the dialog by the URL's #fragment, over the page it was opened on",
+    (await hash()) === '#settings/profile' &&
+      (await path()) === '/account' &&
+      (await page.$eval('h1', (e) => e.textContent)) === 'Account' &&
+      docs.length === 0,
+    `${await path()}${await hash()}`,
+  )
+  await setValue(`${dialog} input[name=name]`, 'A')
+  await submit()
+  await page.waitForSelector('[data-testid=settings-err-name]')
+  ok(
+    'settings: a name too short -> the error in the dialog, which stays open at its #fragment',
+    (await testid('settings-err-name')) === 'At least 2 characters' &&
+      (await hash()) === '#settings/profile' &&
+      (await page.$(dialog)) !== null,
+  )
+  await setValue(`${dialog} input[name=name]`, 'Demo Person')
+  await submit()
+  await page.waitForFunction(
+    () => document.querySelector('[data-testid=settings-saved]')?.textContent === 'Name saved',
+    { timeout: 4000 },
+  )
+  await page
+    .waitForFunction(
+      () => document.querySelector('[data-testid=user]')?.ariaLabel === 'Demo Person',
+      {
+        timeout: 4000,
+      },
+    )
+    .catch(() => {})
+  ok(
+    'settings: a new name -> "Name saved" in the dialog, which stays open; the account menu has the name',
+    (await hash()) === '#settings/profile' &&
+      (await page.$(dialog)) !== null &&
+      (await page.$eval(`${dialog} input[name=name]`, (e) => e.value)) === 'Demo Person' &&
+      (await menuLabel()) === 'Demo Person',
+    await menuLabel(),
+  )
+  await page.goBack()
+  await gone()
+  ok(
+    'settings: Back closes the dialog; the page stays',
+    (await hash()) === '' && (await path()) === '/account' && (await page.$('h1')) !== null,
+  )
+  await page.goto(BASE + '/account#settings/account', { waitUntil: 'networkidle0' })
+  await page.waitForSelector(dialog)
+  ok(
+    'settings: a reload of #settings/account opens that tab',
+    (await testid('settings-email')) === 'demo@fondu.dev' &&
+      (await testid('settings-since')) !== '' &&
+      (await page.$('[data-testid=settings-tab-account][aria-current=page]')) !== null,
+    await testid('settings-since'),
+  )
+  await page.keyboard.press('Escape')
+  await gone()
+  ok(
+    'settings: Escape closes a dialog the document was loaded with: the URL without its #fragment',
+    (await hash()) === '' && (await path()) === '/account',
+  )
+  await openFromMenu()
+  await page.click('[data-testid=settings-tab-account]')
+  await page.waitForFunction(() => location.hash === '#settings/account')
+  await page.keyboard.press('Escape')
+  await gone()
+  ok(
+    'settings: closed after a tab was opened (two entries): back over both, to the page',
+    (await hash()) === '' && (await path()) === '/account',
+  )
+  await setValue('main form input[name=name]', 'Demo User')
+  await page.click('main form button')
+  await page.waitForFunction(
+    () => document.querySelector('[data-testid=user]')?.ariaLabel === 'Demo User',
+  )
+}
+
 // ---- errors: the error page, and the development report
 {
   const dev = !assetVersion

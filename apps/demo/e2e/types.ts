@@ -46,9 +46,15 @@ void render(c, Show, { contact: { id: 'x', name: 'Ada', email: 'a@x.org' } })
 void render(c, Routes, { extra: 1 })
 
 // ---- shared props and flash: typed by Fondu's Register (routes/_middleware.ts)
-share(c, { auth: { user: { name: 'Ada', email: 'ada@x.org', role: 'user' } } })
-// @ts-expect-error name is a string
-share(c, { auth: { user: { name: 1, email: 'ada@x.org', role: 'user' } } })
+share(c, {
+  auth: {
+    user: { name: 'Ada', email: 'ada@x.org', role: 'user', since: '2026-01-01T00:00:00.000Z' },
+  },
+})
+share(c, {
+  // @ts-expect-error name is a string
+  auth: { user: { name: 1, email: 'ada@x.org', role: 'user', since: '2026-01-01T00:00:00.000Z' } },
+})
 flash(c, { message: 'Saved' })
 // @ts-expect-error message is a string
 flash(c, { message: 1 })

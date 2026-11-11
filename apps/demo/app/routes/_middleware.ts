@@ -13,7 +13,7 @@ declare module 'hono' {
 declare module 'fondu' {
   interface Register {
     shared: {
-      auth: { user: { name: string; email: string; role: string } | null }
+      auth: { user: { name: string; email: string; role: string; since: string } | null }
       theme: 'system' | 'light' | 'dark'
     }
     flash: { message?: string; error?: string; picked?: 'gold' | 'teal' | 'plum' }
@@ -26,7 +26,14 @@ export default defineMiddleware(async (c, next) => {
   const user = session?.user ?? null
   c.set('user', user)
   share(c, {
-    auth: { user: user && { name: user.name, email: user.email, role: user.role ?? 'user' } },
+    auth: {
+      user: user && {
+        name: user.name,
+        email: user.email,
+        role: user.role ?? 'user',
+        since: user.createdAt.toISOString(),
+      },
+    },
     theme: themeOf(c),
   })
   await next()

@@ -110,6 +110,32 @@ Back and Forward show the page at once, as it was left, then put the server's fr
 kept for this are in memory only, and they are all forgotten once a form is sent, as the form may have changed
 them (or signed the user out).
 
+## A dialog opened by the URL
+
+A link to a `#fragment` of the page on the screen is the browser's, not the client's: each is a history entry, Back
+goes to the one before, and a reload keeps it. A dialog opened by the fragment (`#settings/account`) is then a page
+state like any other. Read the fragment with `useSyncExternalStore` on `hashchange`:
+
+```tsx
+import { useSyncExternalStore } from 'react'
+
+const subscribe = (notify: () => void) => {
+  addEventListener('hashchange', notify)
+  return () => removeEventListener('hashchange', notify)
+}
+
+export function Settings() {
+  const hash = useSyncExternalStore(subscribe, () => location.hash, () => '') // '' on the server
+  if (!hash.startsWith('#settings/')) return null
+  return <dialog open>…{hash.slice('#settings/'.length)}…</dialog>
+}
+```
+
+A form in the dialog is posted as any form. Its answer at the same page (back with errors, or `back(c)`) keeps the
+`#fragment` on the screen, so the dialog stays open, with its errors or its result. A redirect to another page, or to a
+URL with a fragment of its own, is unchanged. The dialog's data comes from [`share()`](/docs/pages), if every page
+needs it, or from a `.ts` route.
+
 ## While a page loads
 
 `useNavigation()` from `fondu/client` says what is on its way, from a click or a submit until the next page is on
