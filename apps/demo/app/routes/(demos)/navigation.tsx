@@ -1,8 +1,9 @@
-import { defineHandler, render } from 'fondu'
-import { href, reload, useNavigation } from 'fondu/client'
+import { back, defineHandler, flash, render } from 'fondu'
+import { href, reload, useForm, useNavigation } from 'fondu/client'
 import { useState } from 'react'
+import * as z from 'zod/mini'
 
-import { DemoCard, Title } from '#/components/demo.tsx'
+import { DemoCard, SubmitButton, TextField, Title } from '#/components/demo.tsx'
 import { Badge } from '#/components/ui/badge.tsx'
 import { Button } from '#/components/ui/button.tsx'
 
@@ -12,9 +13,24 @@ export const loader = defineHandler(async (c) => {
   return render(c, Navigation, { servedAt: new Date().toISOString().slice(11, 23) })
 })
 
+// POST /navigation?note — flashes the note back, shown as a toast
+export const actions = {
+  note: defineHandler.withValidator({ body: z.object({ note: z.string() }) })((c, { body }) => {
+    flash(c, { message: `Sent: ${body.note}` })
+    return back(c)
+  }),
+}
+
+const code = (lines: string[]) => (
+  <pre className="overflow-x-auto rounded-lg bg-muted p-3 font-mono text-xs/relaxed">
+    {lines.join('\n')}
+  </pre>
+)
+
 export default function Navigation({ servedAt }: { servedAt: string }) {
   const [clicks, setClicks] = useState(0)
   const { state } = useNavigation()
+  const { form, failed } = useForm()
   const navigating = state === 'loading' || state === 'submitting'
   return (
     <>
@@ -53,6 +69,43 @@ export default function Navigation({ servedAt }: { servedAt: string }) {
           >
             This page, in a second
           </Button>
+        </DemoCard>
+        <DemoCard title="Preloading" tag="a link's page">
+          <p className="text-muted-foreground">
+            A page&apos;s code is loaded when the pointer rests on a link (or a touch starts on it),
+            before the click; its data is asked for at the click.
+          </p>
+        </DemoCard>
+        <DemoCard title="A form that can't be sent" tag="useForm().failed, useNavigation()">
+          <p className="mb-4 text-muted-foreground">
+            Go offline in the browser&apos;s tools and send it: the form stays as it was, to send
+            again.
+          </p>
+          <form
+            action={href('/navigation?note')}
+            method="post"
+            className="grid gap-4"
+            data-testid="note-form"
+            {...form}
+          >
+            <TextField label="Note" name="note" defaultValue="Hello" />
+            <SubmitButton data-testid="send-note">Send</SubmitButton>
+            {failed && (
+              <p role="alert" data-testid="not-sent">
+                Not sent. Check your connection and try again.
+              </p>
+            )}
+          </form>
+          <div className="mt-4">
+            {code([
+              'const { form, failed } = useForm()',
+              '',
+              '<form action={href(\'/navigation?note\')} method="post" {...form}>',
+              '  …',
+              '  {failed && <p role="alert">Not sent. Check your connection and try again.</p>}',
+              '</form>',
+            ])}
+          </div>
         </DemoCard>
         <DemoCard title="Keep state" tag="reload()">
           <p className="mb-4 text-muted-foreground">
