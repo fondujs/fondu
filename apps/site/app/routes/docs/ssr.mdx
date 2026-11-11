@@ -15,7 +15,7 @@ anything renders later. A navigation gets its JSON as before, and a [static page
 boundary.
 
 What renders later is the page's to handle. Tags a boundary renders (`<title>`, `<meta>`) land in `<body>`, and the
-first `<title>` of the document wins. Without JavaScript the fallback stays. A component that suspends outside any
+first `<title>` of the document wins. Without JavaScript the fallback stays. A prop the page gets with a second request is [deferred](/docs/pages#deferred-props). A component that suspends outside any
 boundary holds the whole page until it resolves, so wrap what is slow in `<Suspense>`.
 
 There is no separate render server to run, on any target: on Cloudflare the render is part of the Worker.

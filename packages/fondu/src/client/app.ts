@@ -292,7 +292,32 @@ export function useNavigation(): Navigation {
   )
 }
 
-/** this page's props asked for again: the page keeps its state and the scroll position */
-export function reload() {
-  again()
+/**
+ * This page's props asked for again: the page keeps its state and the scroll position. `only`: those props alone,
+ * deferred or not, quietly (no navigation state)
+ */
+export function reload(options: { only?: string[] } = {}) {
+  again(options.only)
+}
+
+/**
+ * Children once the page has the props named by `data`; `fallback` while they are asked for; `failed` (default:
+ * `fallback`) once they were asked for and are not there (the request failed, or the loader's function threw)
+ */
+export function Deferred({
+  data,
+  fallback = null,
+  failed = fallback,
+  children,
+}: {
+  data: string | string[]
+  fallback?: ReactNode
+  failed?: ReactNode
+  children?: ReactNode
+}): ReactNode {
+  const page = useContext(PageContext)
+  if (!page) throw new Error('fondu: <Deferred> is for components of a page')
+  const names = [data].flat()
+  if (names.every((name) => name in page.props)) return children
+  return names.some((name) => page.deferred?.includes(name)) ? fallback : failed
 }

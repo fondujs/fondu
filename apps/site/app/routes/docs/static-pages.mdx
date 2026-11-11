@@ -48,7 +48,7 @@ machine, a `localhost` site URL say, ends up in production. Keep what static pag
 ## What a static page can be
 
 A static page is the same for everyone. It is rendered once, with every Suspense boundary resolved, for a visitor with no cookies and no query string, shared
-props included. So the build stops, naming the route, when a page:
+props included, and every [deferred prop](/docs/pages#deferred-props) is evaluated at build time. So the build stops, naming the route, when a page:
 
 - answers with a status other than 200, such as a redirect;
 - takes POSTs at its URL (an `action` or `actions`): Cloudflare answers those with 405 for a static file, so Fondu

@@ -97,14 +97,19 @@ describe('pages', () => {
     const next = await page(await app.request('/', { headers: { ...fondu(), Cookie: cookie } }))
     expect(next.props.errors).toEqual({ name: 'Too short' })
   })
-  test('Vary: X-Fondu on every answer (a page, a redirect, a 409)', async () => {
+  test('Vary: X-Fondu on every answer (a page, a redirect, a 409), and X-Fondu-Only on a navigation', async () => {
     const answers = [
       await app.request('/', { headers: html }),
       await app.request('/', { headers: fondu() }),
       await app.request('/redirect'),
       await app.request('/', { headers: fondu({ 'X-Fondu-Version': 'old' }) }),
     ]
-    for (const res of answers) expect(res.headers.get('vary')).toBe('X-Fondu')
+    expect(answers.map((res) => res.headers.get('vary'))).toEqual([
+      'X-Fondu',
+      'X-Fondu, X-Fondu-Only', // a partial request asks for other props of the same URL
+      'X-Fondu',
+      'X-Fondu',
+    ])
   })
 })
 

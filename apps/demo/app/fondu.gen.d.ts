@@ -7,6 +7,7 @@ declare module 'fondu' {
       "/account": typeof import("./routes/(demos)/account")
       "/contacts/:id": typeof import("./routes/(demos)/contacts/[id]")
       "/contacts": typeof import("./routes/(demos)/contacts/index")
+      "/deferred": typeof import("./routes/(demos)/deferred")
       "/errors/:kind": typeof import("./routes/(demos)/errors/[kind]")
       "/errors": typeof import("./routes/(demos)/errors/index")
       "/flash": typeof import("./routes/(demos)/flash")

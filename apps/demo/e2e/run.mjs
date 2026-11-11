@@ -657,6 +657,68 @@ ok('a link to the same page mounts it anew', (await testid('clicks')) === '0')
   )
 }
 
+// ---- deferred props: the page first, the prop a request later, quietly
+await nav('/props')
+await h1('Props')
+fetches.length = 0
+docs.length = 0
+await nav('/deferred')
+await h1('Deferred props')
+{
+  const atOnce = await page.$('[data-testid=stats-fallback]')
+  await page.waitForSelector('[data-testid=stats]', { timeout: 8000 })
+  const computed = await testid('computed-at')
+  const served = await testid('served-at')
+  const asked = fetches.filter((f) => f.headers['x-fondu-only'])
+  ok(
+    'defer(): the page with its fallback first, the prop in it a request later, no navigation state, no document',
+    Boolean(atOnce) &&
+      asked.length === 1 &&
+      asked[0].headers['x-fondu-only'] === 'stats,broken' &&
+      asked[0].headers['x-fondu-component'] === '(demos)/deferred' &&
+      (await testid('busy')) === 'no' &&
+      docs.length === 0,
+    JSON.stringify({
+      atOnce: Boolean(atOnce),
+      asked: asked.map((f) => f.headers['x-fondu-only']),
+      docs,
+    }),
+  )
+  ok(
+    'defer(): a function that throws is left out, the page shows its failed content',
+    (await testid('broken-failed')) !== null,
+  )
+  await page.click('[data-testid=refresh]')
+  await page.waitForFunction(
+    (c) => document.querySelector('[data-testid=computed-at]').textContent !== c,
+    { timeout: 8000 },
+    computed,
+  )
+  ok(
+    'reload({ only }): the prop asked for again, the others kept, quiet',
+    (await testid('served-at')) === served &&
+      (await testid('busy')) === 'no' &&
+      fetches.filter((f) => f.headers['x-fondu-only'] === 'stats').length === 1,
+  )
+}
+{
+  const res = await fetch(BASE + '/deferred', { headers: fondu() })
+  const full = await res.json()
+  const only = await (
+    await fetch(BASE + '/deferred', {
+      headers: fondu({ 'X-Fondu-Only': 'stats', 'X-Fondu-Component': '(demos)/deferred' }),
+    })
+  ).json()
+  ok(
+    'defer(): a navigation lists what it leaves out; a partial request has those props alone',
+    JSON.stringify(full.deferred) === '["stats","broken"]' &&
+      !('stats' in full.props) &&
+      JSON.stringify(Object.keys(only.props)) === '["stats"]' &&
+      !('deferred' in only),
+    JSON.stringify([full.deferred, Object.keys(only.props)]),
+  )
+}
+
 // ---- sign in, the API, the account
 docs.length = 0
 await nav('/account')

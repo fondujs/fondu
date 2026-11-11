@@ -51,6 +51,11 @@ export const groups: Array<[group: string, demos: Demo[]]> = [
         'Props',
         'Values, lists, objects and shared props, typed by the page component.',
       ],
+      [
+        href('/deferred'),
+        'Deferred props',
+        'defer(): the page first, a slow prop a request later, and reload({ only }).',
+      ],
     ],
   ],
   [
