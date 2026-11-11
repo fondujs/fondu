@@ -1,6 +1,6 @@
 /// <reference path="../virtual.d.ts" />
 import type { Context, MiddlewareHandler } from 'hono'
-import { createElement, type ReactElement } from 'react'
+import type { ReactElement } from 'react'
 import { assetTags } from 'virtual:fondu/assets'
 import { renderMarkup, renderPage } from 'virtual:fondu/ssr'
 
@@ -99,6 +99,8 @@ export async function renderDocument(
       'fondu: the document must have `head` once, in <head>, and `body` once, in <body>',
     )
   let ssr: ReadableStream<string> | null = null
+  // per request: nothing the page renders can be it
+  const marker = crypto.randomUUID()
   // what fails in a boundary is for the browser to render, and is logged. The shell's failure is logged below, once:
   // React reports it to `onError` too, so what it reports is held until the shell is known to be there
   const pending: unknown[] = []
@@ -112,13 +114,14 @@ export async function renderDocument(
     // a HEAD: Hono drops its body without cancelling it, so React would keep rendering for nothing
     if (renderPage && !browserOnly.has(c) && c.req.method !== 'HEAD') {
       // the page as the browser gets it, through JSON (a Date a string): the markup is the same on both sides
-      const stream = await renderPage(
-        JSON.parse(JSON.stringify(page)),
-        { nonce, onError: (error) => (live ? late(error) : void pending.push(error)) },
-        // the position back for a page rendered here (one rendered in the browser has nothing to scroll yet): in the
-        // shell, right after the page, before what the boundaries add
-        createElement('script', { nonce, dangerouslySetInnerHTML: { __html: restoreScroll } }),
-      )
+      const stream = await renderPage(JSON.parse(JSON.stringify(page)), {
+        nonce,
+        onError: (error) => (live ? late(error) : void pending.push(error)),
+        // React writes this as a script right after the shell, before what the boundaries add: where `restoreScroll`
+        // goes. Not as React's own script (it adds an `id`, and follows its `$RT` one), and not as a sibling of the
+        // page in the tree: the page alone is the browser's tree (`useId()`)
+        bootstrapScriptContent: marker,
+      })
       if (whole) await stream.allReady
       ssr = stream.pipeThrough(new TextDecoderStream() as ReadableWritablePair<string, Uint8Array>)
       for (const error of pending) late(error)
@@ -144,20 +147,27 @@ export async function renderDocument(
     css && charset.test(before) ? before.replace(charset, (meta) => meta + css) : before + css
   const start = top + tags.replace(/<link rel="stylesheet"[^>]*>/g, '')
   if (!ssr) return start + between + data + '<div id="app"></div>' + after
-  // React's own: the tags the page hoists, then the page (`<div id="app"`), found across chunks
+  // React's own: the tags the page hoists, the page (`<div id="app"`), and the script of `marker`, the end of the
+  // shell (React writes the shell in as many chunks as it needs, so no chunk is its end): found across chunks
   const reader = ssr.getReader()
+  const end = new RegExp(`<script[^>]*>${marker}</script>`)
   let text = ''
-  let at = -1
-  while (at < 0) {
+  while (!end.test(text)) {
     const { done, value } = await reader.read()
     if (done) break
     text += value
-    at = text.indexOf('<div id="app"')
   }
+  const at = Math.max(text.indexOf('<div id="app"'), 0)
+  const script = `<script${nonce ? ` nonce="${nonce}"` : ''}>${restoreScroll}</script>`
+  // the position back for a page rendered here (one rendered in the browser has nothing to scroll yet): in the
+  // shell, right after the page, before what the boundaries add
+  const streamed = text.replace(end, () => script)
   const out = new TextEncoder()
   return new ReadableStream<Uint8Array>({
     start(controller) {
-      controller.enqueue(out.encode(start + text.slice(0, at) + between + data + text.slice(at)))
+      controller.enqueue(
+        out.encode(start + streamed.slice(0, at) + between + data + streamed.slice(at)),
+      )
     },
     async pull(controller) {
       const { done, value } = await reader.read()

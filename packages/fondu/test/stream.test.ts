@@ -60,6 +60,20 @@ describe('a streamed document', () => {
       scripts.filter((a) => !a!.includes('data-page')).every((a) => a === ` nonce="${nonce}"`),
     ).toBe(true)
   })
+  test("the scroll script is the shell's, right after the page, before what a boundary adds, as it was", async () => {
+    arm()
+    const res = await app.request('/stream', { headers: html })
+    const nonce = /'nonce-([\w+/=]+)'/.exec(res.headers.get('content-security-policy')!)![1]
+    setTimeout(release, 20)
+    const text = await res.text()
+    const script = `<script nonce="${nonce}">${TODAYS_SCRIPT}</script>`
+    expect(text.split(script)).toHaveLength(2)
+    expect(text).not.toContain('id="_R_"')
+    expect(text.indexOf('<p id="fallback">Loading</p>')).toBeLessThan(text.indexOf(script))
+    expect(text.indexOf(script)).toBeLessThan(text.indexOf('<p id="late">'))
+    expect(text.indexOf(script)).toBeLessThan(text.indexOf('$RC='))
+    expect(text.slice(0, text.indexOf(script))).toMatch(/<\/div>(<script[^>]*>[^<]*<\/script>)?$/)
+  })
   test("the page's <title> is in the head, before the page data", async () => {
     arm()
     release()

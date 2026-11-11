@@ -578,4 +578,27 @@ test.describe('with fondu/client only', () => {
     const { y, timeline: scrolls } = await state(page)
     expect(y, JSON.stringify(scrolls)).toBe(1200)
   })
+  test("a page with useId(): the server's ids are the browser's, no hydration error", async ({
+    page,
+  }) => {
+    const errors: string[] = []
+    page.on('pageerror', (error) => errors.push(error.message))
+    // (a missing file, the favicon, is a console error too: not one of React's)
+    page.on('console', (m) => {
+      if (m.type() === 'error' && !m.text().startsWith('Failed to load resource'))
+        errors.push(m.text())
+    })
+    await page.goto('/ids')
+    await page.waitForFunction(() => history.state?.__fondu) // hydrated
+    // React's production build gives a mismatch as a numbered error (#418…), its development build as 'hydration'
+    expect(errors, 'no error of the page, none about hydration').toEqual([])
+    const { id, htmlFor, shown } = await page.evaluate(() => ({
+      id: document.querySelector('input')!.id,
+      htmlFor: document.querySelector('label')!.htmlFor,
+      shown: document.querySelector('code')!.textContent,
+    }))
+    expect(id).not.toBe('')
+    expect(id).toBe(htmlFor)
+    expect(id).toBe(shown)
+  })
 })

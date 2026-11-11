@@ -2,7 +2,6 @@ import {
   Component,
   createContext,
   createElement,
-  Fragment,
   useContext,
   useLayoutEffect,
   useState,
@@ -239,26 +238,17 @@ export type Rendered = ReadableStream<Uint8Array> & { allReady: Promise<void> }
 
 /**
  * @internal the server render of a page, streamed: the tags its components hoist (`<title>`…) first, then
- * `<div id="app">`, then `after` (markup of the document's, in the shell: right after the page), then what the
- * Suspense boundaries that were not ready add. Rejects if the shell fails to render.
+ * `<div id="app">`, then what the Suspense boundaries that were not ready add. Rejects if the shell fails to render.
+ * The tree is the browser's (`hydrateRoot(#app, <App/>)`): `<div id="app"><App/></div>` and nothing beside it, as
+ * `useId()` is the position in the tree (a sibling of the page forks it: every id would differ).
  */
 export async function renderPage(
   page: Page,
   render: (element: ReactElement) => Promise<Rendered>,
-  after?: ReactElement,
 ): Promise<Rendered> {
   const view = await load(page.component)
   return render(
-    createElement(
-      Fragment,
-      null,
-      createElement(
-        'div',
-        { id: 'app' },
-        createElement(App, { initial: { page, view, mounts: 0 } }),
-      ),
-      after,
-    ),
+    createElement('div', { id: 'app' }, createElement(App, { initial: { page, view, mounts: 0 } })),
   )
 }
 
