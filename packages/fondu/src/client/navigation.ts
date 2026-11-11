@@ -103,6 +103,27 @@ export function startNavigation({
   const source = (url: URL) =>
     prerender ? pageDataPath(url.pathname) + url.search : url.pathname + url.search
 
+  // What a static page's file answered when the pointer rested on its link (`prerender`), by the URL a navigation
+  // would ask for: read into memory, the last 20. A file runs nothing, so asking early costs the app nothing; the
+  // click uses it once, and its version is checked as for any page object. A page without a file answers 204
+  // (nothing kept: its data is asked for at the click, when its loader should run)
+  const prefetched = new Map<string, Response>()
+  const prefetching = new Set<string>()
+  const prefetch = async (url: URL) => {
+    if (!prerender) return
+    const key = source(url)
+    if (prefetched.has(key) || prefetching.has(key)) return
+    prefetching.add(key)
+    try {
+      const response = await fetch(key, { headers: { ...headers(), 'X-Fondu-Prefetch': 'true' } })
+      if (response.status === 200 && response.headers.has('X-Fondu')) {
+        prefetched.set(key, new Response(await response.text(), { headers: response.headers }))
+        if (prefetched.size > 20) prefetched.delete(prefetched.keys().next().value!)
+      }
+    } catch {} // offline: asked for at the click
+    prefetching.delete(key)
+  }
+
   /**
    * Props of the page on the screen, asked for with a request of its own: the loader's answer for the same
    * component, with these props only. Quiet: no navigation state, no history entry, no scroll; it is aborted when
@@ -185,6 +206,9 @@ export function startNavigation({
     }
     if (!post) preload(url.pathname)
     const from = !post && prerender ? source(url) : url.pathname + url.search
+    // a GET that is not asked for again: the answer kept for it, once (never a form's POST, reload() or Back's)
+    const early = !post && !options.keep && !shown ? prefetched.get(from) : undefined
+    prefetched.delete(from)
     void (async () => {
       try {
         if (shown) {
@@ -194,12 +218,14 @@ export function startNavigation({
           announce()
           restore(options.scroll, url.hash)
         }
-        const response = await fetch(from, {
-          method: post ? 'POST' : 'GET',
-          body: options.body,
-          headers: headers(),
-          signal,
-        })
+        const response =
+          early ??
+          (await fetch(from, {
+            method: post ? 'POST' : 'GET',
+            body: options.body,
+            headers: headers(),
+            signal,
+          }))
         if (signal.aborted) return
         if (post) kept.clear()
         // a new build, another site: the document
@@ -325,23 +351,30 @@ export function startNavigation({
     visit!(url.href, { history: url.href === location.href ? 'replace' : 'push' })
   })
 
-  // a link's page modules load before the click: when the pointer rests on it (80 ms), or a touch starts on it. The
-  // modules only, not the page's data: a loader runs for a visit, never for a page that may not be visited. Not
-  // when the visitor asked to save data; not for the keyboard (tabbing passes many links)
+  // a link's page modules load before the click: when the pointer rests on it (80 ms), or a touch starts on it, and
+  // a static page's data with them (its file: nothing runs); another page's data not, a loader runs for a visit,
+  // never for a page that may not be visited. Not when the visitor asked to save data; not for the keyboard
+  // (tabbing passes many links)
   if (!(navigator as { connection?: { saveData?: boolean } }).connection?.saveData) {
     const RESTING = 80 // milliseconds the pointer rests
     let timer: ReturnType<typeof setTimeout> | undefined
     document.addEventListener('mouseover', (event) => {
       const url = linkOf(event.target)
       clearTimeout(timer)
-      if (url && isPage(url.pathname)) timer = setTimeout(() => preload(url.pathname), RESTING)
+      if (url && isPage(url.pathname))
+        timer = setTimeout(() => {
+          preload(url.pathname)
+          void prefetch(url)
+        }, RESTING)
     })
     document.addEventListener('mouseout', () => clearTimeout(timer))
     document.addEventListener(
       'touchstart',
       (event) => {
         const url = linkOf(event.target)
-        if (url && isPage(url.pathname)) preload(url.pathname)
+        if (!url || !isPage(url.pathname)) return
+        preload(url.pathname)
+        void prefetch(url)
       },
       { passive: true },
     )

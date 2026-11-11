@@ -12,6 +12,7 @@ import { htmlFile, pageDataPath, pathOfPageData, staticFiles } from '../src/path
 import { prerenderPaths, type PrerenderRoute } from '../src/server/prerender.js'
 import { staticPages, type ServeStatic } from '../src/server/static.js'
 import { ownScripts, prerender, staticPolicy, withHeaderRules } from '../src/vite/prerender.js'
+import { calls } from './app/routes/_deferred/calls.js'
 
 const route = (
   file: string,
@@ -309,6 +310,27 @@ describe('the app', () => {
     const page = (await res.json()) as { component: string; url: string }
     expect(page.component).toBe('index')
     expect(page.url).toBe('/?fresh')
+  })
+  test('a prefetch of a page without a file: 204, no-store, no loader runs', async () => {
+    const before = calls.counted
+    const res = await app.request('/_fondu/pages/counted.json', {
+      headers: { 'X-Fondu': 'true', 'X-Fondu-Version': 'v1', 'X-Fondu-Prefetch': 'true' },
+    })
+    expect(res.status).toBe(204)
+    expect(res.headers.get('cache-control')).toBe('no-store')
+    expect(res.headers.has('x-fondu')).toBe(false)
+    expect(await res.text()).toBe('')
+    expect(calls.counted).toBe(before)
+  })
+  test('a page object asked for without X-Fondu-Prefetch: answered by the app as before', async () => {
+    const before = calls.counted
+    const res = await app.request('/_fondu/pages/counted.json', {
+      headers: { 'X-Fondu': 'true', 'X-Fondu-Version': 'v1' },
+    })
+    expect(res.status).toBe(200)
+    expect(res.headers.get('x-fondu')).toBe('true')
+    expect(((await res.json()) as { component: string }).component).toBe('counted')
+    expect(calls.counted).toBe(before + 1)
   })
   test('the page object of a page object: none', async () => {
     const res = await app.request('/_fondu/pages/_fondu/pages/index.json.json', {

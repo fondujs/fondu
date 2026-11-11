@@ -315,12 +315,59 @@ test.describe('with fondu/client only', () => {
     })
     await page.hover('a[href="/long"]')
     await expect.poll(() => scripts.length).toBeGreaterThan(0)
-    expect(data).toEqual([])
+    // /long is prerendered: its data is its file, asked for with the modules (`x-fondu-prefetch`); no loader runs
+    await expect.poll(() => data).toEqual([new URL('/_fondu/pages/long.json', page.url()).href])
     expect(new URL(page.url()).pathname).toBe('/')
     await page.click('a[href="/long"]')
     await settle(page)
     expect(await page.evaluate(() => document.querySelector('h1')?.textContent)).toBe('Long')
     expect(data).toHaveLength(1)
+  })
+  test("a static page's link the pointer rests on: its data asked for once; the click asks for nothing more", async ({
+    page,
+  }) => {
+    await open(page, '/')
+    await page.waitForLoadState('networkidle')
+    const asked: string[] = []
+    const answered: Array<{ path: string; status: number }> = []
+    page.on('request', (r) => {
+      const { pathname } = new URL(r.url())
+      if (pathname.startsWith('/_fondu/pages/')) asked.push(pathname)
+    })
+    page.on('response', (r) => {
+      const { pathname } = new URL(r.url())
+      if (pathname.startsWith('/_fondu/pages/'))
+        answered.push({ path: pathname, status: r.status() })
+    })
+    await page.hover('a[href="/long"]')
+    await expect.poll(() => answered).toEqual([{ path: '/_fondu/pages/long.json', status: 200 }])
+    await page.click('a[href="/long"]')
+    await settle(page)
+    expect(await page.evaluate(() => document.querySelector('h1')?.textContent)).toBe('Long')
+    expect(asked).toEqual(['/_fondu/pages/long.json'])
+  })
+  test('a page without a file: the prefetch is answered 204, the click asks for the page', async ({
+    page,
+  }) => {
+    await open(page, '/')
+    await page.waitForLoadState('networkidle')
+    const answered: Array<{ path: string; status: number }> = []
+    page.on('response', (r) => {
+      const { pathname } = new URL(r.url())
+      if (pathname.startsWith('/_fondu/pages/'))
+        answered.push({ path: pathname, status: r.status() })
+    })
+    await page.hover('a[href="/csr"]')
+    await expect.poll(() => answered).toEqual([{ path: '/_fondu/pages/csr.json', status: 204 }])
+    await page.click('a[href="/csr"]')
+    await settle(page)
+    expect(await page.evaluate(() => document.querySelector('h1')?.textContent)).toBe(
+      'Rendered in the browser',
+    )
+    expect(answered).toEqual([
+      { path: '/_fondu/pages/csr.json', status: 204 },
+      { path: '/_fondu/pages/csr.json', status: 200 },
+    ])
   })
   test('a link to a file: the pointer rests on it, nothing loaded', async ({ page }) => {
     await open(page, '/')
