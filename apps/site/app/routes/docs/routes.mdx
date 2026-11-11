@@ -113,6 +113,40 @@ import { defineHandler } from 'fondu'
 export const GET = defineHandler((c) => c.json({ ok: true }))
 ```
 
+## Calling a route from the browser
+
+For an effect or an event (a dialog's tab, a toggle without a form), `fetch()` from `fondu/client` calls a `.ts` route,
+typed by its file:
+
+```tsx
+import { fetch, FetchError } from 'fondu/client'
+
+const usage = await fetch('/api/usage') // the GET's c.json() type, as JSON delivers it: a Date is a string
+const user = await fetch('/api/users/:id', { id: 42, query: { full: 'yes' } })
+await fetch('/api/settings', { method: 'POST', body: { emails: false } })
+
+try {
+  await fetch('/api/settings', { method: 'POST', body: { emails: 'no' } })
+} catch (error) {
+  if (error instanceof FetchError && error.status === 422) showErrors(error.data.errors)
+}
+```
+
+What is checked:
+
+- the path is a `.ts` route of the app (a page's pattern is not one: a page's data is its props), with its params as
+  `href()` takes them;
+- `method` is one the file exports, and GET when left out (required when the file has no `GET`);
+- `query` and `body` are typed by the handler's `withValidator` schemas (a body only for a method other than GET, sent as
+  JSON); `headers` and `signal` pass through;
+- the answer is what the handler returns with `c.json()`, as JSON delivers it. A handler that answers otherwise (text, a
+  redirect) gives `unknown`.
+
+A non-2xx answer throws a `FetchError`, with `status`, `data` (the parsed body: a 422's `{ errors }`) and `response`. A
+network error is thrown as it is. There is no retry and no cache: use `use()`, an effect or a library of your own, and
+`AbortSignal.timeout()` for a timeout. `fetch()` is for the browser: during the server render it throws, as a page's data
+comes from its loader or `defer()`.
+
 ## Validated input
 
 `defineHandler.withValidator({ body, query, params })` checks the input with any

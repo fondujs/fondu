@@ -35,7 +35,8 @@ swaps the page in place (the History API); Back and Forward restore the scroll p
   typed after `app/routes/`; `{ query, hash }` too, the query typed by the route's `withValidator({ query })`; a
   redirect: `c.redirect(href(…), 303)`). A form's errors: the page's `errors` prop. From `fondu/client` too:
   `usePage()` (props, shared props, `url`, `flash`), `useNavigation()` (pending UI: `{ state, to, form }`, `state` may be `failed`),
-  `reload()` (the props again). In code, `navigate(href(…))` navigates as a link would (`{ replace: true }`: no new
+  `reload()` (the props again). `fetch('/api/usage', { method?, query?, body? })` calls a `.ts` route from an effect or
+  an event, typed by its file (a non-2xx answer throws `FetchError`; a page's data is its loader's). In code, `navigate(href(…))` navigates as a link would (`{ replace: true }`: no new
   history entry); `loadDocument(href(…))` loads a document instead, as `<a target="_top">` does. Only links to the
   app's pages are the client's. A progress bar shows during slow navigations: `fondu({ progress: { color, delay,
   forms } })` in `vite.config.ts`, or `progress: false`. A form being sent has `aria-busy="true"`: its submit

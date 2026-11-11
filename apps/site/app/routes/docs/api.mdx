@@ -81,17 +81,19 @@ createApp({
 
 For the browser.
 
-| Export                            | Is                                                                                                                                                        |
-| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `href(path, params?)`             | a URL of `app/routes/`, typed: `href('/users/:id', { id: 7, query?, hash? })` ([Type safety](/docs/type-safety#urls))                                     |
-| `usePage()`                       | the page on screen: `component`, `props`, `url`, `flash`                                                                                                  |
-| `useNavigation()`                 | the navigation on its way: `{ state, to, form }`, `state` `'idle'`, `'loading'`, `'submitting'` or `'failed'` (a form not sent)                           |
-| `useForm(schema?)`                | a form checked in the browser by its action's schema: `{ form, field, errors, submitting, failed }` ([Forms](/docs/forms#the-same-schema-in-the-browser)) |
-| `reload({ only? })`               | the page's props again, its state and scroll position kept; `only: ['stats']`: those props alone, quietly                                                 |
-| `<Deferred data fallback failed>` | children once the deferred props `data` are there, `fallback` while asked for, `failed` if they could not be had                                          |
-| `navigate(href, { replace? })`    | goes to `href` as a link would: a page in place, anything else as a document ([Navigation](/docs/navigation#navigating-in-code))                          |
-| `loadDocument(href)`              | a document load, for what a page can't change in place                                                                                                    |
-| `Errors`                          | the type of a page's `errors` prop                                                                                                                        |
+| Export                            | Is                                                                                                                                                                                              |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `href(path, params?)`             | a URL of `app/routes/`, typed: `href('/users/:id', { id: 7, query?, hash? })` ([Type safety](/docs/type-safety#urls))                                                                           |
+| `usePage()`                       | the page on screen: `component`, `props`, `url`, `flash`                                                                                                                                        |
+| `useNavigation()`                 | the navigation on its way: `{ state, to, form }`, `state` `'idle'`, `'loading'`, `'submitting'` or `'failed'` (a form not sent)                                                                 |
+| `useForm(schema?)`                | a form checked in the browser by its action's schema: `{ form, field, errors, submitting, failed }` ([Forms](/docs/forms#the-same-schema-in-the-browser))                                       |
+| `reload({ only? })`               | the page's props again, its state and scroll position kept; `only: ['stats']`: those props alone, quietly                                                                                       |
+| `<Deferred data fallback failed>` | children once the deferred props `data` are there, `fallback` while asked for, `failed` if they could not be had                                                                                |
+| `navigate(href, { replace? })`    | goes to `href` as a link would: a page in place, anything else as a document ([Navigation](/docs/navigation#navigating-in-code))                                                                |
+| `loadDocument(href)`              | a document load, for what a page can't change in place                                                                                                                                          |
+| `fetch(path, options?)`           | a typed call to a `.ts` route from the browser: `fetch('/api/users/:id', { id: 7, method?, query?, body? })`; a non-2xx answer throws ([Routes](/docs/routes#calling-a-route-from-the-browser)) |
+| `FetchError`                      | what `fetch()` throws for a non-2xx answer: `status`, `data` (the parsed body), `response`                                                                                                      |
+| `Errors`                          | the type of a page's `errors` prop                                                                                                                                                              |
 
 ## `fondu/vite`
 

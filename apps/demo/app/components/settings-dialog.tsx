@@ -1,5 +1,5 @@
-import { href, useForm, usePage } from 'fondu/client'
-import { useEffect, useSyncExternalStore } from 'react'
+import { fetch, FetchError, href, useForm, usePage } from 'fondu/client'
+import { useEffect, useState, useSyncExternalStore } from 'react'
 
 import { SubmitButton, TextField } from '#/components/demo.tsx'
 import {
@@ -11,11 +11,11 @@ import {
 } from '#/components/ui/dialog.tsx'
 import { cn } from '#/lib/utils.ts'
 
-// A dialog the URL opens, over any page: `#settings/profile`, `#settings/account`. Links to a #fragment are the
+// A dialog the URL opens, over any page: `#settings/profile`, `#settings/account`, `#settings/usage`. Links to a #fragment are the
 // browser's (each an entry of the history, Back closes it, a reload keeps it); the fragment is read as an external
 // store. Its form posts to /settings/name, and the answer comes back to the same page with the fragment still on it.
 const PREFIX = '#settings/'
-const TABS = { profile: 'Profile', account: 'Account' } as const
+const TABS = { profile: 'Profile', account: 'Account', usage: 'Usage' } as const
 type Tab = keyof typeof TABS
 
 const subscribe = (notify: () => void) => {
@@ -66,7 +66,7 @@ export function SettingsDialog() {
   const hash = useHash()
   const name = hash.startsWith(PREFIX) ? hash.slice(PREFIX.length) : ''
   // remembered while it closes: the dialog fades out with its content
-  const tab: Tab = name === 'account' ? 'account' : 'profile'
+  const tab: Tab = name === 'account' || name === 'usage' ? name : 'profile'
   useEffect(() => {
     // nothing to show a guest (signed out with it open)
     if (!user && hash.startsWith(PREFIX)) close()
@@ -94,7 +94,9 @@ export function SettingsDialog() {
             ))}
           </nav>
         </DialogHeader>
-        <DialogPanel>{tab === 'profile' ? <Profile /> : <AccountFacts />}</DialogPanel>
+        <DialogPanel>
+          {tab === 'profile' ? <Profile /> : tab === 'account' ? <AccountFacts /> : <Usage />}
+        </DialogPanel>
       </DialogPopup>
     </Dialog>
   )
@@ -137,6 +139,49 @@ function AccountFacts() {
       <dd data-testid="settings-since">
         {user &&
           new Date(user.since).toLocaleDateString('en', { dateStyle: 'long', timeZone: 'UTC' })}
+      </dd>
+    </dl>
+  )
+}
+
+// fetch() from fondu/client: a call to a .ts route (app/routes/api/usage.ts), typed by it, as the dialog opens
+// this tab (an effect: a page's data would come from its loader). A non-2xx answer is a FetchError.
+function Usage() {
+  const [state, setState] = useState<
+    | { status: 'loading' }
+    | { status: 'done'; contacts: number; since: string }
+    | { status: 'failed'; code: number | null }
+  >({ status: 'loading' })
+  useEffect(() => {
+    const controller = new AbortController()
+    fetch('/api/usage', { signal: controller.signal }).then(
+      (usage) => setState({ status: 'done', ...usage }),
+      (error) => {
+        if (!controller.signal.aborted)
+          setState({ status: 'failed', code: error instanceof FetchError ? error.status : null })
+      },
+    )
+    return () => controller.abort()
+  }, [])
+  if (state.status === 'loading')
+    return (
+      <p className="text-sm text-muted-foreground" data-testid="usage-loading">
+        Loading usage…
+      </p>
+    )
+  if (state.status === 'failed')
+    return (
+      <p role="alert" className="text-sm text-destructive" data-testid="usage-error">
+        {state.code ? `Could not load usage (${state.code})` : 'Could not load usage'}
+      </p>
+    )
+  return (
+    <dl className="grid grid-cols-[6rem_1fr] gap-y-1.5 text-sm">
+      <dt className="text-muted-foreground">Contacts</dt>
+      <dd data-testid="usage-contacts">{state.contacts}</dd>
+      <dt className="text-muted-foreground">Since</dt>
+      <dd data-testid="usage-since">
+        {new Date(state.since).toLocaleDateString('en', { dateStyle: 'long', timeZone: 'UTC' })}
       </dd>
     </dl>
   )
