@@ -5,25 +5,40 @@ import { validator, type Input, type Schemas } from './validate.js'
 
 const factory = createFactory()
 
-type Final<S extends Schemas> = (c: Context, input: Input<S>) => Response | Promise<Response>
+type Final<S extends Schemas, R extends Response = Response> = (
+  c: Context,
+  input: Input<S>,
+) => R | Promise<R>
 type Handlers = Array<Handler | MiddlewareHandler>
 
 /** @internal a type only, never a value: the schemas a `withValidator` handler checks, for `href()`'s `query` */
 export declare const schemasOf: unique symbol
-/** handlers of `withValidator`: with their schemas, in the type only (`href()` types the query by them) */
-export type Validated<S extends Schemas> = Handlers & { readonly [schemasOf]?: S }
+/** @internal a type only, never a value: the response the handler returns, for `fetch()`'s answer */
+export declare const answerOf: unique symbol
+/**
+ * handlers of `withValidator`: with their schemas and the response they return, in the type only (`href()` types
+ * the query by the schemas, `fetch()` the answer by the response)
+ */
+export type Validated<S extends Schemas, R extends Response = Response> = Handlers & {
+  readonly [schemasOf]?: S
+  readonly [answerOf]?: R
+}
 
 /** overloads, as Hono's `createHandlers` has them: the last handler's parameters are typed reliably */
 interface WithInput<S extends Schemas> {
-  (handler: Final<S>): Validated<S>
-  (m1: MiddlewareHandler, handler: Final<S>): Validated<S>
-  (m1: MiddlewareHandler, m2: MiddlewareHandler, handler: Final<S>): Validated<S>
-  (
+  <R extends Response>(handler: Final<S, R>): Validated<S, R>
+  <R extends Response>(m1: MiddlewareHandler, handler: Final<S, R>): Validated<S, R>
+  <R extends Response>(
+    m1: MiddlewareHandler,
+    m2: MiddlewareHandler,
+    handler: Final<S, R>,
+  ): Validated<S, R>
+  <R extends Response>(
     m1: MiddlewareHandler,
     m2: MiddlewareHandler,
     m3: MiddlewareHandler,
-    handler: Final<S>,
-  ): Validated<S>
+    handler: Final<S, R>,
+  ): Validated<S, R>
 }
 
 /**

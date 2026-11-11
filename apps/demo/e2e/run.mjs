@@ -1004,6 +1004,35 @@ await page.waitForFunction(
     'settings: closed after a tab was opened (two entries): back over both, to the page',
     (await hash()) === '' && (await path()) === '/account',
   )
+  // the usage tab: fetch() of fondu/client, a GET of the .ts route /api/usage (routes/api/usage.ts)
+  const usageRequests = []
+  const onUsage = (r) => {
+    if (new URL(r.url()).pathname === '/api/usage') usageRequests.push(r)
+  }
+  page.on('request', onUsage)
+  const contactsNow = await page.evaluate(async () =>
+    (await (await fetch('/api/contacts')).json()).contacts.length.toString(),
+  )
+  await openFromMenu()
+  await page.click('[data-testid=settings-tab-usage]')
+  await page.waitForSelector('[data-testid=usage-contacts]', { timeout: 4000 })
+  page.off('request', onUsage)
+  ok(
+    'settings: the usage tab asks /api/usage with fetch(), and shows its count',
+    (await testid('usage-contacts')) === contactsNow &&
+      (await testid('usage-since')) !== '' &&
+      (await hash()) === '#settings/usage',
+    `${await testid('usage-contacts')} of ${contactsNow}`,
+  )
+  ok(
+    'settings: that request was one GET, for JSON',
+    usageRequests.length === 1 &&
+      usageRequests[0].method() === 'GET' &&
+      usageRequests[0].headers().accept === 'application/json',
+    JSON.stringify(usageRequests.map((r) => [r.method(), r.headers().accept])),
+  )
+  await page.keyboard.press('Escape')
+  await gone()
   await setValue('main form input[name=name]', 'Demo User')
   await page.click('main form button')
   await page.waitForFunction(
