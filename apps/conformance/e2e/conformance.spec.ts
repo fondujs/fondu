@@ -388,6 +388,95 @@ test.describe('with fondu/client only', () => {
       { path: '/_fondu/pages/csr.json', status: 200 },
     ])
   })
+  test("a touch then the click at once: the static page's data asked for once", async ({
+    page,
+  }) => {
+    await open(page, '/')
+    await page.waitForLoadState('networkidle')
+    // the file is slow, so the click comes while the touch's request is still on its way
+    await page.route('**/_fondu/pages/long.json', async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 300))
+      await route.continue()
+    })
+    const answered: Array<{ path: string; status: number }> = []
+    const asked: string[] = []
+    page.on('request', (r) => {
+      const { pathname } = new URL(r.url())
+      if (pathname.startsWith('/_fondu/pages/')) asked.push(pathname)
+    })
+    page.on('response', (r) => {
+      const { pathname } = new URL(r.url())
+      if (pathname.startsWith('/_fondu/pages/'))
+        answered.push({ path: pathname, status: r.status() })
+    })
+    // a plain event: Firefox on the desktop has no TouchEvent
+    await page.evaluate(() =>
+      document
+        .querySelector('a[href="/long"]')!
+        .dispatchEvent(new Event('touchstart', { bubbles: true })),
+    )
+    await page.click('a[href="/long"]')
+    await expect(page.locator('h1')).toHaveText('Long')
+    await settle(page)
+    expect(asked).toEqual(['/_fondu/pages/long.json'])
+    expect(answered).toEqual([{ path: '/_fondu/pages/long.json', status: 200 }])
+  })
+  test('the pointer resting on a link to a page without a file, again and again: asked once', async ({
+    page,
+  }) => {
+    await open(page, '/')
+    await page.waitForLoadState('networkidle')
+    const answered: Array<{ path: string; status: number }> = []
+    page.on('response', (r) => {
+      const { pathname } = new URL(r.url())
+      if (pathname.startsWith('/_fondu/pages/'))
+        answered.push({ path: pathname, status: r.status() })
+    })
+    await page.hover('a[href="/csr"]')
+    await expect.poll(() => answered).toEqual([{ path: '/_fondu/pages/csr.json', status: 204 }])
+    for (let rest = 0; rest < 2; rest++) {
+      await page.mouse.move(0, 0)
+      await page.hover('a[href="/csr"]')
+      await page.waitForTimeout(250) // over the 80 ms the pointer rests, and the answer's time
+    }
+    expect(answered).toEqual([{ path: '/_fondu/pages/csr.json', status: 204 }])
+  })
+  test("the pointer resting on a static page's link again: asked once", async ({ page }) => {
+    await open(page, '/')
+    await page.waitForLoadState('networkidle')
+    const answered: Array<{ path: string; status: number }> = []
+    page.on('response', (r) => {
+      const { pathname } = new URL(r.url())
+      if (pathname.startsWith('/_fondu/pages/'))
+        answered.push({ path: pathname, status: r.status() })
+    })
+    await page.hover('a[href="/long"]')
+    await expect.poll(() => answered).toEqual([{ path: '/_fondu/pages/long.json', status: 200 }])
+    await page.mouse.move(0, 0)
+    await page.hover('a[href="/long"]')
+    await page.waitForTimeout(250)
+    expect(answered).toEqual([{ path: '/_fondu/pages/long.json', status: 200 }])
+    await page.click('a[href="/long"]')
+    await settle(page)
+    expect(await page.evaluate(() => document.querySelector('h1')?.textContent)).toBe('Long')
+    expect(answered).toEqual([{ path: '/_fondu/pages/long.json', status: 200 }])
+  })
+  test('two links to the same page: asked once', async ({ page }) => {
+    await open(page, '/')
+    await page.waitForLoadState('networkidle')
+    const answered: Array<{ path: string; status: number }> = []
+    page.on('response', (r) => {
+      const { pathname } = new URL(r.url())
+      if (pathname.startsWith('/_fondu/pages/'))
+        answered.push({ path: pathname, status: r.status() })
+    })
+    // /long and /long#end: one page, one file
+    await page.hover('a[href="/long"]')
+    await expect.poll(() => answered).toEqual([{ path: '/_fondu/pages/long.json', status: 200 }])
+    await page.hover('a[href="/long#end"]')
+    await page.waitForTimeout(250)
+    expect(answered).toEqual([{ path: '/_fondu/pages/long.json', status: 200 }])
+  })
   test('a link to a file: the pointer rests on it, nothing loaded', async ({ page }) => {
     await open(page, '/')
     await page.waitForLoadState('networkidle')

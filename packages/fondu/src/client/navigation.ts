@@ -103,31 +103,32 @@ export function startNavigation({
   const source = (url: URL) =>
     prerender ? pageDataPath(url.pathname) + url.search : url.pathname + url.search
 
-  // What a static page's file answered when the pointer rested on its link (`prerender`), by the URL a navigation
-  // would ask for: read into memory, the last 20. A file runs nothing, so asking early costs the app nothing; the
-  // click uses it once, and its version is checked as for any page object. A page without a file answers 204
-  // (nothing kept: its data is asked for at the click, when its loader should run)
-  // Data asked for early is fresh for 30 seconds (TanStack Router's default): a deploy in between is then found at
-  // the click, which asks again
+  // What a link's page answered when asked early (`prerender`), by the URL a navigation would ask: its file (a
+  // Response, read into memory), or null (no file: 204, its data is asked for at the click, when its loader should
+  // run). A file runs nothing, so asking early costs the app nothing. Asked once in 30 seconds (TanStack Router's
+  // default: a deploy in between is found at the click); the click waits for an answer on its way and reads a file
+  // once, its version checked as for any page object. The last 20
   const freshFor = 30_000
-  const prefetched = new Map<string, { response: Response; at: number }>()
-  const prefetching = new Set<string>()
-  const prefetch = async (url: URL) => {
+  const prefetched = new Map<string, { answer: Promise<Response | null>; at: number }>()
+  const prefetch = (url: URL) => {
     if (!prerender) return
     const key = source(url)
     const entry = prefetched.get(key)
-    if ((entry && Date.now() - entry.at < freshFor) || prefetching.has(key)) return
-    prefetching.add(key)
-    try {
-      const response = await fetch(key, { headers: { ...headers(), 'X-Fondu-Prefetch': 'true' } })
-      if (response.status === 200 && response.headers.has('X-Fondu')) {
-        const body = new Response(await response.text(), { headers: response.headers })
+    if (entry && Date.now() - entry.at < freshFor) return
+    const answer = (async (): Promise<Response | null> => {
+      try {
+        const response = await fetch(key, { headers: { ...headers(), 'X-Fondu-Prefetch': 'true' } })
+        if (response.status === 200 && response.headers.has('X-Fondu'))
+          return new Response(await response.text(), { headers: response.headers })
+      } catch {
+        // offline: asked for again
         prefetched.delete(key)
-        prefetched.set(key, { response: body, at: Date.now() })
-        if (prefetched.size > 20) prefetched.delete(prefetched.keys().next().value!)
       }
-    } catch {} // offline: asked for at the click
-    prefetching.delete(key)
+      return null
+    })()
+    prefetched.delete(key)
+    prefetched.set(key, { answer, at: Date.now() })
+    if (prefetched.size > 20) prefetched.delete(prefetched.keys().next().value!)
   }
 
   /**
@@ -212,10 +213,9 @@ export function startNavigation({
     }
     if (!post) preload(url.pathname)
     const from = !post && prerender ? source(url) : url.pathname + url.search
-    // a GET that is not asked for again: the answer kept for it, once (never a form's POST, reload() or Back's)
-    const entry = !post && !options.keep && !shown ? prefetched.get(from) : undefined
-    const early = entry && Date.now() - entry.at < freshFor ? entry.response : undefined
-    prefetched.delete(from)
+    // a GET that is not asked for again: the answer kept for it (never a form's POST, reload() or Back's)
+    const found = !post && !options.keep && !shown ? prefetched.get(from) : undefined
+    const entry = found && Date.now() - found.at < freshFor ? found : undefined
     void (async () => {
       try {
         if (shown) {
@@ -225,6 +225,11 @@ export function startNavigation({
           announce()
           restore(options.scroll, url.hash)
         }
+        // the file asked for early, waited for if it is on its way; none (null): the app is asked
+        const early = entry ? await entry.answer : null
+        if (signal.aborted) return
+        // a Response is read once; a null stays, so the rests that follow ask nothing
+        if (early && prefetched.get(from) === entry) prefetched.delete(from)
         const response =
           early ??
           (await fetch(from, {
