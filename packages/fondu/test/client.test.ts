@@ -1,6 +1,6 @@
 // The server render of fondu/client's app: the page in its directories' layouts, the tags it renders hoisted out of #app
-import { createElement as h, type ReactNode } from 'react'
-import { renderToReadableStream } from 'react-dom/server'
+import { createElement as h, useId, type ReactNode } from 'react'
+import { renderToReadableStream, renderToString } from 'react-dom/server'
 import { expect, test } from 'vitest'
 
 import { __entry, Deferred, renderPage, usePage } from '../src/client.js'
@@ -12,6 +12,10 @@ const Show = ({ name }: { name: string }) => [
   h('title', { key: 't' }, `User ${name}`),
   h('h1', { key: 'h' }, name, ' at ', usePage().url),
 ]
+const Labeled = () => {
+  const id = useId()
+  return h('label', { htmlFor: id }, id)
+}
 const Plain = () => h('p', null, 'plain')
 const Board = () =>
   h(
@@ -30,6 +34,7 @@ const Inherited = () =>
 __entry(
   {
     '/app/routes/(site)/users/[id].tsx': async () => ({ default: Show }),
+    '/app/routes/labeled.tsx': async () => ({ default: Labeled }),
     '/app/routes/about.mdx': async () => ({ default: Plain }),
     '/app/routes/admin/users/list.tsx': async () => ({ default: Plain }),
     '/app/routes/(site)/users/new.tsx': async () => ({ default: Plain }),
@@ -115,4 +120,12 @@ test("a URL's page, guessed to load its modules with its data: static segments f
   expect(pageAt('/caf%C3%A9')).toBe('café')
   expect(pageAt('/café')).toBe('café')
   expect(pageAt('/%E0%A4%A')).toBeUndefined()
+})
+
+test("useId(): the server's tree is the browser's (#app and the page, nothing beside it)", async () => {
+  // the browser hydrates `<App/>` into #app: its tree is the page's component alone (App has one child at each
+  // level, so it adds nothing to a useId()'s position). A sibling of #app on the server is a fork: every id differs
+  const { body } = await render('labeled')
+  const id = (html: string) => /for="([^"]+)"/.exec(html)![1]
+  expect(id(body)).toBe(id(renderToString(h(Labeled))))
 })

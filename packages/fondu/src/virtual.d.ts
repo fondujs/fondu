@@ -12,8 +12,11 @@ declare module 'virtual:fondu/ssr' {
   export const renderPage:
     | ((
         page: import('./client/navigation.js').Page,
-        options: { nonce?: string; onError?: (error: unknown) => void },
-        after?: import('react').ReactElement,
+        options: {
+          nonce?: string
+          onError?: (error: unknown) => void
+          bootstrapScriptContent?: string
+        },
       ) => Promise<import('./client/app.js').Rendered>)
     | null
   /** React's static markup of a JSX document (`react-dom/server`'s `renderToStaticMarkup`) */

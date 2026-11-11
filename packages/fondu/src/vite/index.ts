@@ -549,7 +549,7 @@ function core(options: FonduOptions): Plugin {
               `import '${V.entry}'`,
               `import { renderToReadableStream, renderToStaticMarkup } from 'react-dom/server'`,
               `import { renderPage as render } from 'fondu/client'`,
-              `export const renderPage = (page, options, after) => render(page, (el) => renderToReadableStream(el, options), after)`,
+              `export const renderPage = (page, options) => render(page, (el) => renderToReadableStream(el, options))`,
               `export { renderToStaticMarkup as renderMarkup }`,
             ].join('\n')
       if (id === resolved(V.assets))

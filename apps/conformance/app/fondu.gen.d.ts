@@ -9,6 +9,7 @@ declare module 'fondu' {
       "/echo": typeof import("./routes/echo")
       "/form": typeof import("./routes/form")
       "/go/:kind": typeof import("./routes/go/[kind]")
+      "/ids": typeof import("./routes/ids")
       "/": typeof import("./routes/index")
       "/long": typeof import("./routes/long")
       "/search": typeof import("./routes/search")
