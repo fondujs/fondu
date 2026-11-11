@@ -32,6 +32,7 @@ to prerender, and writes each twice in the client build:
 - as a document, `docs/intro.html`, for a first visit;
 - as its page object, `_fondu/pages/docs/intro.json`, for navigations: Fondu's client reads it instead of asking
   the Worker.
+  It is asked for once the pointer rests on a link to the page, so the click has nothing to wait for.
 
 Then:
 

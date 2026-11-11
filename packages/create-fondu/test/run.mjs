@@ -224,6 +224,18 @@ for (const target of Object.keys(production).filter(
       csp,
     )
     if (target !== 'cloudflare') await staticPages(base, app, target, script, home, html, check)
+    // a prefetch (the pointer resting on a link): a static page's data is its file, another page's is 204
+    const prefetch = (path) =>
+      fetch(base + path, { headers: { 'X-Fondu': 'true', 'X-Fondu-Prefetch': 'true' } })
+    const prefetched = await prefetch('/_fondu/pages/index.json')
+    const none = await prefetch('/_fondu/pages/nope.json')
+    check(
+      `${target} ${script}: a prefetch: the static page's data is its file, another page's is 204`,
+      prefetched.status === 200 &&
+        prefetched.headers.get('x-fondu') === 'true' &&
+        none.status === 204,
+      `${prefetched.status} ${none.status}`,
+    )
     check(`${target} ${script}: says where it listens`, output().includes(says), output())
   })
 }

@@ -68,6 +68,10 @@ export async function prerenderPaths(
  */
 export function prerenderRoutes(app: Hono, routes: () => PrerenderRoute[], version: string | null) {
   app.get(`${PAGE_DATA}/*`, (c) => {
+    // a prefetch is for a static page's file only (served before the app, which is not reached): a page without
+    // one is asked for at the click, and no loader runs for a page that may not be visited
+    if (c.req.header('X-Fondu-Prefetch') === 'true')
+      return c.body(null, 204, { 'Cache-Control': 'no-store' })
     const path = pathOfPageData(c.req.path)
     // a page object's own URL is not a page: no page object of a page object (and so on)
     if (!path || path.startsWith('/_fondu/')) return c.notFound()
