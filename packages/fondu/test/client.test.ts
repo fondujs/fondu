@@ -19,6 +19,12 @@ const Board = () =>
     { data: ['a', 'b'], fallback: h('i', null, 'wait'), failed: h('b', null, 'failed') },
     'done',
   )
+const Inherited = () =>
+  h(
+    Deferred,
+    { data: 'toString', fallback: h('i', null, 'wait'), failed: h('b', null, 'failed') },
+    'done',
+  )
 
 // on the server, the entry only keeps the modules (no document to start the app in)
 __entry(
@@ -32,6 +38,7 @@ __entry(
     '/app/routes/café.tsx': async () => ({ default: Plain }),
     '/app/routes/_error.tsx': async () => ({ default: Plain }),
     '/app/routes/board.tsx': async () => ({ default: Board }),
+    '/app/routes/inherited.tsx': async () => ({ default: Inherited }),
   },
   {
     '/app/routes/(site)/_layout.tsx': async () => ({ default: Inner }),
@@ -80,6 +87,12 @@ test('Deferred: the fallback while a prop is pending, failed when it is neither 
   expect(await body({ a: 1 }, ['b'])).toBe('<div id="app"><i>wait</i></div>')
   expect(await body({ a: 1 })).toBe('<div id="app"><b>failed</b></div>')
   expect(await body({ a: 1, b: null })).toBe('<div id="app">done</div>')
+})
+
+test('Deferred: a prop is what the props own, not what objects inherit', async () => {
+  const body = async (deferred: string[]) => (await render('inherited', {}, deferred)).body
+  expect(await body(['toString'])).toBe('<div id="app"><i>wait</i></div>')
+  expect(await body([])).toBe('<div id="app"><b>failed</b></div>')
 })
 
 test('a page that is not there: said so', async () => {

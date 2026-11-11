@@ -318,6 +318,6 @@ export function Deferred({
   const page = useContext(PageContext)
   if (!page) throw new Error('fondu: <Deferred> is for components of a page')
   const names = [data].flat()
-  if (names.every((name) => name in page.props)) return children
+  if (names.every((name) => Object.hasOwn(page.props, name))) return children
   return names.some((name) => page.deferred?.includes(name)) ? fallback : failed
 }

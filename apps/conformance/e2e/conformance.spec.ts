@@ -346,6 +346,25 @@ test.describe('with fondu/client only', () => {
     expect(await page.evaluate(() => document.querySelector('h1')?.textContent)).toBe('Long')
     expect(asked).toEqual(['/_fondu/pages/long.json'])
   })
+  test("a static page's link the pointer rests on, clicked after 30 seconds: its data asked for again", async ({
+    page,
+  }) => {
+    await page.clock.install()
+    await open(page, '/')
+    await page.waitForLoadState('networkidle')
+    const asked: string[] = []
+    page.on('request', (r) => {
+      const { pathname } = new URL(r.url())
+      if (pathname.startsWith('/_fondu/pages/')) asked.push(pathname)
+    })
+    await page.hover('a[href="/long"]')
+    await expect.poll(() => asked).toEqual(['/_fondu/pages/long.json'])
+    await page.clock.fastForward(31_000)
+    await page.click('a[href="/long"]')
+    await settle(page)
+    expect(await page.evaluate(() => document.querySelector('h1')?.textContent)).toBe('Long')
+    expect(asked).toEqual(['/_fondu/pages/long.json', '/_fondu/pages/long.json'])
+  })
   test('a page without a file: the prefetch is answered 204, the click asks for the page', async ({
     page,
   }) => {

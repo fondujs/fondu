@@ -107,17 +107,23 @@ export function startNavigation({
   // would ask for: read into memory, the last 20. A file runs nothing, so asking early costs the app nothing; the
   // click uses it once, and its version is checked as for any page object. A page without a file answers 204
   // (nothing kept: its data is asked for at the click, when its loader should run)
-  const prefetched = new Map<string, Response>()
+  // Data asked for early is fresh for 30 seconds (TanStack Router's default): a deploy in between is then found at
+  // the click, which asks again
+  const freshFor = 30_000
+  const prefetched = new Map<string, { response: Response; at: number }>()
   const prefetching = new Set<string>()
   const prefetch = async (url: URL) => {
     if (!prerender) return
     const key = source(url)
-    if (prefetched.has(key) || prefetching.has(key)) return
+    const entry = prefetched.get(key)
+    if ((entry && Date.now() - entry.at < freshFor) || prefetching.has(key)) return
     prefetching.add(key)
     try {
       const response = await fetch(key, { headers: { ...headers(), 'X-Fondu-Prefetch': 'true' } })
       if (response.status === 200 && response.headers.has('X-Fondu')) {
-        prefetched.set(key, new Response(await response.text(), { headers: response.headers }))
+        const body = new Response(await response.text(), { headers: response.headers })
+        prefetched.delete(key)
+        prefetched.set(key, { response: body, at: Date.now() })
         if (prefetched.size > 20) prefetched.delete(prefetched.keys().next().value!)
       }
     } catch {} // offline: asked for at the click
@@ -128,8 +134,8 @@ export function startNavigation({
    * Props of the page on the screen, asked for with a request of its own: the loader's answer for the same
    * component, with these props only. Quiet: no navigation state, no history entry, no scroll; it is aborted when
    * another page is put on the screen, and an answer for a page no longer there is dropped; whatever isn't the
-   * page's answer is a failure, never a navigation. What came is merged into the page, its state kept; what didn't is no longer pending (`<Deferred>`
-   * says it failed)
+   * page's answer is a failure, never a navigation. What came is merged into the page, its state kept; what didn't
+   * is no longer pending (`<Deferred>` says it failed)
    */
   ask = async (names) => {
     const at = shows
@@ -137,7 +143,7 @@ export function startNavigation({
     const controller = new AbortController()
     asking.add(controller)
     // a prop asked for that is neither here nor coming (it failed): pending again, `<Deferred>` shows its fallback
-    const absent = names.filter((n) => !(n in page.props) && !page.deferred?.includes(n))
+    const absent = names.filter((n) => !Object.hasOwn(page.props, n) && !page.deferred?.includes(n))
     if (absent.length)
       void show(
         (on = { ...page, deferred: [...(page.deferred ?? []), ...absent] }),
@@ -207,7 +213,8 @@ export function startNavigation({
     if (!post) preload(url.pathname)
     const from = !post && prerender ? source(url) : url.pathname + url.search
     // a GET that is not asked for again: the answer kept for it, once (never a form's POST, reload() or Back's)
-    const early = !post && !options.keep && !shown ? prefetched.get(from) : undefined
+    const entry = !post && !options.keep && !shown ? prefetched.get(from) : undefined
+    const early = entry && Date.now() - entry.at < freshFor ? entry.response : undefined
     prefetched.delete(from)
     void (async () => {
       try {
@@ -282,7 +289,7 @@ export function startNavigation({
         // the page stays (reload(), Back's, a form's answer): what it asked for isn't taken away while it is asked again
         if (!fresh && page.deferred)
           for (const name of page.deferred)
-            if (name in on.props) page.props[name] ??= on.props[name]
+            if (Object.hasOwn(on.props, name)) page.props[name] ??= on.props[name]
         // its URL first, as the browser's own navigations: a page's render reads it (`location`, a URL's language);
         // a redirect's, the fragment asked for if it is still this page's
         const target = page.url + (asked === page.url ? url.hash : '')
