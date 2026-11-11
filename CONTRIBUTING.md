@@ -103,6 +103,8 @@ updated when the API does.
 - **Assumptions about other packages fail loudly.** Code that relies on another package's output or internals
   (react-dom's stream, the dev server's) says so in a comment, reports it when the assumption no longer holds, and
   has a test of that case.
+- **The browser's share is watched.** CI's `size` job reports fondu's browser code (minified, gzip) and, on a pull
+  request, its change against main; a change that adds more than ~5% says why in its description.
 - **Before a release**, the request-handling check on what changed since the last one:
   `git diff v<last>..main -- packages/fondu/src`.
 

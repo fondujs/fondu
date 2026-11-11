@@ -23,6 +23,28 @@ jobs:
       - run: bun run test
       - run: bun run --filter create-fondu test # an app per target, built and served
 
+  # a report, never a gate: the size of fondu's browser code, and on a pull request its change against the base branch
+  size:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bun scripts/client-size.ts --json > head.json
+      # the base, built with this branch's script (the base may not have one); no install: it shares node_modules
+      - if: github.event_name == 'pull_request'
+        run: |
+          git fetch --depth=1 origin ${{ github.base_ref }}
+          git worktree add ../base FETCH_HEAD
+          ln -s "$PWD/node_modules" ../base/node_modules
+          if [ -d packages/fondu/node_modules ]; then ln -s "$PWD/packages/fondu/node_modules" ../base/packages/fondu/node_modules; fi
+          bun scripts/client-size.ts ../base --json > base.json || echo "base: n/a (its build failed)"
+      - run: bun scripts/client-size.ts --summary head.json ${{ github.event_name == 'pull_request' && 'base.json' || '' }} >> "$GITHUB_STEP_SUMMARY"
+
   # the Vite plugin's paths and the built server on Windows: the protocol tests, and an app on the Node target
   windows:
     runs-on: windows-latest
