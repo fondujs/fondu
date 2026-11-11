@@ -3,7 +3,7 @@ import { Suspense, use } from 'react'
 
 import { current } from './_stream/gate.js'
 
-type Props = { mode: 'ok' | 'boundary' | 'shell' }
+type Props = { mode: 'ok' | 'boundary' | 'shell' | 'long' }
 
 export const loader = defineHandler((c) =>
   render(c, Stream, { mode: (c.req.query('mode') ?? 'ok') as Props['mode'] }, { status: 202 }),
@@ -17,6 +17,13 @@ export default function Stream({ mode }: Props) {
     <>
       <title>Streamed</title>
       <h1>Shell</h1>
+      {mode === 'long' && (
+        <ul id="long">
+          {Array.from({ length: 2000 }, (_, i) => (
+            <li key={i}>{`item ${i}`}</li>
+          ))}
+        </ul>
+      )}
       <Suspense fallback={<p id="fallback">Loading</p>}>
         <Later wait={wait} fail={mode === 'boundary'} />
       </Suspense>

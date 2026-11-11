@@ -100,6 +100,9 @@ updated when the API does.
 - **Request handling** (`server/`, the server's entry): what the request controls (the path, `Host`, `Referer`,
   cookies, the body) and where it goes (file paths, redirects, HTML, regular expressions, another request), each
   with a test.
+- **Assumptions about other packages fail loudly.** Code that relies on another package's output or internals
+  (react-dom's stream, the dev server's) says so in a comment, reports it when the assumption no longer holds, and
+  has a test of that case.
 - **Before a release**, the request-handling check on what changed since the last one:
   `git diff v<last>..main -- packages/fondu/src`.
 

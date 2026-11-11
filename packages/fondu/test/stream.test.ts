@@ -74,6 +74,24 @@ describe('a streamed document', () => {
     expect(text.indexOf(script)).toBeLessThan(text.indexOf('$RC='))
     expect(text.slice(0, text.indexOf(script))).toMatch(/<\/div>(<script[^>]*>[^<]*<\/script>)?$/)
   })
+  test('a shell over many chunks: the end found once, the script in place', async () => {
+    arm()
+    const res = await app.request('/stream?mode=long', { headers: html })
+    const nonce = /'nonce-([\w+/=]+)'/.exec(res.headers.get('content-security-policy')!)![1]
+    const next = reader(res)
+    const first = (await next())!
+    // the shell is several chunks of React's: the first is already past what one chunk holds
+    expect(first.length).toBeGreaterThan(12_800)
+    setTimeout(release, 20)
+    let text = first
+    for (let chunk = await next(); chunk !== null; chunk = await next()) text += chunk
+    const script = `<script nonce="${nonce}">${TODAYS_SCRIPT}</script>`
+    expect(text.split(script)).toHaveLength(2)
+    expect(text.indexOf('<li>item 1999</li>')).toBeLessThan(text.indexOf(script))
+    expect(text.indexOf('<p id="fallback">Loading</p>')).toBeLessThan(text.indexOf(script))
+    expect(text.indexOf(script)).toBeLessThan(text.indexOf('<p id="late">'))
+    expect(text.split('<li>item 1999</li>')).toHaveLength(2)
+  })
   test("the page's <title> is in the head, before the page data", async () => {
     arm()
     release()

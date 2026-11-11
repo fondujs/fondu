@@ -76,6 +76,16 @@ async function shell(
   return html.replace(/<script\b(?![^>]*\s(?:src|nonce)=)/gi, `<script nonce="${nonce}"`)
 }
 
+let shellEndReported = false
+/** once per process: every request would say the same */
+function shellEndLost() {
+  if (shellEndReported) return
+  shellEndReported = true
+  console.error(
+    "[fondu] the end of the page's shell was not found in react-dom's output (bootstrapScriptContent): the document was sent whole, without its scroll script. Is react-dom a version Fondu supports?",
+  )
+}
+
 /**
  * The document, streamed. First: the template's start, the stylesheets and the client's tags, the tags the page hoists
  * (React writes them before the page), the page data and the page's shell. Then what React adds as the Suspense
@@ -148,20 +158,49 @@ export async function renderDocument(
   const start = top + tags.replace(/<link rel="stylesheet"[^>]*>/g, '')
   if (!ssr) return start + between + data + '<div id="app"></div>' + after
   // React's own: the tags the page hoists, the page (`<div id="app"`), and the script of `marker`, the end of the
-  // shell (React writes the shell in as many chunks as it needs, so no chunk is its end): found across chunks
+  // shell (React writes the shell in as many chunks as it needs, so no chunk is its end): found across chunks.
+  // This relies on React writing `bootstrapScriptContent` as one inline `<script>` right after the shell. A React
+  // that writes it differently is reported (`shellEndLost`), not silently streamed without the scroll script.
+  // Only what is new is searched: from where the last search ended, less the marker's length (a marker cut between
+  // two chunks), so the work is linear in the shell, not quadratic
   const reader = ssr.getReader()
-  const end = new RegExp(`<script[^>]*>${marker}</script>`)
+  const closing = '</script>'
   let text = ''
-  while (!end.test(text)) {
+  let searchedTo = 0
+  let open = -1
+  let close = -1
+  for (;;) {
     const { done, value } = await reader.read()
     if (done) break
     text += value
+    let from = Math.max(0, searchedTo - marker.length)
+    let hit = text.indexOf(marker, from)
+    while (hit >= 0) {
+      // `<script …>marker</script>`, and nothing else
+      const tagAt = text.lastIndexOf('<script', hit)
+      if (tagAt >= 0 && /^<script[^>]*>$/.test(text.slice(tagAt, hit))) {
+        const markerEnd = hit + marker.length
+        // the closing tag may still be in the next chunk
+        if (text.length < markerEnd + closing.length) break
+        if (text.startsWith(closing, markerEnd)) {
+          open = tagAt
+          close = markerEnd + closing.length
+        }
+      }
+      if (close >= 0) break
+      from = hit + marker.length
+      hit = text.indexOf(marker, from)
+    }
+    if (close >= 0) break
+    // a marker found but not complete yet is searched for again, from where it is
+    searchedTo = hit >= 0 ? hit : text.length
   }
+  if (close < 0) shellEndLost()
   const at = Math.max(text.indexOf('<div id="app"'), 0)
   const script = `<script${nonce ? ` nonce="${nonce}"` : ''}>${restoreScroll}</script>`
   // the position back for a page rendered here (one rendered in the browser has nothing to scroll yet): in the
   // shell, right after the page, before what the boundaries add
-  const streamed = text.replace(end, () => script)
+  const streamed = close < 0 ? text : text.slice(0, open) + script + text.slice(close)
   const out = new TextEncoder()
   return new ReadableStream<Uint8Array>({
     start(controller) {
