@@ -151,17 +151,111 @@ become nested objects and arrays, files are `File` objects, and empty file input
 one object is a 400: JSON that doesn't parse, a name that is both a value and an object (`a` and `a[b]`), names nested
 deeper than 32.
 
-The body is read whole, in memory, files too. A body over 10 MB is answered 413 by default, with the error page. The
-limit runs after the root `_middleware.ts`, so the error page has the shared props; for that, the root middleware must
-not read the body. `createApp({ bodyLimit: 25 * 1024 * 1024 })`
-in `app/server.ts` changes the limit for the app, and `false` removes it. A route that should take less adds Hono's
-`bodyLimit` in its `_middleware.ts`; a directory's middleware cannot raise the app's limit.
+## The body limit
+
+The body is read whole, in memory, files too, and it takes about twice its size while it is parsed. A body over 10 MB
+is answered 413 by default, with the error page. The limit runs after the root `_middleware.ts`, so the error page has
+the shared props; for that, the root middleware must not read the body. `createApp({ bodyLimit: 25 * 1024 * 1024 })`
+in `app/server.ts` changes the limit for the app, and `false` removes it. Raise it for the whole app only a little: every request can use
+it. On Cloudflare Workers an isolate has 128 MB of memory, shared by the requests it serves
+([limits](https://developers.cloudflare.com/workers/platform/limits/)). When a large body is refused unread, some
+browsers show a failed request rather than the 413 page.
+
+A route that should take less adds Hono's `bodyLimit` in its `_middleware.ts`; a directory's middleware cannot raise
+the app's limit.
 
 ```ts
 // app/routes/avatars/_middleware.ts
 import { bodyLimit } from 'hono/body-limit'
 
 export default bodyLimit({ maxSize: 1024 * 1024 }) // 1 MB, then 413
+```
+
+A route that should take more has no way to raise the app's limit, so the app has none, and the root middleware sets
+one for each path. The 413 must be an `HTTPException` (Hono's default `onError` throws one that carries its own plain-text response), so
+that it gets the error page, with the props the root middleware shared above it.
+
+```ts
+// app/server.ts
+export default createApp({ bodyLimit: false })
+```
+
+```ts
+// app/routes/_middleware.ts
+import { defineMiddleware, share } from 'fondu'
+import { bodyLimit } from 'hono/body-limit'
+import { HTTPException } from 'hono/http-exception'
+
+const limit = (maxSize: number) =>
+  bodyLimit({
+    maxSize,
+    onError: () => {
+      throw new HTTPException(413)
+    },
+  })
+const photos = limit(50 * 1024 * 1024)
+const rest = limit(1024 * 1024)
+
+export default [
+  defineMiddleware(async (c, next) => {
+    share(c, { site: 'Acme' }) // what every page needs, the error page too
+    await next()
+  }),
+  defineMiddleware((c, next) => (c.req.path.startsWith('/photos') ? photos : rest)(c, next)),
+]
+```
+
+### Large files
+
+Cloudflare refuses a request over its own limit with a 413 before your app has a say: 100 MB on the Free and Pro plans,
+200 MB on Business, more on Enterprise
+([limits](https://developers.cloudflare.com/workers/platform/limits/)). Under it, a large file is better
+not sent through the app at all. The browser sends it straight to storage, and the form sends only where it went.
+
+With R2, the app gives the browser a presigned URL to `PUT` the file to. The Workers binding can't make one: sign it
+with the S3 API ([presigned URLs](https://developers.cloudflare.com/r2/api/s3/presigned-urls/)), in a `.ts` route.
+
+```ts
+// app/routes/api/upload-url.ts
+import { defineHandler } from 'fondu'
+
+export const POST = defineHandler(async (c) => {
+  const key = crypto.randomUUID()
+  const url = await presign(key, 'image/jpeg') // yours, with aws4fetch or the AWS SDK: a signed PUT URL
+  return c.json({ key, url })
+})
+```
+
+In the browser, `fetch()` from `fondu/client` gets the URL (typed), then the file goes to R2 with the platform's
+`fetch()`. The form's action receives only the key.
+
+```tsx
+import { fetch } from 'fondu/client'
+
+async function upload(file: File) {
+  const { key, url } = await fetch('/api/upload-url', { method: 'POST' })
+  const res = await window.fetch(url, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'image/jpeg' }, // the type that was signed
+    body: file,
+  })
+  if (!res.ok) throw new Error('Upload failed')
+  return key // a hidden input of the form: the action stores the key
+}
+```
+
+The bucket needs a CORS rule, or the browser refuses the request, valid URL or not
+([CORS](https://developers.cloudflare.com/r2/buckets/cors/)): the app's origin, the `PUT` method, and the headers the
+browser sends.
+
+```json
+[
+  {
+    "AllowedOrigins": ["https://example.com"],
+    "AllowedMethods": ["PUT"],
+    "AllowedHeaders": ["Content-Type"]
+  }
+]
 ```
 
 ## CSRF

@@ -109,8 +109,10 @@ that off with `progress: { forms: false }` in the plugin's options.
 The body is one object, JSON or form fields. `user[name]` and `tags[]` become nested objects and arrays, files are
 `File` objects, empty file inputs are left out. A body that can't be one object is a 400.
 
-The body is read whole, in memory. Over 10 MB is a 413 by default, answered with the error page. The limit runs after
-the root `_middleware.ts` (the error page has its shared props), so that middleware must not read the body:
+The body is read whole, in memory, files too (about twice its size while parsed). Over 10 MB is a 413 by default,
+answered with the error page. The limit runs after the root `_middleware.ts` (the error page has its shared props), so
+that middleware must not read the body. Some browsers show a failed request rather than the 413 page when a large body
+is refused unread. Raise the limit for the app only a little (Workers: 128 MB of memory per isolate):
 
 ```ts
 // app/server.ts
@@ -125,5 +127,29 @@ import { bodyLimit } from 'hono/body-limit'
 
 export default bodyLimit({ maxSize: 1024 * 1024 }) // 1 MB, then 413
 ```
+
+A route that takes more: `createApp({ bodyLimit: false })`, and Hono's `bodyLimit` in the root `_middleware.ts`, chosen
+by `c.req.path`. Its `onError` throws `new HTTPException(413)`, so the error page answers (Hono's default is plain
+text). Keep `share()` first in that middleware, so the error page has the shared props:
+
+```ts
+// app/routes/_middleware.ts
+const limit = (maxSize: number) =>
+  bodyLimit({ maxSize, onError: () => { throw new HTTPException(413) } })
+const photos = limit(50 * 1024 * 1024)
+const rest = limit(1024 * 1024)
+
+export default [
+  defineMiddleware(async (c, next) => { share(c, { site: 'Acme' }); await next() }),
+  defineMiddleware((c, next) => (c.req.path.startsWith('/photos') ? photos : rest)(c, next)),
+]
+```
+
+Large files: Cloudflare refuses a request over its plan's limit itself (413: 100 MB Free and Pro, 200 MB Business, more
+on Enterprise), and a big body through the app costs memory. Send the file from the browser straight to R2 with a
+presigned `PUT` URL, made with the S3 API (the Workers binding can't) in a `.ts` route that returns `{ key, url }`:
+`fetch()` from `fondu/client` gets it, the platform's `fetch(url, { method: 'PUT', headers: { 'Content-Type': … }, body: file })`
+sends the file (the same `Content-Type` that was signed), and the action receives only the key. The bucket needs a CORS
+rule (origin, `PUT`, `AllowedHeaders: ["Content-Type"]`), or the browser refuses the request.
 
 CSRF: `createApp()` requires a request that changes something to come from the app's own origin. The app's own forms do.
