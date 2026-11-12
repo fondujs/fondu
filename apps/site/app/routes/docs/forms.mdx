@@ -151,7 +151,9 @@ become nested objects and arrays, files are `File` objects, and empty file input
 one object is a 400: JSON that doesn't parse, a name that is both a value and an object (`a` and `a[b]`), names nested
 deeper than 32.
 
-The body is read whole, in memory, files too. A body over 10 MB is answered 413 by default. `createApp({ bodyLimit: 25 * 1024 * 1024 })`
+The body is read whole, in memory, files too. A body over 10 MB is answered 413 by default, with the error page. The
+limit runs after the root `_middleware.ts`, so the error page has the shared props; for that, the root middleware must
+not read the body. `createApp({ bodyLimit: 25 * 1024 * 1024 })`
 in `app/server.ts` changes the limit for the app, and `false` removes it. A route that should take less adds Hono's
 `bodyLimit` in its `_middleware.ts`; a directory's middleware cannot raise the app's limit.
 

@@ -109,7 +109,8 @@ that off with `progress: { forms: false }` in the plugin's options.
 The body is one object, JSON or form fields. `user[name]` and `tags[]` become nested objects and arrays, files are
 `File` objects, empty file inputs are left out. A body that can't be one object is a 400.
 
-The body is read whole, in memory. Over 10 MB is a 413 by default:
+The body is read whole, in memory. Over 10 MB is a 413 by default, answered with the error page. The limit runs after
+the root `_middleware.ts` (the error page has its shared props), so that middleware must not read the body:
 
 ```ts
 // app/server.ts

@@ -131,8 +131,9 @@ function actionName(url: string): string | null {
  * - server code, `.ts`: HTTP handlers only, `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS` (not `loader`,
  *   `action`, `actions`: those are a page's)
  * `_middleware.ts` applies to its directory and below (`routes/_middleware.ts`: every request, 404s included).
- * Built in: CSRF protection, security headers, a request body limit, one URL per page (trailing slash), the error
- * page. Your own 404 / error handling: Hono's `app.notFound()` / `app.onError()` on the returned app.
+ * Built in: CSRF protection, security headers, one URL per page (trailing slash), the error page, and a request body
+ * limit (413, after the root `_middleware.ts`, so its error page has the shared props; CSRF's 403 is plain text).
+ * Your own 404 / error handling: Hono's `app.notFound()` / `app.onError()` on the returned app.
  */
 export function createApp(options: CreateAppOptions = {}): Hono {
   const app = new Hono()
@@ -176,16 +177,6 @@ export function createApp(options: CreateAppOptions = {}): Hono {
     )
   }
   if (options.csrf !== false) app.use(csrf(options.csrf))
-  if (options.bodyLimit !== false)
-    app.use(
-      bodyLimit({
-        maxSize: options.bodyLimit ?? 10 * 1024 * 1024,
-        // Fondu's own answer: the error page for a visitor, the status alone for an API client
-        onError: () => {
-          throw new HTTPException(413)
-        },
-      }),
-    )
   const prerendered: PrerenderRoute[] = []
   if (prerender) prerenderRoutes(app, () => prerendered, version)
   app.use(append ? appendTrailingSlash() : trimTrailingSlash(), ...protocol)
@@ -198,6 +189,20 @@ export function createApp(options: CreateAppOptions = {}): Hono {
   // a _middleware.ts may only set what applies to its directory (`prerender`, `params`), without a default export
   const rootMiddleware = modules['_middleware.ts']?.default
   if (rootMiddleware) app.use(...chain(rootMiddleware))
+  // After the root middleware, so the error page of a 413 has the shared props it set (a layout reads them). The limit
+  // still runs before any body is read: with a Content-Length the header is checked, without one the body is counted
+  // as it is read. A root middleware must not read the body itself. CSRF stays above: Hono's 403 has its own plain
+  // response, so no page is rendered for it.
+  if (options.bodyLimit !== false)
+    app.use(
+      bodyLimit({
+        maxSize: options.bodyLimit ?? 10 * 1024 * 1024,
+        // Fondu's own answer: the error page for a visitor, the status alone for an API client
+        onError: () => {
+          throw new HTTPException(413)
+        },
+      }),
+    )
 
   for (const { file, pattern, path, middleware } of routeTable(modules, append)) {
     const mod = modules[file]!
