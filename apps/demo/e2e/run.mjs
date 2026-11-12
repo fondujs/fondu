@@ -35,7 +35,7 @@ const watchProblems = (p) => {
     // the browser's own log line for the intentional 401 / 404 / 409 / 422 / 500 responses below
     if (
       ['error', 'warning'].includes(m.type()) &&
-      !/favicon|status of (401|403|404|409|422|500|502)\b/.test(m.text())
+      !/favicon|status of (401|403|404|409|413|422|500|502)\b/.test(m.text())
     )
       problems.push(`[${m.type()}] ${m.text().slice(0, 240)}`)
   })
@@ -1258,6 +1258,23 @@ await page.waitForFunction(
     'uploads: enctype=multipart/form-data, sent as it',
     sent?.headers['content-type']?.startsWith('multipart/form-data'),
     JSON.stringify(sent?.headers['content-type']),
+  )
+}
+
+// ---- a body over the limit (10 MB): the error page, in the root layout, with the shared props (#181)
+{
+  await page.goto(BASE + '/uploads', { waitUntil: 'networkidle0' }) // a fresh form: the one above was just sent
+  await h1('File uploads')
+  const dir = mkdtempSync(join(tmpdir(), 'upload-'))
+  writeFileSync(join(dir, 'huge.txt'), 'x'.repeat(10 * 1024 * 1024 + 1))
+  const input = await page.$('[data-testid=upload] input[type=file]')
+  await input.uploadFile(join(dir, 'huge.txt'))
+  await page.click('[data-testid=upload-send]')
+  await page.waitForSelector('[data-testid=error-status]', { timeout: 15000 }).catch(() => {})
+  ok(
+    'uploads: over 10 MB is the error page with 413, its layout rendered (the shared props are there)',
+    (await testid('error-status')) === '413' && (await text()).includes('over the upload limit'),
+    JSON.stringify(await testid('error-status')),
   )
 }
 

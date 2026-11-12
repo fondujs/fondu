@@ -119,7 +119,9 @@ export default function ErrorPage({ status }: { status: number }) {
 ```
 
 Without it, plain text, as for an error page that fails to render (the failure is logged). API clients get plain text or the `HTTPException`'s own response. A page that throws in the
-browser gets the error page with 500; a layout that throws, the error page alone.
+browser gets the error page with 500; a layout that throws, the error page alone. The shared props are what the root
+`_middleware.ts` shared before the error (if it fails itself, only what it shared before). A body over the limit (413)
+gets the error page with them; a CSRF refusal (403) is plain text, "Forbidden".
 
 ```ts
 // app/routes/admin/_middleware.ts: for admin/ and below, outermost first

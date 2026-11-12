@@ -5,6 +5,7 @@ import { Title } from '#/components/demo.tsx'
 const messages: Record<number, [title: string, text: string]> = {
   403: ['Not allowed', 'This page is for other accounts.'],
   404: ['Page not found', 'There is nothing at this address.'],
+  413: ['Too large', 'The file is over the upload limit.'],
   500: ['Something went wrong', 'The error was logged on the server. Try again in a moment.'],
   503: ['Down for maintenance', 'Back shortly.'],
 }

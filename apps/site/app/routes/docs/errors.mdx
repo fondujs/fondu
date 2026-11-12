@@ -11,6 +11,13 @@ export default function ErrorPage({ status }: { status: number }) {
 }
 ```
 
+The shared props are what the root `_middleware.ts` shared before the error. If that middleware itself fails, the error
+page has only what it shared before it failed.
+
+A request over the body limit (413) gets the error page too, with the shared props: the limit runs after the root
+middleware. A CSRF refusal (403) is plain text, "Forbidden": Hono's CSRF protection answers it with its own response,
+before any middleware.
+
 Without `app/routes/_error.tsx`, plain text for everyone. An error page that itself fails to render gets plain text
 too, with its status and the failure in the log (in the browser: "Something went wrong" and the failure in the
 console): a page is never left blank.
