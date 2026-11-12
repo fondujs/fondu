@@ -326,6 +326,18 @@ describe('errors', () => {
   })
 })
 
+describe('an error page that fails', () => {
+  test('a document: plain text with the status (not sent to render in the browser), the failure logged', async () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.stubEnv('DEV', false)
+    const res = await app.request('/boom', { headers: html })
+    expect([res.status, await res.text()]).toEqual([500, 'Internal Server Error'])
+    expect(log.mock.calls.map(([m]) => String(m))).toContain(
+      '[fondu] the error page failed to render:',
+    )
+  })
+})
+
 describe('the request body limit', () => {
   const small = createApp({ bodyLimit: 100 })
   const json = { 'Content-Type': 'application/json' }

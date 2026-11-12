@@ -138,6 +138,9 @@ export async function renderDocument(
       live = true
     }
   } catch (error) {
+    // the error page's failure goes to `errorResponse`: plain text with the status (the browser would render the
+    // same props and most likely fail again, and a visitor without JavaScript would get nothing)
+    if (page.component === '_error') throw error
     // like Laravel: a page that fails to render on the server is still sent, and rendered in the browser
     console.error(
       `[fondu] server render of "${page.component}" failed, sending it to render in the browser:`,

@@ -118,7 +118,7 @@ export default function ErrorPage({ status }: { status: number }) {
 }
 ```
 
-Without it, plain text. API clients get plain text or the `HTTPException`'s own response. A page that throws in the
+Without it, plain text, as for an error page that fails to render (the failure is logged). API clients get plain text or the `HTTPException`'s own response. A page that throws in the
 browser gets the error page with 500; a layout that throws, the error page alone.
 
 ```ts

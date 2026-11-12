@@ -11,7 +11,9 @@ export default function ErrorPage({ status }: { status: number }) {
 }
 ```
 
-Without `app/routes/_error.tsx`, plain text for everyone.
+Without `app/routes/_error.tsx`, plain text for everyone. An error page that itself fails to render gets plain text
+too, with its status and the failure in the log (in the browser: "Something went wrong" and the failure in the
+console): a page is never left blank.
 
 A page that throws as it renders in the browser gets the error page with status 500 in its place, inside its layouts
 (the error in the console); a layout that throws, the error page alone. The next page is shown as usual.
