@@ -329,12 +329,18 @@ describe('errors', () => {
 describe('an error page that fails', () => {
   test('a document: plain text with the status (not sent to render in the browser), the failure logged', async () => {
     const log = vi.spyOn(console, 'error').mockImplementation(() => {})
-    vi.stubEnv('DEV', false)
-    const res = await app.request('/boom', { headers: html })
-    expect([res.status, await res.text()]).toEqual([500, 'Internal Server Error'])
+    const res = await app.request('/teapot', { headers: html })
+    // a 418 has no text of its own: the fallback's
+    expect([res.status, await res.text()]).toEqual([418, 'Error'])
     expect(log.mock.calls.map(([m]) => String(m))).toContain(
       '[fondu] the error page failed to render:',
     )
+  })
+  test('any other error page renders: a thrown 500 in production is a document of the error page', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.stubEnv('DEV', false)
+    const res = await app.request('/boom', { headers: html })
+    expect([res.status, (await res.text()).includes('"component":"_error"')]).toEqual([500, true])
   })
 })
 
