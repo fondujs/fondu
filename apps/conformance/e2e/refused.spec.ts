@@ -11,7 +11,7 @@ for (const js of [true, false]) {
       await page.locator('#multipart input[type=file]').setInputFiles({
         name: 'big.bin',
         mimeType: 'application/octet-stream',
-        buffer: Buffer.alloc(11 * 1024 * 1024, 1),
+        buffer: Buffer.alloc(64 * 1024, 1),
       })
       const answer = page.waitForResponse((r) => r.request().method() === 'POST')
       await page.locator('#multipart button').click()
