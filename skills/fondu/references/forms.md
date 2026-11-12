@@ -111,8 +111,8 @@ The body is one object, JSON or form fields. `user[name]` and `tags[]` become ne
 
 The body is read whole, in memory, files too (about twice its size while parsed). Over 10 MB is a 413 by default,
 answered with the error page. The limit runs after the root `_middleware.ts` (the error page has its shared props), so
-that middleware must not read the body. Some browsers show a failed request rather than the 413 page when a large body
-is refused unread. Raise the limit for the app only a little (Workers: 128 MB of memory per isolate):
+that middleware must not read the body. Served by Node or Bun directly over HTTP/1.1, Firefox and Safari may show a
+failed request rather than the 413 page for a large body refused unread; behind Cloudflare every browser gets the page. Raise the limit for the app only a little (Workers: 128 MB of memory per isolate):
 
 ```ts
 // app/server.ts
