@@ -158,8 +158,9 @@ is answered 413 by default, with the error page. The limit runs after the root `
 the shared props; for that, the root middleware must not read the body. `createApp({ bodyLimit: 25 * 1024 * 1024 })`
 in `app/server.ts` changes the limit for the app, and `false` removes it. Raise it for the whole app only a little: every request can use
 it. On Cloudflare Workers an isolate has 128 MB of memory, shared by the requests it serves
-([limits](https://developers.cloudflare.com/workers/platform/limits/)). When a large body is refused unread, some
-browsers show a failed request rather than the 413 page.
+([limits](https://developers.cloudflare.com/workers/platform/limits/)). Served by Node or Bun directly over HTTP/1.1,
+Firefox and Safari may show a failed request rather than the 413 page when a large body is refused unread; behind
+Cloudflare, every browser gets the page.
 
 A route that should take less adds Hono's `bodyLimit` in its `_middleware.ts`; a directory's middleware cannot raise
 the app's limit.
