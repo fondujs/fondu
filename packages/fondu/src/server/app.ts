@@ -22,7 +22,11 @@ export interface CreateAppOptions {
   trailingSlash?: 'trim' | 'append'
   /** `hono/csrf`'s options; `false`: off */
   csrf?: Parameters<typeof csrf>[0] | false
-  /** the largest request body, in bytes (default: 10 MB), then 413: `hono/body-limit`; `false`: no limit */
+  /**
+   * the largest request body, in bytes (default: 10 MB), then 413: `hono/body-limit`; `false`: no limit. The body is
+   * read whole, in memory (about twice its size): raise it only a little. A limit by path: `false`, and Hono's
+   * `bodyLimit` in the root `_middleware.ts` (docs: Forms, "The body limit")
+   */
   bodyLimit?: number | false
   /**
    * `hono/secure-headers`' options; `false`: off. Defaults: `referrerPolicy: 'same-origin'` (which `back()` needs) and
