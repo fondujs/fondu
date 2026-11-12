@@ -105,6 +105,8 @@ updated when the API does.
   has a test of that case.
 - **The browser's share is watched.** CI's `size` job reports fondu's browser code (minified, gzip) and, on a pull
   request, its change against main; a change that adds more than ~5% says why in its description.
+- **What an app writes has one description.** A change to what an app writes (an export, an option, a rule) updates
+  `skills/fondu/` along with the docs.
 - **Before a release**, the request-handling check on what changed since the last one:
   `git diff v<last>..main -- packages/fondu/src`.
 

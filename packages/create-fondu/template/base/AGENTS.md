@@ -1,53 +1,20 @@
 # Notes for coding agents
 
-This is a Fondu app: React pages, a Hono server, built with Vite. There is no client-side router and no API layer for
-pages: a route's loader renders its page with props; links and forms are plain `<a>` and `<form>`, and Fondu's client
-swaps the page in place (the History API); Back and Forward restore the scroll position.
+This is a Fondu app: React pages, a Hono server, built with Vite. The files of `app/routes/` are the URLs; a page's
+loader renders it with props; links and forms are plain `<a>` and `<form>`. There is no client-side router and no API
+layer for pages.
 
-- `app/routes/`: the file path is the URL: `index.tsx` is `/`, `users/[id].tsx` is `/users/:id`,
-  `api/[...rest].ts` a catch-all, `[[lang]]/about.tsx` both `/about` and `/:lang/about` (an optional segment;
-  `export const params = { lang: ['de'] }` lists a param's values), `(group)/` adds no segment. One file per URL.
-  - A page is a `.tsx` file: `loader` (GET), `action` (POST, one form) or `actions = { name }` (POST `?name`, several
-    forms: `<form method="post" action="?name">`; not both), and the page component as its default export. Without
-    a loader, the page is rendered on GET. The browser gets the page alone: the other exports are server code,
-    removed from its copy, with the imports only they use.
-  - A `.ts` file is server code only: the HTTP handlers `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS` (an API,
-    a file); `loader`, `action` and `actions` are a page's.
-  - `.mdx` files are pages too. A route file exports nothing else (`prerender` and `params` aside): put shared
-    code in another file (`app/lib/`, `app/components/`).
-  - `_middleware.ts` (default export) runs for its directory and below. Files and directories starting with `_` are
-    not routes.
-- Handlers: `defineHandler(...middleware, (c) => …)` (Hono's `createHandlers`; `c` is Hono's Context).
-  Validated input: `defineHandler.withValidator({ body, query, params })(...middleware, (c, { body }) => …)` with any
-  Standard Schema (zod…); invalid input goes back to the page with its `errors` prop, or 422 for API clients.
-- Responses: `render(c, Page, props)` for the file's page (its default export); `back(c)` or `c.redirect(url, 303)` after an action;
-  `flash(c, { … })` for the next page; `throw new HTTPException(404)` (from `hono/http-exception`) for errors.
-- Shared props, every page's: `share(c, { … })` in a `_middleware.ts` (a function value is computed when a page
-  renders), typed by `declare module 'fondu' { interface Register { shared: { … }; flash: { … } } }`.
-- Slow data: `defer(() => …)` for an optional prop of `render()`; the page renders without it and asks for it once shown
-  (`<Deferred data="stats" fallback={…}>` from `fondu/client`); `reload({ only: ['stats'] })` asks again.
-- A page's props are its component's: `render()` checks them. `routes/_error.tsx` is the error page, `{ status }`.
-- Layouts: `app/routes/_layout.tsx` wraps every page; a directory's `_layout.tsx` wraps its pages, inside the outer
-  ones (a `(group)/` directory gives pages a layout without a URL segment). A layout's default export takes
-  `{ children }` and stays mounted while pages change; the root layout imports the CSS.
+Fondu's rules (routes, pages, forms, navigation, data, rendering, the server, types) are in its agent skill, kept with
+Fondu's code so it stays current: install it with `npx skills add fondujs/fondu` and read it before changing the app.
+The docs are at https://fondu.dev/docs (every page as Markdown: https://fondu.dev/llms.txt).
+
+What is this app's:
+
+- `app/routes/`: the file path is the URL. One file per URL. A `.tsx` file is a page, a `.ts` file is server code.
+- Server-only code: the `.ts` files of `app/routes/`, `app/server.ts`, files named `*.server.ts`, and `fondu` (the
+  browser's is `fondu/client`). Browser code (pages, components) must not import them; the build fails if it does.
+  Import app files as `#/lib/x.server.ts`.
 - Editor snippets (VS Code): `.vscode/fondu.code-snippets`, `/route`, `/loader`, `/action`, `/page`…
-- Links and forms: `<a href>` and `<form method="post">`, URLs from `href('/users/:id', { id })` (`fondu/client`,
-  typed after `app/routes/`; `{ query, hash }` too, the query typed by the route's `withValidator({ query })`; a
-  redirect: `c.redirect(href(…), 303)`). A form's errors: the page's `errors` prop. From `fondu/client` too:
-  `usePage()` (props, shared props, `url`, `flash`), `useNavigation()` (pending UI: `{ state, to, form }`, `state` may be `failed`),
-  `reload()` (the props again). `fetch('/api/usage', { method?, query?, body? })` calls a `.ts` route from an effect or
-  an event, typed by its file (a non-2xx answer throws `FetchError`; a page's data is its loader's). In code, `navigate(href(…))` navigates as a link would (`{ replace: true }`: no new
-  history entry; `{ keep: true }`: the page keeps its state and scroll, as `reload()` does: search as you type); `loadDocument(href(…))` loads a document instead, as `<a target="_top">` does. Only links to the
-  app's pages are the client's. A progress bar shows during slow navigations: `fondu({ progress: { color, delay,
-  forms } })` in `vite.config.ts`, or `progress: false`. A form being sent has `aria-busy="true"`: its submit
-  button's pending state. `useForm(schema)` checks a form in the browser with its action's schema, as the server
-  reads it: `{ form, field, errors, submitting, failed }`.
-- The head: a page renders `<title>` and `<meta>` where it likes; React puts them in `<head>`. A title is one string:
-  ``<title>{`${user.name} · Fondu`}</title>``.
-- Server-only code: the `.ts` files of `app/routes/`, `app/server.ts`, files named `*.server.ts`, and `fondu`
-  (the browser's is `fondu/client`). Browser code (pages, components) must not import them; the build fails if it
-  does. A page's loader and actions may: their imports are removed with them. Import app files as
-  `#/lib/x.server.ts`.
 - `app/fondu.gen.d.ts` is generated by the dev server and the build: don't edit it.
 - After updating a dependency, restart the dev server: it doesn't watch `node_modules`.
 - Code style: as the existing files: TypeScript, ES modules, no semicolons, single quotes; `server.ts`, pages,
@@ -56,5 +23,4 @@ swaps the page in place (the History API); Back and Forward restore the scroll p
 {{checks}}
 - Styles: Tailwind CSS v4 in `app/styles/app.css`.
 
-Docs: https://fondu.dev/docs (Fondu; every page as Markdown: https://fondu.dev/llms.txt), https://hono.dev (Hono),
-https://react.dev (React).
+Docs for the rest: https://hono.dev (Hono), https://react.dev (React).

@@ -31,6 +31,18 @@ on Cloudflare Workers with D1 and Better Auth.
 server and client code, server-side rendering, static pages, MDX pages, internationalization, deploying, and the API.
 Every page is also Markdown for coding agents ([llms.txt](https://fondu.dev/llms.txt)).
 
+## For coding agents
+
+Fondu's rules for an app (routes, pages, forms, navigation, data, rendering, the server, types) are an agent skill,
+[`skills/fondu/`](https://github.com/fondujs/fondu/tree/main/skills/fondu), kept here with the code it describes. Install it in an app with the
+[`skills`](https://github.com/vercel-labs/skills) CLI:
+
+```bash
+npx skills add fondujs/fondu
+```
+
+An app's `AGENTS.md` then says only what is the app's own.
+
 ## Contributing
 
 ```
