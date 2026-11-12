@@ -111,7 +111,29 @@ class Failed extends Component<
   }
   override render() {
     if (!this.state.failed) return this.props.children
-    return ErrorPage ? createElement(ErrorPage, { status: 500 }) : 'Something went wrong'
+    return ErrorPage
+      ? createElement(Unfailing, null, createElement(ErrorPage, { status: 500 }))
+      : PLAIN
+  }
+}
+
+const PLAIN = 'Something went wrong'
+
+/**
+ * The error page's own boundary: `Failed` renders the error page outside its own reach, so an error page that throws
+ * would escape every boundary and React would unmount the app (a blank page). Plain text instead, and the error in
+ * the console: the app's author must see it.
+ */
+class Unfailing extends Component<{ children?: ReactNode }, { failed: boolean }> {
+  override state = { failed: false }
+  static getDerivedStateFromError() {
+    return { failed: true }
+  }
+  override componentDidCatch(error: unknown) {
+    console.error('[fondu] the error page failed to render:', error)
+  }
+  override render() {
+    return this.state.failed ? PLAIN : this.props.children
   }
 }
 
