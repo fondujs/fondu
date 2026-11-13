@@ -125,12 +125,14 @@ export default function Search({ q, results }: { q: string; results: string[] })
 so a fast typist sees only the last answer. Why not `fetch()` from an effect: the URL holds the search, so Back, a
 reload and a shared link all work, and the loader is the one place the results are computed.
 
-| Export                               | Does                                                                                           |
-| ------------------------------------ | ---------------------------------------------------------------------------------------------- |
-| `navigate(url, { replace?, keep? })` | goes to `url` as a link would; `keep`: the page keeps its state and scroll, as `reload()` does |
-| `loadDocument(url)`                  | loads `url` as a document (a full page load)                                                   |
-| `reload()`                           | asks for the current page's props again; state and scroll stay                                 |
-| `reload({ only: ['stats'] })`        | asks for those props alone, quietly: [deferred props](/docs/pages#deferred-props)              |
+| Export                                  | Does                                                                                                                 |
+| --------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `navigate(url, { replace?, keep? })`    | goes to `url` as a link would; `keep`: the page keeps its state and scroll, as `reload()` does                       |
+| `navigate(url, { shallow: true, ... })` | changes the query or `#fragment` of this page, with no request; `replace?`, no `keep` ([below](#shallow-navigation)) |
+| `closeShallow(to)`                      | closes what a shallow navigation opened, one step: Back, or `to` in place of this entry                              |
+| `loadDocument(url)`                     | loads `url` as a document (a full page load)                                                                         |
+| `reload()`                              | asks for the current page's props again; state and scroll stay                                                       |
+| `reload({ only: ['stats'] })`           | asks for those props alone, quietly: [deferred props](/docs/pages#deferred-props)                                    |
 
 ## Forms
 
@@ -147,16 +149,62 @@ actions, errors and pending states.
 | Back or Forward                                                          | where it was when you left it           |
 | a reload                                                                 | where it was when you left it           |
 | a form's answer at the same URL, `reload()`, or `navigate()` with `keep` | where it is                             |
+| a shallow navigation, and Back or Forward between the entries it shares  | where it is                             |
 
 Back and Forward show the page at once, as it was left, then put the server's fresh page in its place. The pages
 kept for this are in memory only, and they are all forgotten once a form is sent, as the form may have changed
 them (or signed the user out).
 
-## A dialog opened by the URL
+## Shallow navigation
 
-A link to a `#fragment` of the page on the screen is the browser's, not the client's: each is a history entry, Back
-goes to the one before, and a reload keeps it. A dialog opened by the fragment (`#settings/account`) is then a page
-state like any other. Read the fragment with `useSyncExternalStore` on `hashchange`:
+Some state belongs in the URL without being a page: an open dialog or drawer, a selected item, a tab. A shallow
+navigation changes the query or the `#fragment` of the page on the screen, and asks for nothing. No request is made and
+the loader does not run. The page keeps its props, its state and the scroll position.
+
+```tsx
+import { navigate } from 'fondu/client'
+
+navigate('?item=7', { shallow: true }) // a new history entry
+navigate('?item=8', { shallow: true, replace: true }) // this entry's URL changes
+navigate('#settings/profile', { shallow: true })
+```
+
+In markup, mark the link with `data-shallow`:
+
+```tsx
+<a href="?item=7" data-shallow>
+  Order 7
+</a>
+```
+
+A plain left click on it is a shallow navigation. A click with Ctrl, Cmd, Shift or Alt, or a link with `target` or
+`download`, is the browser's, as for any link. A `data-shallow` link to another pathname is an ordinary link: it is a
+visit, and it is prefetched as any link is. Without JavaScript every link is a plain link, so the loader should render
+what the URL asks for. A document load at `/orders?item=7` has the drawer open, and the click only skips the request.
+
+- Only the query and the `#fragment` change. A URL with another pathname throws an error, and a trailing slash is
+  another pathname. The pathname is compared with the page on the screen.
+- `shallow` and `keep` do not go together: a shallow navigation keeps the page anyway. TypeScript and the runtime both
+  refuse it.
+- Before the app has started, `navigate(…, { shallow: true })` is a document load.
+- While a visit is being put on the screen (its URL is in the address bar, its page is not shown yet), a shallow
+  navigation is an ordinary one: it supersedes that visit, as any navigation does.
+
+### What the page has
+
+`usePage().url` follows the address bar: its path and query. The props do not. They are the loader's answer for the URL
+that got the page, so read what the query holds from `url`. A shallow navigation also drops the page's `flash` and
+`errors`: they belonged to the answer before it.
+
+```tsx
+import { usePage } from 'fondu/client'
+
+const { url } = usePage()
+const item = new URL(url, 'http://localhost').searchParams.get('item')
+```
+
+A `#fragment` is not in `url`. Read it with `useSyncExternalStore` on `hashchange`. A shallow navigation to a new
+`#fragment` dispatches a `hashchange`, as the browser's own does:
 
 ```tsx
 import { useSyncExternalStore } from 'react'
@@ -165,18 +213,93 @@ const subscribe = (notify: () => void) => {
   addEventListener('hashchange', notify)
   return () => removeEventListener('hashchange', notify)
 }
+const useHash = () => useSyncExternalStore(subscribe, () => location.hash, () => '') // '' on the server
+```
 
-export function Settings() {
-  const hash = useSyncExternalStore(subscribe, () => location.hash, () => '') // '' on the server
-  if (!hash.startsWith('#settings/')) return null
-  return <dialog open>…{hash.slice('#settings/'.length)}…</dialog>
+Back and Forward between two shallow entries that differ in both the query and the `#fragment` may not fire `hashchange` (browsers fire it only when the rest of the URL is the same). Read `location.hash` on `popstate` too if that matters.
+
+A shallow `#fragment` is not a fragment navigation of the browser. The page does not scroll to the element it names,
+and `:target` does not follow it. For that, use a link without `data-shallow`: a link to a `#fragment` of the page on
+the screen is the browser's.
+
+### A dialog or a drawer
+
+The URL holds the open state. `closeShallow()` closes it:
+
+```tsx
+import { closeShallow, navigate, usePage } from 'fondu/client'
+
+export default function Orders({ orders }: { orders: Order[] }) {
+  const { url } = usePage()
+  const id = new URL(url, 'http://localhost').searchParams.get('order')
+  const index = orders.findIndex((order) => String(order.id) === id)
+  const next = orders[(index + 1) % orders.length]
+  return (
+    <>
+      <ul>
+        {orders.map((order) => (
+          <li key={order.id}>
+            <a href={`?order=${order.id}`} data-shallow>
+              {order.name}
+            </a>
+          </li>
+        ))}
+      </ul>
+      {index >= 0 && (
+        <Drawer onClose={() => closeShallow(url)}>
+          <h2>{orders[index].name}</h2>
+          <button onClick={() => navigate(`?order=${next.id}`, { shallow: true, replace: true })}>
+            Next
+          </button>
+        </Drawer>
+      )}
+    </>
+  )
 }
 ```
 
+- `closeShallow(to)` closes one level, and never leaves the page. When the current entry was pushed by a shallow
+  navigation, it goes Back, to the entry below. Otherwise (a document loaded at this URL, a reload, an entry that was
+  replaced) it replaces the current entry with `to`, a URL of this page, with no request and no new entry. Pass the
+  URL without the state, as `usePage().url` has it.
+- Switching between items inside an open drawer uses `replace`, so the drawer is one history entry: one close, or one
+  Back, returns to the page under it.
+- Overlays nest, one level per close: a tab opened over a drawer is closed first, then the drawer.
+- A second `closeShallow()` before the first one's Back has landed does nothing, so a double click closes one level.
+- The browser's own `#fragment` entries are not shallow entries. A native `#fragment` link clicked over an open drawer
+  adds an entry that `closeShallow()` replaces, as it replaces any other.
+
+If the drawer needs data the list does not have, ask for it with `reload({ only: ['order'] })` (the loader sees the
+query), or with `fetch()` from a `.ts` route.
+
 A form in the dialog is posted as any form. Its answer at the same page (back with errors, or `back(c)`) keeps the
-`#fragment` on the screen, so the dialog stays open, with its errors or its result. A redirect to another page, or to a
-URL with a fragment of its own, is unchanged. The dialog's data comes from [`share()`](/docs/pages), if every page
-needs it, or from a `.ts` route.
+`#fragment` on the screen, so the dialog stays open, with its errors or its result.
+
+### Back and Forward
+
+The entries that show the same page share it: the one that got the page, those added by shallow navigations, and the
+browser's own `#fragment` entries. Back and Forward between them change `url` and nothing else. No request is made,
+and the state stays. A visit still on its way is given up, as with any Back.
+
+An answer from the server on a shallow entry belongs to that entry alone. It ends the sharing, and the other entries
+become normal ones: Back to them asks, as it does for any page. This is the case for:
+
+- `reload()` and `reload({ only })`, asked at the entry's URL, so the loader sees its query;
+- a form's answer;
+- deferred props asked at that URL.
+
+Deferred props already on their way when the shallow navigation happens are the loader's answer for the page. They
+arrive in it, and the entries keep sharing it.
+
+A browser reload of a shallow URL is a document load, and the entries before it are documents of their own. A close
+that goes Back to one of them loads it.
+
+### A prerendered page
+
+A [prerendered page](/docs/static-pages) is a file made without a query. Once it has hydrated, its `usePage().url` has
+the query of the address bar, so a state in the query works on a direct load, as it does after a click. The loader did
+not see that query: it ran at build time. Whatever a page must have for a query, a prerendered page cannot get from its
+loader.
 
 ## While a page loads
 

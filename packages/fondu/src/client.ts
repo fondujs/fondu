@@ -103,7 +103,7 @@ export {
   type Navigation,
 } from './client/app.js'
 export { useForm } from './client/form.js'
-export { loadDocument, navigate, type Page } from './client/navigation.js'
+export { closeShallow, loadDocument, navigate, type Page } from './client/navigation.js'
 export type { ProgressOptions } from './client/progress.js'
 
 // ---- fetch(): a typed call to the app's `.ts` routes (as Void's typed fetch, with Fondu's URL patterns)

@@ -1,4 +1,4 @@
-import { fetch, FetchError, href, useForm, usePage } from 'fondu/client'
+import { closeShallow, fetch, FetchError, href, navigate, useForm, usePage } from 'fondu/client'
 import { useEffect, useState, useSyncExternalStore } from 'react'
 
 import { SubmitButton, TextField } from '#/components/demo.tsx'
@@ -11,9 +11,12 @@ import {
 } from '#/components/ui/dialog.tsx'
 import { cn } from '#/lib/utils.ts'
 
-// A dialog the URL opens, over any page: `#settings/profile`, `#settings/account`, `#settings/usage`. Links to a #fragment are the
-// browser's (each an entry of the history, Back closes it, a reload keeps it); the fragment is read as an external
-// store. Its form posts to /settings/name, and the answer comes back to the same page with the fragment still on it.
+// A dialog the URL opens, over any page: `#settings/profile`, `#settings/account`, `#settings/usage`: a shallow
+// navigation (no request, the page stays as it is). The account menu's link is `data-shallow`, a history entry; the
+// tabs switch with `replace`, so one Back (or one close) returns to the page under the dialog; the fragment is read as
+// an external store. Closing is closeShallow(): Back, or, when the document was loaded with the fragment (a reload, a
+// shared link), the page's URL in its place. Its form posts to /settings/name, and the answer comes back to the same
+// page with the fragment still on it.
 const PREFIX = '#settings/'
 const TABS = { profile: 'Profile', account: 'Account', usage: 'Usage' } as const
 type Tab = keyof typeof TABS
@@ -29,48 +32,19 @@ const useHash = () =>
     () => '',
   )
 
-// The entries the links of this document made since the dialog opened (kept outside the component: a page's answer
-// can mount it anew). Closing goes back over them, as Back would; a dialog the document was loaded with has none.
-let entries = 0
-let clicked = false
-if (typeof document !== 'undefined') {
-  document.addEventListener('click', (event) => {
-    const link = (event.target as Element).closest?.('a[href]') as HTMLAnchorElement | null
-    if (link?.getAttribute('href')?.startsWith(PREFIX) && link.hash !== location.hash) {
-      entries++
-      clicked = true
-    }
-  })
-  addEventListener('hashchange', () => {
-    if (!location.hash.startsWith(PREFIX)) entries = 0
-    else if (!clicked) entries = Math.max(0, entries - 1) // Back
-    clicked = false
-  })
-}
-
-function close() {
-  if (entries > 0) {
-    history.go(-entries) // opened by a link here: the page as it was before
-    entries = 0
-    return
-  }
-  // loaded with the fragment (a reload, a shared link): no entry of ours to go back to, so the URL without it, in
-  // place; replaceState fires no event
-  history.replaceState(history.state, '', location.pathname + location.search)
-  dispatchEvent(new HashChangeEvent('hashchange'))
-}
-
 /** The dialog, for a signed-in user (the account menu opens it) */
 export function SettingsDialog() {
-  const { user } = usePage().props.auth
+  const { props, url } = usePage()
+  const { user } = props.auth
+  const close = () => closeShallow(url)
   const hash = useHash()
   const name = hash.startsWith(PREFIX) ? hash.slice(PREFIX.length) : ''
   // remembered while it closes: the dialog fades out with its content
   const tab: Tab = name === 'account' || name === 'usage' ? name : 'profile'
   useEffect(() => {
     // nothing to show a guest (signed out with it open)
-    if (!user && hash.startsWith(PREFIX)) close()
-  }, [user, hash])
+    if (!user && hash.startsWith(PREFIX)) closeShallow(url)
+  }, [user, hash, url])
   if (!user) return null
   return (
     <Dialog open={name in TABS} onOpenChange={(open) => !open && close()}>
@@ -82,6 +56,19 @@ export function SettingsDialog() {
               <a
                 key={id}
                 href={PREFIX + id}
+                onClick={(event) => {
+                  // a plain click switches the tab in place; a click with a modifier is the browser's (a new tab)
+                  if (
+                    event.button ||
+                    event.metaKey ||
+                    event.ctrlKey ||
+                    event.shiftKey ||
+                    event.altKey
+                  )
+                    return
+                  event.preventDefault()
+                  navigate(PREFIX + id, { shallow: true, replace: true })
+                }}
                 aria-current={id === tab ? 'page' : undefined}
                 data-testid={`settings-tab-${id}`}
                 className={cn(

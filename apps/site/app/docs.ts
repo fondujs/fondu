@@ -48,7 +48,8 @@ export const sections: Array<{ title: string; docs: Doc[] }> = [
       {
         slug: 'navigation',
         title: 'Navigation',
-        description: 'Links, forms and Back in place; navigate() in code; scroll positions.',
+        description:
+          'Links, forms and Back in place; navigate() in code; shallow navigation; scroll positions.',
       },
       {
         slug: 'layouts',

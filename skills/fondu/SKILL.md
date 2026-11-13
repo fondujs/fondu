@@ -94,7 +94,7 @@ export default function Show({ user }: { user: { name: string } }) {
 | ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
 | [references/routes-and-pages.md](references/routes-and-pages.md) | file names and URLs, params, groups, optional and catch-all segments, `render()`, `share()`, layouts, `_error`, `_middleware` |
 | [references/forms.md](references/forms.md)                       | `<form>`, `withValidator`, `useForm`, `back()`, `flash()`, `?name` actions, uploads, body limit                               |
-| [references/navigation.md](references/navigation.md)             | `navigate()`, `reload({ only })`, `useNavigation()`, preloading, Back and scroll, `#fragment` dialogs                         |
+| [references/navigation.md](references/navigation.md)             | `navigate()`, shallow navigation, `closeShallow()`, `reload({ only })`, `useNavigation()`, preloading, Back, scroll           |
 | [references/data.md](references/data.md)                         | `defer()` and `<Deferred>`, typed `fetch()` and `FetchError`, when to use which                                               |
 | [references/rendering.md](references/rendering.md)               | streaming, Suspense, static pages (`prerender`), `withoutSsr()`, the document and its nonce                                   |
 | [references/server.md](references/server.md)                     | `createApp` options, the Vite plugin, middleware, `.ts` routes, Bun, Node and Workers                                         |

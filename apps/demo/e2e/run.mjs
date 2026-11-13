@@ -995,13 +995,25 @@ await page.waitForFunction(
     'settings: Escape closes a dialog the document was loaded with: the URL without its #fragment',
     (await hash()) === '' && (await path()) === '/account',
   )
+  const entries = await page.evaluate(() => history.length)
+  docs.length = 0
+  fetches.length = 0
   await openFromMenu()
   await page.click('[data-testid=settings-tab-account]')
   await page.waitForFunction(() => location.hash === '#settings/account')
+  await page.click('[data-testid=settings-tab-usage]')
+  await page.waitForFunction(() => location.hash === '#settings/usage')
+  ok(
+    'settings: the dialog is one entry (the tabs replace it), and none of it asked the server for a page',
+    (await page.evaluate(() => history.length)) === entries + 1 &&
+      docs.length === 0 &&
+      fetches.length === 0,
+    `${entries} -> ${await page.evaluate(() => history.length)}`,
+  )
   await page.keyboard.press('Escape')
   await gone()
   ok(
-    'settings: closed after a tab was opened (two entries): back over both, to the page',
+    'settings: closed after two tabs: one step back, to the page',
     (await hash()) === '' && (await path()) === '/account',
   )
   // the usage tab: fetch() of fondu/client, a GET of the .ts route /api/usage (routes/api/usage.ts)
