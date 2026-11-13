@@ -277,7 +277,10 @@ export async function renderPage(
 /** a form's field errors, as a page gets them (its `errors` prop): field name → message */
 export type Errors = Record<string, string>
 
-/** the page on screen: its props (the shared ones, `errors`), its URL, its flash data */
+/**
+ * The page on screen: its props (the shared ones, `errors`), its URL (path and query: it follows a shallow
+ * navigation, and the props do not), its flash data
+ */
 export function usePage<P = Shared>(): {
   component: string
   props: P & { errors: Errors }

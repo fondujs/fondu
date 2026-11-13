@@ -46,8 +46,11 @@ export function AccountMenu() {
               <span className="truncate text-xs text-muted-foreground">{user.email}</span>
             </div>
             <MenuSeparator />
-            {/* a link to a #fragment of this page: the settings dialog (components/settings-dialog.tsx) opens */}
-            <MenuLinkItem render={<a href="#settings/profile" />} data-testid="settings-link">
+            {/* a shallow link to a #fragment of this page: the settings dialog (components/settings-dialog.tsx) opens */}
+            <MenuLinkItem
+              render={<a href="#settings/profile" data-shallow />}
+              data-testid="settings-link"
+            >
               <Settings /> Settings
             </MenuLinkItem>
             {/* POST /logout: the form below, sent by the menu item */}

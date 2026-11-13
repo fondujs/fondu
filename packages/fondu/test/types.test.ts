@@ -6,7 +6,15 @@ import { HTTPException } from 'hono/http-exception'
 import { expect, test } from 'vitest'
 import * as z from 'zod/mini'
 
-import type { fetch, href, navigate, useForm, useNavigation, usePage } from '../src/client.js'
+import type {
+  closeShallow,
+  fetch,
+  href,
+  navigate,
+  useForm,
+  useNavigation,
+  usePage,
+} from '../src/client.js'
 import type { flash } from '../src/server/flash.js'
 import {
   defineHandler as define,
@@ -101,6 +109,7 @@ type Api = {
   defer: typeof defer
   href: typeof href
   navigate: typeof navigate
+  closeShallow: typeof closeShallow
   fetch: typeof fetch
   share: typeof share
   flash: typeof flash
@@ -312,13 +321,44 @@ const navigation = [
   }),
 ]
 
-// navigate(): replace and keep are optional booleans
+// navigate(): replace, keep and shallow are optional booleans; shallow: true takes no keep
+const flags = { shallow: Math.random() > 0.5, keep: Math.random() > 0.5 }
 const navigations = [
   typed(({ navigate }) => navigate('/x')),
   typed(({ navigate }) => navigate('/x', { keep: true })),
   typed(({ navigate }) => navigate('/x', { replace: true, keep: true })),
   // @ts-expect-error keep is a boolean
   typed(({ navigate }) => navigate('/x', { keep: 'yes' })),
+  typed(({ navigate }) => navigate('?a=1', { shallow: true })),
+  typed(({ navigate }) => navigate('?a=1', { shallow: true, replace: true })),
+  typed(({ navigate }) => navigate('?a=1', { shallow: false, keep: true, replace: true })),
+  typed(({ navigate }) => navigate('?a=1', { shallow: undefined, keep: true })),
+  // @ts-expect-error shallow is a boolean
+  typed(({ navigate }) => navigate('?a=1', { shallow: 'yes' })),
+  // @ts-expect-error a shallow navigation keeps the page anyway: no keep
+  typed(({ navigate }) => navigate('?a=1', { shallow: true, keep: true })),
+  // @ts-expect-error not even keep: false
+  typed(({ navigate }) => navigate('?a=1', { shallow: true, keep: false })),
+  // a boolean that may be true is not the shallow branch, nor the other one with a keep
+  // @ts-expect-error shallow may be true: keep is not allowed
+  typed(({ navigate }) => navigate('?a=1', { shallow: flags.shallow, keep: true })),
+  // @ts-expect-error both may be true
+  typed(({ navigate }) => navigate('?a=1', { shallow: flags.shallow, keep: flags.keep })),
+  // @ts-expect-error keep may be true: shallow may not be
+  typed(({ navigate }) => navigate('?a=1', { shallow: true, keep: flags.keep })),
+  typed(({ navigate }) => navigate('?a=1', { shallow: flags.shallow })),
+  typed(({ closeShallow }) => closeShallow('/x')),
+  typed(({ closeShallow }) => closeShallow('/x?tab=a#b')),
+  // @ts-expect-error the URL to fall back to is required
+  typed(({ closeShallow }) => closeShallow()),
+  // @ts-expect-error a URL, not options
+  typed(({ closeShallow }) => closeShallow({ replace: true })),
+  typed(({ closeShallow }) => {
+    const done: void = closeShallow('/x')
+    // @ts-expect-error it returns nothing
+    const string: string = closeShallow('/x')
+    return [done, string]
+  }),
 ]
 
 // is the type exactly T (both ways: `any` and a wider type are not)
@@ -463,5 +503,5 @@ test('the types above are checked by tsc', () => {
     ...answers,
     ...navigation,
     ...navigations,
-  ]).toHaveLength(121)
+  ]).toHaveLength(137)
 })

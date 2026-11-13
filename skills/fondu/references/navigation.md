@@ -44,6 +44,8 @@ after a debounce. A navigation in flight is aborted by the next. Back, reload an
 | Export                               | Does                                                         |
 | ------------------------------------ | ------------------------------------------------------------ |
 | `navigate(url, { replace?, keep? })` | goes to `url` as a link would                                |
+| `navigate(url, { shallow: true })`   | changes this page's query or `#fragment`, asks for nothing   |
+| `closeShallow(to)`                   | closes what a shallow navigation opened, one step            |
 | `loadDocument(url)`                  | loads `url` as a document                                    |
 | `reload()`                           | asks for the page's props again; state and scroll stay       |
 | `reload({ only: ['stats'] })`        | asks for those props alone, quietly (see [data.md](data.md)) |
@@ -60,14 +62,45 @@ where it is: scroll and what was typed stay. Another page is a new history entry
 | a link, or `navigate()`                                               | at the top, or at `#fragment` |
 | Back or Forward, a reload                                             | where it was left             |
 | a form's answer at the same URL, `reload()`, `navigate()` with `keep` | where it is                   |
+| a shallow navigation, Back or Forward between the entries it shares   | where it is                   |
 
 Back and Forward show the page as it was left at once, then put the server's fresh page in its place. Those pages are
 in memory only, and forgotten once a form is sent.
 
-## A dialog opened by the URL
+## Shallow navigation
 
-A link to a `#fragment` of the current page is the browser's: a history entry, Back goes to the one before. Read it with
-`useSyncExternalStore` on `hashchange`:
+State in the URL that is not a page (a dialog, a drawer, a selected item, a tab): the query or `#fragment` of the page on
+the screen changes, and nothing is asked for. The loader does not run; props, state and scroll stay.
+
+```tsx
+import { closeShallow, navigate, usePage } from 'fondu/client'
+
+navigate('?item=7', { shallow: true }) // a new history entry
+navigate('?item=8', { shallow: true, replace: true }) // this entry's URL changes
+// <a href="?item=7" data-shallow>: a plain click on it is the same; without JavaScript a plain link
+const { url } = usePage() // follows the address bar (path and query); props are the loader's, for the URL that loaded
+closeShallow(url) // closes one level
+```
+
+- Only this page's own pathname (a trailing slash is another). Another pathname throws. `shallow` with `keep` is a type
+  error and throws. Before the app has started: a document load. While a visit is being put on the screen (its URL is in
+  the address bar, its page is not shown): an ordinary navigation.
+- `data-shallow` to another pathname, a modified click, `target`, `download`: an ordinary link, prefetched as usual.
+- `closeShallow(to)`: if the current entry was pushed by a shallow navigation, Back (one step); else `to` replaces the
+  entry in place (a direct load, a reload, a replaced entry). Never leaves the page. A second call before the first's
+  Back lands does nothing. A native `#fragment` entry is not a shallow one.
+- Switching items inside an open dialog or drawer: `replace: true`, so one close or one Back returns to the page under
+  it. Overlays nest, one level per close.
+- Render what the URL asks for in the loader too: a document load at `?item=7` has no click. Read the query from
+  `usePage().url`, not from the props.
+- A shallow navigation drops the page's `flash` and `errors`. A `#fragment` change dispatches `hashchange` (read it with
+  `useSyncExternalStore`), but the page does not scroll to it and `:target` does not follow.
+- Entries that show the same page (the one that loaded it, the shallow ones, the browser's `#fragment` ones) share it:
+  Back and Forward between them change `url` only, with no request. An answer from the server on a shallow entry
+  (`reload()`, `reload({ only })`, a form's answer, deferred props asked at that URL) ends the sharing: Back to the other
+  entries asks, as any Back does. Deferred props already on their way arrive in the shared page.
+- A prerendered page's `usePage().url` has the address bar's query once it has hydrated; its loader never saw it.
+- A form in a dialog that answers at the same page keeps the `#fragment`, so the dialog stays open with its errors.
 
 ```tsx
 import { useSyncExternalStore } from 'react'
@@ -76,15 +109,8 @@ const subscribe = (notify: () => void) => {
   addEventListener('hashchange', notify)
   return () => removeEventListener('hashchange', notify)
 }
-
-export function Settings() {
-  const hash = useSyncExternalStore(subscribe, () => location.hash, () => '') // '' on the server
-  if (!hash.startsWith('#settings/')) return null
-  return <dialog open>…{hash.slice('#settings/'.length)}…</dialog>
-}
+const useHash = () => useSyncExternalStore(subscribe, () => location.hash, () => '') // '' on the server
 ```
-
-A form in the dialog that answers at the same page keeps the `#fragment`, so the dialog stays open with its errors.
 
 ## Pending state
 

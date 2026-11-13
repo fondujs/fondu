@@ -53,6 +53,10 @@ interface Visit {
 }
 
 let visit: ((url: string, options: Visit) => void) | undefined
+/** the page on the screen at another URL of its own, nothing asked for (`navigate(url, { shallow: true })`) */
+let shallowTo: ((url: URL, replace: boolean) => void) | undefined
+/** the URL of the page on the screen (its path and query): not `location`'s while a visit is being put on the screen */
+let shownUrl: (() => URL) | undefined
 /** the props of the page on the screen asked for, quietly (`defer()`, `reload({ only })`) */
 let ask: ((names: string[]) => void) | undefined
 /** a URL path is one of the app's pages (the client's, once it has started) */
@@ -89,15 +93,24 @@ export function startNavigation({
   // the page on the screen, and how many were put there (an answer for another is dropped)
   let on = initial
   let shows = 0
+  // The history entries (their keys) that show the page on the screen, at URLs of their own: the one that got it, the
+  // ones shallow navigations added, the browser's own #fragment entries. Back and Forward between them ask for
+  // nothing. A page put on the screen is its entry's alone: the others are normal entries again (Back asks)
+  let group = new Set<string>()
+  // the URL the page's props are the loader's answer for: `on.url` changes with a shallow navigation, this does not
+  let answered = initial.url
   const asking = new Set<AbortController>()
   const put = async (page: Page, fresh: boolean, stale: () => boolean) => {
     await show(page, fresh, stale)
     if (stale()) return
     on = page
     shows++
+    group = new Set([scroll.key()!])
+    answered = page.url
     // the page they were for is gone
     for (const quiet of asking) quiet.abort()
   }
+  shownUrl = () => new URL(on.url, location.href)
   const headers = () => ({ 'X-Fondu': 'true', ...(version && { 'X-Fondu-Version': version }) })
   /** where a page's JSON is: its URL, or its file (a prerendered build) */
   const source = (url: URL) =>
@@ -154,7 +167,7 @@ export function startNavigation({
         false,
         () => shows !== at,
       )
-    let got: Record<string, unknown> = {}
+    let got: Record<string, unknown> | undefined
     try {
       const response = await fetch(source(new URL(page.url, location.href)), {
         headers: {
@@ -173,12 +186,20 @@ export function startNavigation({
     } catch {} // offline, aborted
     asking.delete(controller)
     if (controller.signal.aborted || shows !== at) return
+    // asked at the URL of a shallow entry, which the page has left since: not its answer
+    if (page.url !== answered && page.url !== on.url) return
     const next: Page = {
       ...on,
       props: { ...on.props, ...got },
       deferred: on.deferred?.filter((n) => !names.includes(n)),
     }
     on = next // before the module is awaited: another answer merges into this one
+    // asked at the URL of a shallow entry, not at the one the page was loaded at: an answer of its own, and this
+    // entry's alone (those asked before the shallow navigation are the loader's answer still)
+    if (got && page.url !== answered) {
+      group = new Set([scroll.key()!])
+      answered = page.url
+    }
     await show(next, false, () => shows !== at)
     if (shows === at) keep(next)
   }
@@ -290,6 +311,8 @@ export function startNavigation({
         const same = post && page.url === here
         const errors = Object.keys((page.props.errors as object | undefined) ?? {}).length > 0
         const asked = url.pathname + url.search
+        // asked for the entry on the screen, which a shallow navigation has since left for another URL: not its answer
+        if (options.history === 'none' && location.pathname + location.search !== asked) return
         // the kept page's entry: the server's page in its place, its state kept; redirected (signed out), anew
         // kept: the same component answers (another one mounts anew, and is scrolled to the top as a navigation's)
         const stay = options.keep && page.component === on.component
@@ -340,22 +363,69 @@ export function startNavigation({
     })()
   }
 
-  /** the URL of a link the client may follow itself: same origin, this window, no download */
-  const linkOf = (target: EventTarget | null): URL | undefined => {
+  /**
+   * The page on the screen at a URL of its own (its query, its #fragment), nothing asked for: a new history entry, or
+   * this one's. The props stay the loader's answer for the URL that got the page; its `url` follows the address bar.
+   */
+  shallowTo = (url, replace) => {
+    // A visit whose URL is in the history already, its page not on the screen yet (its modules load): no URL of the
+    // page on the screen to change. A normal navigation, which supersedes that visit as any does
+    if (location.pathname + location.search !== on.url) return navigate(url.href, { replace })
+    current?.abort() // a visit still waiting for its answer: given up, as any newer navigation does
+    const was = location.href
+    scroll.save()
+    const before = scroll.key()!
+    replace ||= url.href === location.href
+    scroll.write(url.href, replace, true)
+    scroll.commit()
+    scroll.save() // the new entry starts where the page is
+    if (replace) group.delete(before)
+    group.add(scroll.key()!)
+    settle(true)
+    // the browser fires no `hashchange` for pushState
+    if (new URL(was).hash !== url.hash)
+      dispatchEvent(new HashChangeEvent('hashchange', { oldURL: was, newURL: url.href }))
+  }
+  /**
+   * The page on the screen follows the address bar (its `url`; a shallow navigation also drops its flash and errors,
+   * which belonged to the answer before it), and is kept for the entry
+   */
+  const settle = (fresh: boolean) => {
+    const at = shows
+    on = {
+      ...on,
+      url: location.pathname + location.search,
+      ...(fresh && { flash: {}, props: { ...on.props, errors: {} } }),
+    }
+    void show(on, false, () => shows !== at)
+    keep(on)
+  }
+
+  /** a link the client may follow itself (same origin, this window, no download): its URL; `soft`, a shallow one */
+  const linkOf = (target: EventTarget | null): { url: URL; soft: boolean } | undefined => {
     const link = (target as Element | null)?.closest?.('a[href]')
     if (!(link instanceof HTMLAnchorElement)) return
     if ((link.target && link.target !== '_self') || link.hasAttribute('download')) return
     const url = new URL(link.href)
     if (url.origin !== location.origin || !isWebUrl(url.href)) return
-    return url
+    // `data-shallow`: for the page on the screen's own URL (its query, its #fragment) a shallow navigation
+    return {
+      url,
+      soft: link.hasAttribute('data-shallow') && url.pathname === shownUrl!().pathname,
+    }
   }
 
   // links: a plain click on a same-origin <a href>, which the page let through
   document.addEventListener('click', (event) => {
     if (event.defaultPrevented || event.button !== 0) return
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
-    const url = linkOf(event.target)
-    if (!url) return
+    const link = linkOf(event.target)
+    if (!link) return
+    const { url } = link
+    if (link.soft) {
+      event.preventDefault()
+      return shallowTo!(url, false)
+    }
     // a #fragment of this page: the browser scrolls to it (the position left saved for Back)
     if (url.pathname + url.search === location.pathname + location.search && url.hash) {
       scroll.save()
@@ -375,22 +445,22 @@ export function startNavigation({
     const RESTING = 80 // milliseconds the pointer rests
     let timer: ReturnType<typeof setTimeout> | undefined
     document.addEventListener('mouseover', (event) => {
-      const url = linkOf(event.target)
+      const link = linkOf(event.target)
       clearTimeout(timer)
-      if (url && isPage(url.pathname))
+      if (link && !link.soft && isPage(link.url.pathname))
         timer = setTimeout(() => {
-          preload(url.pathname)
-          void prefetch(url)
+          preload(link.url.pathname)
+          void prefetch(link.url)
         }, RESTING)
     })
     document.addEventListener('mouseout', () => clearTimeout(timer))
     document.addEventListener(
       'touchstart',
       (event) => {
-        const url = linkOf(event.target)
-        if (!url || !isPage(url.pathname)) return
-        preload(url.pathname)
-        void prefetch(url)
+        const link = linkOf(event.target)
+        if (!link || link.soft || !isPage(link.url.pathname)) return
+        preload(link.url.pathname)
+        void prefetch(link.url)
       },
       { passive: true },
     )
@@ -429,8 +499,18 @@ export function startNavigation({
 
   // Back and Forward: the entry's page, where it was scrolled
   window.addEventListener('popstate', (event) => {
+    closing = false
     const popped = scroll.pop(event.state)
+    // an entry that shows the page on the screen, at a URL of its own: its URL, nothing asked for, the scroll where it
+    // is. A visit on its way is given up, as any Back does
+    if (!popped.fragment && popped.key && group.has(popped.key)) {
+      current?.abort()
+      pending(null)
+      scroll.commit()
+      return settle(false)
+    }
     if (popped.fragment) {
+      if (!popped.key) group.add(scroll.key()!) // an entry the browser made (no key yet): of this page
       // a #fragment that names no element (a dialog's `#settings/account`) leaves the page where it is, as the browser does
       if (!popped.position && location.hash && !fragmentTarget(location.hash.slice(1))) return
       return restore(popped.position, location.hash)
@@ -446,19 +526,38 @@ export function startNavigation({
   // manual; Firefox, a #fragment), and over the page's own (Firefox, at load, a page rendered in the browser at 0)
   window.addEventListener('pagehide', scroll.save)
   // the browser's own #fragment navigations: the entry gets its key
-  window.addEventListener('hashchange', scroll.commit)
+  window.addEventListener('hashchange', () => {
+    // an entry the browser made (no key yet; a popstate may have given it one): of the page on the screen
+    if (scroll.commit()) group.add(scroll.key()!)
+  })
+  addEventListener('pageshow', () => (closing = false))
 
   // a page rendered on the server is where it belongs already, before its first paint: at its entry's position (its
   // document's script: a reload, Back from another site), else at its #fragment (the browser). One rendered here has
   // its content only now: its entry's position, or its #fragment's target
   const position = scroll.start()
+  group.add(scroll.key()!)
   if (!hydrated) {
     restore(position, location.hash, true)
     if (position) holdUntilLoaded(position)
   }
   keep(initial)
+  // A prerendered page's file is made without a query, and the document it hydrates is too: once it is hydrated, its URL
+  // is the browser's (a state the query holds works at a direct load; its loader never saw the query). A page
+  // rendered per request has its query in its URL already
+  if (location.pathname + location.search !== on.url) settle(false)
   if (initial.deferred?.length) ask(initial.deferred)
 }
+
+/**
+ * What this client adds to `history.state` (beside the scroll key, `paths.ts`), and what outlives a deploy: an entry's
+ * own state, read by the build that is running when the browser comes back to it.
+ * `__fondu_shallow: true`: the entry was pushed by a shallow navigation, from the entry below it, which showed the
+ * same page. `closeShallow()` goes back (one step) from such an entry; any other it replaces in place.
+ */
+const SHALLOW = '__fondu_shallow'
+/** `closeShallow()` has gone back, and the browser has not landed yet: a second call waits (until the entry is there) */
+let closing = false
 
 /**
  * Scroll positions, per history entry (a key in `history.state`), in memory and in sessionStorage (a reload, a page
@@ -515,13 +614,15 @@ function scrollPositions() {
     },
     { passive: true },
   )
-  /** this entry's key, given one if it has none (a first visit, a #fragment the browser navigated to) */
+  /** this entry's key, given one if it has none (a first visit, a #fragment the browser navigated to): true if so */
   const commit = () => {
     let key = keyOf(history.state)
+    const added = !key
     if (!key)
       history.replaceState({ ...(history.state as object | null), [KEY]: (key = newKey()) }, '')
     rendered = key
     renderedUrl = location.pathname + location.search
+    return added
   }
   return {
     save,
@@ -537,9 +638,23 @@ function scrollPositions() {
       commit()
       return read(rendered)
     },
-    /** the page on the screen, at `url`: a new entry or this one */
-    write(url: string, replace: boolean) {
-      const state = { ...(replace ? (history.state as object | null) : {}), [KEY]: newKey() }
+    /**
+     * The page on the screen, at `url`: a new entry or this one. `shallow`: by a shallow navigation, which marks a
+     * new entry (SHALLOW); a replaced entry keeps its state, but another URL, by a navigation that is not
+     * shallow, takes the mark away: `closeShallow()` there must not go Back off it.
+     */
+    write(url: string, replace: boolean, shallow = false) {
+      const state: Record<string, unknown> = {
+        ...(replace ? (history.state as object | null) : {}),
+        [KEY]: newKey(),
+      }
+      if (shallow) {
+        if (!replace) state[SHALLOW] = true
+      } else {
+        // the same URL (a form's answer, reload()): the same overlay. Another page: not a shallow entry
+        const to = new URL(url, location.href)
+        if (to.pathname + to.search !== location.pathname + location.search) delete state[SHALLOW]
+      }
       if (replace) history.replaceState(state, '', url)
       else history.pushState(state, '', url)
     },
@@ -645,16 +760,57 @@ export function loadDocument(href: string) {
  * `replace`), anything else as a document. `keep`: the answer is shown as `reload()` shows its own, the page keeps
  * its state (a focused input, what was typed) and the scroll position, nothing is announced: a search box that
  * `navigate()`s to its query as it is typed. Another page's component is shown as any navigation's.
+ *
+ * `shallow`: the query and #fragment of the page on the screen change, and nothing is asked for: the page keeps its
+ * props, its state and the scroll position, `usePage().url` follows, and a changed #fragment fires `hashchange` (the
+ * browser doesn't scroll to it, and `:target` stays as it was). Only this page's own pathname; another page throws.
+ * Not with `keep`: a shallow navigation keeps the page anyway. Before the app has started, a document load. While a
+ * visit is being put on the screen (its URL is in the history, its page is not there yet), a normal navigation.
  */
 export function navigate(
   href: string,
-  { replace = false, keep = false }: { replace?: boolean; keep?: boolean } = {},
+  options:
+    | { replace?: boolean; keep?: boolean; shallow?: false }
+    | { replace?: boolean; keep?: never; shallow: true } = {},
 ) {
-  const url = new URL(href, location.href)
+  const { replace = false, keep = false, shallow = false } = options as Record<string, boolean>
+  if (shallow && keep)
+    throw new Error('fondu: a shallow navigation takes no `keep`: the page stays as it is')
+  const shown = shownUrl?.()
+  // a shallow navigation is relative to the page on the screen, whose URL `location` may have left
+  const url = new URL(href, shallow ? (shown ?? location.href) : location.href)
+  if (shallow) {
+    if (url.origin !== location.origin || url.pathname !== (shown ?? location).pathname)
+      throw new Error(
+        `fondu: a shallow navigation stays on this page (its query, its #fragment); ${url.origin === location.origin ? url.pathname : url.href} is another page: leave out \`shallow\``,
+      )
+    if (shallowTo) return shallowTo(url, replace)
+  }
   const here = url.pathname + url.search === location.pathname + location.search
-  if (!visit || url.origin !== location.origin || !isAppPage?.(url.pathname) || (here && url.hash))
-    return replace ? location.replace(url.href) : location.assign(url.href) // a #fragment of this page: the browser's
+  if (
+    shallow ||
+    !visit ||
+    url.origin !== location.origin ||
+    !isAppPage?.(url.pathname) ||
+    (here && url.hash)
+  )
+    return replace ? location.replace(url.href) : location.assign(url.href) // a #fragment of this page: the browser's; shallow: the app has not started
   visit(url.href, { history: replace || url.href === location.href ? 'replace' : 'push', keep })
+}
+
+/**
+ * Closes what `navigate(…, { shallow: true })` or a `data-shallow` link opened (a dialog, a drawer), one step. An
+ * entry that was pushed by a shallow navigation, from the entry below it: Back, to the page as it was. Any other (a
+ * document loaded at this URL, a reload, an entry replaced…): `to` in its place, a shallow navigation with `replace`
+ * (`to` is a URL of this page, as that takes it). Never leaves the page, and never adds an entry. A second call before
+ * the first one's Back has landed does nothing: a double click closes one level.
+ */
+export function closeShallow(to: string) {
+  if (closing) return
+  if ((history.state as Record<string, unknown> | null)?.[SHALLOW] === true) {
+    closing = true
+    history.back()
+  } else navigate(to, { shallow: true, replace: true })
 }
 
 /** the page asked for again, its state and the scroll position kept */
