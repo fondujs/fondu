@@ -114,6 +114,71 @@ export default function Page() {
 `)
     expect(out.split('\n')[0]).toBe("import { a } from 'x';")
   })
+  test("a default parameter's expression sees the outer scope, not the body's", () => {
+    const names = (head: string) => strip(head).split('\n')[0]
+    // an import used in a default, and shadowed by a body declaration of the same name
+    for (const body of ['const a = 1', 'let a = 1', 'var a = 1', 'function a() {}', 'class a {}'])
+      expect(
+        names(`
+import { a } from 'x'
+export const loader = () => 1
+export default function Page(p = a) { ${body}; return p }
+`),
+      ).toBe("import { a } from 'x'")
+    // an outer constant
+    expect(
+      strip(
+        `const t = 'outer'\nexport const loader = () => t\nexport default (v = t) => { const t = 1; return v }`,
+      ),
+    ).toContain("const t = 'outer'")
+    // a destructuring default, in an arrow, a method and a function expression
+    for (const fn of [
+      '({ x = t } = {}) => { var t; return x }',
+      'function ({ x = t }) { let t; return x }',
+      '([x = t]) => { const t = 1; return x }',
+      '(x = () => t) => { const t = 1; return x }',
+      '(x = function () { return t }) => { class t {} return x }',
+    ])
+      expect(strip(`const t = 1\nexport const loader = () => t\nexport default ${fn}`)).toContain(
+        'const t = 1',
+      )
+  })
+  test("a body declaration is still the body's, a parameter its own", () => {
+    // the body's `t` is its own: the outer one is only the loader's, and goes
+    expect(
+      strip(
+        `const t = 1\nexport const loader = () => t\nexport default (v) => { const t = 2; return [v, t] }`,
+      ),
+    ).toBe('export default (v) => { const t = 2; return [v, t] }')
+    expect(
+      strip(`const t = 1\nexport const loader = () => t\nexport default (t, v = t) => [t, v]`),
+    ).toBe('export default (t, v = t) => [t, v]')
+    // a later parameter sees an earlier one; a nested function's parameters and body are its own
+    expect(
+      strip(
+        `const t = 1\nexport const loader = () => t\nexport default (a, b = a) => (c = a) => { var t; return c }`,
+      ),
+    ).toBe('export default (a, b = a) => (c = a) => { var t; return c }')
+  })
+  test('the stripped copy runs as the original does', async () => {
+    const run = async (code: string, ...args: unknown[]) =>
+      (
+        (await import(/* @vite-ignore */ `data:text/javascript,${encodeURIComponent(code)}`)) as {
+          default: (...a: unknown[]) => unknown
+        }
+      ).default(...args)
+    for (const code of [
+      `const token = 'outer'\nexport const loader = () => token\nexport default function Page(value = token) { const token = 'inner'; return [value, token] }`,
+      `const t = 'outer'\nexport const loader = () => t\nexport default ({ x = t } = {}) => { var t = 'inner'; return [x, t] }`,
+      `const t = 'outer'\nexport const loader = () => t\nexport default function Page(v = () => t) { let t = 'inner'; return [v(), t] }`,
+      `const t = 'outer'\nexport const loader = () => t\nexport default ([x = t]) => { function t() {} return [x, typeof t] }`,
+    ]) {
+      const stripped = strip(code)
+      expect(await run(stripped, ...(code.includes('[x = t]') ? [[]] : []))).toEqual(
+        await run(code, ...(code.includes('[x = t]') ? [[]] : [])),
+      )
+    }
+  })
   test('code that names a server export: an error (it would reach the browser)', () => {
     expect(() =>
       strip(`export let loader\nloader = () => secret()\nexport default () => null`),
