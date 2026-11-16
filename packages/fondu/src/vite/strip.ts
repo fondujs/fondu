@@ -1,6 +1,6 @@
-import { relative, sep } from 'node:path'
+import { dirname, relative, resolve, sep } from 'node:path'
 
-import type { Plugin } from 'vite'
+import { normalizePath, type Plugin } from 'vite'
 
 import { CONFIG, checkExportNames, HANDLERS, isPageFile, METHODS } from '../paths.js'
 
@@ -295,9 +295,13 @@ function exportedNames(body: Node[]): string[] {
   return [...names].sort()
 }
 
+type SourceMapLike = { sources: string[]; sourcesContent?: Array<string | null> }
+
 /** The browser's copy of every page's route file (`.tsx` in `app/routes/`): its server code removed */
 export function stripRoutes(): Plugin {
   let root = process.cwd()
+  // the route files the strip changed (the build's): their source maps must not carry the original
+  const changed = new Set<string>()
   return {
     name: 'fondu:strip-routes',
     enforce: 'post', // after the JSX is compiled: plain JavaScript to read
@@ -315,7 +319,36 @@ export function stripRoutes(): Plugin {
       }
       if (!isPageFile(file) || file.endsWith('.mdx')) return
       const stripped = stripServerCode(code, this.parse(code) as unknown as { body: Node[] }, file)
-      return stripped === code ? undefined : { code: stripped, map: null }
+      if (stripped === code) return
+      changed.add(id.split('?')[0]!)
+      return { code: stripped, map: null }
+    },
+    // The maps' `sourcesContent` holds the file as it was read, the loaders in it. Stopgap: the entries of the files
+    // the strip changed are blanked (`null` keeps the indexes valid). The full fix: strip in `load`, so that the
+    // stripped text is the source (#241).
+    generateBundle(options, bundle) {
+      if (this.environment.config.consumer !== 'client' || !changed.size) return
+      const outDir = resolve(root, this.environment.config.build.outDir)
+      const blank = (map: SourceMapLike, from: string) => {
+        map.sources.forEach((source, i) => {
+          if (source && changed.has(normalizePath(resolve(outDir, dirname(from), source))))
+            map.sourcesContent![i] = null
+        })
+      }
+      for (const [name, file] of Object.entries(bundle)) {
+        if (file.type === 'chunk' && file.map?.sourcesContent) blank(file.map as never, name)
+        // a map written as a file of its own (`.map`): its text
+        else if (
+          file.type === 'asset' &&
+          name.endsWith('.map') &&
+          typeof file.source === 'string'
+        ) {
+          const map = JSON.parse(file.source) as SourceMapLike
+          if (!map.sourcesContent) continue
+          blank(map, name)
+          file.source = JSON.stringify(map)
+        }
+      }
     },
   }
 }
