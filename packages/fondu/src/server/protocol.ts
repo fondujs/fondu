@@ -294,6 +294,12 @@ function webUrl(c: Context, to: string): boolean {
 
 // ---- the protocol middleware (installed by createApp)
 
+/**
+ * Every header that selects what a navigation answers: the page object (`X-Fondu`), the 409 of an old build
+ * (`X-Fondu-Version`), a partial answer (`X-Fondu-Only`, for `X-Fondu-Component`'s page)
+ */
+const NAVIGATION_VARY = 'X-Fondu, X-Fondu-Version, X-Fondu-Only, X-Fondu-Component'
+
 const versionCheck: MiddlewareHandler = async (c, next) => {
   // a navigation of a client built from other assets: the page loads as a document
   if (
@@ -302,11 +308,11 @@ const versionCheck: MiddlewareHandler = async (c, next) => {
     isPageRequest(c) &&
     c.req.header('x-fondu-version') !== version
   ) {
-    return c.body(null, 409, { 'X-Fondu-Location': c.req.url, Vary: 'X-Fondu' })
+    return c.body(null, 409, { 'X-Fondu-Location': c.req.url, Vary: NAVIGATION_VARY })
   }
   await next()
   // a URL answers a navigation and a document differently: caches keep them apart
-  appendHeader(c, 'Vary', isPageRequest(c) ? 'X-Fondu, X-Fondu-Only' : 'X-Fondu')
+  appendHeader(c, 'Vary', isPageRequest(c) ? NAVIGATION_VARY : 'X-Fondu')
   // an empty answer to a form (an action that returns nothing to show, `c.body(null)`): back to the page. Its body
   // isn't read to tell (a stream's would be, to its end)
   if (isPageRequest(c) && c.res.status === 200 && !c.res.headers.has('x-fondu') && !c.res.body)
