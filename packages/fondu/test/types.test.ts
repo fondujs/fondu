@@ -439,8 +439,36 @@ const fetches = [
   typed(({ fetch }) => fetch('/api/tokens', { body: { name: 'ci' } })),
   // @ts-expect-error no GET: the method is required
   typed(({ fetch }) => fetch('/api/tokens')),
+  // @ts-expect-error no GET, the generic names POST: the method is still required
+  typed(({ fetch }) => fetch<'/api/tokens', 'POST'>('/api/tokens', { body: { name: 'ci' } })),
   // @ts-expect-error not a route's method: POST only
   typed(({ fetch }) => fetch('/api/tokens', { method: 'PUT', body: { name: 'ci' } })),
+  // omitted is GET: a generic that names another method (or a union) names it in the options too
+  // @ts-expect-error POST in the generic, no method: it would send a GET
+  typed(({ fetch }) =>
+    fetch<'/api/settings', 'POST'>('/api/settings', { body: { emails: false } }),
+  ),
+  // @ts-expect-error PATCH in the generic, no options: it would send a GET
+  typed(({ fetch }) => fetch<'/api/settings', 'PATCH'>('/api/settings')),
+  // @ts-expect-error a union generic: no method to tell which
+  typed(({ fetch }) => fetch<'/api/settings', 'GET' | 'POST'>('/api/settings')),
+  // @ts-expect-error a union generic of the non-GET methods: no method to tell which
+  typed(({ fetch }) => fetch<'/api/settings', 'POST' | 'PATCH'>('/api/settings', { headers: {} })),
+  typed(({ fetch }) =>
+    fetch<'/api/settings', 'POST'>('/api/settings', { method: 'POST', body: { emails: false } }),
+  ),
+  typed(async ({ fetch }) =>
+    exactly<{ saved: boolean }>()(
+      await fetch<'/api/settings', 'POST'>('/api/settings', {
+        method: 'POST',
+        body: { emails: false },
+      }),
+    ),
+  ),
+  // GET stays the default: inferred, or named, with no method
+  typed(({ fetch }) => fetch('/api/settings')),
+  typed(({ fetch }) => fetch<'/api/settings', 'GET'>('/api/settings')),
+  typed(({ fetch }) => fetch<'/api/settings', 'GET'>('/api/settings', { method: 'GET' })),
   // a page's data is its props: its pattern is not a path
   // @ts-expect-error a page
   typed(({ fetch }) => fetch('/')),

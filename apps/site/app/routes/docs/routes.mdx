@@ -136,7 +136,9 @@ What is checked:
 
 - the path is a `.ts` route of the app (a page's pattern is not one: a page's data is its props), with its params as
   `href()` takes them;
-- `method` is one the file exports, and GET when left out (required when the file has no `GET`);
+- `method` is one the file exports, and GET when left out. It is required for any other method, and when the file has
+  no `GET`: a call that names `POST` in its type arguments without `method: 'POST'` is an error, as it would send a
+  GET;
 - `query` and `body` are typed by the handler's `withValidator` schemas (a body only for a method other than GET, sent as
   JSON); `headers` and `signal` pass through;
 - the answer is what the handler returns with `c.json()`, as JSON delivers it. A handler that answers otherwise (text, a
