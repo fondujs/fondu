@@ -107,7 +107,8 @@ export default function Layout({ children }: { children: ReactNode }) {
 - A directory's `_layout.tsx` wraps its pages inside the outer ones. A `(group)/` gives pages a layout without a URL
   segment. A part that must not sit in a layout goes in a directory beside it.
 - A layout stays mounted while pages change, so its state is kept. It has no loader: `share()` gives it props, and
-  `usePage()` reads them.
+  `usePage()` reads them. A `loader` or `action` exported from a layout (or `_error.tsx`) fails the build and the
+  server's start.
 - A layout is in the JavaScript of its pages only.
 
 ## Error page and middleware
