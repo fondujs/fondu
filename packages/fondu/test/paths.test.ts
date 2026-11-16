@@ -29,12 +29,28 @@ describe('routes/ files', () => {
       '/:lang/items/:id',
     ])
     expect(() => routePatterns('[[lang]]/[[page]].ts')).toThrow('2 optional segments; one at most')
+    expect(() => routePatterns('docs/[[...path]].ts')).toThrow('an optional catch-all')
+  })
+  test("reserved param names: href()'s and fetch()'s options, in every kind of route file", () => {
     // href()'s options
     expect(() => routePatterns('[query].tsx')).toThrow("can't be named query")
     expect(() => routePatterns('a/[[hash]]/b.ts')).toThrow("can't be named hash")
     expect(() => routePatterns('[...query].ts')).toThrow("can't be named query")
+    expect(() => routePatterns('[query].tsx')).toThrow("(href()'s option)")
+    expect(() => routePatterns('[hash].ts')).toThrow("(href()'s option)")
     expect(routePatterns('query/[queryId].tsx')).toEqual(['/query/:queryId'])
-    expect(() => routePatterns('docs/[[...path]].ts')).toThrow('an optional catch-all')
+    // fetch()'s options: in every kind of route file, as a param, an optional one or a catch-all
+    for (const name of ['method', 'body', 'headers', 'signal']) {
+      for (const file of [`api/[${name}].ts`, `[[${name}]]/index.tsx`, `a/[...${name}].mdx`])
+        expect(() => routePatterns(file)).toThrow(
+          `routes/${file}: a param can't be named ${name} (fetch()'s option); rename the file's [${name}]`,
+        )
+      expect(routePatterns(`api/[${name}Id].ts`)).toEqual([`/api/:${name}Id`])
+      expect(routePatterns(`${name}/[id].ts`)).toEqual([`/${name}/:id`])
+    }
+    // names that are only like them, and the object's own
+    expect(routePatterns('[Method].ts')).toEqual(['/:Method'])
+    expect(routePatterns('[constructor]/[toString].ts')).toEqual(['/:constructor/:toString'])
   })
   test('what is a route', () => {
     expect(isRouteFile('users/index.ts')).toBe(true)

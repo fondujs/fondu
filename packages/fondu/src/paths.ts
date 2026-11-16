@@ -20,12 +20,15 @@ export function routePatterns(file: string): string[] {
     )
   if (optional.length > 1)
     throw new Error(`fondu: routes/${file} has ${optional.length} optional segments; one at most`)
-  // href()'s options, next to the params
-  const reserved = segments.find((s) => /^\[{1,2}(?:\.\.\.)?(?:query|hash)\]{1,2}$/.test(s))
-  if (reserved)
-    throw new Error(
-      `fondu: routes/${file}: a param can't be named ${reserved.replace(/[[\].]/g, '')} (href()'s query and hash); rename it`,
-    )
+  // the options of href() and fetch(), next to the params
+  for (const segment of segments) {
+    const name = /^\[{1,2}(?:\.\.\.)?(\w+)\]{1,2}$/.exec(segment)?.[1]
+    const api = name && RESERVED[name]
+    if (api)
+      throw new Error(
+        `fondu: routes/${file}: a param can't be named ${name} (${api}'s option); rename the file's [${name}]`,
+      )
+  }
   const pattern = (withOptional: boolean) =>
     '/' +
     segments
@@ -39,6 +42,16 @@ export function routePatterns(file: string): string[] {
       .join('/')
   return optional.length ? [pattern(false), pattern(true)] : [pattern(true)]
 }
+
+/** the names a param can't have, and the function whose option each is: `href()`'s and `fetch()`'s */
+const RESERVED: Record<string, string | undefined> = Object.assign(Object.create(null), {
+  query: 'href()',
+  hash: 'href()',
+  method: 'fetch()',
+  body: 'fetch()',
+  headers: 'fetch()',
+  signal: 'fetch()',
+})
 
 const ROUTE_EXTENSION = /\.(?:tsx?|mdx)$/
 

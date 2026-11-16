@@ -17,6 +17,8 @@ declarations (`*.d.ts`) and tests (`*.test.ts`, `*.spec.ts`). A route's path is 
 Where two routes could take a URL, a static segment comes first, then a param with listed values, then any param,
 then a catch-all: `/users/new` is `users/new.tsx`, not `users/[id].tsx`.
 
+A param can't be named `query`, `hash`, `method`, `body`, `headers` or `signal`: the first two are `href()`'s options, the other four `fetch()`'s. A file such as `api/[method].ts` stops the app at startup; rename it (`api/[verb].ts`). The URLs don't change.
+
 ## Optional segments
 
 `[[lang]]` is a segment the URL may leave out: `routes/[[lang]]/about.tsx` answers `/about` and `/de/about`, and the
@@ -139,6 +141,7 @@ What is checked:
 - `method` is one the file exports, and GET when left out. It is required for any other method, and when the file has
   no `GET`: a call that names `POST` in its type arguments without `method: 'POST'` is an error, as it would send a
   GET;
+- the options are `method`, `query`, `body`, `headers` and `signal`, next to the params: that set is fixed, which is why no param can be named `method`, `body`, `headers` or `signal` (nor `query`);
 - `query` and `body` are typed by the handler's `withValidator` schemas (a body only for a method other than GET, sent as
   JSON); `headers` and `signal` pass through;
 - the answer is what the handler returns with `c.json()`, as JSON delivers it. A handler that answers otherwise (text, a

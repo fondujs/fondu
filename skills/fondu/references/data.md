@@ -74,6 +74,8 @@ try {
 - The path is a `.ts` route of the app (a page's pattern is not one), with its params as `href()` takes them.
 - `method` is one the file exports; GET when left out. Required for any other method (also when type arguments name
   it), and when the file has no `GET`.
+- `fetch()`'s options are `method`, `query`, `body`, `headers` and `signal`: that set is fixed, and no route param can
+  have one of these names.
 - `query` and `body` are typed by the handler's `withValidator` schemas; a body only for a method other than GET, sent
   as JSON. `headers` and `signal` pass through.
 - The answer is what the handler returns with `c.json()`, as JSON delivers it; any other answer is `unknown`.

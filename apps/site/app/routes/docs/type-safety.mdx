@@ -55,7 +55,7 @@ href('/search') // error: the schema requires q
 href('/users/:id', { id: 7, query: { tab: 'posts' } }) // '/users/7?tab=posts': no schema, any query
 ```
 
-A param can't be named `query` or `hash`: they are `href()`'s. A value that is `undefined` or `null` is left out, and
+A param can't be named `query` or `hash`: they are `href()`'s (and `method`, `body`, `headers` and `signal` are `fetch()`'s). A value that is `undefined` or `null` is left out, and
 `z.coerce.number()` takes any value (a string or a number), as the URL carries it as text.
 
 A redirect takes `href()` too: `return c.redirect(href('/users/:id', { id: user.id }), 303)`.
