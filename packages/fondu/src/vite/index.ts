@@ -20,6 +20,7 @@ import {
 import type { ProgressOptions } from '../client/progress.js'
 import { isPageFile, layoutsOf, pageId } from '../paths.js'
 import { hmr, PAGE_EXPORTS, PROPS_EVENT } from './hmr.js'
+import { checkOptions } from './options.js'
 import { nodeServer, prerender, worker } from './prerender.js'
 import { stripRoutes, stripServerCode } from './strip.js'
 import { typegen, walk as walkFiles } from './typegen.js'
@@ -157,6 +158,7 @@ function serverReactDomClient(): Plugin {
 }
 
 export default function fondu(options: FonduOptions): PluginOption[] {
+  checkOptions(options)
   const node = options.target !== 'cloudflare'
   return [
     // .mdx too: MDX pages and components get Fast Refresh (as MDX's own docs set it up)
