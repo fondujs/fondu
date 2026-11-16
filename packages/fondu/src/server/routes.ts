@@ -1,6 +1,6 @@
 import type { Handler, MiddlewareHandler } from 'hono'
 
-import { isRouteFile, middlewareFor, routePatterns } from '../paths.js'
+import { checkRouteName, isRouteFile, middlewareFor, routePatterns } from '../paths.js'
 import type { Prerender } from './prerender.js'
 
 export type Handlers = Handler | MiddlewareHandler | ReadonlyArray<Handler | MiddlewareHandler>
@@ -73,7 +73,9 @@ export function routeTable(modules: Record<string, RouteModule>, append: boolean
     for (const from of [...middlewareFor(file, [...middlewareFiles, '_middleware.ts']), file])
       for (const [name, list] of Object.entries(paramsOf(from, modules[from])))
         values.set(name, { list, from })
-    const paths = routePatterns(file)
+    const patterns = routePatterns(file)
+    checkRouteName(file)
+    const paths = patterns
       .map((path) => {
         let empty = false
         const pattern = path.replace(

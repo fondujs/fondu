@@ -9,6 +9,14 @@ const files = (...names: string[]) => Object.fromEntries(names.map((n) => [n, pa
 const table = (modules: Record<string, RouteModule>, append = false) =>
   routeTable(modules, append).map((r) => r.pattern)
 
+describe('route names', () => {
+  test('a name with syntax characters that is no route form stops the app at startup', () => {
+    for (const file of ['[user-id].tsx', '[a][b].ts', '[id]x.ts', ':id.ts', '*.ts', 'a{b}.ts'])
+      expect(() => table(files(file)), file).toThrow(/is not a route name/)
+    expect(table(files('[id].ts', '[[lang]]/about.ts'))).toHaveLength(3)
+  })
+})
+
 describe('optional segments', () => {
   test('a file, two routes: the same middleware', () => {
     const routes = routeTable(

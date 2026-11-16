@@ -3,7 +3,7 @@ import { join, relative, sep } from 'node:path'
 
 import type { Plugin } from 'vite'
 
-import { isRouteFile, routePatterns } from '../paths.js'
+import { checkRouteName, isRouteFile, routePatterns } from '../paths.js'
 
 const OUT = 'app/fondu.gen.d.ts'
 
@@ -40,7 +40,9 @@ export {}
 /** a route file's URL patterns; none for one createApp() refuses (it says why) */
 function patternsOf(file: string): string[] {
   try {
-    return routePatterns(file)
+    const patterns = routePatterns(file)
+    checkRouteName(file)
+    return patterns
   } catch {
     return []
   }

@@ -17,6 +17,8 @@ declarations (`*.d.ts`) and tests (`*.test.ts`, `*.spec.ts`). A route's path is 
 Where two routes could take a URL, a static segment comes first, then a param with listed values, then any param,
 then a catch-all: `/users/new` is `users/new.tsx`, not `users/[id].tsx`.
 
+A name with any of `[ ] : * { } ?` must be one of the forms above (a param is letters, digits and `_`). `[user-id].tsx`, `[id]x.ts`, `:id.ts` and `a{b}.ts` stop the app at startup, rather than become a literal URL or a wildcard.
+
 A param can't be named `query`, `hash`, `method`, `body`, `headers` or `signal`: the first two are `href()`'s options, the other four `fetch()`'s. A file such as `api/[method].ts` stops the app at startup; rename it (`api/[verb].ts`). The URLs don't change.
 
 ## Optional segments

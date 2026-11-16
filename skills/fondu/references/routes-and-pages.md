@@ -22,6 +22,8 @@ Docs: [routes](https://fondu.dev/docs/routes.md), [pages](https://fondu.dev/docs
 - A route has one optional segment at most. `href('/about')` and `href('/:lang/about', { lang: 'de' })` are both typed.
 - A param can't be named `query` or `hash` (`href()`'s options), or `method`, `body`, `headers` or `signal` (`fetch()`'s):
   the app stops at startup. Rename the file (`[verb].ts`); the URLs don't change.
+- A name with any of `[ ] : * { } ?` must be one of the forms above (a param is letters, digits, `_`): `[user-id].tsx`,
+  `[id]x.ts`, `:id.ts` and `a{b}.ts` stop the app at startup.
 - Not routes: files and directories starting with `_`, `*.d.ts`, `*.test.*`, `*.spec.*`.
 
 ## The values of a param

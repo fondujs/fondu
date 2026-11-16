@@ -3,7 +3,15 @@ import { relative, sep } from 'node:path'
 
 import { parseAst, type Plugin } from 'vite'
 
-import { CONFIG, checkExportNames, HANDLERS, isPageFile, METHODS } from '../paths.js'
+import {
+  CONFIG,
+  checkExportNames,
+  checkRouteName,
+  isRouteFile,
+  HANDLERS,
+  isPageFile,
+  METHODS,
+} from '../paths.js'
 
 /** the exports of a page's route file that are server code: the browser gets the page (default) alone */
 const SERVER_EXPORTS = new Set<string>([...HANDLERS, ...CONFIG, ...METHODS])
@@ -440,6 +448,7 @@ export function stripRoutes(): Plugin {
       if (this.environment.config.consumer !== 'client') return
       const file = relative(`${root}/app/routes`, id.split('?')[0]!).split(sep).join('/')
       if (file.startsWith('..')) return
+      if (isRouteFile(file)) checkRouteName(file) // as the server's start does
       // a layout or the error page is not stripped: what the server refuses at startup fails the build
       if (/(?:^|\/)_(?:layout|error)\.tsx$/.test(file)) {
         const program = this.parse(code) as unknown as { body: Node[] }

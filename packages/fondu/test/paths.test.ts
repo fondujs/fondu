@@ -3,7 +3,13 @@ import { Hono } from 'hono'
 import { describe, expect, test } from 'vitest'
 
 import { href } from '../src/client.js'
-import { fillPattern, isRouteFile, middlewareFor, routePatterns } from '../src/paths.js'
+import {
+  checkRouteName,
+  fillPattern,
+  isRouteFile,
+  middlewareFor,
+  routePatterns,
+} from '../src/paths.js'
 import { readBody } from '../src/server/validate.js'
 
 describe('routes/ files', () => {
@@ -30,6 +36,39 @@ describe('routes/ files', () => {
     ])
     expect(() => routePatterns('[[lang]]/[[page]].ts')).toThrow('2 optional segments; one at most')
     expect(() => routePatterns('docs/[[...path]].ts')).toThrow('an optional catch-all')
+  })
+  test('a name with a character of the syntax that is not one of its forms fails', () => {
+    for (const file of [
+      '[user-id].tsx',
+      '[a][b].ts',
+      '[id]x.ts',
+      ':id.ts',
+      '*.ts',
+      'a{b}.ts',
+      'x?.ts',
+      'users/[id]x/index.tsx', // a directory too
+      '[[a]]b.ts',
+      '[a]].ts',
+      '[[a].ts',
+      '[.x].ts',
+      '[..x].ts',
+      '[...a-b].mdx',
+    ])
+      expect(() => checkRouteName(file), file).toThrow(/is not a route name/)
+    expect(() => checkRouteName('[user-id].tsx')).toThrow('`[user-id]` is not a route name')
+    expect(() => checkRouteName('[user-id].tsx')).toThrow('routes/[user-id].tsx')
+    // valid names
+    for (const file of [
+      '[user_id].ts',
+      '[id1]/[[lang]]/[...rest].ts',
+      '[[...x]].ts', // routePatterns has its own message for it
+      'sitemap.xml.ts',
+      '(shop)/a-b_c~d.tsx',
+      'index.tsx',
+    ])
+      expect(() => checkRouteName(file), file).not.toThrow()
+    // routePatterns does not check names (the client has it too): the server's start and the build do
+    expect(routePatterns('[user-id].ts')).toEqual(['/[user-id]'])
   })
   test("reserved param names: href()'s and fetch()'s options, in every kind of route file", () => {
     // href()'s options
