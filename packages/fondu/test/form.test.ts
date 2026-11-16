@@ -124,3 +124,73 @@ test("a field's key in the errors is its issues' path", () => {
   ])
   expect({ ...errors }).toEqual({ 'user.name': 'first', '': 'form' })
 })
+
+describe('a body of a type readBody cannot read (#243)', () => {
+  const app = new Hono().post('/', async (c) => c.json(await readBody(c)))
+  const post = (init: RequestInit & { headers?: Record<string, string> }) =>
+    app.request('/', { method: 'POST', ...init })
+  const length = (body: string) => String(new TextEncoder().encode(body).length)
+
+  test('text/plain with a body: 415', async () => {
+    const body = 'hello'
+    const res = await post({
+      body,
+      headers: { 'Content-Type': 'text/plain', 'Content-Length': length(body) },
+    })
+    expect(res.status).toBe(415)
+    expect(await res.text()).toContain('Unsupported request body')
+  })
+  test('a body with no type, or application/octet-stream: 415', async () => {
+    expect((await post({ body: 'x', headers: { 'Content-Length': '1' } })).status).toBe(415)
+    expect(
+      (
+        await post({
+          body: 'x',
+          headers: { 'Content-Type': 'application/octet-stream', 'Content-Length': '1' },
+        })
+      ).status,
+    ).toBe(415)
+  })
+  test('a body of unknown length (Transfer-Encoding): 415', async () => {
+    const res = await post({
+      body: 'x',
+      headers: { 'Content-Type': 'text/plain', 'Transfer-Encoding': 'chunked' },
+    })
+    expect(res.status).toBe(415)
+  })
+  test('no body: {}, with no type, with a type, or with Content-Length: 0', async () => {
+    for (const headers of [{}, { 'Content-Type': 'text/plain' }, { 'Content-Length': '0' }]) {
+      const res = await post({ headers })
+      expect([res.status, await res.json()]).toEqual([200, {}])
+    }
+  })
+  test('a form with no fields, as a browser sends it: {}', async () => {
+    const urlencoded = await post({
+      body: '',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': '0' },
+    })
+    expect([urlencoded.status, await urlencoded.json()]).toEqual([200, {}])
+    const multipart = await post({ body: new FormData() })
+    expect([multipart.status, await multipart.json()]).toEqual([200, {}])
+  })
+  test('JSON, +json, URL-encoded and multipart are read as they were', async () => {
+    const send = async (body: string | FormData, type?: string) => {
+      const res = await post({
+        body,
+        headers: type
+          ? { 'Content-Type': type, 'Content-Length': typeof body === 'string' ? length(body) : '' }
+          : {},
+      })
+      return [res.status, await res.json()]
+    }
+    expect(await send('{"a":[1]}', 'application/json')).toEqual([200, { a: [1] }])
+    expect(await send('{"a":1}', 'application/merge-patch+json')).toEqual([200, { a: 1 }])
+    expect(await send('a=1&b=2', 'application/x-www-form-urlencoded')).toEqual([
+      200,
+      { a: '1', b: '2' },
+    ])
+    const fd = new FormData()
+    fd.append('a', '1')
+    expect(await send(fd)).toEqual([200, { a: '1' }])
+  })
+})
