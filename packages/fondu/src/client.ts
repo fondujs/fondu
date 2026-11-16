@@ -148,12 +148,11 @@ type BodyArg<M extends string, B> = M extends 'GET'
     : undefined extends B
       ? { body?: B }
       : { body: B }
-/** `method`: omitted is GET, so required when the route has no GET */
-type MethodArg<P extends string, M extends string> =
-  'GET' extends MethodsOf<P> ? { method?: M } : { method: M }
+/** `method`: omitted is GET, so it is left out only for a call that is GET: any other method, or a union, names it */
+type MethodArg<M extends string> = [M] extends ['GET'] ? { method?: M } : { method: M }
 
 type FetchOptions<P extends string, M extends HttpMethod> = ParamArgs<P> &
-  MethodArg<P, M> &
+  MethodArg<M> &
   QueryArg<QueryOfHandler<HandlerOf<P, M>>> &
   BodyArg<M, BodyOfHandler<HandlerOf<P, M>>> & { headers?: HeadersInit; signal?: AbortSignal }
 /** the options are optional when nothing is required: no params, no `body`, `query` or `method` to give */
