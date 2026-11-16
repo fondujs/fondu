@@ -575,12 +575,25 @@ let closing = false
 /**
  * Scroll positions, per history entry (a key in `history.state`), in memory and in sessionStorage (a reload, a page
  * of another site and back): the browser's restoration is off. Each belongs to the entry on the screen, even once
- * the browser has started a traversal away from it.
+ * the browser has started a traversal away from it. The last 50 are kept (the page cache's number), their keys in
+ * the order they were used in `STORAGE` itself; an entry replaced by another page forgets its own.
  */
 function scrollPositions() {
   const KEY = SCROLL_KEY
   const STORAGE = SCROLL_STORAGE
   const positions = new Map<string, { x: number; y: number }>()
+  const forget = (key: string) => {
+    positions.delete(key)
+    try {
+      sessionStorage.removeItem(STORAGE + key)
+    } catch {}
+  }
+  /** the most recently used last: the oldest beyond 50 are forgotten */
+  const remember = (key: string, position: { x: number; y: number }) => {
+    positions.delete(key)
+    positions.set(key, position)
+    for (const old of positions.keys()) if (positions.size > 50) forget(old)
+  }
   const keyOf = (state: unknown) =>
     state &&
     typeof state === 'object' &&
@@ -607,9 +620,10 @@ function scrollPositions() {
   const save = () => {
     if (!rendered) return
     const position = { x: scrollX, y: scrollY }
-    positions.set(rendered, position)
+    remember(rendered, position)
     try {
       sessionStorage.setItem(STORAGE + rendered, JSON.stringify(position))
+      sessionStorage.setItem(STORAGE, JSON.stringify([...positions.keys()]))
     } catch {}
   }
   // the entry on the screen follows its scrolling (once a frame, in memory): its position is the one it was left at,
@@ -622,7 +636,7 @@ function scrollPositions() {
       if (frame || !key) return
       frame = requestAnimationFrame(() => {
         frame = 0
-        if (rendered === key) positions.set(key, { x: scrollX, y: scrollY })
+        if (rendered === key) remember(key, { x: scrollX, y: scrollY })
       })
     },
     { passive: true },
@@ -648,26 +662,37 @@ function scrollPositions() {
      */
     start() {
       history.scrollRestoration = 'manual'
+      // the positions saved before this document (the last 50, as left), in their order
+      try {
+        for (const key of JSON.parse(sessionStorage.getItem(STORAGE) ?? '[]') as string[]) {
+          const saved = read(key)
+          if (saved) positions.set(key, saved)
+        }
+      } catch {}
       commit()
       return read(rendered)
     },
     /**
      * The page on the screen, at `url`: a new entry or this one. `shallow`: by a shallow navigation, which marks a
      * new entry (SHALLOW); a replaced entry keeps its state, but another URL, by a navigation that is not
-     * shallow, takes the mark away: `closeShallow()` there must not go Back off it.
+     * shallow, takes the mark away: `closeShallow()` there must not go Back off it. A replaced entry is the same
+     * entry (its key stays) for a shallow navigation and an answer at its URL; another page is a new one, and
+     * nothing can visit the entry it replaced.
      */
     write(url: string, replace: boolean, shallow = false) {
+      const to = new URL(url, location.href)
+      // the same URL (a form's answer, reload()): the same overlay
+      const same = to.pathname + to.search === location.pathname + location.search
+      const old = keyOf(history.state)
+      const kept = replace && old && (shallow || same)
       const state: Record<string, unknown> = {
         ...(replace ? (history.state as object | null) : {}),
-        [KEY]: newKey(),
+        [KEY]: kept ? old : newKey(),
       }
+      if (replace && old && !kept) forget(old)
       if (shallow) {
         if (!replace) state[SHALLOW] = true
-      } else {
-        // the same URL (a form's answer, reload()): the same overlay. Another page: not a shallow entry
-        const to = new URL(url, location.href)
-        if (to.pathname + to.search !== location.pathname + location.search) delete state[SHALLOW]
-      }
+      } else if (!same) delete state[SHALLOW] // another page: not a shallow entry
       if (replace) history.replaceState(state, '', url)
       else history.pushState(state, '', url)
     },
