@@ -39,15 +39,17 @@ export function SettingsDialog() {
   const close = () => closeShallow(url)
   const hash = useHash()
   const name = hash.startsWith(PREFIX) ? hash.slice(PREFIX.length) : ''
-  // remembered while it closes: the dialog fades out with its content
-  const tab: Tab = name === 'account' || name === 'usage' ? name : 'profile'
+  const open = name === 'profile' || name === 'account' || name === 'usage'
+  // Remember valid tabs while it closes: removing the hash must not replace the fading content.
+  const [tab, setTab] = useState<Tab>('profile')
+  if (open && name !== tab) setTab(name)
   useEffect(() => {
     // nothing to show a guest (signed out with it open)
     if (!user && hash.startsWith(PREFIX)) closeShallow(url)
   }, [user, hash, url])
   if (!user) return null
   return (
-    <Dialog open={name in TABS} onOpenChange={(open) => !open && close()}>
+    <Dialog open={open} onOpenChange={(open) => !open && close()}>
       <DialogPopup data-testid="settings">
         <DialogHeader>
           <DialogTitle>Settings</DialogTitle>

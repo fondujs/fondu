@@ -1045,6 +1045,63 @@ await page.waitForFunction(
   )
   await page.keyboard.press('Escape')
   await gone()
+  // Observe the exit itself, not just the unmounted dialog: removing the hash must not show Profile mid-fade.
+  for (const tab of ['account', 'usage']) {
+    for (const method of ['close button', 'Escape', 'Back', 'direct link']) {
+      if (method === 'direct link')
+        await page.goto(`${BASE}/account#settings/${tab}`, { waitUntil: 'networkidle0' })
+      else {
+        await openFromMenu()
+        await page.click(`[data-testid=settings-tab-${tab}]`)
+      }
+      await page.waitForSelector(
+        tab === 'account' ? '[data-testid=settings-email]' : '[data-testid=usage-contacts]',
+      )
+      await page.waitForSelector(`${dialog}:not([data-starting-style])`)
+      await page.$eval(dialog, (popup) =>
+        Promise.all(popup.getAnimations().map((animation) => animation.finished)),
+      )
+      const exit = await page.evaluateHandle(() => {
+        const popup = document.querySelector('[data-testid=settings]')
+        const content = popup.querySelector('[data-slot=dialog-panel]').firstElementChild
+        const samples = []
+        const observer = new MutationObserver(() => {
+          if (popup.isConnected && popup.hasAttribute('data-ending-style'))
+            samples.push({
+              tab: popup.querySelector('[aria-current=page]')?.getAttribute('data-testid'),
+              sameContent: popup.contains(content),
+            })
+        })
+        observer.observe(popup, { attributes: true, childList: true, subtree: true })
+        return { samples, observer }
+      })
+      if (method === 'Back') await page.goBack()
+      else if (method === 'Escape') await page.keyboard.press('Escape')
+      else await page.click(`${dialog} button[aria-label=Close]`)
+      await gone()
+      const samples = await exit.evaluate(({ samples, observer }) => {
+        observer.disconnect()
+        return samples
+      })
+      await exit.dispose()
+      ok(
+        `settings: ${tab} keeps its content and active tab while closing (${method})`,
+        samples.length > 0 &&
+          samples.every((sample) => sample.tab === `settings-tab-${tab}` && sample.sameContent) &&
+          (await hash()) === '' &&
+          (await path()) === '/account',
+        JSON.stringify(samples),
+      )
+    }
+  }
+  await openFromMenu()
+  ok(
+    'settings: reopening from the menu shows Profile, not the last closed tab',
+    (await page.$(`${dialog} input[name=name]`)) !== null &&
+      (await page.$('[data-testid=settings-tab-profile][aria-current=page]')) !== null,
+  )
+  await page.keyboard.press('Escape')
+  await gone()
   await setValue('main form input[name=name]', 'Demo User')
   await page.click('main form button')
   await page.waitForFunction(
