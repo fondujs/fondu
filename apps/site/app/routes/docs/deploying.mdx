@@ -68,6 +68,10 @@ The built assets in `/assets/` have hashed names, so they are served with a year
 `immutable`: by the Bun and Node server, and on Cloudflare through a generated `_headers` (unless `public/_headers`
 exists). Pages are not cached: `Cache-Control: private, no-cache`.
 
+If you make pages cacheable, a cache must keep a document and a navigation apart. A document answers with
+`Vary: X-Fondu`, a navigation with `Vary: X-Fondu, X-Fondu-Version, X-Fondu-Only, X-Fondu-Component`. Some CDNs
+ignore custom `Vary` headers, so check yours before caching pages publicly.
+
 ## A new version
 
 Each build has a version. A navigation from a tab opened before a deploy gets a document load instead of the page, so
