@@ -127,7 +127,6 @@ export {
 } from './client/app.js'
 export { useForm } from './client/form.js'
 export { closeShallow, loadDocument, navigate, type Page } from './client/navigation.js'
-export type { ProgressOptions } from './client/progress.js'
 
 // ---- request(): a typed call to the app's `.ts` routes (as Void's typed fetch, with Fondu's URL patterns)
 
@@ -144,7 +143,7 @@ type MethodsOf<P extends string> = Loose extends true
  * The URL patterns of route files that export an HTTP method (`.ts` files). A page's pattern is not one: a page's
  * data is its props (its loader, `defer()`), and `request()` is for effects and events.
  */
-export type ApiPath = Loose extends true
+type ApiPath = Loose extends true
   ? string
   : { [P in Keys]: [MethodsOf<P>] extends [never] ? never : P }[Keys]
 /** the handler of the route's method */
@@ -179,7 +178,7 @@ type RequestOptions<P extends string, M extends HttpMethod> = ParamArgs<P> &
   QueryArg<QueryOfHandler<HandlerOf<P, M>>> &
   BodyArg<M, BodyOfHandler<HandlerOf<P, M>>> & { headers?: HeadersInit; signal?: AbortSignal }
 /** the options are optional when nothing is required: no params, no `body`, `query` or `method` to give */
-export type RequestArgs<P extends string, M extends HttpMethod> =
+type RequestArgs<P extends string, M extends HttpMethod> =
   {} extends RequestOptions<P, M>
     ? [options?: RequestOptions<P, M>]
     : [options: RequestOptions<P, M>]
@@ -203,7 +202,7 @@ type AnswerOfResponse<R> = [R] extends [never]
       ? T
       : never
     : unknown
-export type AnswerOf<P extends string, M extends string> = Loose extends true
+type AnswerOf<P extends string, M extends string> = Loose extends true
   ? unknown
   : AnswerOfResponse<ReturnedBy<HandlerOf<P, M>>>
 
