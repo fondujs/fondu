@@ -64,9 +64,10 @@ early (nginx: `proxy_buffering off`).
 
 ## Caching
 
-The built assets in `/assets/` have hashed names, so they are served with a year-long `Cache-Control` and
-`immutable`: by the Bun and Node server, and on Cloudflare through a generated `_headers` (unless `public/_headers`
-exists). Pages are not cached: `Cache-Control: private, no-cache`.
+The built assets in `/assets/` (Vite's `build.assetsDir`) have hashed names, so they are served with a year-long
+`Cache-Control` and `immutable`: by the Bun and Node server, for the files it serves (a route of your own under the same
+URL keeps its own headers), and on Cloudflare through a generated `_headers` (unless `public/_headers` exists). Pages
+are not cached: `Cache-Control: private, no-cache`.
 
 If you make pages cacheable, a cache must keep a document and a navigation apart. A document answers with
 `Vary: X-Fondu`, a navigation with `Vary: X-Fondu, X-Fondu-Version, X-Fondu-Only, X-Fondu-Component`. Some CDNs
