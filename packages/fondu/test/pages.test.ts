@@ -194,3 +194,185 @@ export default function Page(p = a) { ${body}; return p }
     )
   })
 })
+
+// the browser's copy, from the source: TSX, before any transform
+const tsx = (code: string, file = 'users/[id].tsx') =>
+  stripServerCode(code, parseAst(code, { lang: 'tsx' }) as never, file)
+const lines = (code: string) =>
+  tsx(code)
+    .split('\n')
+    .filter((l) => l.trim())
+
+describe("the browser's copy of a page's route file, read as TSX", () => {
+  test('the lines of the rest stay where they were', () => {
+    const code = `import { db } from '#/db.server'\nexport async function loader(): Promise<number> {\n  return db.n\n}\n\nexport default function Page(): JSX.Element {\n  return <p>x</p>\n}\n`
+    const out = tsx(code)
+    expect(out.split('\n')).toHaveLength(code.split('\n').length)
+    expect(out.split('\n')[5]).toBe('export default function Page(): JSX.Element {')
+  })
+  test('a JSX element name refers to what it names: <Card>, <ui.Badge>, <ui.a.B>', () => {
+    const out = lines(`
+import { Card } from '#/card'
+import * as ui from '#/ui'
+import { Gone } from '#/gone'
+import { db } from '#/db.server'
+export const loader = () => [db, Gone]
+export default function Page() { return <Card><ui.a.Badge /><div /></Card> }
+`)
+    expect(out).toEqual([
+      "import { Card } from '#/card'",
+      "import * as ui from '#/ui'",
+      'export default function Page() { return <Card><ui.a.Badge /><div /></Card> }',
+    ])
+  })
+  test('a lowercase element is the browser’s own, an attribute’s name no reference; a closer scope wins', () => {
+    const out = lines(`
+import { div, Card, Item, label } from 'x'
+export const loader = () => [div, Card, Item, label]
+export default function Page({ Card }) {
+  const Item = () => null
+  return <div label="a"><Card /><Item /></div>
+}
+`)
+    expect(out).toEqual([
+      'export default function Page({ Card }) {',
+      '  const Item = () => null',
+      '  return <div label="a"><Card /><Item /></div>',
+      '}',
+    ])
+  })
+  test('a name in an attribute’s value, a spread or a child is a reference', () => {
+    const out = lines(`
+import { a, b, c, d } from 'x'
+export const action = () => d
+export default function Page() { return <p title={a} {...b}>{c}</p> }
+`)
+    expect(out[0]).toBe("import { a, b, c } from 'x';")
+  })
+  test('a namespace only a loader uses goes, with what it imports; one the page uses stays', () => {
+    const out = lines(`
+import { db } from '#/db.server'
+import { label } from '#/label'
+namespace Queries { export const user = () => db.get() }
+namespace Labels { export const name = label }
+export const loader = () => Queries.user()
+export default function Page() { return <p>{Labels.name}</p> }
+`)
+    expect(out).toEqual([
+      "import { label } from '#/label'",
+      'namespace Labels { export const name = label }',
+      'export default function Page() { return <p>{Labels.name}</p> }',
+    ])
+  })
+  test('a namespace: its own names are its own, a nested one and A.B too', () => {
+    const out = lines(`
+import { x, y } from 'x'
+namespace A.B { export const x = 1; export function f() { return x + y } }
+export const loader = () => A.B.f()
+export default function Page() { return <p>{x}</p> }
+`)
+    // A.B's own x is not the import's; its y is
+    expect(out).toEqual([
+      "import { x } from 'x';",
+      'export default function Page() { return <p>{x}</p> }',
+    ])
+    expect(
+      lines(`const k = 1\nnamespace A.B { export const v = k }\nexport default () => A.B.v`),
+    ).toEqual(['const k = 1', 'namespace A.B { export const v = k }', 'export default () => A.B.v'])
+  })
+  test('an enum: only a loader’s goes; a page’s stays, with the names its values use', () => {
+    const out = lines(`
+import { limit, other } from 'x'
+enum Status { Ok = limit, Gone = Ok * 2 }
+enum Secret { A = other }
+export const loader = () => Secret.A
+export default function Page() { return <p>{Status.Gone}</p> }
+`)
+    expect(out).toEqual([
+      "import { limit } from 'x';",
+      'enum Status { Ok = limit, Gone = Ok * 2 }',
+      'export default function Page() { return <p>{Status.Gone}</p> }',
+    ])
+    // an exported enum is an export of the page: it stays
+    expect(
+      lines(`export enum Color { Red }\nexport const loader = () => 1\nexport default () => null`),
+    ).toEqual(['export enum Color { Red }', 'export default () => null'])
+  })
+  test('a type is no reference: `typeof loader` in a type, an `as`, a generic', () => {
+    const out = lines(`
+import { db, helper } from '#/db.server'
+import { schema } from '#/schema'
+type Data = Awaited<ReturnType<typeof loader>>
+export type Props = { data: Data }
+export interface Extra { db: typeof db }
+export const loader = () => ({ rows: helper(db) })
+export default function Page({ data }: Props) {
+  const rows = data.rows as unknown as typeof helper
+  return <p>{schema.parse(rows)}</p>
+}
+`)
+    expect(out).toEqual([
+      "import { schema } from '#/schema'",
+      'type Data = Awaited<ReturnType<typeof loader>>',
+      'export default function Page({ data }: Props) {',
+      '  const rows = data.rows as unknown as typeof helper',
+      '  return <p>{schema.parse(rows)}</p>',
+      '}',
+    ])
+    // an `as`'s value is a reference
+    expect(lines(`import { v } from 'x'\nexport default () => v as string`)[0]).toBe(
+      "import { v } from 'x'",
+    )
+  })
+  test('a type-only import or export goes: it would only load a server module as `import {} from`', () => {
+    const out = lines(`
+import type { Db } from '#/db.server'
+import { type Row, util } from '#/rows.server'
+import { type Only } from '#/only.server'
+import { keep, type Kind } from '#/keep'
+export type { Db }
+export type { Row } from '#/rows.server'
+export { type Kind, keep }
+export { type Only } from '#/only.server'
+export default function Page(p: { db: Db; row: Row }) { return <p>{keep(p)}</p> }
+`)
+    expect(out).toEqual([
+      "import { keep } from '#/keep';",
+      'export { keep };',
+      'export default function Page(p: { db: Db; row: Row }) { return <p>{keep(p)}</p> }',
+    ])
+    expect(out.join('\n')).not.toContain('.server')
+    // a value import that a type alone uses goes too
+    expect(lines(`import { Db } from '#/db.server'\nexport default (p: Db) => null`)).toEqual([
+      'export default (p: Db) => null',
+    ])
+  })
+  test('`import x = A.B` refers to A; a parameter property and a decorator’s name are references', () => {
+    expect(lines(`import { A } from 'x'\nimport q = A.B\nexport default () => q`)).toEqual([
+      "import { A } from 'x'",
+      'import q = A.B',
+      'export default () => q',
+    ])
+    expect(
+      lines(
+        `import { d, T } from 'x'\nclass C { constructor(private a: T = d) {} }\nexport default C`,
+      )[0],
+    ).toBe("import { d } from 'x';")
+  })
+  test('the server exports of a TypeScript file go as they do of a JavaScript one', () => {
+    const out = lines(`
+import { defineHandler } from 'fondu'
+export const loader = defineHandler<{ a: 1 }>(async (c) => c.json({} satisfies object))
+export const actions = { a: defineHandler((c) => c.text('a')) } as const
+export function action(c: Context): Response
+export function action(c: Context) { return c.text('x') }
+export default function Page() { return null }
+`)
+    expect(out).toEqual(['export default function Page() { return null }'])
+  })
+  test('code that names a server export (a value, not a type): an error', () => {
+    expect(() =>
+      tsx(`export const loader = () => 1\nexport default () => <p>{loader()}</p>`),
+    ).toThrow('loader is server code')
+  })
+})

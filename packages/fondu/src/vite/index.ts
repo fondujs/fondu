@@ -104,14 +104,13 @@ function scanRoutes(root: () => string): Plugin {
       async handler(id) {
         const file = relative(`${root()}/app/routes`, id).split(sep).join('/')
         if (file.startsWith('..') || !isPageFile(file)) return
-        const { code } = await transformWithOxc(readFileSync(id, 'utf8'), id, {
+        const source = readFileSync(id, 'utf8')
+        const stripped = stripServerCode(source, parseAst(source, { lang: 'tsx' }) as never, file)
+        const { code } = await transformWithOxc(stripped, id, {
           lang: 'tsx',
           jsx: { runtime: 'automatic' },
         })
-        return {
-          code: stripServerCode(code, parseAst(code) as never, file),
-          moduleType: 'js',
-        }
+        return { code, moduleType: 'js' }
       },
     },
   }

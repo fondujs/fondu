@@ -1,6 +1,7 @@
-import { dirname, relative, resolve, sep } from 'node:path'
+import { readFile } from 'node:fs/promises'
+import { relative, sep } from 'node:path'
 
-import { normalizePath, type Plugin } from 'vite'
+import { parseAst, type Plugin } from 'vite'
 
 import { CONFIG, checkExportNames, HANDLERS, isPageFile, METHODS } from '../paths.js'
 
@@ -22,8 +23,21 @@ function bound(node: Node | null | undefined, out: string[] = []): string[] {
       for (const d of node.declarations as Node[]) bound(d.id as Node, out)
       break
     case 'FunctionDeclaration':
+    case 'TSDeclareFunction': // an overload's signature
     case 'ClassDeclaration':
-      bound(node.id as Node, out)
+    case 'TSEnumDeclaration':
+    case 'TSImportEqualsDeclaration':
+      if (!node.declare && node.importKind !== 'type') bound(node.id as Node, out)
+      break
+    case 'TSModuleDeclaration': {
+      // a namespace (`namespace A.B {}` declares A); `declare module 'x'` and `declare global` declare no name
+      let id = node.id as Node
+      while (id.type === 'TSQualifiedName') id = id.left as Node
+      if (!node.declare && id.type === 'Identifier') out.push(id.name as string)
+      break
+    }
+    case 'TSParameterProperty':
+      bound(node.parameter as Node, out)
       break
     case 'ObjectPattern':
       for (const p of node.properties as Node[])
@@ -47,7 +61,9 @@ type Scope = Set<string>
 /**
  * The names a node refers to that it does not bind itself: `function f(a) { return a + b }` → b (and f's own
  * scopes: parameters, `var`s, block declarations, a catch's parameter). What a pattern binds is not a reference;
- * nor a property's name, a label, a member's property. Errs on the side of a name referred to, never the other way.
+ * nor a property's name, a label, a member's property, a JSX attribute's name. It reads TSX: a JSX element's name
+ * (`<Card>`, `<ui.Card>`; not `<div>`) is a reference; a type is not (it is gone once compiled), what runs is (an enum's
+ * values, a namespace's body, `x as T`'s x). Errs on the side of a name referred to, never the other way.
  */
 function references(node: unknown, out = new Set<string>(), scopes: Scope[] = []): Set<string> {
   const visit = (n: unknown, inner: Scope[] = scopes) => references(n, out, inner)
@@ -78,6 +94,60 @@ function references(node: unknown, out = new Set<string>(), scopes: Scope[] = []
     case 'BreakStatement':
     case 'ContinueStatement':
     case 'MetaProperty':
+    case 'JSXIdentifier':
+    case 'JSXNamespacedName':
+    case 'JSXClosingElement':
+      return out
+    case 'JSXAttribute':
+      visit(n.value)
+      return out
+    case 'JSXOpeningElement': {
+      // `<Card>` and `<ui.Card>` refer to a name; `<div>` is an element of the browser
+      const tag = n.name as Node
+      let root = tag
+      while (root.type === 'JSXMemberExpression') root = root.object as Node
+      const name = root.name as string
+      if (root.type === 'JSXIdentifier' && (root !== tag || !/^[a-z]/.test(name)))
+        visit({ type: 'Identifier', name, start: root.start, end: root.end })
+      visit(n.attributes)
+      return out
+    }
+    case 'TSAsExpression':
+    case 'TSSatisfiesExpression':
+    case 'TSNonNullExpression':
+    case 'TSTypeAssertion':
+    case 'TSInstantiationExpression':
+    case 'TSExportAssignment':
+    case 'TSParameterProperty':
+      visit(n.expression)
+      visit(n.parameter)
+      visit(n.decorators)
+      return out
+    case 'TSEnumDeclaration': {
+      if (n.declare) return out
+      // a member's value sees the enum's own names (`B = A * 2`)
+      const members = ((n.body as Node | undefined)?.members ?? n.members) as Node[]
+      const own: Scope = new Set(bound(n.id as Node))
+      for (const m of members) if (!m.computed) own.add(nameOf(m.id as Name))
+      for (const m of members) {
+        if (m.computed) visit(m.id, [...scopes, own])
+        visit(m.initializer, [...scopes, own])
+      }
+      return out
+    }
+    case 'TSImportEqualsDeclaration': {
+      // `import q = A.B.C` refers to A; `import x = require('x')` to nothing
+      let root = n.moduleReference as Node
+      while (root.type === 'TSQualifiedName') root = root.left as Node
+      if (n.importKind !== 'type') visit(root)
+      return out
+    }
+    case 'TSModuleDeclaration':
+      // a namespace's body runs; `declare namespace` and `declare module 'x'` do not
+      if (!n.declare) visit(n.body)
+      return out
+    case 'TSModuleBlock':
+      visit(n.body, [...scopes, lexical(n.body as Node[])])
       return out
     case 'FunctionDeclaration':
     case 'FunctionExpression':
@@ -131,6 +201,8 @@ function references(node: unknown, out = new Set<string>(), scopes: Scope[] = []
       return out
     }
   }
+  // a type (an annotation, an interface, a type alias, type arguments…) refers to nothing at run time
+  if (n.type.startsWith('TS')) return out
   for (const key in n) if (key !== 'type' && key !== 'start' && key !== 'end') visit(n[key])
   return out
 }
@@ -146,17 +218,32 @@ function vars(node: unknown, scope: Scope): void {
   }
 }
 
-/** the names a block's statements declare for the block: `let`, `const`, functions, classes */
+/** the names a block's statements declare for the block: `let`, `const`, functions, classes, enums, namespaces (exported or not) */
 function lexical(statements: Node[], scope: Scope = new Set()): Scope {
-  for (const s of statements)
+  for (let s of statements) {
+    if (s.type === 'ExportNamedDeclaration' && s.declaration) s = s.declaration as Node
     if (
       (s.type === 'VariableDeclaration' && s.kind !== 'var') ||
       s.type === 'FunctionDeclaration' ||
-      s.type === 'ClassDeclaration'
+      s.type === 'ClassDeclaration' ||
+      s.type === 'TSEnumDeclaration' ||
+      s.type === 'TSModuleDeclaration' ||
+      s.type === 'TSImportEqualsDeclaration'
     )
       bound(s).forEach((x) => scope.add(x))
+  }
   return scope
 }
+
+/** the statements that declare names the browser's copy may do without, when nothing it keeps reaches them */
+const DECLARATIONS = [
+  'VariableDeclaration',
+  'FunctionDeclaration',
+  'ClassDeclaration',
+  'TSEnumDeclaration',
+  'TSModuleDeclaration',
+  'TSImportEqualsDeclaration',
+]
 
 interface Part {
   node: Node
@@ -164,15 +251,20 @@ interface Part {
   declares: string[]
   /** the names it refers to (its own may be among them) */
   uses: Set<string>
+  /** an import's specifiers that are values (a `type` one goes: the compiler would remove it) */
+  values?: Array<Node & { local: Name }>
   /** replaced by: '' (removed), a shorter statement (an import or an export list), or kept as it is */
   text?: string
 }
 
 /**
- * The browser's copy of a page's route file: its server exports removed (`loader`, `action`, `actions`…), then
- * what only they used: the imports and top-level declarations the code kept doesn't reach. Conservative: a
- * name the code kept refers to keeps its declaration, so what is left over is at worst unused code, which
- * Fondu's server-only guard stops when it is server code (`*.server.ts`, `routes/*.ts`). Lines stay where they were.
+ * The browser's copy of a page's route file, from its source (TSX, before any transform): its server exports
+ * removed (`loader`, `action`, `actions`…), then what only they used: the imports and top-level declarations
+ * (functions, classes, enums, namespaces…) the code kept doesn't reach. Type-only imports and exports go too (the
+ * compiler would remove them; kept as `import {} from 'x.server'` by `verbatimModuleSyntax`, they would load a
+ * server module). Conservative: a name the code kept refers to keeps its declaration, so what is left over is at
+ * worst unused code, which Fondu's server-only guard stops when it is server code (`*.server.ts`, `routes/*.ts`).
+ * Lines stay where they were.
  */
 export function stripServerCode(code: string, program: { body: Node[] }, file: string): string {
   const fail = (why: string): never => {
@@ -189,6 +281,12 @@ export function stripServerCode(code: string, program: { body: Node[] }, file: s
     const { node } = part
     if (node.type === 'ExportAllDeclaration') fail('`export *` is not for a route file')
     if (node.type === 'ExportNamedDeclaration') {
+      // `export type X = …`, `export interface`, `export type { X }`: no code
+      if (node.exportKind === 'type') {
+        part.text = ''
+        part.uses = new Set()
+        continue
+      }
       const declaration = node.declaration as Node | null
       if (declaration) {
         const declared = bound(declaration)
@@ -202,7 +300,9 @@ export function stripServerCode(code: string, program: { body: Node[] }, file: s
         continue
       }
       const specifiers = node.specifiers as Array<Node & { local: Name; exported: Name }>
-      const kept = specifiers.filter((s) => !SERVER_EXPORTS.has(nameOf(s.exported)))
+      const kept = specifiers.filter(
+        (s) => !SERVER_EXPORTS.has(nameOf(s.exported)) && s.exportKind !== 'type',
+      )
       if (kept.length === specifiers.length) continue
       const source = node.source
         ? ` from ${code.slice((node.source as Node).start, (node.source as Node).end)}`
@@ -214,10 +314,16 @@ export function stripServerCode(code: string, program: { body: Node[] }, file: s
       part.uses = references(kept.map((s) => s.local))
       continue
     }
-    if (node.type === 'ImportDeclaration' && (node.specifiers as Node[]).length)
-      part.declares = (node.specifiers as Array<Node & { local: Name }>).map((s) => nameOf(s.local))
-    else if (['VariableDeclaration', 'FunctionDeclaration', 'ClassDeclaration'].includes(node.type))
-      part.declares = bound(node)
+    if (node.type === 'ImportDeclaration') {
+      const specifiers = node.specifiers as Array<Node & { local: Name; importKind?: string }>
+      if (node.importKind === 'type') part.text = ''
+      else if (specifiers.length) {
+        part.values = specifiers.filter((s) => s.importKind !== 'type')
+        part.declares = part.values.map((s) => nameOf(s.local))
+        if (part.values.length < specifiers.length)
+          part.text = part.values.length ? importOf(code, node, part.values) : ''
+      }
+    } else if (DECLARATIONS.includes(node.type)) part.declares = bound(node)
   }
 
   // what the code kept reaches stays, the rest goes: declarations that only name each other (a loader's helpers
@@ -238,9 +344,8 @@ export function stripServerCode(code: string, program: { body: Node[] }, file: s
   for (const part of parts) {
     if (!kept(part) || !part.declares.length) continue
     if (part.node.type === 'ImportDeclaration') {
-      const specifiers = part.node.specifiers as Array<Node & { local: Name }>
-      const used = specifiers.filter((s) => reached.has(nameOf(s.local)))
-      if (used.length < specifiers.length)
+      const used = part.values!.filter((s) => reached.has(nameOf(s.local)))
+      if (used.length < (part.node.specifiers as Node[]).length)
         part.text = used.length ? importOf(code, part.node, used) : ''
     } else if (!live.has(part)) part.text = ''
   }
@@ -295,18 +400,41 @@ function exportedNames(body: Node[]): string[] {
   return [...names].sort()
 }
 
-type SourceMapLike = { sources: string[]; sourcesContent?: Array<string | null> }
+/** the queries that make another module of a file (`?raw`: its text, `?url`, `?worker`…): Vite's own plugins load those */
+const OTHER_MODULE = /[?&](?:raw|url|inline|no-inline|worker|sharedworker)(?:[&=]|$)/
 
-/** The browser's copy of every page's route file (`.tsx` in `app/routes/`): its server code removed */
+/**
+ * The browser's copy of every page's route file (`.tsx` in `app/routes/`): its server code removed, in `load`, on the
+ * source: the stripped text is the module's source from there on, so what a source map holds as `sourcesContent` is
+ * the stripped text too (in a build, and in development). `?worker_file`, `?direct`, `?html-proxy` and `?t=` are the
+ * same file: stripped alike. The server's copy is the whole file.
+ */
 export function stripRoutes(): Plugin {
   let root = process.cwd()
-  // the route files the strip changed (the build's): their source maps must not carry the original
-  const changed = new Set<string>()
   return {
     name: 'fondu:strip-routes',
-    enforce: 'post', // after the JSX is compiled: plain JavaScript to read
+    enforce: 'post', // after the JSX is compiled: plain JavaScript to read (a layout)
     configResolved(c) {
       root = c.root
+    },
+    load: {
+      order: 'pre',
+      filter: { id: /\/app\/routes\/[^?]*\.tsx(?:\?|$)/ },
+      async handler(id) {
+        if (this.environment.config.consumer !== 'client' || OTHER_MODULE.test(id)) return
+        const path = id.split('?')[0]!
+        const file = relative(`${root}/app/routes`, path).split(sep).join('/')
+        if (file.startsWith('..') || !isPageFile(file)) return
+        const code = await readFile(path, 'utf8')
+        let program: unknown
+        try {
+          program = parseAst(code, { lang: 'tsx' })
+        } catch (error) {
+          // the parser's message does not name the file
+          throw new Error(`fondu: routes/${file}: ${(error as Error).message}`, { cause: error })
+        }
+        return stripServerCode(code, program as never, file)
+      },
     },
     transform(code, id) {
       if (this.environment.config.consumer !== 'client') return
@@ -316,38 +444,6 @@ export function stripRoutes(): Plugin {
       if (/(?:^|\/)_(?:layout|error)\.tsx$/.test(file)) {
         const program = this.parse(code) as unknown as { body: Node[] }
         return void checkExportNames(file, exportedNames(program.body))
-      }
-      if (!isPageFile(file) || file.endsWith('.mdx')) return
-      const stripped = stripServerCode(code, this.parse(code) as unknown as { body: Node[] }, file)
-      if (stripped === code) return
-      changed.add(id.split('?')[0]!)
-      return { code: stripped, map: null }
-    },
-    // The maps' `sourcesContent` holds the file as it was read, the loaders in it. Stopgap: the entries of the files
-    // the strip changed are blanked (`null` keeps the indexes valid). The full fix: strip in `load`, so that the
-    // stripped text is the source (#241).
-    generateBundle(options, bundle) {
-      if (this.environment.config.consumer !== 'client' || !changed.size) return
-      const outDir = resolve(root, this.environment.config.build.outDir)
-      const blank = (map: SourceMapLike, from: string) => {
-        map.sources.forEach((source, i) => {
-          if (source && changed.has(normalizePath(resolve(outDir, dirname(from), source))))
-            map.sourcesContent![i] = null
-        })
-      }
-      for (const [name, file] of Object.entries(bundle)) {
-        if (file.type === 'chunk' && file.map?.sourcesContent) blank(file.map as never, name)
-        // a map written as a file of its own (`.map`): its text
-        else if (
-          file.type === 'asset' &&
-          name.endsWith('.map') &&
-          typeof file.source === 'string'
-        ) {
-          const map = JSON.parse(file.source) as SourceMapLike
-          if (!map.sourcesContent) continue
-          blank(map, name)
-          file.source = JSON.stringify(map)
-        }
       }
     },
   }

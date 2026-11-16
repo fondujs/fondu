@@ -34,6 +34,12 @@ export default function Show({ name }: { name: string }) {
 }
 ```
 
+The copy is made from the source, before TypeScript and JSX are compiled, so what the page uses is read as you wrote it:
+a JSX name (`<Avatar>`, `<ui.Avatar>`) counts, a type does not (`typeof loader` in a type is fine), and an enum or a
+namespace only the loader uses is removed. A type-only import or export (`import type`, `import { type Row }`,
+`export type`) is removed too: in a page's route file, either spelling of a type import is fine. Source maps carry the copy, not the file: with `build.sourcemap`, and in development,
+`sourcesContent` holds the page without its loader. The server runs the whole file.
+
 What is left is what the page uses, so a server module it still imports (a helper the page calls too) stops the
 build, as any other: declare what the server and the browser share in a module of its own. A page imports from
 `fondu/client`: `fondu` is the server's.
