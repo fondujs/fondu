@@ -132,9 +132,10 @@ function scanMdx(config: () => ResolvedConfig): Plugin {
 }
 
 /**
- * The Worker never mounts or hydrates a page, but fondu/client imports `react-dom/client` (createRoot,
- * hydrateRoot) at its top: the whole of React's browser renderer in the Worker, evaluated at every start. There, it
- * is a module that says so if called (about a third of the Worker, and of its start in dev)
+ * The server never mounts or hydrates a page (it renders with react-dom/server), but fondu/client imports
+ * `react-dom/client` (createRoot, hydrateRoot) at its top: the whole of React's browser renderer, loaded at every
+ * start (about a third of a Worker, and of its start in dev; about 59 ms of a Node server's). On every target, it is
+ * a module that says so if called
  */
 const REACT_DOM_CLIENT = '\0fondu:react-dom-client'
 function serverReactDomClient(): Plugin {
@@ -166,7 +167,8 @@ export default function fondu(options: FonduOptions): PluginOption[] {
     hmr(),
     loadFailure(),
     typegen(),
-    ...(node ? runtimePlugins(options) : [serverReactDomClient()]),
+    ...(node ? runtimePlugins(options) : []),
+    serverReactDomClient(),
   ]
 }
 
