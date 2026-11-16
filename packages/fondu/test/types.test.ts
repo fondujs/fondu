@@ -444,8 +444,8 @@ const fetches = [
   // @ts-expect-error not a route's method: POST only
   typed(({ fetch }) => fetch('/api/tokens', { method: 'PUT', body: { name: 'ci' } })),
   // omitted is GET: a generic that names another method (or a union) names it in the options too
-  // @ts-expect-error POST in the generic, no method: it would send a GET
   typed(({ fetch }) =>
+    // @ts-expect-error POST in the generic, no method: it would send a GET
     fetch<'/api/settings', 'POST'>('/api/settings', { body: { emails: false } }),
   ),
   // @ts-expect-error PATCH in the generic, no options: it would send a GET
@@ -531,5 +531,5 @@ test('the types above are checked by tsc', () => {
     ...answers,
     ...navigation,
     ...navigations,
-  ]).toHaveLength(137)
+  ]).toHaveLength(147)
 })
