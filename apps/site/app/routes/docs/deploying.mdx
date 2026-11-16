@@ -2,17 +2,18 @@
 
 ```sh
 npm run build    # vite build
-npm start        # NODE_ENV=production node dist/server/index.js
+npm start        # node dist/server/index.js
 ```
 
 One `vite build` writes the browser's files to `dist/client`, then the server to `dist/server` (its entry:
 `dist/server/index.js`, minified), then the static pages if any; the dependencies stay in `node_modules`, so deploy
-them with it. `NODE_ENV=production` makes React use its production build. `PORT` sets the port (3000 by default). On
+them with it. The server sets `NODE_ENV` to `production` when it is unset, so React uses its production build (a value you set is kept). `PORT` sets the port (3000 by default). On
 SIGTERM or SIGINT the server stops taking requests and waits for the running ones, up to 10 seconds.
 
 ## Bun
 
-The same build, with `fondu({ target: 'bun' })`; then `NODE_ENV=production bun dist/server/index.js`. Bun serves the app
+The same build, with `fondu({ target: 'bun' })`; then `NODE_ENV=production bun dist/server/index.js`: Bun reads `NODE_ENV` as it starts, and the built server only sets it
+for React. Bun serves the app
 itself, on `PORT` too.
 
 ## Cloudflare Workers

@@ -1,5 +1,5 @@
 // The built server's entry (dist/server/index.js): the port, on Bun and on Node.
-import { spawn, spawnSync } from 'node:child_process'
+import { type ChildProcess, spawn, spawnSync } from 'node:child_process'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:net'
 import { dirname, join } from 'node:path'
@@ -51,24 +51,27 @@ describe.skipIf(!hasBun)('the generated entry, run by Bun', { timeout: 30_000 },
     expected: number,
   ) => {
     const dir = mkdtempSync(join(dirname(fileURLToPath(import.meta.url)), '.entry-'))
-    const child = spawn('bun', [join(dir, 'server/index.js')], {
-      env: { ...process.env, PORT: '', BUN_PORT: '', ...env },
-      stdio: 'ignore',
-    })
-    const exited = new Promise((r) => child.once('exit', r))
+    let child: ChildProcess | undefined
+    let exited: Promise<unknown> = Promise.resolve()
     try {
       mkdirSync(join(dir, 'server'))
       writeFileSync(
         join(dir, 'server/index.js'),
         entryCode({ target: 'bun', ...options }, []).replace(
-          /import app from '[^']*'/,
-          "import app from './app.js'",
+          /await import\('\/app\/server\.ts'\)/,
+          "await import('./app.js')",
         ),
       )
       writeFileSync(
         join(dir, 'server/app.js'),
         `import { Hono } from 'hono'\nconst app = new Hono()\napp.get('/', (c) => c.text('ok'))\n${websocket ? 'app.websocket = { message() {} }\n' : ''}export default app\n`,
       )
+      // started once its files are written (before, Bun may find no module: a start that never answers)
+      child = spawn('bun', [join(dir, 'server/index.js')], {
+        env: { ...process.env, PORT: '', BUN_PORT: '', ...env },
+        stdio: 'ignore',
+      })
+      exited = new Promise((r) => child!.once('exit', r))
       let answer: string | null = null
       for (let i = 0; i < 300 && answer === null; i++)
         answer = await fetch(`http://127.0.0.1:${expected}/`)
@@ -76,7 +79,7 @@ describe.skipIf(!hasBun)('the generated entry, run by Bun', { timeout: 30_000 },
           .catch(() => new Promise<null>((r) => setTimeout(r, 50, null)))
       expect(answer).toBe('ok')
     } finally {
-      child.kill()
+      child?.kill()
       await exited
       rmSync(dir, { recursive: true })
     }
