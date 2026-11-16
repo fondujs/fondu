@@ -71,9 +71,9 @@ A redirect takes `href()` too: `return c.redirect(href('/users/:id', { id: user.
 `z.coerce.number()`, `params.id` is a `number`.
 
 ```ts
-const params = z.object({ id: z.coerce.number() })
+const idParams = z.object({ id: z.coerce.number() })
 
-export const loader = defineHandler.withValidator({ params })(async (c, { params }) => {
+export const loader = defineHandler.withValidator({ params: idParams })(async (c, { params }) => {
   params.id // number
 })
 ```

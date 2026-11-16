@@ -55,7 +55,8 @@ export const prerender = () => posts.map((post) => ({ slug: post.slug }))
 - Each page is written as a document (`docs/intro.html`) and as its page object (`_fondu/pages/docs/intro.json`) that
   navigations read. On Cloudflare, Workers Static Assets serve them; on Bun and Node, the built server does.
 - `/_fondu/` is Fondu's one reserved prefix (`/_fondu/pages/*`, and `/_fondu/prerender` during the build): no route of
-  the app goes under it (the app stops at startup if one does).
+  the app goes under it (the app stops at startup if one does). In development, Fondu also serves `/@fondu/dev.css`
+  (the CSS the layouts import, for the first paint).
 - A static page is the same for everyone: rendered once, for a visitor with no cookies and no query, shared props
   included, every Suspense boundary resolved, deferred props evaluated.
 - The build stops, naming the route, when a page answers with a status other than 200 (a redirect), takes POSTs (an
