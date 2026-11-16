@@ -43,6 +43,11 @@ An action answers with a redirect, so that a reload doesn't send the form again:
 - `flash(c, { message: 'Saved' })` before either: data for the next page only, in `usePage().flash`, for a "Saved"
   message say.
 
+Flash data and errors travel in a short cookie. The cookie comes back from the client, so what a page reads from
+`usePage().flash` is not trusted: anyone can write it. Fondu ignores a cookie whose `flash` is not an object or whose errors are not strings, and shows
+the flash once. Keep the values short: a cookie over about 4 KB is dropped by the browser, so Fondu leaves
+out the flash data first, then the errors that don't fit, and logs a warning.
+
 ## Invalid input
 
 When the body or the query doesn't fit its schema, the handler doesn't run:
