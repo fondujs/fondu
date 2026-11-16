@@ -19,6 +19,7 @@ declare module 'fondu' {
       "/shallow/:name": typeof import("./routes/shallow/[name]")
       "/slow": typeof import("./routes/slow")
       "/static-query": typeof import("./routes/static-query")
+      "/traverse": typeof import("./routes/traverse")
       "/trim": typeof import("./routes/trim")
     }
   }

@@ -504,11 +504,13 @@ export function startNavigation({
   window.addEventListener('popstate', (event) => {
     closing = false
     const popped = scroll.pop(event.state)
+    // a visit on its way is given up by any Back or Forward, the browser's own #fragment entries too: its answer
+    // would put a page on the screen over the entry the visitor is at
+    current?.abort()
+    pending(null)
     // an entry that shows the page on the screen, at a URL of its own: its URL, nothing asked for, the scroll where it
-    // is. A visit on its way is given up, as any Back does
+    // is
     if (!popped.fragment && popped.key && group.has(popped.key)) {
-      current?.abort()
-      pending(null)
       scroll.commit()
       return settle(false)
     }
