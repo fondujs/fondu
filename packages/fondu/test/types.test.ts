@@ -79,8 +79,8 @@ declare module '../src/types.js' {
       '/about': object
       '/:lang/about': object
       '/users/:id': { actions: { rename: unknown; delete: unknown } }
-      '/files/:path{.+}': object
-      '/users/:id/files/:path{.+}': { actions: { remove: unknown } }
+      '/files/:path*': object
+      '/users/:id/files/:path*': { actions: { remove: unknown } }
       '/search': { loader: Validated<{ query: typeof searchQuery }> }
       '/teams/:id': {
         loader: Validated<{ query: typeof listQuery }>
@@ -92,6 +92,7 @@ declare module '../src/types.js' {
       '/api/clock': { GET: typeof getClock }
       '/api/users/:id': { GET: typeof getUser }
       '/api/search': { GET: typeof getSearch }
+      '/api/files/:path*': { GET: typeof getText }
       '/api/settings': {
         GET: typeof getSettings
         POST: typeof postSettings
@@ -195,14 +196,16 @@ const hrefs = [
   typed(({ href }) => href('/about')),
   typed(({ href }) => href('/:lang/about', { lang: 'de' })),
   // a catch-all, named without its pattern
+  typed(({ href }) => href('/files/:path*', { path: 'a/b' })),
+  // @ts-expect-error the old key, Hono's regex, is no route
   typed(({ href }) => href('/files/:path{.+}', { path: 'a/b' })),
   // a param before a catch-all: each its own name, with an action too
-  typed(({ href }) => href('/users/:id/files/:path{.+}', { id: 7, path: 'a/b' })),
-  typed(({ href }) => href('/users/:id/files/:path{.+}?remove', { id: 7, path: 'a/b' })),
+  typed(({ href }) => href('/users/:id/files/:path*', { id: 7, path: 'a/b' })),
+  typed(({ href }) => href('/users/:id/files/:path*?remove', { id: 7, path: 'a/b' })),
   // @ts-expect-error the param before the catch-all is missing
-  typed(({ href }) => href('/users/:id/files/:path{.+}', { path: 'a/b' })),
+  typed(({ href }) => href('/users/:id/files/:path*', { path: 'a/b' })),
   // @ts-expect-error the catch-all is missing
-  typed(({ href }) => href('/users/:id/files/:path{.+}', { id: 7 })),
+  typed(({ href }) => href('/users/:id/files/:path*', { id: 7 })),
   // @ts-expect-error the param is missing
   typed(({ href }) => href('/users/:id')),
   // @ts-expect-error a param named otherwise
@@ -436,6 +439,10 @@ const requests = [
     exactly<{ id: number; name: string }>()(await request('/api/users/:id', { id: 7 })),
   ),
   typed(({ request }) => request('/api/users/:id', { id: '7' })),
+  // a catch-all, keyed as href() has it
+  typed(({ request }) => request('/api/files/:path*', { path: 'a/b' })),
+  // @ts-expect-error the old key
+  typed(({ request }) => request('/api/files/:path{.+}', { path: 'a/b' })),
   // @ts-expect-error the param is missing
   typed(({ request }) => request('/api/users/:id')),
   // @ts-expect-error the param is missing
@@ -587,7 +594,7 @@ test('the types above are checked by tsc', () => {
     ...answers,
     ...navigation,
     ...navigations,
-  ]).toHaveLength(160)
+  ]).toHaveLength(163)
 })
 
 test('FonduOptions: the port is PORT, not an option', () => {

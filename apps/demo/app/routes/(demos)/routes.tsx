@@ -25,7 +25,7 @@ const files: Array<[file: string, url: string, exports: string]> = [
   ],
   ['routes/admin/_middleware.ts', '/admin/…', 'default: [requireAdmin, withoutSsr()]'],
   ['routes/api/contacts/index.ts', '/api/contacts', 'GET, POST'],
-  ['routes/api/auth/[...all].ts', '/api/auth/*', 'GET, POST: Better Auth'],
+  ['routes/api/auth/[...all].ts', '/api/auth/:all*', 'GET, POST: Better Auth'],
 ]
 
 const Code = ({ children }: { children: string }) => (

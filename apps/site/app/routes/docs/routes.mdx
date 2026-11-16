@@ -4,15 +4,15 @@ Every file in `app/routes/` is a route: a page (`.tsx`, `.mdx`) or server code o
 starting with `_` are not routes (`_middleware.ts`, `_layout.tsx` and `_error.tsx` are what their names say), nor are
 declarations (`*.d.ts`) and tests (`*.test.ts`, `*.spec.ts`). A route's path is its URL:
 
-| File                      | URL                                         |
-| ------------------------- | ------------------------------------------- |
-| `index.tsx`               | `/`                                         |
-| `about.tsx`               | `/about`                                    |
-| `users/index.tsx`         | `/users`                                    |
-| `users/[id].tsx`          | `/users/:id`                                |
-| `files/[...path].ts`      | `/files/*`: one or more segments, in `path` |
-| `[[lang]]/about.tsx`      | `/about` and `/:lang/about`                 |
-| `(marketing)/pricing.tsx` | `/pricing`: a `(group)` adds no segment     |
+| File                      | URL                                     |
+| ------------------------- | --------------------------------------- |
+| `index.tsx`               | `/`                                     |
+| `about.tsx`               | `/about`                                |
+| `users/index.tsx`         | `/users`                                |
+| `users/[id].tsx`          | `/users/:id`                            |
+| `files/[...path].ts`      | `/files/:path*`: one or more segments   |
+| `[[lang]]/about.tsx`      | `/about` and `/:lang/about`             |
+| `(marketing)/pricing.tsx` | `/pricing`: a `(group)` adds no segment |
 
 Where two routes could take a URL, a static segment comes first, then a param with listed values, then any param,
 then a catch-all: `/users/new` is `users/new.tsx`, not `users/[id].tsx`.
@@ -20,6 +20,10 @@ then a catch-all: `/users/new` is `users/new.tsx`, not `users/[id].tsx`.
 A name with any of `[ ] : * { } ?` must be one of the forms above (a param is letters, digits and `_`). `[user-id].tsx`, `[id]x.ts`, `:id.ts` and `a{b}.ts` stop the app at startup, rather than become a literal URL or a wildcard.
 
 A param can't be named `query`, `hash`, `method`, `body`, `headers` or `signal`: the first two are `href()`'s options, the other four `request()`'s. A file such as `api/[method].ts` stops the app at startup; rename it (`api/[verb].ts`). The URLs don't change.
+
+A catch-all's key is `/files/:path*`, in `href()`, `request()` and the generated types: `href('/files/:path*', { path: 'a/b' })`
+is `/files/a/b`, its slashes kept. There is no optional catch-all: `[[...path]].ts` stops the app at startup; `index.ts` and
+`[...path].ts` are its two files.
 
 ## Optional segments
 

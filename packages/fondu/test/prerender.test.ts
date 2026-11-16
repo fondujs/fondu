@@ -165,7 +165,7 @@ describe('paths', () => {
     const { paths, problems } = await prerenderPaths([
       route('pricing.ts', '/pricing', [undefined, true], { others: ['POST'] }),
       route('blog/[slug].ts', '/blog/:slug', [undefined, true]),
-      route('docs/[...path].ts', '/docs/:path{.+}', [() => [{ path: '../x' }]]),
+      route('docs/[...path].ts', '/docs/:path*', [() => [{ path: '../x' }]]),
     ])
     expect(paths).toEqual([])
     expect(problems).toHaveLength(3)
@@ -201,7 +201,7 @@ describe('paths: a param is one file name', () => {
   })
   test('a catch-all keeps its slashes, but no segment is a dot segment or has a backslash', async () => {
     const all = (path: string) =>
-      prerenderPaths([route('docs/[...path].ts', '/docs/:path{.+}', [() => [{ path }]])])
+      prerenderPaths([route('docs/[...path].ts', '/docs/:path*', [() => [{ path }]])])
     expect((await all('a/b/c')).paths).toEqual(['/docs/a/b/c'])
     for (const path of ['a/../b', 'a/./b', '../x', 'a\\b', 'a//b'])
       expect((await all(path)).problems).toHaveLength(1)

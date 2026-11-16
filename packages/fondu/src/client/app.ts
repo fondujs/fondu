@@ -173,10 +173,10 @@ export function pageAt(pathname: string): string | undefined {
     for (const s of segments) {
       const part = parts[i]
       if (part === undefined) score = -1
-      else if (s.endsWith('{.+}')) score += 1 // a catch-all: the rest
+      else if (s.endsWith('*')) score += 1 // a catch-all: the rest
       else if (s.startsWith(':')) score += 2
       else score += s === part ? 3 : -Infinity
-      i = s.endsWith('{.+}') ? parts.length : i + 1
+      i = s.endsWith('*') ? parts.length : i + 1
       if (score < 0) break
     }
     if (score >= 0 && i === parts.length && (!best || score > best.score)) best = { id, score }

@@ -5,18 +5,20 @@ Docs: [routes](https://fondu.dev/docs/routes.md), [pages](https://fondu.dev/docs
 
 ## File names are URLs
 
-| File                      | URL                                         |
-| ------------------------- | ------------------------------------------- |
-| `index.tsx`               | `/`                                         |
-| `about.tsx`               | `/about`                                    |
-| `users/index.tsx`         | `/users`                                    |
-| `users/[id].tsx`          | `/users/:id`                                |
-| `files/[...path].ts`      | `/files/*`: one or more segments, in `path` |
-| `[[lang]]/about.tsx`      | `/about` and `/:lang/about`                 |
-| `(marketing)/pricing.tsx` | `/pricing`: a `(group)` adds no segment     |
+| File                      | URL                                     |
+| ------------------------- | --------------------------------------- |
+| `index.tsx`               | `/`                                     |
+| `about.tsx`               | `/about`                                |
+| `users/index.tsx`         | `/users`                                |
+| `users/[id].tsx`          | `/users/:id`                            |
+| `files/[...path].ts`      | `/files/:path*`: one or more segments   |
+| `[[lang]]/about.tsx`      | `/about` and `/:lang/about`             |
+| `(marketing)/pricing.tsx` | `/pricing`: a `(group)` adds no segment |
 
 - Where two routes could take a URL, a static segment wins, then a param with listed values, then any param, then a
   catch-all.
+- A catch-all's key is `/files/:path*` (`href('/files/:path*', { path: 'a/b' })` → `/files/a/b`, slashes kept). There is
+  no optional catch-all: `[[...path]].ts` stops the app at startup.
 - Two files that answer the same URLs stop the app at startup (`index.tsx` and `[[lang]]/index.tsx`, `about.tsx` and
   `about.ts`). Routes that differ by the values of a param list them with `params`.
 - A route has one optional segment at most. `href('/about')` and `href('/:lang/about', { lang: 'de' })` are both typed.
