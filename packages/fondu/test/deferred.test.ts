@@ -155,10 +155,7 @@ describe('deferred props', () => {
     const res = await app.request('/deferred', {
       headers: partial('stats', 'deferred', { 'X-Fondu-Version': 'old' }),
     })
-    expect([res.status, res.headers.get('x-fondu-location')]).toEqual([
-      409,
-      'http://localhost/deferred',
-    ])
+    expect([res.status, res.headers.get('x-fondu-location')]).toEqual([409, '/deferred'])
     expect(calls.stats).toBe(0)
   })
   test('defer() in share() or inside a prop: an error that says where it goes', async () => {

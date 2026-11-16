@@ -436,7 +436,18 @@ describe('the app', () => {
       headers: { 'X-Fondu': 'true', 'X-Fondu-Version': 'old' },
     })
     expect(res.status).toBe(409)
-    expect(res.headers.get('x-fondu-location')).toBe('http://localhost/')
+    expect(res.headers.get('x-fondu-location')).toBe('/')
+  })
+  test('the page of a path with a trailing slash: the redirect is relative, never to another site', async () => {
+    for (const [path, to] of [
+      ['/_fondu/pages/items/.json', '/items'],
+      ['/_fondu/pages//evil.com/.json', '/evil.com'],
+    ] as const) {
+      const res = await app.request(path, {
+        headers: { 'X-Fondu': 'true', 'X-Fondu-Version': 'v1' },
+      })
+      expect([res.status, res.headers.get('location')], path).toEqual([301, to])
+    }
   })
 })
 
@@ -509,6 +520,21 @@ describe('static pages, served by the built server (Node / Bun)', () => {
       expect(await (await get(path)).text(), path).toBe('app')
       expect(seen, path).toEqual([])
     }
+  })
+  test('the trailing-slash redirect of the app behind it: relative, as it is without staticPages', async () => {
+    const both = new Hono()
+    both.use('*', staticPages(fake, '/client', headers))
+    both.all('*', (c) => createApp().fetch(c.req.raw))
+    for (const [path, to] of [
+      ['/items/?x=1', '/items?x=1'],
+      ['//evil.com/', '/evil.com'],
+    ] as const) {
+      const res = await both.request(path, { headers: { Accept: 'text/html' } })
+      expect([res.status, res.headers.get('location')], path).toEqual([301, to])
+    }
+    expect(await (await both.request('/docs/', { headers: { Accept: 'text/html' } })).text()).toBe(
+      '<html>docs</html>',
+    )
   })
   test('a NUL byte: the app, serveStatic is not asked', async () => {
     for (const path of ['/a%00', '/_fondu/pages/index%00.json']) {

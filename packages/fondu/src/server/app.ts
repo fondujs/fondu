@@ -4,12 +4,12 @@ import { every } from 'hono/combine'
 import { csrf } from 'hono/csrf'
 import { HTTPException } from 'hono/http-exception'
 import { NONCE, secureHeaders } from 'hono/secure-headers'
-import { appendTrailingSlash, trimTrailingSlash } from 'hono/trailing-slash'
 import { prerender, version } from 'virtual:fondu/assets'
 
 import { CONFIG, HANDLERS, isPageFile, isRouteFile, METHODS, pageId } from '../paths.js'
 import { settings, type DocumentTemplate } from './document.js'
 import { errorResponse } from './errors.js'
+import { csrfOrigin, trailingSlash } from './http.js'
 import { prerenderRoutes, type PrerenderRoute } from './prerender.js'
 import { protocol, registerPage, renderPage, routePage } from './protocol.js'
 import { routeTable, type Handlers, type RouteModule } from './routes.js'
@@ -18,7 +18,7 @@ import { ValidationError, validationErrorResponse } from './validate.js'
 export interface CreateAppOptions {
   /** the HTML document around pages (default: a minimal one) */
   document?: DocumentTemplate
-  /** `/users/` → `/users` (`'trim'`, default) or the other way (`'append'`): Hono's trailing-slash middleware */
+  /** `/users/` → `/users` (`'trim'`, default) or the other way (`'append'`): a 301 to a relative URL */
   trailingSlash?: 'trim' | 'append'
   /** `hono/csrf`'s options; `false`: off */
   csrf?: Parameters<typeof csrf>[0] | false
@@ -181,10 +181,11 @@ export function createApp(options: CreateAppOptions = {}): Hono {
       }),
     )
   }
-  if (options.csrf !== false) app.use(csrf(options.csrf))
+  if (options.csrf !== false)
+    app.use(csrf({ ...options.csrf, origin: options.csrf?.origin ?? csrfOrigin }))
   const prerendered: PrerenderRoute[] = []
   if (prerender) prerenderRoutes(app, () => prerendered, version)
-  app.use(append ? appendTrailingSlash() : trimTrailingSlash(), ...protocol)
+  app.use(trailingSlash(append), ...protocol)
   app.notFound((c) => errorResponse(c, 404))
   app.onError((error, c) => {
     // the client left (a body cut off mid-upload, a handler that read it): nobody is there to answer, so no 500 is

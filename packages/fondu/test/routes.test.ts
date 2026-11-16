@@ -295,10 +295,7 @@ describe('in the app', async () => {
   })
   test('trailing slashes', async () => {
     const trimmed = await app.request('/de/hello/')
-    expect([trimmed.status, trimmed.headers.get('location')]).toEqual([
-      301,
-      'http://localhost/de/hello',
-    ])
+    expect([trimmed.status, trimmed.headers.get('location')]).toEqual([301, '/de/hello'])
     const appended = createApp({ trailingSlash: 'append' })
     expect(await answer('/de/hello/', appended)).toBe('200 de hello de')
   })

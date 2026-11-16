@@ -2,7 +2,7 @@ import type { Context, MiddlewareHandler } from 'hono'
 import { generateCookie, getCookie } from 'hono/cookie'
 
 import type { Flash } from '../types.js'
-import { appendHeader } from './http.js'
+import { appendHeader, isSecure } from './http.js'
 
 /**
  * Flash data and validation errors for the next page, the way Laravel keeps them in the session: here a short
@@ -26,10 +26,6 @@ const state = (c: Context): State => {
   return s
 }
 
-/** https, directly or behind a proxy that says so */
-const isSecure = (c: Context) =>
-  new URL(c.req.url).protocol === 'https:' ||
-  c.req.header('x-forwarded-proto')?.split(',')[0]?.trim() === 'https'
 const cookieName = (c: Context) => (isSecure(c) ? '__Host-fondu-flash' : 'fondu-flash')
 
 /** Flash data for the next page (`usePage().flash`), typed by `Register['flash']`. */
