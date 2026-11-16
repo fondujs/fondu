@@ -43,6 +43,23 @@ export function routePatterns(file: string): string[] {
   return optional.length ? [pattern(false), pattern(true)] : [pattern(true)]
 }
 
+/**
+ * Throws if a segment of a route file's path has a character of the route syntax (`[ ] : * { } ?`) and is none of its
+ * forms: it would be a literal URL, or a param Hono reads. Server and build only (the client reads names that passed):
+ * `routeTable` at startup, the build's page files, typegen.
+ */
+export function checkRouteName(file: string): void {
+  for (const segment of file.replace(ROUTE_EXTENSION, '').split('/')) {
+    if (
+      /[[\]:*{}?]/.test(segment) &&
+      !/^(?:\[\.\.\.\w+\]|\[\w+\]|\[\[(?:\.\.\.)?\w+\]\])$/.test(segment)
+    )
+      throw new Error(
+        `fondu: routes/${file}: \`${segment}\` is not a route name. A segment is plain (\`users\`), \`[id]\`, \`[[lang]]\` or \`[...path]\` (letters, digits, _), and none of \`[ ] : * { } ?\` otherwise`,
+      )
+  }
+}
+
 /** the names a param can't have, and the function whose option each is: `href()`'s and `fetch()`'s */
 const RESERVED: Record<string, string | undefined> = Object.assign(Object.create(null), {
   query: 'href()',
