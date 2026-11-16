@@ -13,22 +13,18 @@ const hasBun = spawnSync('bun', ['--version']).status === 0
 const exportLine = (code: string) => code.split('\n').find((l) => l.startsWith('export default'))!
 
 describe('the generated entry: port', () => {
-  test('Bun: the option is the server’s port, PORT first, the websocket kept', () => {
-    const line = exportLine(entryCode({ target: 'bun', port: 4567 }, []))
-    expect(line).toContain('port: Number(process.env.PORT) || 4567')
-    expect(line).toContain('fetch: main.fetch')
-    expect(line).toContain('websocket: app.websocket')
-  })
-  test('Bun without the option: as before (Bun reads PORT, else 3000)', () => {
-    expect(exportLine(entryCode({ target: 'bun' }, []))).toBe(
+  test('Bun: the default export has no port of its own (Bun reads PORT, else 3000), the websocket kept', () => {
+    const code = entryCode({ target: 'bun' }, [])
+    expect(exportLine(code)).toBe(
       'export default app.websocket ? { fetch: main.fetch, websocket: app.websocket } : main',
     )
+    expect(code).not.toMatch(/\bport:/)
   })
-  test('Node: the option, PORT first, else 3000', () => {
-    expect(entryCode({ target: 'node', port: 4567 }, [])).toContain(
-      'port: Number(process.env.PORT) || 4567',
-    )
+  test('Node: PORT, else 3000', () => {
     expect(entryCode({ target: 'node' }, [])).toContain('port: Number(process.env.PORT) || 3000')
+    // an option that is no more is not read
+    expect(entryCode({ target: 'node', port: 4567 } as never, [])).not.toContain('4567')
+    expect(entryCode({ target: 'bun', port: 4567 } as never, [])).not.toContain('4567')
   })
 })
 
@@ -44,12 +40,7 @@ const freePort = () =>
 
 describe.skipIf(!hasBun)('the generated entry, run by Bun', { timeout: 30_000 }, () => {
   // the entry beside a stub app, inside the package (its node_modules: hono): answers on `expected`
-  const check = async (
-    options: { port?: number },
-    env: Record<string, string>,
-    websocket: boolean,
-    expected: number,
-  ) => {
+  const check = async (env: Record<string, string>, websocket: boolean, expected: number) => {
     const dir = mkdtempSync(join(dirname(fileURLToPath(import.meta.url)), '.entry-'))
     let child: ChildProcess | undefined
     let exited: Promise<unknown> = Promise.resolve()
@@ -57,7 +48,7 @@ describe.skipIf(!hasBun)('the generated entry, run by Bun', { timeout: 30_000 },
       mkdirSync(join(dir, 'server'))
       writeFileSync(
         join(dir, 'server/index.js'),
-        entryCode({ target: 'bun', ...options }, []).replace(
+        entryCode({ target: 'bun' }, []).replace(
           /await import\('\/app\/server\.ts'\)/,
           "await import('./app.js')",
         ),
@@ -84,20 +75,12 @@ describe.skipIf(!hasBun)('the generated entry, run by Bun', { timeout: 30_000 },
       rmSync(dir, { recursive: true })
     }
   }
-  test('the option sets the port', async () => {
+  test('PORT sets the port', async () => {
     const port = await freePort()
-    await check({ port }, {}, false, port)
-  })
-  test('PORT wins over the option', async () => {
-    const [port, other] = [await freePort(), await freePort()]
-    await check({ port }, { PORT: String(other) }, false, other)
+    await check({ PORT: String(port) }, false, port)
   })
   test('with a websocket, the same', async () => {
     const port = await freePort()
-    await check({ port }, {}, true, port)
-  })
-  test('PORT alone, as before', async () => {
-    const port = await freePort()
-    await check({}, { PORT: String(port) }, false, port)
+    await check({ PORT: String(port) }, true, port)
   })
 })
