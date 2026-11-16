@@ -420,7 +420,9 @@ export function startNavigation({
   const linkOf = (target: EventTarget | null): { url: URL; soft: boolean } | undefined => {
     const link = (target as Element | null)?.closest?.('a[href]')
     if (!(link instanceof HTMLAnchorElement)) return
-    if ((link.target && link.target !== '_self') || link.hasAttribute('download')) return
+    // its own `target`, else the document's `<base target>`; SVG `<a>` and `<area>` are not matched: the browser's
+    const into = link.target || document.querySelector<HTMLBaseElement>('base[target]')?.target
+    if ((into && into !== '_self') || link.hasAttribute('download')) return
     const url = new URL(link.href)
     if (url.origin !== location.origin || !isWebUrl(url.href)) return
     // `data-shallow`: for the page on the screen's own URL (its query, its #fragment) a shallow navigation

@@ -46,3 +46,47 @@ test.describe('a prefetch', () => {
     expect(calls.filter((c) => c.prefetch).map((c) => c.priority)).toEqual(['low'])
   })
 })
+
+test.describe('<base target>', () => {
+  const withBase = async (page: import('@playwright/test').Page, target: string) => {
+    await page.goto('/')
+    await hydrated(page)
+    await page.evaluate((target) => {
+      const base = document.createElement('base')
+      base.target = target
+      document.head.append(base)
+      const own = document.querySelector('a[href="/long"]')!.cloneNode(true) as HTMLAnchorElement
+      own.id = 'own'
+      own.target = '_self'
+      document.body.append(own)
+    }, target)
+  }
+
+  test('_blank: a link without a target is the browser’s (a new tab)', async ({
+    page,
+    context,
+  }) => {
+    await withBase(page, '_blank')
+    const opened = context.waitForEvent('page')
+    await page.locator('a[href="/long"]:not(#own)').click()
+    const tab = await opened
+    await tab.waitForLoadState()
+    expect(tab.url()).toMatch(/\/long$/)
+    expect(new URL(page.url()).pathname).toBe('/')
+  })
+
+  test('_blank: a link with target="_self" is still the client’s', async ({ page }) => {
+    await withBase(page, '_blank')
+    await page.locator('#own').click()
+    await expect(page).toHaveURL(/\/long$/)
+    await expect(page.locator('h1')).toHaveText('Long')
+    // in place: this document stays (the client's visit keeps `window`)
+  })
+
+  test('_self: the client takes the click', async ({ page }) => {
+    await withBase(page, '_self')
+    await page.locator('a[href="/long"]:not(#own)').click()
+    await expect(page).toHaveURL(/\/long$/)
+    await expect(page.locator('h1')).toHaveText('Long')
+  })
+})
