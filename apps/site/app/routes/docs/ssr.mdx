@@ -56,3 +56,6 @@ first paint and HTML for search engines.
 
 A `<Suspense>` boundary that throws after the shell is sent is rendered in the browser instead, and logged. The status
 was sent with the shell, so it stays as it was.
+
+When the visitor leaves (the request is aborted), the render stops, so a boundary that never settles holds nothing. This is
+not logged.

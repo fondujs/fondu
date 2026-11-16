@@ -148,3 +148,74 @@ describe('a streamed document', () => {
     expect(hashes).toEqual([today])
   })
 })
+
+describe('a client that leaves (#223)', () => {
+  /** reads to the end of a stream or gives up: a render that never stops would hang the test */
+  const ends = async (res: Response, next = reader(res), ms = 1500) => {
+    let text = ''
+    const done = (async () => {
+      for (let chunk = await next(); chunk !== null; chunk = await next()) text += chunk
+      return true
+    })()
+    const timeout = new Promise<boolean>((resolve) => setTimeout(resolve, ms, false))
+    return { closed: await Promise.race([done, timeout]), text }
+  }
+
+  test('an abort stops the render of a boundary that never settles; nothing is logged', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    arm() // never released
+    const gone = new AbortController()
+    const res = await app.request(
+      new Request('http://localhost/stream', { headers: html, signal: gone.signal }),
+    )
+    const next = reader(res)
+    expect(await next()).toContain('<p id="fallback">Loading</p>')
+    gone.abort()
+    const { closed, text: rest } = await ends(res, next)
+    expect(closed).toBe(true)
+    // React hands the boundary to the browser to render, and the document is complete
+    expect(rest.endsWith('</body></html>')).toBe(true)
+    expect(error).not.toHaveBeenCalled()
+    release() // the next test's boundary is its own
+  })
+  test('the abort is the only thing left out of the log: a boundary that fails is still logged', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    arm()
+    const res = await app.request(
+      new Request('http://localhost/stream?mode=boundary', {
+        headers: html,
+        signal: new AbortController().signal,
+      }),
+    )
+    const next = reader(res)
+    await next()
+    release()
+    while ((await next()) !== null);
+    expect(String(error.mock.calls[0]![0])).toContain('a Suspense boundary of "stream" failed')
+  })
+  test('a request that is already aborted: no render, nothing logged', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    arm()
+    const res = await app.request(
+      new Request('http://localhost/stream', { headers: html, signal: AbortSignal.abort() }),
+    )
+    const { closed } = await ends(res)
+    expect(closed).toBe(true)
+    expect(error).not.toHaveBeenCalled()
+    release()
+  })
+  test('an abort with a reason of its own (Node: a string) is not logged either', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    arm()
+    const gone = new AbortController()
+    const res = await app.request(
+      new Request('http://localhost/stream', { headers: html, signal: gone.signal }),
+    )
+    const next = reader(res)
+    await next()
+    gone.abort('Client connection prematurely closed.')
+    expect((await ends(res, next)).closed).toBe(true)
+    expect(error).not.toHaveBeenCalled()
+    release()
+  })
+})

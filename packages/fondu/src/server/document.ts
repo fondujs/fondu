@@ -121,11 +121,17 @@ export async function renderDocument(
   // React reports it to `onError` too, so what it reports is held until the shell is known to be there
   const pending: unknown[] = []
   let live = false
-  const late = (error: unknown) =>
-    console.error(
-      `[fondu] a Suspense boundary of "${page.component}" failed on the server, the browser renders it:`,
-      error,
-    )
+  // The client left: React is given the request's signal, stops, and reports the signal's reason to `onError` (what
+  // `abort()` was given: an AbortError, or Node's string). That is not an error of the page, and nothing else is left out
+  const { signal } = c.req.raw
+  const clientLeft = (error: unknown) => signal.aborted && error === signal.reason
+  const late = (error: unknown) => {
+    if (!clientLeft(error))
+      console.error(
+        `[fondu] a Suspense boundary of "${page.component}" failed on the server, the browser renders it:`,
+        error,
+      )
+  }
   try {
     // a HEAD: Hono drops its body without cancelling it, so React would keep rendering for nothing
     if (renderPage && !browserOnly.has(c) && c.req.method !== 'HEAD') {
@@ -133,6 +139,7 @@ export async function renderDocument(
       // of its own: what the render changes in its props is not in the page data
       const stream = await renderPage(JSON.parse(json), {
         nonce,
+        signal,
         onError: (error) => (live ? late(error) : void pending.push(error)),
         // React writes this as a script right after the shell, before what the boundaries add: where `restoreScroll`
         // goes. Not as React's own script (it adds an `id`, and follows its `$RT` one), and not as a sibling of the
@@ -148,11 +155,13 @@ export async function renderDocument(
     // the error page's failure goes to `errorResponse`: plain text with the status (the browser would render the
     // same props and most likely fail again, and a visitor without JavaScript would get nothing)
     if (page.component === '_error') throw error
-    // like Laravel: a page that fails to render on the server is still sent, and rendered in the browser
-    console.error(
-      `[fondu] server render of "${page.component}" failed, sending it to render in the browser:`,
-      error,
-    )
+    // like Laravel: a page that fails to render on the server is still sent, and rendered in the browser. Not logged if
+    // the client left before the shell was there
+    if (!clientLeft(error))
+      console.error(
+        `[fondu] server render of "${page.component}" failed, sending it to render in the browser:`,
+        error,
+      )
   }
   // the page data first: the client reads the first `script[data-page]` in the document, so nothing in the page's
   // content can come before it

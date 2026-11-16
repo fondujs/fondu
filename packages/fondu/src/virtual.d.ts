@@ -14,6 +14,8 @@ declare module 'virtual:fondu/ssr' {
         page: import('./client/navigation.js').Page,
         options: {
           nonce?: string
+          /** the request's: React stops rendering when it aborts */
+          signal?: AbortSignal
           onError?: (error: unknown) => void
           bootstrapScriptContent?: string
         },
