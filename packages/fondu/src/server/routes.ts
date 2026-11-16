@@ -1,6 +1,12 @@
 import type { Handler, MiddlewareHandler } from 'hono'
 
-import { checkRouteName, isRouteFile, middlewareFor, routePatterns } from '../paths.js'
+import {
+  checkRouteName,
+  isRouteFile,
+  middlewareFor,
+  RESERVED_PREFIX,
+  routePatterns,
+} from '../paths.js'
 import type { Prerender } from './prerender.js'
 
 export type Handlers = Handler | MiddlewareHandler | ReadonlyArray<Handler | MiddlewareHandler>
@@ -92,6 +98,13 @@ export function routeTable(modules: Record<string, RouteModule>, append: boolean
             return `:${name}{(?:${listed.list.map((v) => v.replaceAll('.', '\\.')).join('|')})}`
           },
         )
+        // the first segment, or a value listed for it (`params`): `_fondu` is Fondu's (a `_` directory is no route)
+        const first = pattern.split('/')[1] ?? ''
+        const listed = /^:\w+\{\(\?:(.*)\)\}$/.exec(first)?.[1]?.split('|') ?? [first]
+        if (listed.includes(RESERVED_PREFIX.slice(1, -1)))
+          throw new Error(
+            `fondu: routes/${file}: ${RESERVED_PREFIX}* is Fondu's (page data, the build's list of pages), not an app's URL; move the route`,
+          )
         return empty ? null : { path: withSlash(path, append), pattern: withSlash(pattern, append) }
       })
       .filter((p) => p !== null)

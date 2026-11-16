@@ -34,6 +34,10 @@ to prerender, and writes each twice in the client build:
   the Worker.
   It is asked for once the pointer rests on a link to the page, so the click has nothing to wait for.
 
+Fondu keeps one prefix for its own URLs, `/_fondu/`: the page objects (`/_fondu/pages/…`) and, while the build runs, its list
+of pages (`/_fondu/prerender`). An app has no route under it: one that a listed `params` value puts there stops the app at
+startup.
+
 Then:
 
 - On Cloudflare, Workers Static Assets serve the files without running the Worker.

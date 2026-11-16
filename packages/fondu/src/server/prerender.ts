@@ -1,6 +1,13 @@
 import type { ExecutionContext, Hono } from 'hono'
 
-import { endsInIndex, fillPattern, PAGE_DATA, pathOfPageData } from '../paths.js'
+import {
+  endsInIndex,
+  fillPattern,
+  PAGE_DATA,
+  pathOfPageData,
+  PRERENDER_LIST,
+  RESERVED_PREFIX,
+} from '../paths.js'
 import { isPrerendering } from './http.js'
 
 /** `export const prerender` of a route or a `_middleware.ts`: the params of a dynamic route's pages, or on / off */
@@ -95,7 +102,7 @@ export function prerenderRoutes(app: Hono, routes: () => PrerenderRoute[], versi
       return c.body(null, 204, { 'Cache-Control': 'no-store' })
     const path = pathOfPageData(c.req.path)
     // a page object's own URL is not a page: no page object of a page object (and so on)
-    if (!path || path.startsWith('/_fondu/')) return c.notFound()
+    if (!path || path.startsWith(RESERVED_PREFIX)) return c.notFound()
     const url = new URL(c.req.url)
     url.pathname = path
     const headers = new Headers(c.req.raw.headers)
@@ -106,7 +113,7 @@ export function prerenderRoutes(app: Hono, routes: () => PrerenderRoute[], versi
     } catch {} // none outside a Worker
     return app.fetch(new Request(url, { headers }), c.env, ctx)
   })
-  app.get('/__fondu/prerender', async (c) => {
+  app.get(PRERENDER_LIST, async (c) => {
     // set for the build only: a Worker binding, or the environment of `node` / `bun dist/server/index.js`
     if (!isPrerendering(c)) return c.notFound()
     return c.json({ version, ...(await prerenderPaths(routes())) })

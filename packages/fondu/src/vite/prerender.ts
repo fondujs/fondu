@@ -8,7 +8,7 @@ import { pathToFileURL } from 'node:url'
 
 import type { Logger } from 'vite'
 
-import { PAGE_DATA, staticFiles } from '../paths.js'
+import { PAGE_DATA, PRERENDER_LIST, staticFiles } from '../paths.js'
 
 /** the response headers a static document keeps: the security headers (hono/secure-headers' and the like) */
 const SECURITY_HEADERS =
@@ -93,7 +93,7 @@ interface Server {
 
 /**
  * After the build: the built server (the Worker in wrangler, or `node` / `bun dist/server/index.js`), started with
- * `FONDU_PRERENDER` set, lists the pages to prerender (`/__fondu/prerender`); each is asked for as a document and as
+ * `FONDU_PRERENDER` set, lists the pages to prerender (`/_fondu/prerender`); each is asked for as a document and as
  * a navigation, and both are written to the client build, with the security headers the build decided for them: one
  * set, in `_headers` (Cloudflare serves the files before the Worker) or in `prerender.json` next to the built server
  * (Node and Bun: its entry serves the files before the app).
@@ -113,7 +113,7 @@ export async function prerender(
   const server = await start().catch((error: Error) => fail([error.message]))
   try {
     const get = server.fetch
-    const listing = await get('/__fondu/prerender')
+    const listing = await get(PRERENDER_LIST)
     if (!listing.ok) return fail([`the server did not list the pages (${listing.status})`])
     const { version, paths, problems } = (await listing.json()) as {
       version: string | null
@@ -297,7 +297,7 @@ export const nodeServer =
         try {
           // an answer, any, or the next try: a server that takes the connection and sends nothing is one try
           const left = Math.max(1, deadline - Date.now())
-          const res = await fetch(base + '/__fondu/prerender', {
+          const res = await fetch(base + PRERENDER_LIST, {
             redirect: 'manual',
             signal: AbortSignal.timeout(Math.min(2000, left)),
           })

@@ -47,7 +47,7 @@ const took = async (run: Promise<unknown>) => {
 const mute = `require('net').createServer(() => {}).listen(process.env.PORT, '127.0.0.1')`
 // answers the readiness request, then a page's headers and half its body, and no more
 const stalls = `require('http').createServer((req, res) => {
-  if (req.url === '/__fondu/prerender') return res.end('{"paths":["/x"],"problems":[],"version":null}')
+  if (req.url === '/_fondu/prerender') return res.end('{"paths":["/x"],"problems":[],"version":null}')
   res.writeHead(200, { 'content-type': 'text/html' })
   res.write('<html>')
 }).listen(process.env.PORT, '127.0.0.1')`
@@ -110,7 +110,7 @@ describe('the server of the prerender: a request that does not finish', () => {
   })
   test('no headers at all: the request fails by the deadline', async () => {
     const root = fake(
-      `require('http').createServer((req, res) => { if (req.url === '/__fondu/prerender') res.end('{}') }).listen(process.env.PORT, '127.0.0.1')`,
+      `require('http').createServer((req, res) => { if (req.url === '/_fondu/prerender') res.end('{}') }).listen(process.env.PORT, '127.0.0.1')`,
     )
     const server = await nodeServer(root, 'node', quick)()
     try {
