@@ -6,6 +6,9 @@
 /** how deep form field names nest (`a[b][c]`: 3) */
 const DEPTH = 32
 
+/** how many entries (fields, files, empty file inputs too) a form may have */
+const ENTRIES = 10_000
+
 /** a body that can't be one object: a 400 on the server */
 export class MalformedForm extends Error {}
 
@@ -18,16 +21,20 @@ export const crlf = (text: string) => text.replace(/\r\n|\r|\n/g, '\r\n')
  * Form fields with PHP-style names, as forms write them (`notify[]`, `user[name]`); files are `File`s, empty file
  * inputs are left out. A name given again is a list (`a=1&a=2`, `a[b]=1&a[b]=2`); `[]` is the index after the
  * highest one so far. Names that would change the object itself (`__proto__`…) are ignored. Throws `MalformedForm`
- * for fields that can't be one object (`a=1&a[b]=2`, names nested deeper than 32).
+ * for fields that can't be one object (`a=1&a[b]=2`, names nested deeper than 32) and for more than 10,000 entries
+ * (files and empty file inputs count).
  */
 export function formObject(entries: Iterable<Entry>): Record<string, unknown> {
   const body: Record<string, unknown> = Object.create(null)
   // `a[]`: each object's next index, the highest one so far + 1 (counted, not looked for: a body of many is linear)
   const next = new WeakMap<object, number>()
   const isObject = (v: unknown) => typeof v === 'object' && !isFile(v) && !Array.isArray(v)
+  let count = 0
   for (const [key, value] of entries) {
+    if (++count > ENTRIES) throw new MalformedForm(`more than ${ENTRIES} fields`)
     if (typeof value !== 'string' && value.size === 0 && value.name === '') continue
-    const path = key.replace(/\]/g, '').split('[')
+    // a limit: a name that is too deep is known from its first parts, the rest is not split
+    const path = key.replace(/\]/g, '').split('[', DEPTH + 1)
     if (path.length > DEPTH) throw new MalformedForm(`a field name nests deeper than ${DEPTH}`)
     if (path.some((p) => p === '__proto__' || p === 'constructor' || p === 'prototype')) continue
     let target = body

@@ -141,10 +141,10 @@ describe('form bodies', () => {
     })
   })
   test('many [] fields: read in linear time', async () => {
-    const many = 'a%5B%5D=1&'.repeat(100_000)
+    const many = 'a%5B%5D=1&'.repeat(10_000)
     const started = performance.now()
     const body = (await read(many, 'application/x-www-form-urlencoded')) as { a: string[] }
-    expect(body.a).toHaveLength(100_000)
+    expect(body.a).toHaveLength(10_000)
     expect(performance.now() - started).toBeLessThan(3000)
   })
   test('JSON as it is, whatever the case of its type', async () => {
