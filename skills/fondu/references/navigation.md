@@ -64,6 +64,9 @@ where it is: scroll and what was typed stay. Another page is a new history entry
 | a form's answer at the same URL, `reload()`, `navigate()` with `keep` | where it is                   |
 | a shallow navigation, Back or Forward between the entries it shares   | where it is                   |
 
+Scroll positions are kept for the last 50 history entries (in `sessionStorage`, so a reload restores them); a shallow
+`replace` is the same entry.
+
 Back and Forward show the page as it was left at once, then put the server's fresh page in its place. Those pages are
 in memory only, and forgotten once a form is sent.
 
