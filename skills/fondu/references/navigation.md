@@ -142,3 +142,5 @@ const pending = state === 'loading' || state === 'submitting'
   forms } })`, or `progress: false` for your own indicator.
 - Screen readers announce the new page's title. After a deploy, a tab opened before it loads the next page as a
   document.
+- Protocol: `X-Fondu-Location` (status 409) = load this URL as a document; `X-Fondu-Redirect` = follow this path in
+  place, as a navigation.
