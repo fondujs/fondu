@@ -180,6 +180,11 @@ export async function prerender(
       const own = existsSync(file) ? readFileSync(file, 'utf8') : ''
       writeFileSync(file, withHeaderRules(own, security ?? {}))
     }
+  } catch (error) {
+    // a request, or the read of its body, that did not finish: the deadline of the server's fetch
+    if (timedOut(error))
+      fail([`the server did not finish an answer in time (${(error as Error).message})`])
+    throw error
   } finally {
     await server.dispose()
   }
@@ -202,6 +207,7 @@ export const worker = (root: string, workerConfig: string) => async (): Promise<
   await started.ready
   return {
     // a Worker that throws as it starts: wrangler logs it, then its requests never answer
+    // the signal covers the body's read too, as the Node / Bun server's does (the timer below, its headers only)
     fetch: (path, headers = {}) => {
       let timer: ReturnType<typeof setTimeout> | undefined
       const late = new Promise<never>((_, reject) => {
@@ -211,7 +217,11 @@ export const worker = (root: string, workerConfig: string) => async (): Promise<
         )
       })
       return Promise.race([
-        started.fetch(new URL(path, 'http://localhost').href, { headers, redirect: 'manual' }),
+        started.fetch(new URL(path, 'http://localhost').href, {
+          headers,
+          redirect: 'manual',
+          signal: AbortSignal.timeout(60_000),
+        }),
         late,
       ]).finally(() => clearTimeout(timer))
     },
@@ -219,42 +229,89 @@ export const worker = (root: string, workerConfig: string) => async (): Promise<
   }
 }
 
-/** Node / Bun: `node dist/server/index.js` (or `bun`), on a free port, until it answers */
-export const nodeServer = (root: string, runtime: 'node' | 'bun') => async (): Promise<Server> => {
-  const port = await freePort()
-  const child = spawn(runtime, ['dist/server/index.js'], {
-    cwd: root,
-    env: { ...process.env, PORT: String(port), FONDU_PRERENDER: '1', NODE_ENV: 'production' },
-    stdio: ['ignore', 'pipe', 'pipe'],
-  })
-  let output = ''
-  child.stdout.on('data', (d: Buffer) => (output += d))
-  child.stderr.on('data', (d: Buffer) => (output += d))
-  const base = `http://127.0.0.1:${port}`
-  const server: Server = {
-    fetch: (path, headers = {}) => fetch(base + path, { headers, redirect: 'manual' }),
-    dispose: async () => {
-      if (child.exitCode !== null) return
-      const exited = new Promise((r) => child.once('exit', r))
-      child.kill()
-      const force = setTimeout(() => child.kill('SIGKILL'), 3000)
-      await exited
-      clearTimeout(force)
-    },
-  }
-  for (let tries = 0; ; tries++) {
-    if (child.exitCode !== null || tries === 200)
-      throw new Error(
-        `the server (${runtime} dist/server/index.js) did not start:\n${output.trim()}`,
-      )
+/** how long the built server may take to answer, in ms: to start (a wall-clock deadline), and each request, its body read included */
+export interface Deadlines {
+  startup: number
+  request: number
+}
+
+/** a failed request: the server did not answer in time (the timeout and the abort of a signal are DOMExceptions) */
+const timedOut = (error: unknown) =>
+  error instanceof DOMException && (error.name === 'TimeoutError' || error.name === 'AbortError')
+
+/**
+ * Node / Bun: `node dist/server/index.js` (or `bun`), on a free port, until it answers. This function owns the child
+ * until it returns the server: whatever fails before (no such executable, an exit, no answer by the deadline), the
+ * child is stopped first. Each request has a deadline of its own, which a body read is within too (its signal).
+ */
+export const nodeServer =
+  (
+    root: string,
+    runtime: string,
+    { startup, request }: Deadlines = { startup: 30_000, request: 60_000 },
+  ) =>
+  async (): Promise<Server> => {
+    const port = await freePort()
+    const child = spawn(runtime, ['dist/server/index.js'], {
+      cwd: root,
+      env: { ...process.env, PORT: String(port), FONDU_PRERENDER: '1', NODE_ENV: 'production' },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    })
+    // the last of what it wrote: the reason it gives for failing to start, not all of what a long build writes
+    let output = ''
+    const keep = (d: Buffer) => (output = (output + d).slice(-16_384))
+    child.stdout.on('data', keep)
+    child.stderr.on('data', keep)
+    // a child that cannot be spawned (no such executable) emits `error`, and, unhandled, that ends the build's process
+    let spawnError: Error | undefined
+    child.on('error', (error) => (spawnError = error))
+    const base = `http://127.0.0.1:${port}`
+    const gone = () => child.exitCode !== null || child.signalCode !== null || spawnError
+    const server: Server = {
+      fetch: (path, headers = {}) =>
+        fetch(base + path, {
+          headers,
+          redirect: 'manual',
+          signal: AbortSignal.timeout(request),
+        }),
+      dispose: async () => {
+        if (gone()) return
+        const exited = new Promise((r) => child.once('exit', r))
+        child.kill()
+        const force = setTimeout(() => child.kill('SIGKILL'), 3000)
+        await exited
+        clearTimeout(force)
+      },
+    }
     try {
-      await fetch(base + '/__fondu/prerender')
-      return server
-    } catch {
-      await new Promise((r) => setTimeout(r, 50))
+      const deadline = Date.now() + startup
+      for (;;) {
+        if (spawnError)
+          throw new Error(
+            `the server (${runtime} dist/server/index.js) did not start: ${spawnError.message}`,
+          )
+        if (child.exitCode !== null || child.signalCode !== null || Date.now() >= deadline)
+          throw new Error(
+            `the server (${runtime} dist/server/index.js) did not start${gone() ? '' : `: no answer within ${startup / 1000} s`}:\n${output.trim()}`,
+          )
+        try {
+          // an answer, any, or the next try: a server that takes the connection and sends nothing is one try
+          const left = Math.max(1, deadline - Date.now())
+          const res = await fetch(base + '/__fondu/prerender', {
+            redirect: 'manual',
+            signal: AbortSignal.timeout(Math.min(2000, left)),
+          })
+          await res.body?.cancel()
+          return server
+        } catch {
+          await new Promise((r) => setTimeout(r, 50))
+        }
+      }
+    } catch (error) {
+      await server.dispose()
+      throw error
     }
   }
-}
 
 const freePort = () =>
   new Promise<number>((resolve, reject) => {
