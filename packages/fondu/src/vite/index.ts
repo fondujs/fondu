@@ -189,12 +189,14 @@ function dependencies(root = ''): string[] {
  */
 function serverEntry(options: FonduOptions): Plugin {
   let root = process.cwd()
+  let assetsDir = 'assets'
   return {
     name: 'fondu:server-entry',
     apply: 'build',
     applyToEnvironment: (env) => env.name === 'ssr',
     configResolved(c) {
       root = c.root
+      assetsDir = c.environments.client?.build.assetsDir ?? c.build.assetsDir
     },
     resolveId: { filter: { id: /^virtual:fondu\/server-entry$/ }, handler: (id) => resolved(id) },
     load: {
@@ -206,15 +208,20 @@ function serverEntry(options: FonduOptions): Plugin {
               .filter((e) => e.name !== '.vite')
               .map((e) => (e.isDirectory() ? `/${e.name}/*` : `/${e.name}`))
           : []
-        return entryCode(options, paths)
+        return entryCode(options, paths, assetsDir)
       },
     },
   }
 }
 
-/** the code of dist/server/index.js: `paths` are the client build's files and directories (`/robots.txt`, `/assets`) */
-export function entryCode(options: FonduOptions, paths: string[]): string {
+/**
+ * the code of dist/server/index.js: `paths` are the client build's files and directories (`/robots.txt`, `/assets`),
+ * `assetsDir` the client build's (hashed files, which never change: the only ones served as immutable, and only when
+ * serveStatic found the file: an app's route under the same URL keeps its own Cache-Control)
+ */
+export function entryCode(options: FonduOptions, paths: string[], assetsDir = 'assets'): string {
   const bun = options.target === 'bun'
+  const hashed = assetsDir ? `/${assetsDir}/*` : undefined
   return [
     `import { Hono } from 'hono'`,
     `import { serveStatic } from '${bun ? 'hono/bun' : '@hono/node-server/serve-static'}'`,
@@ -222,7 +229,6 @@ export function entryCode(options: FonduOptions, paths: string[]): string {
     `import app from '${SERVER.slice(1)}'`,
     `const clientRoot = fileURLToPath(new URL('../client', import.meta.url))`,
     `const main = new Hono()`,
-    `main.use('/assets/*', async (c, next) => { await next(); if (c.res.ok) c.header('Cache-Control', 'public, max-age=31536000, immutable') })`,
     // prerender: the pages the build wrote are files, with the headers it decided (prerender.json, written after
     // this server was built: not there while the build prerenders, so the app renders them then)
     ...(options.prerender
@@ -233,7 +239,14 @@ export function entryCode(options: FonduOptions, paths: string[]): string {
           `if (existsSync(prerendered)) main.use('*', staticPages(serveStatic, clientRoot, JSON.parse(readFileSync(prerendered, 'utf8')).headers))`,
         ]
       : []),
-    ...paths.map((p) => `main.use(${JSON.stringify(p)}, serveStatic({ root: clientRoot }))`),
+    ...(hashed
+      ? [
+          `main.use(${JSON.stringify(hashed)}, serveStatic({ root: clientRoot, onFound: (_path, c) => c.header('Cache-Control', 'public, max-age=31536000, immutable') }))`,
+        ]
+      : []),
+    ...paths
+      .filter((p) => p !== hashed)
+      .map((p) => `main.use(${JSON.stringify(p)}, serveStatic({ root: clientRoot }))`),
     `main.all('*', (c) => app.fetch(c.req.raw, c.env))`,
     ...(bun
       ? [
@@ -348,7 +361,7 @@ function core(options: FonduOptions): Plugin {
                     .replace(/[^a-zA-Z0-9]+/g, '-')
                     .replace(/^-|-$/g, '')
                 : undefined
-              return `assets/${name || '[name]'}-[hash].js`
+              return `${config.environments.client?.build.assetsDir ?? config.build.assetsDir}/${name || '[name]'}-[hash].js`
             },
           },
         },
@@ -519,7 +532,7 @@ function core(options: FonduOptions): Plugin {
       this.emitFile({
         type: 'asset',
         fileName: '_headers',
-        source: '/assets/*\n  Cache-Control: public, max-age=31536000, immutable\n',
+        source: `/${this.environment.config.build.assetsDir}/*\n  Cache-Control: public, max-age=31536000, immutable\n`,
       })
     },
     // the server render loads a page through the entry's import(), of a module createApp has imported already: in
