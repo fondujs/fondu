@@ -277,10 +277,15 @@ function askedFor(c: Context, id: string): string[] | undefined {
     c.req.header('x-fondu-component') !== id
   )
     return
-  return only
-    .split(',')
-    .map((name) => name.trim())
-    .filter(Boolean)
+  // each name once, in the order first given: a name asked twice does not run its loader twice
+  return [
+    ...new Set(
+      only
+        .split(',')
+        .map((name) => name.trim())
+        .filter(Boolean),
+    ),
+  ]
 }
 
 /** an http(s) URL, as `to` resolves from the request's */
