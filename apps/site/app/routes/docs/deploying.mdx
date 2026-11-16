@@ -2,7 +2,7 @@
 
 ```sh
 npm run build    # vite build
-npm start        # node dist/server/index.js
+npm start        # node --env-file-if-exists=.env dist/server/index.js
 ```
 
 One `vite build` writes the browser's files to `dist/client`, then the server to `dist/server` (its entry:

@@ -49,6 +49,15 @@ function Later({ wait }: { wait?: Promise<void> }) {
 }
 `
 
+// what the server's process.env has of the app's .env (test/run.mjs sets FONDU_ENV_SET in the shell)
+const ENV_ROUTE = `import { defineHandler } from 'fondu'
+
+export const GET = defineHandler((c) =>
+  c.json({ file: process.env.FONDU_ENV_FILE ?? null, set: process.env.FONDU_ENV_SET ?? null }),
+)
+`
+process.env.FONDU_ENV_SET = 'from-shell'
+
 const production = {
   node: { script: 'start', port: 3000, says: 'Listening on http://localhost:3000' },
   bun: { script: 'start', port: 3000, says: 'Started server: http://localhost:3000' },
@@ -118,6 +127,11 @@ for (const target of Object.keys(production).filter(
     join(app, 'app/routes/upload.ts'),
     "import { defineHandler } from 'fondu'\n\nexport const POST = defineHandler((c) => c.text('received'))\n",
   )
+  // Node / Bun: the app's .env is in process.env, in development and in production; a variable already set wins
+  if (target !== 'cloudflare') {
+    writeFileSync(join(app, 'app/routes/env.ts'), ENV_ROUTE)
+    writeFileSync(join(app, '.env'), 'FONDU_ENV_FILE=from-file\nFONDU_ENV_SET=from-file\n')
+  }
 
   // development: the page renders, and every module the browser would load is served without Vite finding a
   // dependency late (which reloads the page)
@@ -136,6 +150,7 @@ for (const target of Object.keys(production).filter(
     )
     await bodyLimit(base, output, target, 'dev')
     await streams(base, target, 'dev')
+    if (target !== 'cloudflare') await dotenv(base, target, 'dev', 'from-file')
   })
 
   // the home page prerendered
@@ -242,7 +257,15 @@ for (const target of Object.keys(production).filter(
       `${prefetched.status} ${none.status}`,
     )
     check(`${target} ${script}: says where it listens`, output().includes(says), output())
+    if (target !== 'cloudflare') await dotenv(base, target, script, 'from-file')
   })
+  // no .env file: it starts all the same, and has nothing from it
+  if (target !== 'cloudflare') {
+    rmSync(join(app, '.env'))
+    await run(app, script, port, async (base) => {
+      await dotenv(base, target, `${script}, no .env`, null)
+    })
+  }
 }
 // --checks: oxfmt and oxlint pass on the app as created; AGENTS.md says how to run them; no git hooks
 if (!process.argv[2] || process.argv[2] === 'node') {
@@ -406,6 +429,17 @@ async function staticPages(base, app, target, script, home, html, check) {
     name('the client manifest and files outside the build are not served (the path as sent)'),
     manifest.includes(only) && outside.every(Boolean),
     String(outside),
+  )
+}
+
+/** the app's .env in process.env (`file`: its value, null without the file); a variable set in the shell is not replaced */
+async function dotenv(base, target, script, file) {
+  const res = await fetch(base + '/env')
+  const body = await res.json().catch(() => ({}))
+  check(
+    `${target} ${script}: .env is in process.env, a variable already set wins`,
+    res.status === 200 && body.file === file && body.set === 'from-shell',
+    JSON.stringify(body),
   )
 }
 
