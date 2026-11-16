@@ -99,7 +99,8 @@ For the browser.
 
 ## `fondu/vite`
 
-The Vite plugin: `fondu(options)`.
+The Vite plugin: `fondu(options)`. The options are checked when the plugin is created: `target` is required, `port` is an integer from 1 to 65535
+(Bun and Node only), and an unknown option fails.
 
 | Option      | Is                                                                         |
 | ----------- | -------------------------------------------------------------------------- |

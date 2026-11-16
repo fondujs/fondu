@@ -53,7 +53,8 @@ replace Fondu's.
 
 ## The Vite plugin
 
-`fondu(options)` from `fondu/vite`:
+`fondu(options)` from `fondu/vite`: The options are checked when the plugin is created: `target` is required, `port` is an integer from 1 to 65535
+(Bun and Node only), and an unknown option fails.
 
 | Option      | Is                                                                       |
 | ----------- | ------------------------------------------------------------------------ |
