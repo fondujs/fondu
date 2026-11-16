@@ -579,7 +579,7 @@ ok(
   ok(
     'withoutSsr(): this route is rendered in the browser only (the page data, an empty #app)',
     browserOnly.includes('</script><div id="app"></div></body>') &&
-      browserOnly.includes('"component":"(demos)\\/ssr\\/browser"'),
+      browserOnly.includes('"component":"(demos)/ssr/browser"'),
   )
   await page.goto(BASE + '/ssr/browser', { waitUntil: 'networkidle0' })
   ok(
@@ -1467,7 +1467,7 @@ await page.waitForFunction(
   const doc = await (await fetchAs(BASE + '/admin/dashboard')).text()
   ok(
     '/admin: rendered in the browser only (withoutSsr in routes/admin/_middleware.ts)',
-    doc.includes('<div id="app"></div>') && doc.includes('"component":"admin\\/dashboard"'),
+    doc.includes('<div id="app"></div>') && doc.includes('"component":"admin/dashboard"'),
   )
   await page.goto(BASE + '/admin/dashboard', { waitUntil: 'networkidle0' })
   ok(

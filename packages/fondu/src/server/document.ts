@@ -43,9 +43,13 @@ export const withoutSsr = (): MiddlewareHandler => async (c, next) => {
   await next()
 }
 
-/** the page data, `/` and `<` escaped (no `</script>` in it), no HTML entities */
-const pageScript = (page: Page) =>
-  `<script data-page="app" type="application/json">${JSON.stringify(page).replace(/\//g, '\\/').replace(/</g, '\\u003c')}</script>`
+/**
+ * The page data as the document carries it, from the JSON of the page: `<` escaped, so nothing in it is `</script>` or
+ * `<!--` (the only ways out of a script's data); no HTML entities. U+2028 and U+2029 are fine in JSON, and the data is
+ * not run as JavaScript.
+ */
+const pageScript = (json: string) =>
+  `<script data-page="app" type="application/json">${json.replace(/</g, '\\u003c')}</script>`
 
 /**
  * A reload, Back to a page of another site: this entry's position, where fondu/client left it, before the first
@@ -108,6 +112,8 @@ export async function renderDocument(
     throw new Error(
       'fondu: the document must have `head` once, in <head>, and `body` once, in <body>',
     )
+  // the page once as JSON: the document's data, and what the render gets a fresh copy of
+  const json = JSON.stringify(page)
   let ssr: ReadableStream<string> | null = null
   // per request: nothing the page renders can be it
   const marker = crypto.randomUUID()
@@ -123,8 +129,9 @@ export async function renderDocument(
   try {
     // a HEAD: Hono drops its body without cancelling it, so React would keep rendering for nothing
     if (renderPage && !browserOnly.has(c) && c.req.method !== 'HEAD') {
-      // the page as the browser gets it, through JSON (a Date a string): the markup is the same on both sides
-      const stream = await renderPage(JSON.parse(JSON.stringify(page)), {
+      // the page as the browser gets it, through JSON (a Date a string): the markup is the same on both sides. A copy
+      // of its own: what the render changes in its props is not in the page data
+      const stream = await renderPage(JSON.parse(json), {
         nonce,
         onError: (error) => (live ? late(error) : void pending.push(error)),
         // React writes this as a script right after the shell, before what the boundaries add: where `restoreScroll`
@@ -149,7 +156,7 @@ export async function renderDocument(
   }
   // the page data first: the client reads the first `script[data-page]` in the document, so nothing in the page's
   // content can come before it
-  const data = pageScript(page)
+  const data = pageScript(json)
   // the stylesheets first, right after <meta charset>: found, and asked for, before anything else of the head, the
   // document's own tags included (React puts a JSX document's links and metas before `head`). A browser that lays
   // the page out early (Firefox's, with its tools open) has them sooner
