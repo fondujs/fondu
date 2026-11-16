@@ -110,7 +110,7 @@ that off with `progress: { forms: false }` in the plugin's options.
 
 ## Files and nested fields
 
-The body is one object, JSON or form fields. `user[name]` and `tags[]` become nested objects and arrays, files are
+The body is one object, JSON (`application/json` or `application/*+json`) or form fields. `user[name]` and `tags[]` become nested objects and arrays, files are
 `File` objects, empty file inputs are left out. A body that can't be one object is a 400, and so is one of more than 10,000 entries
 (files and empty file inputs count).
 

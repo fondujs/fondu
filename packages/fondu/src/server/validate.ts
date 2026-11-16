@@ -48,7 +48,8 @@ export async function readBody(c: Context): Promise<unknown> {
   const malformed = (why: string) =>
     new HTTPException(400, { message: `Malformed request body: ${why}` })
   const type = (c.req.header('content-type') ?? '').toLowerCase()
-  if (type.includes('application/json'))
+  // `application/json`, and any `application/*+json` (`merge-patch+json`, `vnd.api+json`), as the client reads an answer
+  if (type.includes('application/json') || /^application\/[^;\s]+\+json\s*(?:;|$)/.test(type))
     return c.req.json().catch(() => Promise.reject(malformed('invalid JSON')))
   if (!type.includes('multipart/form-data') && !type.includes('application/x-www-form-urlencoded'))
     return {}
