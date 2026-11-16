@@ -1,15 +1,12 @@
-import { createHash } from 'node:crypto'
 import { appendFileSync, existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { builtinModules } from 'node:module'
 import { relative, resolve, sep } from 'node:path'
-import { fileURLToPath } from 'node:url'
 
 import devServer, { defaultOptions as devServerDefaults } from '@hono/vite-dev-server'
 import react, { type Options as ReactOptions } from '@vitejs/plugin-react'
 import {
   loadEnv,
-  normalizePath,
   parseAst,
   transformWithOxc,
   type Plugin,
@@ -19,8 +16,12 @@ import {
 } from 'vite'
 
 import type { ProgressOptions } from '../client/progress.js'
-import { isPageFile, layoutsOf, pageId } from '../paths.js'
+import { isPageFile, pageId } from '../paths.js'
+import { nonceAttr, productionAssets } from './assets.js'
+import { entryCode, SERVER } from './entry.js'
 import { hmr, PAGE_EXPORTS, PROPS_EVENT } from './hmr.js'
+import { HONO } from './hono.js'
+import { fonduInstalled } from './installed.js'
 import { devServerNodeServer } from './node-server.js'
 import { checkOptions } from './options.js'
 import { nodeServer, prerender, worker } from './prerender.js'
@@ -54,18 +55,6 @@ export interface FonduOptions {
   progress?: ProgressOptions | false
 }
 
-/** what fondu's server code imports from Hono (test/hono.test.ts keeps the list complete) */
-export const HONO = [
-  'hono',
-  'hono/body-limit',
-  'hono/combine',
-  'hono/cookie',
-  'hono/csrf',
-  'hono/factory',
-  'hono/http-exception',
-  'hono/secure-headers',
-]
-const SERVER = './app/server.ts'
 const DEV_CSS = '/@fondu/dev.css'
 const V = {
   /** the app's entry: the browser's, and the server render's */
@@ -75,7 +64,6 @@ const V = {
   serverEntry: 'virtual:fondu/server-entry',
 }
 /** fondu's own `server/static.js`, imported by the built server's entry (by its path: it is not an export of the package) */
-const staticModule = normalizePath(fileURLToPath(new URL('../server/static.js', import.meta.url)))
 const resolved = (id: string) => '\0' + id
 
 /** the pages, for the app's entry: the route files of `app/routes/` that are React, but what isn't a route */
@@ -214,59 +202,6 @@ function serverEntry(options: FonduOptions): Plugin {
       },
     },
   }
-}
-
-/**
- * the code of dist/server/index.js: `paths` are the client build's files and directories (`/robots.txt`, `/assets`),
- * `assetsDir` the client build's (hashed files, which never change: the only ones served as immutable, and only when
- * serveStatic found the file: an app's route under the same URL keeps its own Cache-Control)
- */
-export function entryCode(options: FonduOptions, paths: string[], assetsDir = 'assets'): string {
-  const bun = options.target === 'bun'
-  const hashed = assetsDir ? `/${assetsDir}/*` : undefined
-  return [
-    // NODE_ENV first, and the rest imported after it: static imports run before this line, and React picks its
-    // production or development build when it is first loaded
-    `process.env.NODE_ENV ??= 'production'`,
-    `const { Hono } = await import('hono')`,
-    `const { serveStatic } = await import('${bun ? 'hono/bun' : '@hono/node-server/serve-static'}')`,
-    `const { fileURLToPath } = await import('node:url')`,
-    `const { default: app } = await import('${SERVER.slice(1)}')`,
-    `const clientRoot = fileURLToPath(new URL('../client', import.meta.url))`,
-    `const main = new Hono()`,
-    // prerender: the pages the build wrote are files, with the headers it decided (prerender.json, written after
-    // this server was built: not there while the build prerenders, so the app renders them then)
-    ...(options.prerender
-      ? [
-          `const { existsSync, readFileSync } = await import('node:fs')`,
-          `const { staticPages } = await import(${JSON.stringify(staticModule)})`,
-          `const prerendered = fileURLToPath(new URL('./prerender.json', import.meta.url))`,
-          `if (existsSync(prerendered)) main.use('*', staticPages(serveStatic, clientRoot, JSON.parse(readFileSync(prerendered, 'utf8')).headers))`,
-        ]
-      : []),
-    ...(hashed
-      ? [
-          `main.use(${JSON.stringify(hashed)}, serveStatic({ root: clientRoot, onFound: (_path, c) => c.header('Cache-Control', 'public, max-age=31536000, immutable') }))`,
-        ]
-      : []),
-    ...paths
-      .filter((p) => p !== hashed)
-      .map((p) => `main.use(${JSON.stringify(p)}, serveStatic({ root: clientRoot }))`),
-    `main.all('*', (c) => app.fetch(c.req.raw, c.env))`,
-    ...(bun
-      ? [
-          // Bun serves the default export, on `PORT` (it reads it: BUN_PORT and NODE_PORT too), else 3000
-          `export default app.websocket ? { fetch: main.fetch, websocket: app.websocket } : main`,
-        ]
-      : [
-          `const { serve } = await import('@hono/node-server')`,
-          `const server = serve({ fetch: main.fetch, port: Number(process.env.PORT) || 3000 }, (info) => console.log(\`Listening on http://localhost:\${info.port}\`))`,
-          `const shutdown = () => { server.close(() => process.exit(0)); setTimeout(() => process.exit(1), 10_000).unref() }`,
-          `process.on('SIGINT', shutdown)`,
-          `process.on('SIGTERM', shutdown)`,
-          `export default main`,
-        ]),
-  ].join('\n')
 }
 
 function runtimePlugins(options: FonduOptions): PluginOption[] {
@@ -451,6 +386,10 @@ function core(options: FonduOptions): Plugin {
         return {
           optimizeDeps: {
             entries: pages,
+            // the app's entry (virtual:fondu/entry, not scanned) imports fondu/client/internal: both are pre-bundled in
+            // the one run, so they share the one module of the client (one React context, one navigation state).
+            // Only for an installed fondu: a linked one (the workspace's) stays as Vite treats linked packages
+            ...(fonduInstalled() && { include: ['fondu/client', 'fondu/client/internal'] }),
             ...mdx,
             rolldownOptions: {
               plugins: [...mdx.rolldownOptions.plugins, scanRoutes(() => config.root)],
@@ -562,7 +501,8 @@ function core(options: FonduOptions): Plugin {
         const settings = { prerender: Boolean(options.prerender), progress: options.progress ?? {} }
         const glob = (pattern: string | string[]) => `import.meta.glob(${JSON.stringify(pattern)})`
         return [
-          `import { __entry${dev ? ', reload' : ''} } from 'fondu/client'`,
+          `import { __entry } from 'fondu/client/internal'`,
+          ...(dev ? [`import { reload } from 'fondu/client'`] : []),
           ...(dev ? [`import.meta.hot?.on(${JSON.stringify(PROPS_EVENT)}, () => reload())`] : []),
           `__entry({ ...${glob(PAGES_GLOB)}, ...${glob(ERROR_GLOB)} }, ${glob(LAYOUTS_GLOB)}, ${JSON.stringify(settings)})`,
         ].join('\n')
@@ -574,7 +514,7 @@ function core(options: FonduOptions): Plugin {
           : [
               `import '${V.entry}'`,
               `import { renderToReadableStream, renderToStaticMarkup } from 'react-dom/server'`,
-              `import { renderPage as render } from 'fondu/client'`,
+              `import { renderPage as render } from 'fondu/client/internal'`,
               `export const renderPage = (page, options) => render(page, (el) => renderToReadableStream(el, options))`,
               `export { renderToStaticMarkup as renderMarkup }`,
             ].join('\n')
@@ -634,87 +574,11 @@ function workerFirstForIndex(file: string) {
   writeFileSync(file, JSON.stringify(config))
 }
 
-const nonceAttr = `\${nonce ? \` nonce="\${nonce}"\` : ''}`
-
 function devAssets(base: string): string {
   const preamble = `import RefreshRuntime from "${base}@react-refresh";RefreshRuntime.injectIntoGlobalHook(window);window.$RefreshReg$=()=>{};window.$RefreshSig$=()=>(type)=>type;window.__vite_plugin_react_preamble_installed__=true;window.__getReactRefreshIgnoredExports=({id})=>window.${PAGE_EXPORTS}?.[id]??[]`
   return `export const version = null
 export function assetTags(_component, nonce) {
   return '<link rel="stylesheet" href="${base}${DEV_CSS.slice(1)}" data-fondu-dev-css>'
     + \`<script type="module"${nonceAttr}>${preamble}</script><script type="module" src="${base}@vite/client"${nonceAttr}></script><script type="module" src="${base}@id/__x00__${V.entry}"${nonceAttr}></script>\`
-}`
-}
-
-interface ManifestChunk {
-  file: string
-  isEntry?: boolean
-  css?: string[]
-  imports?: string[]
-}
-
-export function productionAssets(config: ResolvedConfig, options: FonduOptions): string {
-  const outDir =
-    options.target === 'cloudflare'
-      ? resolve(config.root, config.environments.client?.build.outDir ?? 'dist/client')
-      : resolve(config.root, 'dist/client')
-  const file = resolve(outDir, '.vite/manifest.json')
-  if (!existsSync(file))
-    throw new Error(
-      `fondu: the client manifest (${file}) is missing: the client is built first (\`vite build\`)`,
-    )
-  const text = readFileSync(file, 'utf8')
-  const manifest = JSON.parse(text) as Record<string, ManifestChunk>
-  const collect = (key: string, css: Set<string>, js: Set<string>, seen = new Set<string>()) => {
-    const chunk = manifest[key]
-    if (!chunk || seen.has(key)) return
-    seen.add(key)
-    js.add(chunk.file)
-    for (const c of chunk.css ?? []) css.add(c)
-    for (const i of chunk.imports ?? []) collect(i, css, js, seen)
-  }
-  const tags = (key: string) => {
-    const css = new Set<string>(),
-      js = new Set<string>()
-    collect(key, css, js)
-    return { css: [...css], js: [...js] }
-  }
-  // the app's entry: the client build's only one
-  const entry = tags(Object.keys(manifest).find((k) => manifest[k]!.isEntry)!)
-  const pages: Record<string, { css: string[]; js: string[] }> = {}
-  for (const key of Object.keys(manifest)) {
-    const file = key.startsWith('app/routes/') ? key.slice('app/routes/'.length) : undefined
-    if (!file || !(isPageFile(file) || /^_error\.tsx$/.test(file))) continue
-    // the page's chunk, and its layouts' (loaded with it)
-    const around = layoutsOf(file)
-      .map((dir) => `app/routes/${dir ? `${dir}/` : ''}_layout.tsx`)
-      .filter((k) => k in manifest)
-    const all = [...around, key].map(tags)
-    // each file once, and not the entry's: assetTags() adds those to every page (the entry's first)
-    const own = (files: string[], entryFiles: string[]) => [
-      ...new Set(files.filter((f) => !entryFiles.includes(f))),
-    ]
-    pages[pageId(file)] = {
-      css: own(
-        all.flatMap((t) => t.css),
-        entry.css,
-      ),
-      js: own(
-        all.flatMap((t) => t.js),
-        entry.js,
-      ),
-    }
-  }
-  const version = createHash('sha256').update(text).digest('hex').slice(0, 16)
-  return `const base = ${JSON.stringify(config.base)}
-const entry = ${JSON.stringify(entry)}
-const byPage = ${JSON.stringify(pages)}
-export const version = ${JSON.stringify(version)}
-export function assetTags(component, nonce) {
-  const page = byPage[component] ?? { css: [], js: [] }
-  const css = [...new Set([...entry.css, ...page.css])]
-  const [main, ...preload] = new Set([...entry.js, ...page.js])
-  return css.map((f) => \`<link rel="stylesheet" href="\${base}\${f}">\`).join('')
-    + preload.map((f) => \`<link rel="modulepreload" href="\${base}\${f}"${nonceAttr}>\`).join('')
-    + \`<script type="module" src="\${base}\${main}"${nonceAttr}></script>\`
 }`
 }

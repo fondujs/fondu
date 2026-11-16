@@ -35,6 +35,10 @@
       "types": "./dist/client.d.ts",
       "import": "./dist/client.js"
     },
+    "./client/internal": {
+      "types": "./dist/client/internal.d.ts",
+      "import": "./dist/client/internal.js"
+    },
     "./vite": {
       "types": "./dist/vite/index.d.ts",
       "import": "./dist/vite/index.js"

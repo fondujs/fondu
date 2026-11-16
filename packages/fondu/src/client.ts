@@ -122,8 +122,6 @@ export {
   useNavigation,
   reload,
   Deferred,
-  __entry,
-  renderPage,
   type Errors,
   type Navigation,
 } from './client/app.js'

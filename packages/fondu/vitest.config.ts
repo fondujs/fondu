@@ -14,7 +14,7 @@ const virtual: Plugin = {
     if (id === '\0virtual:fondu/ssr')
       return [
         `import { renderToReadableStream, renderToStaticMarkup } from 'react-dom/server'`,
-        `import { __entry, renderPage as render } from 'fondu/client'`,
+        `import { __entry, renderPage as render } from 'fondu/client/internal'`,
         `__entry(import.meta.glob(['/app/routes/**/*.tsx', '!/app/routes/**/_layout.tsx']), import.meta.glob('/app/routes/**/_layout.tsx'), { prerender: false, progress: false })`,
         `export const renderPage = (page, options, after) => render(page, (el) => renderToReadableStream(el, options), after)`,
         `export { renderToStaticMarkup as renderMarkup }`,
@@ -27,6 +27,10 @@ export default defineConfig({
   plugins: [virtual],
   resolve: {
     alias: [
+      {
+        find: /^fondu\/client\/internal$/,
+        replacement: fileURLToPath(new URL('./src/client/internal.ts', import.meta.url)),
+      },
       {
         find: /^fondu\/client$/,
         replacement: fileURLToPath(new URL('./src/client.ts', import.meta.url)),

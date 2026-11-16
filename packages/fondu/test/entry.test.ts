@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url'
 
 import { describe, expect, test } from 'vitest'
 
-import { entryCode } from '../src/vite/index.js'
+import { entryCode } from '../src/vite/entry.js'
 
 const hasBun = spawnSync('bun', ['--version']).status === 0
 const exportLine = (code: string) => code.split('\n').find((l) => l.startsWith('export default'))!

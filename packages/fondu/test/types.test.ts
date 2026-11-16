@@ -397,6 +397,28 @@ const exactly =
   <A>(value: A, ..._: Equal<A, T> extends true ? [] : [error: 'not the same type']) =>
     value
 
+// fondu/client's public values are exactly the documented list (apps/site/app/routes/docs/api.mdx), without the
+// internals (`__entry`, `renderPage`: fondu/client/internal) or the old names (`fetch`, `FetchError`)
+test('fondu/client exports exactly the documented values', () => {
+  const names = null as unknown as keyof typeof import('../src/client.js')
+  exactly<
+    | 'href'
+    | 'usePage'
+    | 'useNavigation'
+    | 'useForm'
+    | 'reload'
+    | 'Deferred'
+    | 'navigate'
+    | 'closeShallow'
+    | 'loadDocument'
+    | 'request'
+    | 'RequestError'
+  >()(names)
+  exactly<'__entry' | 'renderPage'>()(
+    null as unknown as keyof typeof import('../src/client/internal.js'),
+  )
+})
+
 type ClockWithDate = { at: Date; nested: { when: string }; n: number }
 // request(): a `.ts` route's answer as JSON delivers it, by the route file's own types
 const requests = [
