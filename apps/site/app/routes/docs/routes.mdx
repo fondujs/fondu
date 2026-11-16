@@ -190,6 +190,55 @@ export default defineMiddleware(async (c, next) => {
 
 A middleware for some handlers only goes in `defineHandler()`, before the handler: `defineHandler(requireUser, (c) => …)`.
 
+## Logging every request in development
+
+Hono's `logger()` in `app/routes/_middleware.ts` runs after Fondu's own middleware. It does not see a cross-site POST that
+the CSRF check refuses with a 403, and for `/users/` (a redirect to `/users`) it logs the 404 from before the redirect.
+To log every request with its final status, wrap the app `createApp()` returns in an outer Hono app, `logger()` first:
+
+```ts
+// app/server.ts
+import { createApp } from 'fondu'
+import { Hono } from 'hono'
+import type { Context } from 'hono'
+import { logger } from 'hono/logger'
+
+const app = createApp()
+
+// a Worker has an execution context (for `waitUntil`); the other targets throw when it is read
+const executionCtx = (c: Context) => {
+  try {
+    return c.executionCtx
+  } catch {}
+}
+
+const outer = new Hono()
+outer.use(logger())
+outer.all('*', (c) => app.fetch(c.req.raw, c.env, executionCtx(c)))
+
+export default import.meta.env.DEV ? outer : app
+```
+
+In development each request and its status go to the terminal; a build exports `app`, as before.
+
+```
+<-- GET /
+--> GET / 200 107ms
+<-- POST /echo
+--> POST /echo 303 15ms
+<-- GET /echo/
+--> GET /echo/ 301 1ms
+<-- GET /nope
+--> GET /nope 404 1ms
+<-- POST /echo
+--> POST /echo 403 2ms
+```
+
+- On Bun, if the app sets a `websocket`, export it too: `export default import.meta.env.DEV ? { fetch: outer.fetch, websocket: app.websocket } : app`.
+- Don't use `outer.route('/', app)`: it drops Fondu's not-found page. Don't use `mount()`: Hono deprecates it.
+- Keep `app.notFound()` and `app.onError()` on the inner `app`.
+- The logger prints the query string as it is: leave it out of production, or redact it, if URLs carry secrets.
+
 ## Errors
 
 Throw Hono's `HTTPException` with a status, or return `c.notFound()`: pages get the [error page](/docs/errors) with
