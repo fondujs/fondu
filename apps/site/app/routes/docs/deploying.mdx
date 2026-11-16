@@ -63,6 +63,14 @@ allows the scripts React sends with a streamed Suspense boundary.
 Pages are streamed, so a proxy in front of the app must not buffer responses for the visitor to get the first bytes
 early (nginx: `proxy_buffering off`).
 
+## Behind a proxy
+
+A proxy that terminates TLS gives the app `http://` requests, while the browser's `Referer` and `Origin` are `https://`.
+Fondu compares the `Host` header with them, not the scheme, and reads `X-Forwarded-Proto` to accept an `https` `Origin`.
+So the proxy must pass `Host` on and set `X-Forwarded-Proto: https`. `X-Forwarded-Host` is not read. Redirects Fondu makes
+(back to the page, the trailing slash, a new version) are paths, which resolve in the browser against the address
+it knows.
+
 ## Caching
 
 The built assets in `/assets/` (Vite's `build.assetsDir`) have hashed names, so they are served with a year-long

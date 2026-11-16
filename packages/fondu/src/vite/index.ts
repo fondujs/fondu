@@ -63,7 +63,6 @@ export const HONO = [
   'hono/factory',
   'hono/http-exception',
   'hono/secure-headers',
-  'hono/trailing-slash',
 ]
 const SERVER = './app/server.ts'
 const DEV_CSS = '/@fondu/dev.css'

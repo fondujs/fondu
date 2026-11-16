@@ -76,7 +76,7 @@ describe('pages', () => {
   test('a navigation from other assets: 409, X-Fondu-Location', async () => {
     const res = await app.request('/', { headers: fondu({ 'X-Fondu-Version': 'old' }) })
     expect(res.status).toBe(409)
-    expect(res.headers.get('x-fondu-location')).toBe(`${ORIGIN}/`)
+    expect(res.headers.get('x-fondu-location')).toBe('/')
   })
   test('other assets: not a 409 for a POST; the errors and flash wait for the reloaded page', async () => {
     const stale = fondu({ 'X-Fondu-Version': 'old' })
@@ -204,15 +204,15 @@ describe('routes', () => {
     })
     expect(relative.headers.get('x-fondu-redirect')).toBe('/notes?a=1#end')
   })
-  test('trailing slash: trimmed (Hono), the redirect stays on this site', async () => {
+  test('trailing slash: trimmed, the redirect is relative', async () => {
     const res = await app.request('/items/?x=1', { headers: html })
-    expect([res.status, res.headers.get('location')]).toEqual([301, `${ORIGIN}/items?x=1`])
-    expect(new URL((await app.request('//evil.com/')).headers.get('location')!).origin).toBe(ORIGIN)
+    expect([res.status, res.headers.get('location')]).toEqual([301, '/items?x=1'])
+    expect((await app.request('//evil.com/')).headers.get('location')).toBe('/evil.com')
   })
   test("trailing slash: 'append'", async () => {
     const appended = createApp({ trailingSlash: 'append' })
     expect((await appended.request('/boom', { headers: html })).headers.get('location')).toBe(
-      `${ORIGIN}/boom/`,
+      '/boom/',
     )
     expect((await appended.request('/api/data/')).status).toBe(200)
   })
@@ -244,6 +244,170 @@ describe('routes', () => {
       body: 'name=x',
     })
     expect(res.status).toBe(403)
+  })
+})
+
+describe('behind a TLS-terminating proxy (Host: example.com, https in the browser, http here)', () => {
+  const proxied = {
+    Host: 'example.com',
+    'X-Forwarded-Proto': 'https',
+    Origin: 'https://example.com',
+    Referer: 'https://example.com/items?x=1',
+  }
+  test('back(): the page the form was on, with or without Sec-Fetch-Site', async () => {
+    for (const extra of [{ 'Sec-Fetch-Site': 'same-origin' }, {}] as Array<
+      Record<string, string>
+    >) {
+      const res = await app.request('/redirect?nothing', {
+        method: 'POST',
+        headers: { ...fondu(), ...proxied, ...extra },
+      })
+      expect([res.status, res.headers.get('location')], JSON.stringify(extra)).toEqual([
+        303,
+        '/items?x=1',
+      ])
+    }
+  })
+  test('Sec-Fetch-Site: same-origin vouches for the Referer: only its path and query are used', async () => {
+    const res = await app.request('/redirect?nothing', {
+      method: 'POST',
+      headers: {
+        ...fondu(),
+        'Sec-Fetch-Site': 'same-origin',
+        Referer: 'https://other.example//deep/page?a=1',
+      },
+    })
+    expect(res.headers.get('location')).toBe('/deep/page?a=1')
+  })
+  test('a validation failure: back to the page', async () => {
+    const res = await app.request('/items', {
+      method: 'POST',
+      headers: { ...fondu(), ...proxied, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'x' }),
+    })
+    expect([res.status, res.headers.get('location')]).toEqual([303, '/items?x=1'])
+  })
+  test('a redirect to this site, as the browser knows it: followed in place, not a document load', async () => {
+    const res = await app.request('/redirect?absolute', {
+      method: 'POST',
+      headers: { ...fondu(), ...proxied },
+    })
+    expect([res.status, res.headers.get('location'), res.headers.get('x-fondu-location')]).toEqual([
+      303,
+      'https://example.com/notes',
+      null,
+    ])
+    // another site is another site, whatever Sec-Fetch-Site says of the request
+    const away = await app.request('/redirect?away', {
+      method: 'POST',
+      headers: { ...fondu(), Origin: ORIGIN, 'Sec-Fetch-Site': 'same-origin' },
+    })
+    expect([away.status, away.headers.get('x-fondu-location')]).toEqual([
+      409,
+      'https://example.com/',
+    ])
+  })
+  test('the trailing-slash redirect is relative', async () => {
+    const res = await app.request('/items/?x=1', { headers: { ...html, ...proxied } })
+    expect([res.status, res.headers.get('location')]).toEqual([301, '/items?x=1'])
+    const appended = createApp({ trailingSlash: 'append' })
+    expect(
+      (await appended.request('/boom?x=1', { headers: { ...html, ...proxied } })).headers.get(
+        'location',
+      ),
+    ).toBe('/boom/?x=1')
+  })
+  test('X-Fondu-Location (a new build) is a path and query', async () => {
+    const res = await app.request('/items?x=1', {
+      headers: { ...fondu({ 'X-Fondu-Version': 'old' }), ...proxied },
+    })
+    expect([res.status, res.headers.get('x-fondu-location')]).toEqual([409, '/items?x=1'])
+    const slashes = await app.request('//evil.com/path', {
+      headers: fondu({ 'X-Fondu-Version': 'old' }),
+    })
+    expect(slashes.headers.get('x-fondu-location')).toBe('/evil.com/path')
+  })
+  test('CSRF: a form post with an https Origin passes without Sec-Fetch-Site; another site, the other port or scheme: 403', async () => {
+    const post = (headers: Record<string, string>) =>
+      app.request('/items', {
+        method: 'POST',
+        headers: {
+          Host: 'example.com',
+          'Content-Type': 'application/x-www-form-urlencoded',
+          ...headers,
+        },
+        body: 'name=Ada',
+      })
+    expect((await post({ ...proxied })).status).toBe(303)
+    expect((await post({ Origin: 'https://example.com' })).status).toBe(403) // https, but no proxy says so
+    for (const origin of [
+      'https://evil.example',
+      'https://example.com:8443',
+      'https://example.com.evil.example',
+      'null',
+    ])
+      expect((await post({ ...proxied, Origin: origin })).status, origin).toBe(403)
+    expect((await post({ 'X-Forwarded-Proto': 'https' })).status).toBe(403) // no Origin
+    // Sec-Fetch-Site is handled as Hono does
+    expect((await post({ 'Sec-Fetch-Site': 'same-origin' })).status).toBe(303)
+    expect((await post({ ...proxied, 'Sec-Fetch-Site': 'cross-site' })).status).toBe(303)
+    expect(
+      (await post({ 'Sec-Fetch-Site': 'cross-site', Origin: 'https://evil.example' })).status,
+    ).toBe(403)
+  })
+  test('CSRF: the origin option of an app replaces ours', async () => {
+    const custom = createApp({ csrf: { origin: 'https://app.example' } })
+    const post = (origin: string) =>
+      custom.request('/items', {
+        method: 'POST',
+        headers: {
+          ...proxied,
+          Origin: origin,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'name=Ada',
+      })
+    expect([
+      (await post('https://app.example')).status,
+      (await post('https://example.com')).status,
+    ]).toEqual([303, 403])
+  })
+  test('the trailing-slash redirect never leaves this site', async () => {
+    const appended = createApp({ trailingSlash: 'append' })
+    // [asked, trimmed to, appended to (asked without its slash)]
+    const cases = [
+      ['//evil.com/', '/evil.com', '/evil.com/'],
+      ['///evil.com/', '/evil.com', '/evil.com/'],
+      ['/\\evil.com/', '/evil.com', '/evil.com/'],
+      ['/%2Fevil.com/', '/%2Fevil.com', '/%2Fevil.com/'],
+      ['/%5Cevil.com/', '/%5Cevil.com', '/%5Cevil.com/'],
+      ['/%2f%2fevil.com/', '/%2f%2fevil.com', '/%2f%2fevil.com/'],
+      [
+        '//evil.com/?next=//other.example/',
+        '/evil.com?next=//other.example/',
+        '/evil.com/?next=//other.example/',
+      ],
+    ] as const
+    for (const [asked, trimmed, withSlash] of cases) {
+      for (const method of ['GET', 'HEAD']) {
+        const res = await app.request(asked, { method, headers: html })
+        expect([res.status, res.headers.get('location')], `${method} ${asked}`).toEqual([
+          301,
+          trimmed,
+        ])
+      }
+      const without = asked.replace(/\/(?=\?|$)/, '')
+      const res = await appended.request(without, { headers: html })
+      expect([res.status, res.headers.get('location')], without).toEqual([301, withSlash])
+      for (const location of [trimmed, withSlash])
+        expect(new URL(location, ORIGIN).origin, location).toBe(ORIGIN)
+    }
+  })
+  test('the trailing-slash redirect: the root and other methods as before', async () => {
+    expect((await app.request('/', { headers: html })).status).toBe(200)
+    expect(
+      (await app.request('/items/', { method: 'POST', headers: { Origin: ORIGIN } })).status,
+    ).toBe(404)
   })
 })
 

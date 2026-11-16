@@ -7,7 +7,15 @@ import type { Page } from '../client/navigation.js'
 import type { Shared } from '../types.js'
 import { renderDocument } from './document.js'
 import { flashCookie, takeCarried } from './flash.js'
-import { appendHeader, back, isPageRequest, isPrerendering, sameOrigin } from './http.js'
+import {
+  appendHeader,
+  back,
+  isPageRequest,
+  isPrerendering,
+  pathAndQuery,
+  referer,
+  sameOrigin,
+} from './http.js'
 
 /**
  * Fondu's protocol: a document gets the HTML page, a navigation of fondu/client (`X-Fondu`) the page as JSON.
@@ -166,8 +174,8 @@ export const routePage =
 /** This URL as the page's: the request's for a GET, the page the request came from otherwise. */
 function pageUrl(c: Context): string {
   const here = new URL(c.req.url)
-  const from = c.req.method === 'GET' ? here : (sameOrigin(c, c.req.header('referer')) ?? here)
-  return from.pathname.replace(/^\/+/, '/') + from.search
+  const from = c.req.method === 'GET' ? here : (referer(c) ?? here)
+  return pathAndQuery(from)
 }
 
 /**
@@ -313,7 +321,10 @@ const versionCheck: MiddlewareHandler = async (c, next) => {
     isPageRequest(c) &&
     c.req.header('x-fondu-version') !== version
   ) {
-    return c.body(null, 409, { 'X-Fondu-Location': c.req.url, Vary: NAVIGATION_VARY })
+    return c.body(null, 409, {
+      'X-Fondu-Location': pathAndQuery(new URL(c.req.url)),
+      Vary: NAVIGATION_VARY,
+    })
   }
   await next()
   // a URL answers a navigation and a document differently: caches keep them apart
@@ -334,7 +345,7 @@ const versionCheck: MiddlewareHandler = async (c, next) => {
     // this site's root (a relative Location is the request's, not the page's on the screen)
     else if (to.includes('#'))
       c.res = c.body(null, 200, {
-        'X-Fondu-Redirect': here.pathname.replace(/^\/+/, '/') + here.search + here.hash,
+        'X-Fondu-Redirect': pathAndQuery(here) + here.hash,
       })
   }
 }

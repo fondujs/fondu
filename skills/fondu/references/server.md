@@ -110,6 +110,9 @@ export const GET = defineHandler((c) => c.json({ ok: true }))
 - **Cloudflare Workers**: `npm run deploy` (`vite build && wrangler deploy`). `wrangler.jsonc`'s `main` is
   `./app/server.ts`; bindings and variables are declared there, secrets in `.dev.vars` and `wrangler secret put`.
   `npm run cf-typegen` writes `worker-configuration.d.ts`.
+- Behind a proxy that terminates TLS: pass `Host` on and set `X-Forwarded-Proto: https`. Fondu compares hosts (not
+  schemes) for `Referer`, `Origin` and redirects to this site; `X-Forwarded-Host` is not read. Its own redirects
+  (`back()`, the trailing slash, a new version) are paths.
 - Pages are streamed: a proxy in front must not buffer responses (nginx: `proxy_buffering off`).
 - Built assets in `/assets/` are cached for a year; pages are `Cache-Control: private, no-cache`.
   A document is `Vary: X-Fondu`; a navigation also varies on `X-Fondu-Version`, `X-Fondu-Only` and `X-Fondu-Component`.

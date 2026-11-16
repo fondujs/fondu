@@ -1863,16 +1863,15 @@ await page.waitForFunction(
     headers: { Accept: 'text/html' },
   })
   ok(
-    'trailing slash: /contacts/?x=2 -> 301 /contacts?x=2',
-    slash.status === 301 &&
-      new URL(slash.headers.get('location')).pathname +
-        new URL(slash.headers.get('location')).search ===
-        '/contacts?x=2',
+    'trailing slash: /contacts/?x=2 -> 301, a relative Location /contacts?x=2',
+    slash.status === 301 && slash.headers.get('location') === '/contacts?x=2',
+    `${slash.status} ${slash.headers.get('location')}`,
   )
   const doubleSlash = await fetch(BASE + '//evil.com/', { redirect: 'manual' })
   ok(
     'trailing slash redirect stays on this site',
-    doubleSlash.status !== 301 || new URL(doubleSlash.headers.get('location')).origin === ORIGIN,
+    doubleSlash.status !== 301 ||
+      new URL(doubleSlash.headers.get('location'), BASE).origin === ORIGIN,
     `${doubleSlash.status} ${doubleSlash.headers.get('location')}`,
   )
   const sources = await Promise.all(
