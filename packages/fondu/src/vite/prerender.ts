@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { createServer } from 'node:net'
-import { dirname, join, resolve } from 'node:path'
+import { dirname, join, resolve, sep } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
 import type { Logger } from 'vite'
@@ -125,6 +125,10 @@ export async function prerender(
       logger.warn('fondu: prerender is on, and no route has `export const prerender`')
       return
     }
+
+    // every file to write, known before the first: all inside the client directory, none two pages' (or a directory)
+    const unsafe = outputProblems(paths, clientDir)
+    if (unsafe.length) return fail(unsafe)
 
     let security: Record<string, string> | undefined
     const errors: string[] = []
@@ -275,7 +279,47 @@ interface Wrangler {
   }>
 }
 
+/** the files of these pages (decoded), all of which stay inside `dir`, each once and none a directory of another */
+export function outputProblems(paths: string[], dir: string): string[] {
+  const problems: string[] = []
+  const owner = new Map<string, string>()
+  for (const path of paths) {
+    let files: string[]
+    try {
+      files = Object.values(staticFiles(path))
+    } catch {
+      problems.push(`${path}: not a valid URL path (it does not decode)`)
+      continue
+    }
+    for (const file of files) {
+      if (file.includes('\\') || !inside(dir, file)) {
+        problems.push(
+          `${path}: its file (${JSON.stringify(file)}) is not inside the build's directory`,
+        )
+        continue
+      }
+      const other = owner.get(file)
+      if (other !== undefined) problems.push(`${path} and ${other} are the same file (${file})`)
+      else owner.set(file, path)
+    }
+  }
+  // a page's file that is another's directory (`/a.html` is `a.html.html`, but `/a` is `a.html`: `/a.html/b` its child)
+  for (const [file, path] of owner)
+    for (let at = file.indexOf('/'); at !== -1; at = file.indexOf('/', at + 1)) {
+      const other = owner.get(file.slice(0, at))
+      if (other !== undefined)
+        problems.push(`${path} needs ${file.slice(0, at)} to be a directory, the file of ${other}`)
+    }
+  return problems
+}
+
+const inside = (dir: string, file: string) => {
+  const to = resolve(dir, file)
+  return to.startsWith(resolve(dir) + sep)
+}
+
 function write(dir: string, file: string, content: string) {
+  if (!inside(dir, file)) throw new Error(`fondu: ${JSON.stringify(file)} is not inside ${dir}`)
   const to = join(dir, file)
   mkdirSync(dirname(to), { recursive: true })
   writeFileSync(to, content)

@@ -54,7 +54,8 @@ props included, and every [deferred prop](/docs/pages#deferred-props) is evaluat
 - answers with a status other than 200, such as a redirect;
 - takes POSTs at its URL (an `action` or `actions`): Cloudflare answers those with 405 for a static file, so Fondu
   refuses them on every target;
-- has a URL ending in `index`: see [Limits](#limits).
+- has a URL ending in `index`: see [Limits](#limits);
+- lists a param value that is not a file name: one with a `/` or `\` in it, or `.` / `..` (each segment of a catch-all is one name); or two pages that would be the same file.
 
 ## Headers
 

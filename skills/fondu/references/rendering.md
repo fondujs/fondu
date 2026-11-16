@@ -56,7 +56,9 @@ export const prerender = () => posts.map((post) => ({ slug: post.slug }))
 - A static page is the same for everyone: rendered once, for a visitor with no cookies and no query, shared props
   included, every Suspense boundary resolved, deferred props evaluated.
 - The build stops, naming the route, when a page answers with a status other than 200 (a redirect), takes POSTs (an
-  `action` or `actions`), or has a URL ending in `index` (`routes/blog/index.tsx` at `/blog` is fine).
+  `action` or `actions`), has a URL ending in `index` (`routes/blog/index.tsx` at `/blog` is fine), or lists a param
+  value that is not a file name (`/` or `\` in it, or `.` / `..`; a `[...catch-all]`'s segments are each one), or two
+  pages that would be one file.
 - On Cloudflare, the Worker the build runs reads `.dev.vars`: keep what static pages show out of it.
 - The other pages are still answered by the server.
 
