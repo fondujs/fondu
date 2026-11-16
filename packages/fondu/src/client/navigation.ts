@@ -138,7 +138,11 @@ export function startNavigation({
     if (entry && Date.now() - entry.at < freshFor) return
     const answer = (async () => {
       try {
-        const response = await fetch(key, { headers: { ...headers(), 'X-Fondu-Prefetch': 'true' } })
+        const response = await fetch(key, {
+          headers: { ...headers(), 'X-Fondu-Prefetch': 'true' },
+          // not in the way of the page's own requests
+          priority: 'low',
+        })
         if (response.status === 200 && response.headers.has('X-Fondu'))
           return { body: await response.text(), headers: response.headers }
       } catch {
