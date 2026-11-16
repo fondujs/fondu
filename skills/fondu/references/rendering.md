@@ -14,6 +14,7 @@ fallback and is sent when it resolves.
 - Tags a boundary renders (`<title>`, `<meta>`) land in `<body>`; the first `<title>` of the document wins. Without
   JavaScript the fallback stays.
 - A component that suspends outside any boundary holds the whole page: wrap what is slow in `<Suspense>`.
+- When the visitor leaves (the request is aborted), the server render stops, and nothing is logged.
 - A page's own data that comes with a second request is a [deferred prop](data.md).
 - If a page throws while rendering on the server, Fondu logs it and sends the page to render in the browser. Fix it all
   the same. A boundary that throws after the shell is sent renders in the browser, and the status stays.
