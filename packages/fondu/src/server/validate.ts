@@ -42,7 +42,7 @@ export function validationErrorResponse(c: Context, error: ValidationError): Res
 /**
  * A request body as one object: JSON, or form fields as `formObject` reads them (the browser's `useForm` too). A body
  * that can't be one object (JSON or form data that doesn't parse, `a=1&a[b]=2`, names nested deeper than 32, more than 10,000
- * entries) is a 400.
+ * entries) is a 400. A body of another type (`text/plain`, none) is a 415; a request with no body is `{}`.
  */
 export async function readBody(c: Context): Promise<unknown> {
   const malformed = (why: string) =>
@@ -51,8 +51,20 @@ export async function readBody(c: Context): Promise<unknown> {
   // `application/json`, and any `application/*+json` (`merge-patch+json`, `vnd.api+json`), as the client reads an answer
   if (type.includes('application/json') || /^application\/[^;\s]+\+json\s*(?:;|$)/.test(type))
     return c.req.json().catch(() => Promise.reject(malformed('invalid JSON')))
-  if (!type.includes('multipart/form-data') && !type.includes('application/x-www-form-urlencoded'))
+  if (
+    !type.includes('multipart/form-data') &&
+    !type.includes('application/x-www-form-urlencoded')
+  ) {
+    // a body is what Content-Length or Transfer-Encoding says (a request with neither has none): that of an unknown
+    // type is refused, not read as `{}`
+    const hasBody =
+      Number(c.req.header('content-length')) > 0 || c.req.header('transfer-encoding') !== undefined
+    if (hasBody)
+      throw new HTTPException(415, {
+        message: 'Unsupported request body: send JSON or form data',
+      })
     return {}
+  }
   const form = await c.req.formData().catch(() => Promise.reject(malformed('invalid form data')))
   try {
     return formObject(form.entries())

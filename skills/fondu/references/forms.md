@@ -113,6 +113,7 @@ that off with `progress: { forms: false }` in the plugin's options.
 The body is one object, JSON (`application/json` or `application/*+json`) or form fields. `user[name]` and `tags[]` become nested objects and arrays, files are
 `File` objects, empty file inputs are left out. A body that can't be one object is a 400, and so is one of more than 10,000 entries
 (files and empty file inputs count).
+A body of any other type (`text/plain`, or none) is a 415; a request with no body is `{}`.
 
 The body is read whole, in memory, files too (about twice its size while parsed). Over 10 MB is a 413 by default,
 answered with the error page. The limit is in each route that takes a body (POST, PUT, PATCH, DELETE), after its directories' `_middleware.ts` (the
