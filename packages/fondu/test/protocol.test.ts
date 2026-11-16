@@ -568,14 +568,19 @@ describe('withValidator', () => {
       })
       expect([res.status, await res.json()], type).toEqual([201, { n: 3 }])
     }
-    // not JSON: no body is read (as before)
+    // not JSON, and not a form: a body of it is a 415 (#243); with no body, there are no fields
     for (const type of ['text/plain', 'application/xml', 'text/foo+json']) {
       const res = await app.request('/api/data', {
         method: 'POST',
-        headers: { 'Content-Type': type, Origin: ORIGIN },
+        headers: { 'Content-Type': type, 'Content-Length': '7', Origin: ORIGIN },
         body: '{"n":3}',
       })
-      expect(res.status, type).toBe(422)
+      expect(res.status, type).toBe(415)
+      const empty = await app.request('/api/data', {
+        method: 'POST',
+        headers: { 'Content-Type': type, Origin: ORIGIN },
+      })
+      expect(empty.status, type).toBe(422)
     }
     const bad = await app.request('/api/data', {
       method: 'POST',

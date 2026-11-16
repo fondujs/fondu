@@ -160,6 +160,11 @@ one object is a 400: JSON that doesn't parse, a name that is both a value and an
 deeper than 32, and more than 10,000 entries (files and empty file inputs count).
 A body of any other type (`text/plain`, or none) is a 415 Unsupported Media Type; a request with no body is `{}`.
 
+`withValidator({ query })` reads the query the same way: `?tag=a&tag=b` and `?tag[]=a` are lists, `?user[name]=Ada` is an
+object, and `?a=1&a[b]=2` is a 400. A query carries text, so a schema that wants a number or a boolean parses it
+(`z.coerce.number()`), and a list field is written `tag[]=a` (`href()` does), as `?tag=a` is a string. A `useForm` that
+sends a GET form reads its fields this way too.
+
 ## The body limit
 
 The body is read whole, in memory, files too, and it takes about twice its size while it is parsed. A body over 10 MB

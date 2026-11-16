@@ -3,6 +3,7 @@ import { Hono } from 'hono'
 import { describe, expect, test } from 'vitest'
 
 import { href } from '../src/client.js'
+import { formObject } from '../src/form.js'
 import {
   checkRouteName,
   fillPattern,
@@ -206,6 +207,43 @@ describe('form bodies', () => {
   })
 })
 
+describe('href() and the query, as formObject reads it (#238)', () => {
+  const go = href as (path: string, options?: Record<string, unknown>) => string
+  const back = (query: Record<string, unknown>) =>
+    formObject(new URL(go('/s', { query }), 'http://localhost').searchParams.entries())
+
+  test('a list is written as name[], also of one item', () => {
+    expect(go('/s', { query: { tag: ['a'] } })).toBe('/s?tag%5B%5D=a')
+    expect(go('/s', { query: { tag: ['a', 'b'] } })).toBe('/s?tag%5B%5D=a&tag%5B%5D=b')
+  })
+  test('an object is written as name[key]', () => {
+    expect(go('/s', { query: { user: { name: 'Ada', tags: ['x'] } } })).toBe(
+      '/s?user%5Bname%5D=Ada&user%5Btags%5D%5B%5D=x',
+    )
+  })
+  test('what is written reads back as the same value', () => {
+    expect(back({ q: 'a b&c=d' })).toEqual({ q: 'a b&c=d' })
+    expect(back({ page: '2' })).toEqual({ page: '2' })
+    expect(back({ tag: ['a'] })).toEqual({ tag: ['a'] })
+    expect(back({ tag: ['a', 'b', 'c'] })).toEqual({ tag: ['a', 'b', 'c'] })
+    expect(back({ user: { name: 'Ada', tags: ['x'], address: { city: 'Oslo' } } })).toEqual({
+      user: { name: 'Ada', tags: ['x'], address: { city: 'Oslo' } },
+    })
+    expect(back({ rows: [{ a: '1' }, { a: '2', b: '3' }] })).toEqual({
+      rows: [{ a: '1' }, { a: '2', b: '3' }],
+    })
+    expect(back({ grid: [['a', 'b'], ['c']] })).toEqual({ grid: [['a', 'b'], ['c']] })
+  })
+  test('undefined and null are left out, in a list and in an object too', () => {
+    expect(
+      back({ tag: ['a', undefined, null, 'b'], n: null, o: { x: undefined, y: '1' } }),
+    ).toEqual({
+      tag: ['a', 'b'],
+      o: { y: '1' },
+    })
+  })
+})
+
 describe('href()', () => {
   // untyped here: no app's routes to check against
   const to = href as (path: string, params?: Record<string, number>) => string
@@ -224,6 +262,6 @@ describe('href()', () => {
     )
     expect(go('/docs', { hash: 'set up' })).toBe('/docs#set%20up')
     expect(go('/docs', { query: {}, hash: '' })).toBe('/docs')
-    expect(go('/tags', { query: { t: ['a', 'b'] } })).toBe('/tags?t=a&t=b')
+    expect(go('/tags', { query: { t: ['a', 'b'] } })).toBe('/tags?t%5B%5D=a&t%5B%5D=b')
   })
 })

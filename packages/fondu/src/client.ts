@@ -37,8 +37,15 @@ type HandlersOf<P extends string> = P extends `${infer K}?${infer A}`
         ? G
         : never
     : never
-/** a query value: what its schema takes (`unknown`, as a coercing schema's input: any) */
-type QueryValue = string | number | boolean | null | undefined
+/** a query value: what `href()` writes and `formObject` reads back (`unknown`, as a coercing schema's input: any of these) */
+type QueryValue =
+  | string
+  | number
+  | boolean
+  | null
+  | undefined
+  | QueryValue[]
+  | { [key: string]: QueryValue }
 /** the query a handler's schema takes (a `withValidator` handler; any query otherwise) */
 type QueryOfHandler<H> = [H] extends [{ readonly [schemasOf]?: infer S }]
   ? S extends { query: { '~standard': { types?: infer T } } }
@@ -65,6 +72,8 @@ type Args<P extends string> = [ParamNames<P>] extends [never]
  * one of a file's `actions`: `href('/users/:id?delete', { id })`. Only patterns that exist; params are required.
  * A form's action too: `<form method="post" action={href('/logout')}>`. With `query` (typed by the route's
  * `withValidator({ query })`, if it has one) and `hash`: `href('/search', { query: { q }, hash: 'results' })`.
+ * The query is written as `withValidator({ query })` reads it: lists as `tag[]=a`, objects as `user[name]=Ada`; numbers
+ * and booleans as text. `undefined`, `null`, an empty list and an empty object are left out.
  */
 export function href<P extends Href>(path: P, ...[options]: Args<P>): string {
   const { query, hash, ...params } = (options ?? {}) as {
@@ -75,6 +84,24 @@ export function href<P extends Href>(path: P, ...[options]: Args<P>): string {
   return buildUrl(path, params, query, hash)
 }
 
+/**
+ * A query value as `formObject` reads it back: a list is `name[]` (a one-item list too), an object `name[key]`, a list
+ * of objects or lists `name[0][key]`; `undefined` and `null` are left out.
+ */
+function writeQuery(search: URLSearchParams, name: string, value: unknown): void {
+  if (value === undefined || value === null) return
+  if (Array.isArray(value)) {
+    const items = value.filter((v) => v !== undefined && v !== null)
+    const flat = items.every((v) => typeof v !== 'object')
+    items.forEach((v, i) => writeQuery(search, `${name}[${flat ? '' : i}]`, v))
+  } else if (
+    typeof value === 'object' &&
+    (Object.getPrototypeOf(value) ?? Object.prototype) === Object.prototype
+  ) {
+    for (const [key, v] of Object.entries(value)) writeQuery(search, `${name}[${key}]`, v)
+  } else search.append(name, String(value))
+}
+
 function buildUrl(
   path: string,
   params: Record<string, unknown>,
@@ -83,9 +110,7 @@ function buildUrl(
 ): string {
   let url = fillPattern(path, params as Record<string, string | number>)
   const search = new URLSearchParams()
-  for (const [name, value] of Object.entries(query ?? {}))
-    for (const v of [value].flat())
-      if (v !== undefined && v !== null) search.append(name, String(v))
+  for (const [name, value] of Object.entries(query ?? {})) writeQuery(search, name, value)
   const qs = search.toString()
   if (qs) url += (url.includes('?') ? '&' : '?') + qs
   if (hash) url += `#${encodeURI(hash)}`

@@ -1,6 +1,8 @@
 // The form fields as one object, the server's and the browser's (useForm) reading: the same code
+import { defineHandler } from 'fondu'
 import { Hono } from 'hono'
 import { describe, expect, test, vi } from 'vitest'
+import * as z from 'zod/mini'
 
 import { fieldKey, formObject, issueErrors, MalformedForm } from '../src/form.js'
 import { readBody } from '../src/server/validate.js'
@@ -159,7 +161,11 @@ describe('a body of a type readBody cannot read (#243)', () => {
     expect(res.status).toBe(415)
   })
   test('no body: {}, with no type, with a type, or with Content-Length: 0', async () => {
-    for (const headers of [{}, { 'Content-Type': 'text/plain' }, { 'Content-Length': '0' }]) {
+    for (const headers of [
+      {},
+      { 'Content-Type': 'text/plain' },
+      { 'Content-Length': '0' },
+    ] as Array<Record<string, string>>) {
       const res = await post({ headers })
       expect([res.status, await res.json()]).toEqual([200, {}])
     }
@@ -192,5 +198,42 @@ describe('a body of a type readBody cannot read (#243)', () => {
     const fd = new FormData()
     fd.append('a', '1')
     expect(await send(fd)).toEqual([200, { a: '1' }])
+  })
+})
+
+describe('withValidator({ query }) reads the query as a body is read (#238)', () => {
+  const handlers = defineHandler.withValidator({ query: z.looseObject({}) })((c, { query }) =>
+    c.json(query),
+  )
+  const app = new Hono().get('/', ...(handlers as [never]))
+  const read = async (search: string) => {
+    const res = await app.request(`/${search}`)
+    return [res.status, await res.json()]
+  }
+  test('one value stays a string; repeated keys and a[] are lists', async () => {
+    expect(await read('?q=ada&page=2')).toEqual([200, { q: 'ada', page: '2' }])
+    expect(await read('?tag=a&tag=b')).toEqual([200, { tag: ['a', 'b'] }])
+    expect(await read('?tag[]=a')).toEqual([200, { tag: ['a'] }])
+    expect(await read('?tag%5B%5D=a&tag%5B%5D=b')).toEqual([200, { tag: ['a', 'b'] }])
+  })
+  test('a[b] nests', async () => {
+    expect(await read('?user[name]=Ada&user[tags][]=x')).toEqual([
+      200,
+      { user: { name: 'Ada', tags: ['x'] } },
+    ])
+  })
+  test('a=1&a[b]=2 is a 400, as in a body', async () => {
+    for (const search of ['?a=1&a[b]=2', '?a[b]=2&a=1']) {
+      const res = await app.request(`/${search}`)
+      expect([res.status, await res.text()], search).toEqual([
+        400,
+        'Malformed query: `' +
+          (search.startsWith('?a=') ? 'a[b]' : 'a') +
+          '` is both a value and an object',
+      ])
+    }
+  })
+  test('names that would change the object itself are ignored', async () => {
+    expect(await read('?__proto__[x]=1&name=Ada')).toEqual([200, { name: 'Ada' }])
   })
 })

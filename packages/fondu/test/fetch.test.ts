@@ -30,7 +30,7 @@ describe('the request', () => {
       query: { sort: 'name', tag: ['a', 'b'], skip: undefined },
     })
     const [url, init] = spy.mock.calls[0]!
-    expect(url).toBe('/api/users/7?sort=name&tag=a&tag=b')
+    expect(url).toBe('/api/users/7?sort=name&tag%5B%5D=a&tag%5B%5D=b')
     expect(init.method).toBe('GET')
     expect(init.body).toBeUndefined()
     expect(Object.fromEntries(new Headers(init.headers))).toEqual({ accept: 'application/json' })

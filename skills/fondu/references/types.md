@@ -28,7 +28,11 @@ href('/search', { query: { q: 'ada', page: 2 }, hash: 'results' }) // '/search?q
 ```
 
 With `withValidator({ query })` on the route's loader, a `.ts` file's `GET` or the action, `query` is typed by that
-schema; without, any values. A value that is `undefined` or `null` is left out. Use it for a redirect too:
+schema; without, any values (strings, numbers, booleans, lists and objects of them). A value that is `undefined` or `null`
+is left out. A list is written `tag[]=a` (one item too), an object `user[name]=Ada`, a list of objects or lists with
+indexes (`rows[0][a]=1`), as `withValidator({ query })` reads them. Numbers and booleans are written as text and read
+back as strings, so the schema parses them; an empty list or object is left out and reads back as absent, so give the
+field a default. Use it for a redirect too:
 `c.redirect(href('/users/:id', { id: user.id }), 303)`.
 
 ## Handler input

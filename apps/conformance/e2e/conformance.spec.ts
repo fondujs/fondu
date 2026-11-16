@@ -170,6 +170,26 @@ test.describe('useForm: the browser checks a form as the server does', () => {
       return checked(page)
     })
   })
+  test('a GET form: repeated, listed and nested fields in the URL, and as the loader reads the query', async ({
+    browser,
+  }) => {
+    await both(browser, async (page) => {
+      await open(page, '/checked-get')
+      await page.click('#checked-get button')
+      await settle(page)
+      const outcome = await checked(page)
+      // the URL: each repeated field and each list item by its own name, the nested one by its keys
+      expect(decodeURIComponent(outcome.url)).toBe(
+        '/checked-get?name=Ada&tags[]=a&tags[]=c&color=red&color=blue&user[email]=ada@example.com',
+      )
+      // the loader's `withValidator({ query })`: the lists and the object, not the first value of each name
+      expect(await page.locator('#received').textContent()).toBe(
+        '{"name":"Ada","tags":["a","c"],"color":["red","blue"],"user":{"email":"ada@example.com"}}',
+      )
+      expect(outcome.errors).toBe('{}')
+      return outcome
+    })
+  })
   test("an invalid one: the browser's errors are the server's", async ({ browser }) => {
     await both(browser, async (page) => {
       await open(page, '/checked')
