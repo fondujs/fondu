@@ -106,6 +106,7 @@ export default function Dashboard({ user, stats }: { user: User; stats?: Stats }
 - The function runs only for the request that asks for the prop, never for the document or a navigation. Until the
   prop arrives it is `undefined`, so the page types it as optional (`stats?: Stats`): `render()` accepts `defer()` for
   optional props only, and a required prop is a type error. A page may read the prop itself, without `<Deferred>`.
+- A promise as a prop of `render()` (`{ stats: loadStats() }`) throws, as JSON would send it as `{}`: `await` it, or pass `defer(() => loadStats())`. A promise inside a prop is not checked.
 - `<Deferred data="stats">` shows its children once the prop is there, `fallback` while it is asked for, and `failed`
   (default: `fallback`) when it could not be had. `data` may be a list: `data={['stats', 'feed']}`. In the document, and
   without JavaScript, the page shows the fallback.

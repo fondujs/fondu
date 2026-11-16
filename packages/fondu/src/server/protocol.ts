@@ -204,6 +204,12 @@ export async function renderPage(
   props: Record<string, unknown>,
   options: RenderOptions = {},
 ): Promise<Response> {
+  // a promise is serialized as `{}`: the top level only (what is inside a prop is the app's JSON)
+  for (const [key, value] of Object.entries(props))
+    if (typeof (value as { then?: unknown } | null | undefined)?.then === 'function')
+      throw new Error(
+        `fondu: the prop "${key}" of "${id}" is a promise, which JSON would send as {}. Await it, or pass defer(() => ...)`,
+      )
   const only = askedFor(c, id)
   const deferred = Object.keys(props).filter((k) => props[k] instanceof DeferredProp)
   let page: Page

@@ -167,4 +167,24 @@ describe('deferred props', () => {
     expect(res.status).toBe(500)
     expect(await res.text()).toContain('defer() is for a prop of render()')
   })
+  test('a promise as a top-level prop: an error that names the prop and points to defer()', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    for (const headers of [{ Accept: 'text/html' }, nav()]) {
+      const res = await app.request('/deferred?promise', { headers })
+      expect(res.status).toBe(500)
+    }
+    const html = await (
+      await app.request('/deferred?promise', { headers: { Accept: 'text/html' } })
+    ).text()
+    expect(html).toContain('the prop &#34;late&#34; of &#34;deferred&#34; is a promise')
+    expect(html).toContain('pass defer(() =&#62; ...)')
+    // any thenable
+    const res = await app.request('/deferred?promise=thenable', { headers: nav() })
+    expect(res.status).toBe(500)
+  })
+  test('a promise inside a prop is not checked: the top level only', async () => {
+    const res = await app.request('/deferred?nested', { headers: nav() })
+    expect(res.status).toBe(200)
+    expect((await page(res)).props.inner).toEqual({ late: {} })
+  })
 })
