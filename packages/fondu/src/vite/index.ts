@@ -651,7 +651,7 @@ interface ManifestChunk {
   imports?: string[]
 }
 
-function productionAssets(config: ResolvedConfig, options: FonduOptions): string {
+export function productionAssets(config: ResolvedConfig, options: FonduOptions): string {
   const outDir =
     options.target === 'cloudflare'
       ? resolve(config.root, config.environments.client?.build.outDir ?? 'dist/client')
@@ -688,7 +688,20 @@ function productionAssets(config: ResolvedConfig, options: FonduOptions): string
       .map((dir) => `app/routes/${dir ? `${dir}/` : ''}_layout.tsx`)
       .filter((k) => k in manifest)
     const all = [...around, key].map(tags)
-    pages[pageId(file)] = { css: all.flatMap((t) => t.css), js: all.flatMap((t) => t.js) }
+    // each file once, and not the entry's: assetTags() adds those to every page (the entry's first)
+    const own = (files: string[], entryFiles: string[]) => [
+      ...new Set(files.filter((f) => !entryFiles.includes(f))),
+    ]
+    pages[pageId(file)] = {
+      css: own(
+        all.flatMap((t) => t.css),
+        entry.css,
+      ),
+      js: own(
+        all.flatMap((t) => t.js),
+        entry.js,
+      ),
+    }
   }
   const version = createHash('sha256').update(text).digest('hex').slice(0, 16)
   return `const base = ${JSON.stringify(config.base)}
