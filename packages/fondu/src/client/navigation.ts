@@ -490,6 +490,9 @@ export function startNavigation({
     if ((method !== 'get' && method !== 'post') || (target && target !== '_self')) return
     const url = new URL(attr('action', 'formaction') || location.href, location.href)
     if (url.origin !== location.origin || !isWebUrl(url.href)) return
+    // a GET to a URL that is none of the app's pages (a `.ts` route): the browser's, as for a link; asking first would
+    // run its handler twice
+    if (method === 'get' && !isPage(url.pathname)) return
     event.preventDefault()
     const data = new FormData(form, submitter)
     // as the browser would send them: a file by its name in a URL or plain text, line breaks as CRLF
