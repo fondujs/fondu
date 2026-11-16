@@ -4,7 +4,7 @@ import { renderToReadableStream, renderToString } from 'react-dom/server'
 import { expect, test } from 'vitest'
 
 import { __entry, Deferred, renderPage, usePage } from '../src/client.js'
-import { pageAt } from '../src/client/app.js'
+import { newer, pageAt, shownOf } from '../src/client/app.js'
 
 const Outer = ({ children }: { children: ReactNode }) => h('section', { id: 'outer' }, children)
 const Inner = ({ children }: { children: ReactNode }) => h('div', { id: 'inner' }, children)
@@ -128,4 +128,29 @@ test("useId(): the server's tree is the browser's (#app and the page, nothing be
   const { body } = await render('labeled')
   const id = (html: string) => /for="([^"]+)"/.exec(html)![1]
   expect(id(body)).toBe(id(renderToString(h(Labeled))))
+})
+
+// a page put on the screen is a state of its own, built whole: an update that arrives late can't bring an older page back
+test('an older state that arrives after a newer one does not replace it', () => {
+  const view = { Component: Plain, layouts: [] }
+  const first = shownOf(page('board'), view, true)
+  const second = shownOf(page('labeled'), view, true)
+  expect(second.seq).toBeGreaterThan(first.seq)
+  expect(newer(first)(second)).toBe(second) // the older one arrives last
+  expect(newer(second)(first)).toBe(second) // in order
+  expect(newer(second)(second)).toBe(second)
+})
+
+test('a state is absolute: its mounts count the fresh pages, whatever state it replaces', () => {
+  const view = { Component: Plain, layouts: [] }
+  const base = shownOf(page('board'), view, false)
+  const kept = shownOf(page('board', { a: 1 }), view, false)
+  const fresh = shownOf(page('labeled'), view, true)
+  const after = shownOf(page('labeled', { b: 1 }), view, false)
+  expect(kept.mounts).toBe(base.mounts)
+  expect(fresh.mounts).toBe(base.mounts + 1)
+  expect(after.mounts).toBe(fresh.mounts)
+  // applied in either order, the newer state stands, with its own mounts
+  expect(newer(fresh)(after)).toBe(after)
+  expect(newer(after)(fresh)).toBe(after)
 })

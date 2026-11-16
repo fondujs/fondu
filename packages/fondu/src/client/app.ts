@@ -72,7 +72,28 @@ async function load(component: string): Promise<Shown['view']> {
 // ---- the page on screen, for usePage()
 
 const PageContext = createContext<Page | null>(null)
-type Shown = { page: Page; view: { Component: PageComponent; layouts: Layout[] }; mounts: number }
+type Shown = {
+  page: Page
+  view: { Component: PageComponent; layouts: Layout[] }
+  /** which mount of the page this is: its key, so a new one remounts it */
+  mounts: number
+  /** the order the states were built in: the newer one wins */
+  seq: number
+}
+// The browser's counters. A state is built whole, as a page is put on the screen, and nothing is computed from the
+// state it replaces: an update can't be rebased onto an older page
+let mountCount = 0
+let seqCount = 0
+
+/** @internal the state that puts a page on the screen: mounted anew (`fresh`), or keeping its state */
+export const shownOf = (page: Page, view: Shown['view'], fresh: boolean): Shown => ({
+  page,
+  view,
+  mounts: (mountCount += Number(fresh)),
+  seq: ++seqCount,
+})
+/** @internal the update for a state: it keeps the newer one, whichever order they arrive in */
+export const newer = (next: Shown) => (now: Shown) => (now.seq > next.seq ? now : next)
 /** the browser's: called once the app is on the screen, with what puts another page there */
 let mounted: ((show: Dispatch<SetStateAction<Shown>>) => void) | undefined
 
@@ -228,7 +249,7 @@ function start(settings: { prerender: boolean; progress: ProgressOptions | false
   void load(initial.component).then((view) => {
     // dev: the stylesheet the server gave the page until its layouts brought their CSS (they have now)
     document.querySelector('[data-fondu-dev-css]')?.remove()
-    const app = createElement(App, { initial: { page: initial, view, mounts: 0 } })
+    const app = createElement(App, { initial: { page: initial, view, mounts: 0, seq: 0 } })
     const hydrated = root.hasChildNodes() // rendered on the server
     // navigations start once the page is on the screen (hydrated)
     mounted = (set) => {
@@ -246,7 +267,8 @@ function start(settings: { prerender: boolean; progress: ProgressOptions | false
         async show(page, fresh, stale) {
           const view = await load(page.component)
           if (stale()) return
-          flushSync(() => set((now) => ({ page, view, mounts: now.mounts + Number(fresh) })))
+          const next = shownOf(page, view, fresh)
+          flushSync(() => set(newer(next)))
         },
       })
     }
@@ -270,7 +292,11 @@ export async function renderPage(
 ): Promise<Rendered> {
   const view = await load(page.component)
   return render(
-    createElement('div', { id: 'app' }, createElement(App, { initial: { page, view, mounts: 0 } })),
+    createElement(
+      'div',
+      { id: 'app' },
+      createElement(App, { initial: { page, view, mounts: 0, seq: 0 } }),
+    ),
   )
 }
 
