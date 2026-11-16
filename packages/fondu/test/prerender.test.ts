@@ -415,6 +415,17 @@ describe('the app', () => {
     expect(await res.text()).toBe('')
     expect(calls.counted).toBe(before)
   })
+  test('a prefetch is answered before the flash: the cookie is neither read nor cleared', async () => {
+    const res = await app.request('/_fondu/pages/index.json', {
+      headers: {
+        'X-Fondu': 'true',
+        'X-Fondu-Version': 'v1',
+        'X-Fondu-Prefetch': 'true',
+        Cookie: 'fondu-flash=' + encodeURIComponent(JSON.stringify({ flash: { message: 'hi' } })),
+      },
+    })
+    expect([res.status, res.headers.get('set-cookie')]).toEqual([204, null])
+  })
   test('a page object asked for without X-Fondu-Prefetch: answered by the app as before', async () => {
     const before = calls.counted
     const res = await app.request('/_fondu/pages/counted.json', {

@@ -39,6 +39,9 @@ export default function NewContact({ errors }: { errors: Errors }) {
 - After an action, redirect so a reload doesn't send the form again: `back(c)` (the page the form was on, updated in
   place; `back(c, fallback?)`), or `c.redirect(url, 303)`.
 - `flash(c, { message: 'Saved' })` before either: data for the next page only, in `usePage().flash`.
+  Flash data and errors travel in a cookie that comes back from the client: not trusted (anyone can write it), and
+  ignored unless `flash` is an object (any JSON inside) and `errors` strings. Keep values short: over about 4 KB Fondu sends the errors that fit
+  without the flash data, and logs a warning.
 
 ## Invalid input
 

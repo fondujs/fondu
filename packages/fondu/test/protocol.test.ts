@@ -411,6 +411,115 @@ describe('behind a TLS-terminating proxy (Host: example.com, https in the browse
   })
 })
 
+describe('the flash cookie', () => {
+  const cookieOf = (value: unknown) => 'fondu-flash=' + encodeURIComponent(JSON.stringify(value))
+  const setCookie = (res: Response) => decodeURIComponent(res.headers.get('set-cookie') ?? '')
+  const sent = (res: Response) =>
+    JSON.parse(setCookie(res).match(/^fondu-flash=(.*?);/)![1]!) as {
+      flash?: Record<string, string>
+      errors?: Record<string, string>
+    }
+  const send = (body: unknown) =>
+    app.request('/flashes', {
+      method: 'POST',
+      headers: {
+        ...fondu(),
+        Origin: ORIGIN,
+        'Content-Type': 'application/json',
+        Referer: `${ORIGIN}/`,
+      },
+      body: JSON.stringify(body),
+    })
+  const big = 'x'.repeat(1500)
+  const bytes = (res: Response) => encodeURIComponent(JSON.stringify(sent(res))).length
+
+  test('a HEAD request neither shows nor clears the flash', async () => {
+    const Cookie = cookieOf({ flash: { message: 'hi' } })
+    for (const headers of [html, fondu()]) {
+      const head = await app.request('/', { method: 'HEAD', headers: { ...headers, Cookie } })
+      expect([head.status, head.headers.get('set-cookie')]).toEqual([200, null])
+    }
+    const shown = await page(await app.request('/', { headers: fondu({ Cookie }) }))
+    expect(shown.flash).toEqual({ message: 'hi' })
+  })
+  test('a cookie that fits is sent whole', async () => {
+    const res = await send({ flash: { message: 'hi' }, errors: { name: 'Too short' } })
+    expect(sent(res)).toEqual({ flash: { message: 'hi' }, errors: { name: 'Too short' } })
+  })
+  test('over the limit: the flash data first, then the errors that fit, in their order; one warning', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    // the flash data alone is too much
+    const flashOnly = await send({
+      flash: { message: big + big + big },
+      errors: { name: 'Too short' },
+    })
+    expect(sent(flashOnly)).toEqual({ errors: { name: 'Too short' } })
+    expect(warn).toHaveBeenCalledTimes(1)
+    // the errors are too much too: those that fit, as they came
+    warn.mockClear()
+    const errors = {
+      a: 'first',
+      b: 'b'.repeat(4500),
+      c: 'third',
+      d: 'd'.repeat(2500),
+      e: 'e'.repeat(2500),
+      f: 'last',
+    }
+    const res = await send({ flash: { message: 'hi' }, errors })
+    expect(sent(res).flash).toBeUndefined()
+    expect(Object.keys(sent(res).errors!)).toEqual(['a', 'c', 'd', 'f'])
+    expect(bytes(res)).toBeLessThanOrEqual(4000)
+    expect(warn).toHaveBeenCalledTimes(1)
+    expect(error).not.toHaveBeenCalled()
+  })
+  test('nothing fits: no cookie is sent', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const res = await send({ errors: { a: big + big + big } })
+    expect(res.headers.get('set-cookie')).toBeNull()
+  })
+  test('a cookie of another shape is ignored: flash a plain object, errors strings', async () => {
+    const bad: unknown[] = [
+      [],
+      'text',
+      7,
+      { flash: [] },
+      { flash: 'x' },
+      { flash: null },
+      { errors: { name: null } },
+      { errors: ['x'] },
+      { flash: { ok: 'fine' }, errors: { name: 7 } },
+    ]
+    for (const value of bad) {
+      const res = await app.request('/', { headers: fondu({ Cookie: cookieOf(value) }) })
+      const shown = await page(res)
+      expect(
+        [shown.flash, (shown.props as { errors: object }).errors],
+        JSON.stringify(value),
+      ).toEqual([{}, {}])
+    }
+    // flash data of an app can be any JSON
+    const nested = {
+      error: { title: 'Failed', description: 'Try again' },
+      count: 3,
+      list: [1, 'a'],
+    }
+    const kept = await page(
+      await app.request('/', { headers: fondu({ Cookie: cookieOf({ flash: nested }) }) }),
+    )
+    expect(kept.flash).toEqual(nested)
+    const good = await page(
+      await app.request('/', {
+        headers: fondu({ Cookie: cookieOf({ flash: { message: 'hi' }, errors: { name: 'Bad' } }) }),
+      }),
+    )
+    expect([good.flash, (good.props as { errors: object }).errors]).toEqual([
+      { message: 'hi' },
+      { name: 'Bad' },
+    ])
+  })
+})
+
 describe('withValidator', () => {
   const post = (body: unknown, headers: Record<string, string> = {}) =>
     app.request('/items', {
