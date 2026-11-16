@@ -41,9 +41,9 @@ field a default. Use it for a redirect too:
 `number`.
 
 ```ts
-const params = z.object({ id: z.coerce.number() })
+const idParams = z.object({ id: z.coerce.number() })
 
-export const loader = defineHandler.withValidator({ params })(async (c, { params }) => {
+export const loader = defineHandler.withValidator({ params: idParams })(async (c, { params }) => {
   params.id // number
 })
 ```
@@ -83,4 +83,6 @@ fields are left out. `render()` checks both sides: `render(c, Show, { post: { ti
 fine for a page typed `publishedAt: string`. A page that types a prop as `Date`, `Map`, `Set` or a function is an
 error at `render()`. Anything with `toJSON()` passes for what that returns.
 
-`Errors` (`fondu/client`) is the type of a page's `errors` prop.
+`Errors` (`fondu/client`) is the type of a page's `errors` prop. `fondu/client` also exports the types `Href`, `Navigation`
+and `Page`; `fondu` exports `Register`, `RenderOptions`, `DocumentParts`, `DocumentTemplate` and `CreateAppOptions`;
+`fondu/vite` exports `FonduOptions` and `ProgressOptions`.

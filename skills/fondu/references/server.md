@@ -56,13 +56,13 @@ replace Fondu's.
 `fondu(options)` from `fondu/vite`: The options are checked when the plugin is created: `target` is required, and an unknown option fails. There is
 no `port` option: the built server (Bun and Node) listens on `PORT`, else 3000.
 
-| Option      | Is                                                                       |
-| ----------- | ------------------------------------------------------------------------ |
-| `target`    | `'bun'`, `'cloudflare'` or `'node'`                                      |
-| `ssr`       | `false`: pages render in the browser only                                |
-| `prerender` | `true`: write the chosen pages as static files                           |
-| `progress`  | the progress bar: `{ color, delay, forms }`, or `false`                  |
-| `react`     | options for `@vitejs/plugin-react` (its `include` has `.mdx` by default) |
+| Option      | Is                                                                                                                                                  |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `target`    | `'bun'`, `'cloudflare'` or `'node'`                                                                                                                 |
+| `ssr`       | `false`: pages render in the browser only                                                                                                           |
+| `prerender` | `true`: write the chosen pages as static files                                                                                                      |
+| `progress`  | the progress bar: `{ color, delay, forms }`, or `false`                                                                                             |
+| `react`     | passed to `@vitejs/plugin-react` (its `include` has `.mdx` by default): https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react |
 
 On Cloudflare, the Cloudflare plugin comes first:
 `plugins: [cloudflare({ viteEnvironment: { name: 'ssr' } }), fondu({ target: 'cloudflare' })]`.

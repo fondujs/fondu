@@ -36,7 +36,8 @@ to prerender, and writes each twice in the client build:
 
 Fondu keeps one prefix for its own URLs, `/_fondu/`: the page objects (`/_fondu/pages/…`) and, while the build runs, its list
 of pages (`/_fondu/prerender`). An app has no route under it: one that a listed `params` value puts there stops the app at
-startup.
+startup. In development, Fondu also serves `/@fondu/dev.css`: the CSS the layouts import, in the document so a server-rendered page
+is styled at first paint.
 
 Then:
 

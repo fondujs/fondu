@@ -42,7 +42,8 @@ namespace only the loader uses is removed. A type-only import or export (`import
 
 What is left is what the page uses, so a server module it still imports (a helper the page calls too) stops the
 build, as any other: declare what the server and the browser share in a module of its own. A page imports from
-`fondu/client`: `fondu` is the server's.
+`fondu/client`: `fondu` is the server's. Server code may import `href()` from `fondu/client` too (for a redirect); `request()`, `navigate()`
+and the other calls for the browser throw there.
 
 ## Server code
 

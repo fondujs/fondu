@@ -83,7 +83,9 @@ createApp({
 
 ## `fondu/client`
 
-For the browser.
+Hooks, `<Deferred>` and `href()` run on the server too, in a page's server render (so does `RequestError`, a class).
+`request()`, `reload()`, `navigate()`, `closeShallow()` and `loadDocument()` are for the browser, from events and effects: on
+the server they throw.
 
 | Export                                        | Is                                                                                                                                                                                                |
 | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -114,13 +116,13 @@ For the browser.
 The Vite plugin: `fondu(options)`. The options are checked when the plugin is created: `target` is required, and an unknown option fails. There is
 no `port` option: the built server (Bun and Node) listens on `PORT`, else 3000.
 
-| Option      | Is                                                                       |
-| ----------- | ------------------------------------------------------------------------ |
-| `target`    | `'bun'`, `'cloudflare'` or `'node'`                                      |
-| `ssr`       | `false`: pages render in the browser only                                |
-| `prerender` | `true`: write the chosen pages as [static files](/docs/static-pages)     |
-| `progress`  | the navigations' progress bar: `{ color, delay, forms }`, or `false`     |
-| `react`     | options for `@vitejs/plugin-react` (its `include` has `.mdx` by default) |
+| Option      | Is                                                                                                                                                    |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `target`    | `'bun'`, `'cloudflare'` or `'node'`                                                                                                                   |
+| `ssr`       | `false`: pages render in the browser only                                                                                                             |
+| `prerender` | `true`: write the chosen pages as [static files](/docs/static-pages)                                                                                  |
+| `progress`  | the navigations' progress bar: `{ color, delay, forms }`, or `false`                                                                                  |
+| `react`     | passed to [`@vitejs/plugin-react`](https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react) (its `include` has `.mdx` by default) |
 
 ### Types
 
