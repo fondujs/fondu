@@ -120,7 +120,7 @@ export function routeTable(modules: Record<string, RouteModule>, append: boolean
       )
     byKey.set(key, route)
   }
-  return routes.sort((a, b) => rank(a.pattern).localeCompare(rank(b.pattern)))
+  return routes.sort((a, b) => compare(a.pattern, b.pattern))
 }
 
 function paramsOf(file: string, mod: RouteModule | undefined): Params {
@@ -143,11 +143,23 @@ function paramsOf(file: string, mod: RouteModule | undefined): Params {
 const withSlash = (pattern: string, append: boolean) =>
   append && pattern !== '/' && !pattern.endsWith('{.+}') ? pattern + '/' : pattern
 
-/** sort key: static segments, then params with listed values, then params, then catch-alls */
-const rank = (pattern: string) =>
-  pattern
-    .split('/')
-    .map(
-      (s) => (s.endsWith('{.+}') ? '3' : s.includes('{') ? '1' : s.startsWith(':') ? '2' : '0') + s,
-    )
-    .join('/')
+/** a segment's specificity: static, then a param with listed values, then a param, then a catch-all */
+const priority = (s: string) =>
+  s.endsWith('{.+}') ? 3 : s.includes('{') ? 1 : s.startsWith(':') ? 2 : 0
+
+/**
+ * Hono's order: the specificity of each segment, from the first (static segments of another spelling are other
+ * URLs: alphabetical); a param's name decides only between patterns equally specific at every segment, so
+ * renaming a param never changes which route answers
+ */
+function compare(a: string, b: string): number {
+  const x = a.split('/')
+  const y = b.split('/')
+  for (let i = 0; i < Math.min(x.length, y.length); i++) {
+    const d = priority(x[i]!) - priority(y[i]!)
+    if (d) return d
+    // two static segments that differ: the routes are apart, any order is right (the alphabetical one is steady)
+    if (priority(x[i]!) === 0 && x[i] !== y[i]) return x[i]! < y[i]! ? -1 : 1
+  }
+  return x.length - y.length || (a < b ? -1 : a > b ? 1 : 0)
+}

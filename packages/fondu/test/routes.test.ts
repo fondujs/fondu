@@ -142,6 +142,80 @@ describe('params: the values a param takes', () => {
   })
 })
 
+describe('precedence: specificity of each segment, never the spelling of a param', () => {
+  // each route answers with its file and the middleware it was given (as app.ts chains them)
+  const serve = (modules: Record<string, RouteModule>) => {
+    const app = new Hono()
+    for (const { file, pattern, middleware } of routeTable(modules, false))
+      app.get(
+        pattern,
+        async (c, next) => {
+          c.header('x-middleware', middleware.join(','))
+          await next()
+        },
+        (c) => c.text(file),
+      )
+    return async (path: string) => {
+      const res = await app.request(path)
+      return `${await res.text()} [${res.headers.get('x-middleware') ?? ''}]`
+    }
+  }
+  const names = (...a: string[]) => a
+
+  test('reversed param names: a later static segment still wins', async () => {
+    for (const [first, second] of [
+      ['[z]/new.ts', '[a]/[id].ts'],
+      ['[a]/new.ts', '[z]/[id].ts'],
+    ] as const) {
+      const answer = serve(files(first, second))
+      expect(await answer('/foo/new')).toBe(`${first} []`)
+      expect(await answer('/foo/other')).toBe(`${second} []`)
+    }
+  })
+  test('the order does not depend on how params are spelled', () => {
+    const order = (a: string, b: string) => routeTable(files(a, b), false).map((r) => r.file)
+    expect(order('[z]/new.ts', '[a]/[id].ts')).toEqual(['[z]/new.ts', '[a]/[id].ts'])
+    expect(order('[a]/new.ts', '[z]/[id].ts')).toEqual(['[a]/new.ts', '[z]/[id].ts'])
+    expect(order('[a]/[id].ts', '[z]/new.ts')).toEqual(['[z]/new.ts', '[a]/[id].ts'])
+  })
+  test('static before dynamic at a later segment, at any depth', async () => {
+    const answer = serve(files('[b]/x/[c].ts', '[a]/x/special.ts', '[a]/[y]/special.ts'))
+    expect(await answer('/1/x/special')).toBe('[a]/x/special.ts []')
+    expect(await answer('/1/x/other')).toBe('[b]/x/[c].ts []')
+    expect(await answer('/1/y/special')).toBe('[a]/[y]/special.ts []')
+  })
+  test('catch-alls come after params, whatever the names', async () => {
+    const answer = serve(files('[z]/[...rest].ts', '[a]/[id].ts', 'docs/[...p].ts', 'docs/new.ts'))
+    expect(await answer('/foo/bar')).toBe('[a]/[id].ts []')
+    expect(await answer('/foo/bar/baz')).toBe('[z]/[...rest].ts []')
+    expect(await answer('/docs/new')).toBe('docs/new.ts []')
+    expect(await answer('/docs/a/b')).toBe('docs/[...p].ts []')
+  })
+  test('a param with listed values comes before a param, whatever the names', async () => {
+    const answer = serve({
+      ...files('[z]/new.ts', '[a]/[id].ts', '[lang]/about.ts'),
+      '[lang]/_middleware.ts': { params: { lang: ['de'] } },
+    })
+    expect(await answer('/de/about')).toBe('[lang]/about.ts [[lang]/_middleware.ts]')
+    expect(await answer('/de/new')).toBe('[z]/new.ts []')
+    expect(await answer('/fr/about')).toBe('[a]/[id].ts []')
+  })
+  test("per-route middleware: a request gets its own route's, not a sibling's", async () => {
+    const answer = serve({
+      ...files('[z]/new.ts', '[a]/[id].ts'),
+      '[z]/_middleware.ts': {},
+      '[a]/_middleware.ts': {},
+    })
+    expect(await answer('/foo/new')).toBe('[z]/new.ts [[z]/_middleware.ts]')
+    expect(await answer('/foo/id')).toBe('[a]/[id].ts [[a]/_middleware.ts]')
+  })
+  test('equal specificity: the order is the same for any input order', () => {
+    const all = names('[b]/x.ts', '[a]/y.ts', 'm.ts', 'n.ts')
+    const order = routeTable(files(...all), false).map((r) => r.file)
+    expect(routeTable(files(...[...all].reverse()), false).map((r) => r.file)).toEqual(order)
+  })
+})
+
 describe('one file per URL', () => {
   test('the same URL twice fails', () => {
     expect(() => table(files('index.ts', '[[lang]]/index.ts'))).toThrow(
