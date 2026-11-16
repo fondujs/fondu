@@ -355,3 +355,6 @@ fondu({
 - A redirect to another site (`c.redirect('https://…')`) loads that site.
 - After a deploy, the next navigation from a tab opened before it loads the page as a document, so the browser runs
   the new version.
+
+Protocol notes: `X-Fondu-Location` (with status 409)
+means "load this URL as a document". `X-Fondu-Redirect` means "follow this path in place", as a navigation.

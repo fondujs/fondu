@@ -44,6 +44,7 @@ export default function Dashboard({ user, stats }: { user: User; stats?: Stats }
 - `<Deferred data>` shows its children when the prop is there, `fallback` while it is asked for, `failed` (default:
   `fallback`) when it could not be had. `data` may be a list: `data={['stats', 'feed']}`. In the document, and without
   JavaScript, the page shows the fallback.
+- The deferred props of a page come in one request: the slowest decides when they all arrive.
 - The request is quiet: no `useNavigation()` state, no progress bar, no history entry, no scroll change. A navigation
   cancels it. Back to the page asks again.
 - The whole loader runs again for that request, so what it awaits before `render()` is awaited each time: put slow

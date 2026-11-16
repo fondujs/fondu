@@ -71,6 +71,9 @@ So the proxy must pass `Host` on and set `X-Forwarded-Proto: https`. `X-Forwarde
 (back to the page, the trailing slash, a new version) are paths, which resolve in the browser against the address
 it knows.
 
+On Node and Bun, Fondu does not compress responses or answer conditional requests (`If-None-Match`,
+`If-Modified-Since`). That is the job of the proxy or CDN in front of the app.
+
 ## Caching
 
 The built assets in `/assets/` (Vite's `build.assetsDir`) have hashed names, so they are served with a year-long
