@@ -1,9 +1,9 @@
 import { createHash } from 'node:crypto'
 import { appendFileSync, existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { builtinModules, createRequire } from 'node:module'
-import { dirname, join, relative, resolve, sep } from 'node:path'
-import { fileURLToPath, pathToFileURL } from 'node:url'
+import { builtinModules } from 'node:module'
+import { relative, resolve, sep } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 import devServer, { defaultOptions as devServerDefaults } from '@hono/vite-dev-server'
 import react, { type Options as ReactOptions } from '@vitejs/plugin-react'
@@ -20,6 +20,7 @@ import {
 import type { ProgressOptions } from '../client/progress.js'
 import { isPageFile, layoutsOf, pageId } from '../paths.js'
 import { hmr, PAGE_EXPORTS, PROPS_EVENT } from './hmr.js'
+import { devServerNodeServer } from './node-server.js'
 import { checkOptions } from './options.js'
 import { nodeServer, prerender, worker } from './prerender.js'
 import { stripRoutes, stripServerCode } from './strip.js'
@@ -280,18 +281,7 @@ function runtimePlugins(options: FonduOptions): PluginOption[] {
       name: 'fondu:node-globals',
       apply: 'serve',
       async configureServer() {
-        // the dev server's own copy, as an ES module (its CommonJS build would be another class)
-        const fromDevServer = createRequire(
-          createRequire(import.meta.url).resolve('@hono/vite-dev-server'),
-        )
-        const dir = dirname(dirname(fromDevServer.resolve('@hono/node-server'))) // …/dist/index.js
-        const pkg = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')) as {
-          exports: { '.': { import: string | { default: string } } }
-        }
-        const entry = pkg.exports['.'].import
-        const { getRequestListener } = (await import(
-          pathToFileURL(join(dir, typeof entry === 'string' ? entry : entry.default)).href
-        )) as { getRequestListener: (fetch: () => Response) => unknown }
+        const { getRequestListener } = await devServerNodeServer()
         getRequestListener(() => new Response())
       },
     },
