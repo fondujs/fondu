@@ -32,7 +32,7 @@ export interface PrerenderRoute {
  * is the path of its segments, each of which is a name. Throws, naming the value.
  */
 function fileNames(pattern: string, params: Record<string, string | number>) {
-  for (const [, name, catchAll] of pattern.matchAll(/:(\w+)(\{[^}]*\})?/g)) {
+  for (const [, name, catchAll] of pattern.matchAll(/:(\w+)(\*)?/g)) {
     const value = String(params[name!])
     for (const part of catchAll ? value.split('/') : [value])
       if (part === '.' || part === '..' || part.includes('\\') || (!catchAll && part.includes('/')))

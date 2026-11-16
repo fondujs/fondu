@@ -36,9 +36,9 @@ export interface RouteModule {
 
 export interface Route {
   file: string
-  /** what Hono matches: `/:lang{(?:de|fr)}/about` */
+  /** what Hono matches: `/:lang{(?:de|fr)}/about`, `/files/:path{.+}` */
   pattern: string
-  /** the URL pattern of fondu.gen.d.ts and `href()`: `/:lang/about` */
+  /** the URL pattern of fondu.gen.d.ts and `href()`: `/:lang/about`, `/files/:path*` */
   path: string
   /** its directories' `_middleware.ts` files, outermost first (the root's applies to every request: not listed) */
   middleware: string[]
@@ -84,20 +84,17 @@ export function routeTable(modules: Record<string, RouteModule>, append: boolean
     const paths = patterns
       .map((path) => {
         let empty = false
-        const pattern = path.replace(
-          /:(\w+)(\{[^}]*\})?/g,
-          (param, name: string, regex?: string) => {
-            const listed = values.get(name)
-            if (!listed) return param
-            used.add(`${listed.from}:${name}`)
-            if (regex)
-              throw new Error(
-                `fondu: routes/${listed.from}: params.${name} lists the values of one segment, and routes/${file} has [...${name}]`,
-              )
-            if (listed.list.length === 0) empty = true
-            return `:${name}{(?:${listed.list.map((v) => v.replaceAll('.', '\\.')).join('|')})}`
-          },
-        )
+        const pattern = path.replace(/:(\w+)(\*)?/g, (param, name: string, star?: string) => {
+          const listed = values.get(name)
+          if (!listed) return star ? `:${name}{.+}` : param
+          used.add(`${listed.from}:${name}`)
+          if (star)
+            throw new Error(
+              `fondu: routes/${listed.from}: params.${name} lists the values of one segment, and routes/${file} has [...${name}]`,
+            )
+          if (listed.list.length === 0) empty = true
+          return `:${name}{(?:${listed.list.map((v) => v.replaceAll('.', '\\.')).join('|')})}`
+        })
         // the first segment, or a value listed for it (`params`): `_fondu` is Fondu's (a `_` directory is no route)
         const first = pattern.split('/')[1] ?? ''
         const listed = /^:\w+\{\(\?:(.*)\)\}$/.exec(first)?.[1]?.split('|') ?? [first]
@@ -156,7 +153,7 @@ function paramsOf(file: string, mod: RouteModule | undefined): Params {
 
 // a catch-all takes the rest of the path: never a trailing slash
 const withSlash = (pattern: string, append: boolean) =>
-  append && pattern !== '/' && !pattern.endsWith('{.+}') ? pattern + '/' : pattern
+  append && pattern !== '/' && !/(?:\*|\{\.\+\})$/.test(pattern) ? pattern + '/' : pattern
 
 /** a segment's specificity: static, then a param with listed values, then a param, then a catch-all */
 const priority = (s: string) =>

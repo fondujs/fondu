@@ -1,8 +1,9 @@
 /**
- * `routes/` file → its URL patterns (Hono syntax). Shared by the runtime (`createApp`) and the type generator.
+ * `routes/` file → its URL patterns, the keys of `fondu.gen.d.ts`, `href()` and `request()`. Shared by the runtime
+ * (`createApp`, which gives Hono its own form of them) and the type generator.
  *
  * - `index.ts` (or `.tsx`, `.mdx`) is its directory: `routes/users/index.ts` → `/users`
- * - `[id]` → `:id`, `[...path]` → `:path{.+}` (one or more segments)
+ * - `[id]` → `:id`, `[...path]` → `:path*` (one or more segments)
  * - `[[lang]]`, an optional segment: two patterns, without it and with it (`/about`, `/:lang/about`), as Hono takes
  *   an optional param only at the end of a path. One per route.
  * - `(group)` directories group files without a URL segment
@@ -36,7 +37,7 @@ export function routePatterns(file: string): string[] {
       .map((s) =>
         s
           .replace(/^\[\[(\w+)\]\]$/, ':$1')
-          .replace(/^\[\.\.\.(\w+)\]$/, ':$1{.+}')
+          .replace(/^\[\.\.\.(\w+)\]$/, ':$1*')
           .replace(/^\[(\w+)\]$/, ':$1'),
       )
       .join('/')
@@ -116,7 +117,7 @@ export function middlewareFor(file: string, middleware: readonly string[]): stri
 
 /** `/users/:id` + `{ id: 7 }` → `/users/7`; catch-alls keep their slashes */
 export function fillPattern(pattern: string, params: Record<string, string | number> = {}): string {
-  return pattern.replace(/:(\w+)(\{[^}]*\})?/g, (_, name: string, catchAll?: string) => {
+  return pattern.replace(/:(\w+)(\*)?/g, (_, name: string, catchAll?: string) => {
     const value = params[name]
     if (value === undefined) throw new Error(`fondu: missing param "${name}" for ${pattern}`)
     const parts = catchAll ? String(value).split('/') : [String(value)]

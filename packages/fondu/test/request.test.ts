@@ -3,7 +3,7 @@
 import { createApp } from 'fondu'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
-import { request, RequestError } from '../src/client.js'
+import { href, request, RequestError } from '../src/client.js'
 
 // oxlint-disable-next-line no-explicit-any -- what the stubbed answers are is checked per test
 const call = request as unknown as (path: string, options?: Record<string, unknown>) => Promise<any>
@@ -39,6 +39,13 @@ describe('the request', () => {
     const spy = stub(() => json({}))
     await call('/api/users/:id', { id: 'a b/c' })
     expect(spy.mock.calls[0]![0]).toBe('/api/users/a%20b%2Fc')
+  })
+  test('a catch-all keeps its slashes, as href() does', async () => {
+    const spy = stub(() => json({}))
+    await call('/api/files/:path*', { path: 'a b/c' })
+    expect(spy.mock.calls[0]![0]).toBe('/api/files/a%20b/c')
+    expect(href('/files/:path*' as never, { path: 'a/b' } as never)).toBe('/files/a/b')
+    expect(() => href('/files/:path*' as never, { path: 'a/../b' } as never)).toThrow('not a path')
   })
   test('the method, the JSON body and its content type', async () => {
     const spy = stub(() => json({ saved: true }))

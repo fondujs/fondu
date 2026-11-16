@@ -24,7 +24,7 @@ declare module 'fondu' {
       "/uploads": typeof import("./routes/(demos)/uploads")
       "/versioning": typeof import("./routes/(demos)/versioning")
       "/admin/dashboard": typeof import("./routes/admin/dashboard")
-      "/api/auth/:all{.+}": typeof import("./routes/api/auth/[...all]")
+      "/api/auth/:all*": typeof import("./routes/api/auth/[...all]")
       "/api/contacts/:id": typeof import("./routes/api/contacts/[id]")
       "/api/contacts": typeof import("./routes/api/contacts/index")
       "/api/health": typeof import("./routes/api/health")

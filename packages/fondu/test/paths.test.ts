@@ -24,7 +24,7 @@ describe('routes/ files', () => {
     expect(routePatterns('users/[id].ts')).toEqual(['/users/:id'])
     expect(routePatterns('users/[id].tsx')).toEqual(['/users/:id']) // a page
     expect(routePatterns('docs/index.mdx')).toEqual(['/docs'])
-    expect(routePatterns('docs/[...path].ts')).toEqual(['/docs/:path{.+}'])
+    expect(routePatterns('docs/[...path].ts')).toEqual(['/docs/:path*'])
     expect(routePatterns('(marketing)/about.ts')).toEqual(['/about'])
   })
   test('an optional segment: the URLs without it and with it', () => {
@@ -114,7 +114,7 @@ describe('routes/ files', () => {
   })
   test('fillPattern: encoded, catch-all keeps slashes, never . / .. / empty', () => {
     expect(fillPattern('/users/:id', { id: 'a b' })).toBe('/users/a%20b')
-    expect(fillPattern('/docs/:path{.+}', { path: 'a/b' })).toBe('/docs/a/b')
+    expect(fillPattern('/docs/:path*', { path: 'a/b' })).toBe('/docs/a/b')
     for (const id of ['..', '.', ''])
       expect(() => fillPattern('/u/:id', { id })).toThrow('not a path segment')
     expect(() => fillPattern('/u/:id', {})).toThrow('missing param')

@@ -80,6 +80,13 @@ describe('params: the values a param takes', () => {
       }),
     ).toEqual(['/', '/about', '/:lang{(?:de|zh-Hant)}', '/:slug', '/:rest{.+}'])
   })
+  test('a catch-all is `:name*` as a key and `:name{.+}` for Hono', () => {
+    const [route] = routeTable(files('files/[...path].ts'), false)
+    expect(route!.path).toBe('/files/:path*')
+    expect(route!.pattern).toBe('/files/:path{.+}')
+    const [slashed] = routeTable(files('files/[...path].ts'), true)
+    expect(slashed!.path).toBe('/files/:path*')
+  })
   test('in Hono: a listed value or another route, never part of a segment', async () => {
     const app = new Hono()
     const modules = {
