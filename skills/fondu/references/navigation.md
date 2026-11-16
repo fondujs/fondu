@@ -23,6 +23,7 @@ export function UserLink({ user }: { user: { id: number; name: string } }) {
 - The client takes a click only on a link to one of the app's pages. The browser handles: a `#fragment` of the current
   page, files (`/report.pdf`), `.ts` routes (`/api/health`), URLs no route answers, other sites, links with `target`,
   `download`, or Ctrl, Cmd, Shift or Alt.
+- A GET form to a `.ts` route is the browser's, as a link to one is.
 - `<a target="_top">` loads a page as a whole document (a page of another `<html lang>`, scripts that must run
   again). In code: `loadDocument(url)`. A catch-all page covers files below it: link to them with `download` or
   `target="_top"`.

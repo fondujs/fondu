@@ -38,6 +38,10 @@ export default function Form() {
         <textarea name="notes" defaultValue={'one\ntwo'} />
         <button>Search</button>
       </form>
+      <form id="to-route" action="/counted">
+        <input name="id" defaultValue="" />
+        <button>Count</button>
+      </form>
     </>
   )
 }
