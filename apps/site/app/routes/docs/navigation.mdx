@@ -47,8 +47,14 @@ them. The browser handles every other link, as it would without Fondu:
 | a URL no route answers: `/nope`                                 | the browser, shows the 404  |
 | another site                                                    | the browser                 |
 | with `target` (`_blank`…), `download`, or Ctrl, ⌘, Shift or Alt | the browser                 |
+| without `target`, in a page whose `<base target>` isn't `_self` | the browser                 |
+| an SVG `<a>`, or an `<area>`                                    | the browser                 |
 
 ### A full page load
+
+A link without its own `target` has the document's `<base target>`, as in the browser: `_blank` there opens every such
+link in a new tab, and the client leaves the click alone. A `target="_self"` on the link itself overrides it. Links in
+an SVG (`<a>`) and image maps (`<area>`) are always the browser's.
 
 To make a link to a page load as a whole document, without the client, add `target="_top"`. In a page that isn't in
 a frame, it opens in the same tab, as any link, but the browser loads it:
