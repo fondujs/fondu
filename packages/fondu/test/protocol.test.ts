@@ -554,6 +554,36 @@ describe('withValidator', () => {
     expect(res.status).toBe(422)
     expect(Object.keys(((await res.json()) as { errors: object }).errors)).toEqual(['n'])
   })
+  test('a +json body type (application/merge-patch+json…) is read as JSON, as application/json is', async () => {
+    for (const type of [
+      'application/json',
+      'application/merge-patch+json',
+      'application/vnd.api+json; charset=utf-8',
+      'Application/Merge-Patch+JSON',
+    ]) {
+      const res = await app.request('/api/data', {
+        method: 'POST',
+        headers: { 'Content-Type': type, Origin: ORIGIN },
+        body: '{"n":3}',
+      })
+      expect([res.status, await res.json()], type).toEqual([201, { n: 3 }])
+    }
+    // not JSON: no body is read (as before)
+    for (const type of ['text/plain', 'application/xml', 'text/foo+json']) {
+      const res = await app.request('/api/data', {
+        method: 'POST',
+        headers: { 'Content-Type': type, Origin: ORIGIN },
+        body: '{"n":3}',
+      })
+      expect(res.status, type).toBe(422)
+    }
+    const bad = await app.request('/api/data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/merge-patch+json', Origin: ORIGIN },
+      body: '{',
+    })
+    expect(bad.status).toBe(400)
+  })
   test('a field named like what objects inherit: its error stops the handler like any other', async () => {
     for (const name of ['toString', 'constructor', 'hasOwnProperty']) {
       let ran = false
