@@ -6,7 +6,7 @@ import { HTTPException } from 'hono/http-exception'
 import { NONCE, secureHeaders } from 'hono/secure-headers'
 import { prerender, version } from 'virtual:fondu/assets'
 
-import { CONFIG, HANDLERS, isPageFile, isRouteFile, METHODS, pageId } from '../paths.js'
+import { checkExportNames, isPageFile, isRouteFile, METHODS, pageId } from '../paths.js'
 import { settings, type DocumentTemplate } from './document.js'
 import { errorResponse } from './errors.js'
 import { csrfOrigin, trailingSlash } from './http.js'
@@ -54,55 +54,8 @@ const CSP = {
 
 const ROOT = '/app/routes/'
 
-/**
- * What a file of `app/routes/` may export, and what to do with anything else: one spelling per kind of file. A
- * page's route file (`.tsx`) is its page and `loader`, `action` or `actions`; a `.ts` file is server code, with the
- * HTTP methods. The rest of a page's code goes to modules of its own (the browser gets the page alone)
- */
-function exportsOf(file: string): { allowed: readonly string[]; hint: string } {
-  const name = file.split('/').at(-1)!
-  if (name === '_middleware.ts')
-    return { allowed: ['default', ...CONFIG], hint: 'its middleware (default), prerender, params' }
-  if (/^_(?:layout|error)\.tsx$/.test(name))
-    return { allowed: ['default'], hint: 'its component only (default)' }
-  if (file.endsWith('.mdx'))
-    return {
-      allowed: [],
-      hint: "its content: an MDX page has no handlers (a _middleware.ts's prerender, params)",
-    }
-  if (file.endsWith('.ts'))
-    return {
-      allowed: [...METHODS, ...CONFIG],
-      hint: 'GET, POST, PUT, PATCH, DELETE, OPTIONS, prerender, params',
-    }
-  return {
-    allowed: ['default', ...HANDLERS, ...CONFIG],
-    hint: 'its page (default), loader, action or actions, prerender, params; the rest goes to a module of its own',
-  }
-}
-
-/** what a page's handler is called in a `.ts` file */
-const INSTEAD = {
-  loader: 'in a .ts file it is `GET`',
-  action: 'in a .ts file it is `POST`',
-  actions: "a .ts file has one `POST`: a file per action, or a page's route file (.tsx)",
-}
-
 export function checkExports(file: string, mod: Record<string, unknown>) {
-  const { allowed, hint } = exportsOf(file)
-  const mdx = file.endsWith('.mdx')
-  const extra = Object.keys(mod).filter((k) =>
-    mdx ? [...HANDLERS, ...METHODS, ...CONFIG].includes(k as never) : !allowed.includes(k),
-  )
-  if (extra.length) {
-    const renamed = file.endsWith('.ts')
-      ? extra.filter((k): k is keyof typeof INSTEAD => k in INSTEAD)
-      : []
-    throw new Error(
-      `fondu: routes/${file} exports ${extra.map((k) => `\`${k}\``).join(', ')}. It exports ${hint}` +
-        (renamed.length ? ` (${renamed.map((k) => `\`${k}\`: ${INSTEAD[k]}`).join('; ')})` : ''),
-    )
-  }
+  checkExportNames(file, Object.keys(mod))
   if (/\.(?:tsx|mdx)$/.test(file) && typeof mod.default !== 'function')
     throw new Error(
       `fondu: routes/${file} is a page: its default export is the component (code for the server only: a .ts file)`,

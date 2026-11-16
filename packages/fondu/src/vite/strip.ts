@@ -2,7 +2,7 @@ import { relative, sep } from 'node:path'
 
 import type { Plugin } from 'vite'
 
-import { CONFIG, HANDLERS, isPageFile, METHODS } from '../paths.js'
+import { CONFIG, checkExportNames, HANDLERS, isPageFile, METHODS } from '../paths.js'
 
 /** the exports of a page's route file that are server code: the browser gets the page (default) alone */
 const SERVER_EXPORTS = new Set<string>([...HANDLERS, ...CONFIG, ...METHODS])
@@ -282,6 +282,19 @@ function importOf(code: string, node: Node, kept: Array<Node & { local: Name }>)
   return `import ${clauses.join(', ')} from ${source};`
 }
 
+/** the names a module exports, as its namespace lists them (sorted); `export *` is not followed */
+function exportedNames(body: Node[]): string[] {
+  const names = new Set<string>()
+  for (const node of body) {
+    if (node.type === 'ExportDefaultDeclaration') names.add('default')
+    if (node.type !== 'ExportNamedDeclaration') continue
+    for (const name of bound(node.declaration as Node | null)) names.add(name)
+    for (const s of node.specifiers as Array<Node & { exported: Name }>)
+      names.add(nameOf(s.exported))
+  }
+  return [...names].sort()
+}
+
 /** The browser's copy of every page's route file (`.tsx` in `app/routes/`): its server code removed */
 export function stripRoutes(): Plugin {
   let root = process.cwd()
@@ -294,7 +307,13 @@ export function stripRoutes(): Plugin {
     transform(code, id) {
       if (this.environment.config.consumer !== 'client') return
       const file = relative(`${root}/app/routes`, id.split('?')[0]!).split(sep).join('/')
-      if (file.startsWith('..') || !isPageFile(file) || file.endsWith('.mdx')) return
+      if (file.startsWith('..')) return
+      // a layout or the error page is not stripped: what the server refuses at startup fails the build
+      if (/(?:^|\/)_(?:layout|error)\.tsx$/.test(file)) {
+        const program = this.parse(code) as unknown as { body: Node[] }
+        return void checkExportNames(file, exportedNames(program.body))
+      }
+      if (!isPageFile(file) || file.endsWith('.mdx')) return
       const stripped = stripServerCode(code, this.parse(code) as unknown as { body: Node[] }, file)
       return stripped === code ? undefined : { code: stripped, map: null }
     },

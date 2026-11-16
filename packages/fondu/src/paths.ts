@@ -169,3 +169,57 @@ export function staticFiles(path: string): { html: string; json: string } {
     json: decodeURIComponent(pageDataPath(path)).slice(1),
   }
 }
+
+/**
+ * What a file of `app/routes/` may export, and what to do with anything else: one spelling per kind of file. A
+ * page's route file (`.tsx`) is its page and `loader`, `action` or `actions`; a `.ts` file is server code, with the
+ * HTTP methods. The rest of a page's code goes to modules of its own (the browser gets the page alone)
+ */
+function exportsOf(file: string): { allowed: readonly string[]; hint: string } {
+  const name = file.split('/').at(-1)!
+  if (name === '_middleware.ts')
+    return { allowed: ['default', ...CONFIG], hint: 'its middleware (default), prerender, params' }
+  if (/^_(?:layout|error)\.tsx$/.test(name))
+    return { allowed: ['default'], hint: 'its component only (default)' }
+  if (file.endsWith('.mdx'))
+    return {
+      allowed: [],
+      hint: "its content: an MDX page has no handlers (a _middleware.ts's prerender, params)",
+    }
+  if (file.endsWith('.ts'))
+    return {
+      allowed: [...METHODS, ...CONFIG],
+      hint: 'GET, POST, PUT, PATCH, DELETE, OPTIONS, prerender, params',
+    }
+  return {
+    allowed: ['default', ...HANDLERS, ...CONFIG],
+    hint: 'its page (default), loader, action or actions, prerender, params; the rest goes to a module of its own',
+  }
+}
+
+/** what a page's handler is called in a `.ts` file */
+const INSTEAD = {
+  loader: 'in a .ts file it is `GET`',
+  action: 'in a .ts file it is `POST`',
+  actions: "a .ts file has one `POST`: a file per action, or a page's route file (.tsx)",
+}
+
+/**
+ * Throws if a route file (`file`, relative to `routes/`) exports a name it may not. The server checks it at startup
+ * (the exports of the loaded module), the build too (the names in the source): one message.
+ */
+export function checkExportNames(file: string, names: readonly string[]): void {
+  const { allowed, hint } = exportsOf(file)
+  const mdx = file.endsWith('.mdx')
+  const extra = names.filter((k) =>
+    mdx ? [...HANDLERS, ...METHODS, ...CONFIG].includes(k as never) : !allowed.includes(k),
+  )
+  if (!extra.length) return
+  const renamed = file.endsWith('.ts')
+    ? extra.filter((k): k is keyof typeof INSTEAD => k in INSTEAD)
+    : []
+  throw new Error(
+    `fondu: routes/${file} exports ${extra.map((k) => `\`${k}\``).join(', ')}. It exports ${hint}` +
+      (renamed.length ? ` (${renamed.map((k) => `\`${k}\`: ${INSTEAD[k]}`).join('; ')})` : ''),
+  )
+}
