@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url'
 import devServer, { defaultOptions as devServerDefaults } from '@hono/vite-dev-server'
 import react, { type Options as ReactOptions } from '@vitejs/plugin-react'
 import {
+  loadEnv,
   normalizePath,
   parseAst,
   transformWithOxc,
@@ -275,6 +276,18 @@ export function entryCode(options: FonduOptions, paths: string[], assetsDir = 'a
 
 function runtimePlugins(options: FonduOptions): PluginOption[] {
   return [
+    {
+      // dev: the app's .env files (in Vite's `envDir`: `.env`, `.env.local`, `.env.[mode]`, `.env.[mode].local`) are in `process.env`, as the
+      // server code reads them; a variable set already (the shell's, the host's) stays. Vite loads them for
+      // `import.meta.env` only, and for the `VITE_` ones. Cloudflare has its own, `.dev.vars`. The production server
+      // reads them itself (the template's `start` script)
+      name: 'fondu:env',
+      apply: 'serve',
+      configResolved(config) {
+        for (const [key, value] of Object.entries(loadEnv(config.mode, config.envDir, '')))
+          process.env[key] ??= value
+      },
+    },
     {
       // dev: the same Request / Response globals as the production server (@hono/node-server's), which the dev
       // server's requests are made with: middleware that re-creates the request (hono/body-limit) needs them

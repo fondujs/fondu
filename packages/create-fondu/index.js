@@ -144,6 +144,8 @@ for (const layer of layers) {
     layer === 'checks' ? { ...pkg.scripts, ...extra.scripts } : { ...extra.scripts, ...pkg.scripts }
   for (const key of ['dependencies', 'devDependencies'])
     pkg[key] = sortKeys({ ...pkg[key], ...extra[key] })
+  // what the target's scripts need (after the dependencies, where oxfmt's sortPackageJson puts it)
+  if (extra.engines) pkg.engines = { ...pkg.engines, ...extra.engines }
 }
 pkg.scripts = sortKeys(pkg.scripts) // as oxfmt's sortPackageJson (with sortScripts) leaves them
 pkg.dependencies.fondu = `^${own.version}`
@@ -164,7 +166,15 @@ const environment =
   target === 'cloudflare'
     ? `- Variables, secrets and bindings: \`import { env } from 'cloudflare:workers'\` in server code (\`c.env\` is
   untyped); declared in wrangler.jsonc (secrets: .dev.vars), typed by \`${run('cf-typegen')}\` after a change.\n`
-    : `- Environment variables: \`process.env\`, in server code only.\n`
+    : `- Environment variables: \`process.env\`, in server code only. A variable already set (by the shell, the host) is
+  never replaced by a file's. ${
+    target === 'node'
+      ? `In development, Fondu reads \`.env\`, \`.env.local\`, \`.env.development\` and \`.env.development.local\`. In
+  production, the \`start\` script reads \`.env\` alone (\`node --env-file-if-exists=.env\`, which needs Node 22.9 or
+  later: \`engines\`).`
+      : `In development, Fondu reads \`.env\`, \`.env.local\`, \`.env.development\` and \`.env.development.local\`. In
+  production, Bun reads \`.env\`, \`.env.production\` and \`.env.local\` itself.`
+  }\n`
 writeFileSync(
   agents,
   readFileSync(agents, 'utf8')
