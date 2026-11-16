@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -187,6 +187,40 @@ describe('paths', () => {
   })
 })
 
+describe('paths: a param is one file name', () => {
+  const pages = (pattern: string, ...values: Array<Record<string, string>>) =>
+    prerenderPaths([route('x/[id].ts', pattern, [() => values])])
+  test('a separator, or a dot segment, in a value fails the build, naming the route and the value', async () => {
+    for (const id of ['../../outside', 'a/b', '/abs', 'a\\b', '..\\..\\outside', '.', '..']) {
+      const { paths, problems } = await pages('/items/:id', { id })
+      expect(paths).toEqual([])
+      expect(problems).toHaveLength(1)
+      expect(problems[0]).toContain('routes/x/[id].ts')
+      expect(problems[0]).toContain(JSON.stringify(id))
+    }
+  })
+  test('a catch-all keeps its slashes, but no segment is a dot segment or has a backslash', async () => {
+    const all = (path: string) =>
+      prerenderPaths([route('docs/[...path].ts', '/docs/:path{.+}', [() => [{ path }]])])
+    expect((await all('a/b/c')).paths).toEqual(['/docs/a/b/c'])
+    for (const path of ['a/../b', 'a/./b', '../x', 'a\\b', 'a//b'])
+      expect((await all(path)).problems).toHaveLength(1)
+  })
+  test('what is a file name stays: Unicode, spaces, dots, percent signs', async () => {
+    const { paths, problems } = await pages(
+      '/items/:id',
+      { id: 'café' },
+      { id: 'a b' },
+      { id: 'v1.2' },
+      { id: '100%' },
+      { id: '%2f' },
+      { id: '..a' },
+    )
+    expect(problems).toEqual([])
+    expect(paths).toHaveLength(6)
+  })
+})
+
 const logger = { error() {}, warn() {}, info() {} } as never
 
 /** a built server that answers each path with its document and its page object */
@@ -241,6 +275,65 @@ describe('the build', () => {
     )
   })
 
+  describe('the output stays in the client directory', () => {
+    const inTemp = async (
+      paths: string[],
+      check: (dir: string, run: Promise<void>) => Promise<void>,
+    ) => {
+      const dir = mkdtempSync(join(tmpdir(), 'fondu-build-'))
+      try {
+        const pages = Object.fromEntries(paths.map((p) => [p, pageOf(p)]))
+        await check(
+          dir,
+          prerender(serverOf(pages), join(dir, 'client'), logger, {
+            serverDir: join(dir, 'server'),
+          }),
+        )
+      } finally {
+        rmSync(dir, { recursive: true })
+      }
+    }
+    const written = (dir: string): string[] =>
+      readdirSync(dir, { recursive: true, withFileTypes: true })
+        .filter((e) => e.isFile())
+        .map((e) => join(e.parentPath, e.name))
+    test('a path that resolves outside it is refused before anything is written', async () => {
+      for (const path of [
+        '/items/..%2F..%2Foutside',
+        '/..%2Foutside',
+        '/a%5C..%5Coutside',
+        '/%2e%2e%2foutside',
+      ])
+        await inTemp(['/ok', path], async (dir, run) => {
+          await expect(run).rejects.toThrow('prerendering failed')
+          expect(written(dir)).toEqual([])
+        })
+    })
+    test('every output is checked: the page objects too', async () => {
+      await inTemp(['/ok', '/x%2F..%2F..%2F..%2F..%2Foutside'], async (dir, run) => {
+        await expect(run).rejects.toThrow('prerendering failed')
+        expect(written(dir)).toEqual([])
+      })
+    })
+    test('two paths for one file fail the build: nothing is overwritten', async () => {
+      await inTemp(['/caf%C3%A9', '/café'], async (dir, run) => {
+        await expect(run).rejects.toThrow('prerendering failed')
+        expect(written(dir)).toEqual([])
+      })
+      // a file that would also be a directory
+      await inTemp(['/a', '/a.html/b'], async (dir, run) => {
+        await expect(run).rejects.toThrow('prerendering failed')
+        expect(written(dir)).toEqual([])
+      })
+    })
+    test('Unicode and encoded names are written inside', async () => {
+      await inTemp(['/café', '/a%20b', '/docs/x/y'], async (dir, run) => {
+        await run
+        for (const file of ['café.html', 'a b.html', 'docs/x/y.html', '_fondu/pages/café.json'])
+          expect(existsSync(join(dir, 'client', file))).toBe(true)
+      })
+    })
+  })
   test('Node / Bun: the headers are written to prerender.json, next to the server, for all pages', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'fondu-build-'))
     try {

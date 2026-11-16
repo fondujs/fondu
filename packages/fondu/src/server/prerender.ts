@@ -19,6 +19,23 @@ export interface PrerenderRoute {
   others: string[]
 }
 
+/**
+ * A param's value becomes a file name (`/items/:id` → `items/<id>.html`): not a path of its own. A `/` or a `\`
+ * in it (Windows' separator) would make a directory of it, or leave the build's directory (`../../x`); a catch-all
+ * is the path of its segments, each of which is a name. Throws, naming the value.
+ */
+function fileNames(pattern: string, params: Record<string, string | number>) {
+  for (const [, name, catchAll] of pattern.matchAll(/:(\w+)(\{[^}]*\})?/g)) {
+    const value = String(params[name!])
+    for (const part of catchAll ? value.split('/') : [value])
+      if (part === '.' || part === '..' || part.includes('\\') || (!catchAll && part.includes('/')))
+        throw new Error(
+          `param "${name}" is ${JSON.stringify(value)}: a prerendered URL is a file, and its names have no ` +
+            `separators (/ or \\) and are not . or ..`,
+        )
+  }
+}
+
 /** The paths to prerender, and what stops a route from being prerendered (the build fails on those) */
 export async function prerenderPaths(
   routes: PrerenderRoute[],
@@ -54,7 +71,11 @@ export async function prerenderPaths(
       continue
     }
     try {
-      for (const params of await setting()) add(fillPattern(route.pattern, params))
+      for (const params of await setting()) {
+        const path = fillPattern(route.pattern, params)
+        fileNames(route.pattern, params)
+        add(path)
+      }
     } catch (error) {
       problems.push(`${where}: ${error instanceof Error ? error.message : String(error)}`)
     }
