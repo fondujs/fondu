@@ -52,6 +52,19 @@ function check(schema: Schema, value: () => unknown): Errors | Promise<Errors> {
   return result instanceof Promise ? result.then(errors) : errors(result)
 }
 
+/** a form's fields as one string, files by what identifies them: two snapshots of a form are equal if this is */
+function snapshot(form: HTMLFormElement, submitter?: HTMLElement | null): string | undefined {
+  try {
+    return JSON.stringify(
+      [...new FormData(form, submitter ?? undefined)].map(([k, v]) =>
+        typeof v === 'string' ? [k, v] : [k, v.name, v.size, v.lastModified, v.type],
+      ),
+    )
+  } catch {
+    return undefined // a submitter that is no longer in the form: not what was checked
+  }
+}
+
 /** a field's errors: its own, and those inside it (`tags` has `tags.0`'s) */
 const within = (key: string, errorKey: string) =>
   errorKey === key || (key !== '' && errorKey.startsWith(`${key}.`))
@@ -67,6 +80,10 @@ const within = (key: string, errorKey: string) =>
  *   the pointer)
  * - `errors`: the server's (the page's `errors` prop), each until its field is checked again, and the browser's;
  *   by the server's keys (`email`, `user.name`)
+ * - an async schema: the form is sent once the schema has said yes to the values it was asked about. A result that
+ *   comes late is dropped, and sends nothing: after a newer submit, a visit to another page, or the form leaving the
+ *   screen, and when the fields are no longer what was checked (changed while the schema was working). That form is
+ *   not sent unchecked, nor checked again for the user: submit it again
  * - `submitting`: this form is being sent
  * - `failed`: this form could not be sent (offline…): it stays, to send again
  *
@@ -110,6 +127,11 @@ export function useForm(schema?: Schema): {
   const dirty = useRef(new Set<string>())
   const runs = useRef(new Map<string, number>())
   const passed = useRef(false)
+  // which whole-form check may still send: each submit takes the next number, and so does what makes a pending one
+  // obsolete (a visit, the form leaving). The result of an older one is dropped
+  const generation = useRef(0)
+  // the checks of single fields that began before the whole form's result: that result is the newer word
+  const epoch = useRef(0)
 
   /** what a check found, for the fields it covers (`key`: one field and those inside it; else all) */
   const apply = (found: Errors, from: Errors, key?: string) => {
@@ -164,13 +186,27 @@ export function useForm(schema?: Schema): {
     if (element && Object.keys(server).length) focusFirst(element, server)
   }, [submitting, failed, server, element])
 
+  // a visit to another page (a link, another form) or the form leaving the screen: a pending check can't send
+  const visiting = navigation.state === 'loading' || navigation.state === 'submitting'
+  useEffect(() => {
+    if (visiting) generation.current++
+  }, [visiting])
+  useEffect(
+    () => () => {
+      generation.current++
+    },
+    [],
+  )
+
   const checkField = (form: HTMLFormElement, key: string) => {
     if (!schema) return
     const run = (runs.current.get(key) ?? 0) + 1
     runs.current.set(key, run)
     const from = server
+    const began = epoch.current
     const done = (found: Errors) => {
-      if (runs.current.get(key) === run) apply(found, from, key)
+      // not after a newer check of the field, nor after the whole form's result (it began with these values or later)
+      if (runs.current.get(key) === run && epoch.current === began) apply(found, from, key)
     }
     const found = check(schema, () => fieldsOf(form))
     if (found instanceof Promise) void found.then(done)
@@ -189,6 +225,8 @@ export function useForm(schema?: Schema): {
         const form = event.currentTarget
         const submitter = (event.nativeEvent as SubmitEvent).submitter
         const from = server
+        const mine = ++generation.current
+        const before = snapshot(form, submitter)
         const found = check(schema, () => fieldsOf(form, submitter))
         const answer = (found: Errors) => {
           apply(found, from)
@@ -201,12 +239,20 @@ export function useForm(schema?: Schema): {
         // an async schema: sent again once it says yes
         event.preventDefault()
         void found.then((found) => {
+          // obsolete (a newer submit, a visit, the form gone) or about other values than the form has now: it says
+          // nothing about what would be sent
+          if (generation.current !== mine || snapshot(form, submitter) !== before) return
+          epoch.current++
           answer(found)
           if (Object.keys(found).length || latest.current !== from) return
           passed.current = true
-          form.requestSubmit(
-            submitter && 'form' in submitter ? (submitter as HTMLButtonElement) : null,
-          )
+          try {
+            form.requestSubmit(
+              submitter && 'form' in submitter ? (submitter as HTMLButtonElement) : null,
+            )
+          } finally {
+            passed.current = false // a submit that was cancelled has not used it up
+          }
         })
       },
     },

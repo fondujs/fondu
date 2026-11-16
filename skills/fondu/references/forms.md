@@ -96,6 +96,7 @@ export default function NewContact() {
 
 - The schema must be importable by browser code (no server module). The server checks again.
 - Without a schema, `useForm()` gives the server's errors, `submitting` and `failed`.
+- An async schema's yes sends the form only if its fields are still what it checked (changed meanwhile, or a newer submit, visit or unmount came first: nothing is sent, submit again).
 - Without JavaScript, the form is sent as it is and the server's check answers.
 
 ## While it is sent
