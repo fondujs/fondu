@@ -1,4 +1,4 @@
-import { closeShallow, fetch, FetchError, href, navigate, useForm, usePage } from 'fondu/client'
+import { closeShallow, href, navigate, RequestError, request, useForm, usePage } from 'fondu/client'
 import { useEffect, useState, useSyncExternalStore } from 'react'
 
 import { SubmitButton, TextField } from '#/components/demo.tsx'
@@ -133,8 +133,8 @@ function AccountFacts() {
   )
 }
 
-// fetch() from fondu/client: a call to a .ts route (app/routes/api/usage.ts), typed by it, as the dialog opens
-// this tab (an effect: a page's data would come from its loader). A non-2xx answer is a FetchError.
+// request() from fondu/client: a call to a .ts route (app/routes/api/usage.ts), typed by it, as the dialog opens
+// this tab (an effect: a page's data would come from its loader). A non-2xx answer is a RequestError.
 function Usage() {
   const [state, setState] = useState<
     | { status: 'loading' }
@@ -143,11 +143,11 @@ function Usage() {
   >({ status: 'loading' })
   useEffect(() => {
     const controller = new AbortController()
-    fetch('/api/usage', { signal: controller.signal }).then(
+    request('/api/usage', { signal: controller.signal }).then(
       (usage) => setState({ status: 'done', ...usage }),
       (error) => {
         if (!controller.signal.aborted)
-          setState({ status: 'failed', code: error instanceof FetchError ? error.status : null })
+          setState({ status: 'failed', code: error instanceof RequestError ? error.status : null })
       },
     )
     return () => controller.abort()

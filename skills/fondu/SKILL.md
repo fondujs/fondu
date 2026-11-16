@@ -3,7 +3,7 @@ name: fondu
 description: >-
   Building or changing an app on Fondu (a small React meta-framework on Hono and Vite): routes in app/routes/, pages,
   loaders, actions, forms and validation, links and navigation, layouts, middleware, error pages, static pages,
-  deferred props, shared props, typed URLs (href) and the typed fetch for .ts routes, the document, createApp, the Vite
+  deferred props, shared props, typed URLs (href) and the typed request() for .ts routes, the document, createApp, the Vite
   plugin. Use it before writing any of these, and for the rules of where code runs.
 metadata:
   type: core
@@ -82,8 +82,8 @@ export default function Show({ user }: { user: { name: string } }) {
   `c.redirect(url, 303)`, so a reload does not send the form again.
 - **URLs come from `href()`** (`fondu/client`), typed after `app/routes/`: `href('/users/:id', { id })`, with
   `{ query, hash }` too. Use it for links, form actions and redirects.
-- **Do not reach for** a client-side router, a client cache (React Query, SWR), or `fetch()` for a page's own data:
-  the loader and `defer()` are the page's data. `fetch()` from `fondu/client` is for effects and events, calling a
+- **Do not reach for** a client-side router, a client cache (React Query, SWR), or `request()` for a page's own data:
+  the loader and `defer()` are the page's data. `request()` from `fondu/client` is for effects and events, calling a
   `.ts` route. Sessions, auth and the data layer are the app's own (or another library's).
 - **Providers go in the root `_layout.tsx`**, which stays mounted across navigations. The document
   (`app/document.tsx`) is rendered once on the server and never hydrated: no state, context or effects there.
@@ -97,7 +97,7 @@ export default function Show({ user }: { user: { name: string } }) {
 | [references/routes-and-pages.md](references/routes-and-pages.md) | file names and URLs, params, groups, optional and catch-all segments, `render()`, `share()`, layouts, `_error`, `_middleware` |
 | [references/forms.md](references/forms.md)                       | `<form>`, `withValidator`, `useForm`, `back()`, `flash()`, `?name` actions, uploads, body limit                               |
 | [references/navigation.md](references/navigation.md)             | `navigate()`, shallow navigation, `closeShallow()`, `reload({ only })`, `useNavigation()`, preloading, Back, scroll           |
-| [references/data.md](references/data.md)                         | `defer()` and `<Deferred>`, typed `fetch()` and `FetchError`, when to use which                                               |
+| [references/data.md](references/data.md)                         | `defer()` and `<Deferred>`, typed `request()` and `RequestError`, when to use which                                           |
 | [references/rendering.md](references/rendering.md)               | streaming, Suspense, static pages (`prerender`), `withoutSsr()`, the document and its nonce                                   |
 | [references/server.md](references/server.md)                     | `createApp` options, the Vite plugin, middleware, `.ts` routes, Bun, Node and Workers                                         |
 | [references/types.md](references/types.md)                       | `fondu.gen.d.ts`, `Register`, typed `href`, `usePage`, what crosses as JSON                                                   |

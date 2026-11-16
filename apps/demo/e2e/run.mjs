@@ -1016,7 +1016,7 @@ await page.waitForFunction(
     'settings: closed after two tabs: one step back, to the page',
     (await hash()) === '' && (await path()) === '/account',
   )
-  // the usage tab: fetch() of fondu/client, a GET of the .ts route /api/usage (routes/api/usage.ts)
+  // the usage tab: request() of fondu/client, a GET of the .ts route /api/usage (routes/api/usage.ts)
   const usageRequests = []
   const onUsage = (r) => {
     if (new URL(r.url()).pathname === '/api/usage') usageRequests.push(r)
@@ -1030,7 +1030,7 @@ await page.waitForFunction(
   await page.waitForSelector('[data-testid=usage-contacts]', { timeout: 4000 })
   page.off('request', onUsage)
   ok(
-    'settings: the usage tab asks /api/usage with fetch(), and shows its count',
+    'settings: the usage tab asks /api/usage with request(), and shows its count',
     (await testid('usage-contacts')) === contactsNow &&
       (await testid('usage-since')) !== '' &&
       (await hash()) === '#settings/usage',

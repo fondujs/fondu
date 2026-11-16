@@ -71,7 +71,7 @@ describe('routes/ files', () => {
     // routePatterns does not check names (the client has it too): the server's start and the build do
     expect(routePatterns('[user-id].ts')).toEqual(['/[user-id]'])
   })
-  test("reserved param names: href()'s and fetch()'s options, in every kind of route file", () => {
+  test("reserved param names: href()'s and request()'s options, in every kind of route file", () => {
     // href()'s options
     expect(() => routePatterns('[query].tsx')).toThrow("can't be named query")
     expect(() => routePatterns('a/[[hash]]/b.ts')).toThrow("can't be named hash")
@@ -79,11 +79,11 @@ describe('routes/ files', () => {
     expect(() => routePatterns('[query].tsx')).toThrow("(href()'s option)")
     expect(() => routePatterns('[hash].ts')).toThrow("(href()'s option)")
     expect(routePatterns('query/[queryId].tsx')).toEqual(['/query/:queryId'])
-    // fetch()'s options: in every kind of route file, as a param, an optional one or a catch-all
+    // request()'s options: in every kind of route file, as a param, an optional one or a catch-all
     for (const name of ['method', 'body', 'headers', 'signal']) {
       for (const file of [`api/[${name}].ts`, `[[${name}]]/index.tsx`, `a/[...${name}].mdx`])
         expect(() => routePatterns(file)).toThrow(
-          `routes/${file}: a param can't be named ${name} (fetch()'s option); rename the file's [${name}]`,
+          `routes/${file}: a param can't be named ${name} (request()'s option); rename the file's [${name}]`,
         )
       expect(routePatterns(`api/[${name}Id].ts`)).toEqual([`/api/:${name}Id`])
       expect(routePatterns(`${name}/[id].ts`)).toEqual([`/${name}/:id`])

@@ -159,7 +159,7 @@ export default [
 Large files: Cloudflare refuses a request over its plan's limit itself (413: 100 MB Free and Pro, 200 MB Business, more
 on Enterprise), and a big body through the app costs memory. Send the file from the browser straight to R2 with a
 presigned `PUT` URL, made with the S3 API (the Workers binding can't) in a `.ts` route that returns `{ key, url }`:
-`fetch()` from `fondu/client` gets it, the platform's `fetch(url, { method: 'PUT', headers: { 'Content-Type': … }, body: file })`
+`request()` from `fondu/client` gets it, the platform's `fetch(url, { method: 'PUT', headers: { 'Content-Type': … }, body: file })`
 sends the file (the same `Content-Type` that was signed), and the action receives only the key. The bucket needs a CORS
 rule (origin, `PUT`, `AllowedHeaders: ["Content-Type"]`), or the browser refuses the request.
 

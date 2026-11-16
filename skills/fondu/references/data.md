@@ -4,16 +4,16 @@ Docs: [pages](https://fondu.dev/docs/pages.md#deferred-props), [routes](https://
 
 ## Which to use
 
-| Need                                            | Use                                             |
-| ----------------------------------------------- | ----------------------------------------------- |
-| a page's own data                               | the loader: `render(c, Page, props)`            |
-| a slow part of a page, which must not hold it   | `defer(() => …)` and `<Deferred>`               |
-| data every page needs (the user)                | `share(c, …)` in a `_middleware.ts`             |
-| the page's props again, after something changed | `reload()` or `reload({ only: [...] })`         |
-| a call from an effect or an event (a toggle)    | `fetch()` from `fondu/client`, to a `.ts` route |
-| an API for other clients                        | a `.ts` route with `GET`, `POST`…               |
+| Need                                            | Use                                               |
+| ----------------------------------------------- | ------------------------------------------------- |
+| a page's own data                               | the loader: `render(c, Page, props)`              |
+| a slow part of a page, which must not hold it   | `defer(() => …)` and `<Deferred>`                 |
+| data every page needs (the user)                | `share(c, …)` in a `_middleware.ts`               |
+| the page's props again, after something changed | `reload()` or `reload({ only: [...] })`           |
+| a call from an effect or an event (a toggle)    | `request()` from `fondu/client`, to a `.ts` route |
+| an API for other clients                        | a `.ts` route with `GET`, `POST`…                 |
 
-`fetch()` is not for a page's data: called during the server render it throws.
+`request()` is not for a page's data: called during the server render it throws.
 
 ## Deferred props
 
@@ -58,31 +58,31 @@ export default function Dashboard({ user, stats }: { user: User; stats?: Stats }
   Requests that overlap: the newest answer for a prop is the page's; an older one that comes after it is dropped for
   that prop (it keeps the props only it asked for).
 
-## `fetch()` for `.ts` routes
+## `request()` for `.ts` routes
 
 ```tsx
-import { fetch, FetchError } from 'fondu/client'
+import { request, RequestError } from 'fondu/client'
 
-const usage = await fetch('/api/usage') // the GET's c.json() type, as JSON delivers it: a Date is a string
-const user = await fetch('/api/users/:id', { id: 42, query: { full: 'yes' } })
-await fetch('/api/settings', { method: 'POST', body: { emails: false } })
+const usage = await request('/api/usage') // the GET's c.json() type, as JSON delivers it: a Date is a string
+const user = await request('/api/users/:id', { id: 42, query: { full: 'yes' } })
+await request('/api/settings', { method: 'POST', body: { emails: false } })
 
 try {
-  await fetch('/api/settings', { method: 'POST', body: { emails: 'no' } })
+  await request('/api/settings', { method: 'POST', body: { emails: 'no' } })
 } catch (error) {
-  if (error instanceof FetchError && error.status === 422) showErrors(error.data.errors)
+  if (error instanceof RequestError && error.status === 422) showErrors(error.data.errors)
 }
 ```
 
 - The path is a `.ts` route of the app (a page's pattern is not one), with its params as `href()` takes them.
 - `method` is one the file exports; GET when left out. Required for any other method (also when type arguments name
   it), and when the file has no `GET`.
-- `fetch()`'s options are `method`, `query`, `body`, `headers` and `signal`: that set is fixed, and no route param can
+- `request()`'s options are `method`, `query`, `body`, `headers` and `signal`: that set is fixed, and no route param can
   have one of these names.
 - `query` and `body` are typed by the handler's `withValidator` schemas; a body only for a method other than GET, sent
   as JSON. `headers` and `signal` pass through.
 - The answer is what the handler returns with `c.json()`, as JSON delivers it; any other answer is `unknown`.
-- A non-2xx answer throws `FetchError` with `status`, `data` (the parsed body: a 422's `{ errors }`) and `response`.
+- A non-2xx answer throws `RequestError` with `status`, `data` (the parsed body: a 422's `{ errors }`) and `response`.
   No retry, no cache: use an effect, `use()` or a library of your own.
 
 ```ts

@@ -243,15 +243,15 @@ export const POST = defineHandler(async (c) => {
 })
 ```
 
-In the browser, `fetch()` from `fondu/client` gets the URL (typed), then the file goes to R2 with the platform's
+In the browser, `request()` from `fondu/client` gets the URL (typed), then the file goes to R2 with the platform's
 `fetch()`. The form's action receives only the key.
 
 ```tsx
-import { fetch } from 'fondu/client'
+import { request } from 'fondu/client'
 
 async function upload(file: File) {
-  const { key, url } = await fetch('/api/upload-url', { method: 'POST' })
-  const res = await window.fetch(url, {
+  const { key, url } = await request('/api/upload-url', { method: 'POST' })
+  const res = await fetch(url, {
     method: 'PUT',
     headers: { 'Content-Type': 'image/jpeg' }, // the type that was signed
     body: file,
