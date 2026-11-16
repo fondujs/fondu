@@ -90,3 +90,58 @@ test.describe('<base target>', () => {
     await expect(page.locator('h1')).toHaveText('Long')
   })
 })
+
+test.describe('<base target> and forms', () => {
+  // /form: its GET form `#get` (to /echo), with a base added; `#get-self` has target="_self", `#self` is a submitter
+  // with formtarget="_self"
+  const withBase = async (page: import('@playwright/test').Page, target: string) => {
+    await page.goto('/form')
+    await hydrated(page)
+    await page.evaluate((target) => {
+      const base = document.createElement('base')
+      base.target = target
+      document.head.append(base)
+      const form = document.getElementById('get') as HTMLFormElement
+      const own = form.cloneNode(true) as HTMLFormElement
+      own.id = 'get-self'
+      own.target = '_self'
+      const self = document.createElement('button')
+      self.id = 'self'
+      self.setAttribute('formtarget', '_self')
+      self.textContent = 'Self'
+      form.append(self)
+      document.body.append(own)
+    }, target)
+  }
+
+  test('_blank: a form without a target is the browser’s (a new tab)', async ({
+    page,
+    context,
+  }) => {
+    await withBase(page, '_blank')
+    const opened = context.waitForEvent('page')
+    await page.locator('#get button:not(#self)').click()
+    const tab = await opened
+    await tab.waitForLoadState()
+    expect(tab.url()).toMatch(/\/echo\?q=/)
+    expect(new URL(page.url()).pathname).toBe('/form')
+  })
+
+  test('_blank: a form with target="_self" is still the client’s', async ({ page }) => {
+    await withBase(page, '_blank')
+    await page.locator('#get-self button').click()
+    await expect(page).toHaveURL(/\/echo\?q=/)
+  })
+
+  test('_blank: a submitter with formtarget="_self" is still the client’s', async ({ page }) => {
+    await withBase(page, '_blank')
+    await page.locator('#self').click()
+    await expect(page).toHaveURL(/\/echo\?q=/)
+  })
+
+  test('_self: the client takes the submit', async ({ page }) => {
+    await withBase(page, '_self')
+    await page.locator('#get button:not(#self)').click()
+    await expect(page).toHaveURL(/\/echo\?q=/)
+  })
+})

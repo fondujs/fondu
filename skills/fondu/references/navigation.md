@@ -25,6 +25,8 @@ export function UserLink({ user }: { user: { id: number; name: string } }) {
   `download`, or Ctrl, Cmd, Shift or Alt.
 - A link without its own `target` takes the document's `<base target>`: if that is not `_self`, the browser handles
   the click. SVG `<a>` and `<area>` are always the browser's.
+- A form with no `target` (and a submitter with no `formtarget`) takes `<base target>` too: not `_self`, the browser
+  submits it.
 - A GET form to a `.ts` route is the browser's, as a link to one is.
 - `<a target="_top">` loads a page as a whole document (a page of another `<html lang>`, scripts that must run
   again). In code: `loadDocument(url)`. A catch-all page covers files below it: link to them with `download` or

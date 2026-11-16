@@ -416,13 +416,18 @@ export function startNavigation({
     keep(on)
   }
 
+  /** a link or a form aimed at another window or frame: its own `target`, else the document's `<base target>` */
+  const elsewhere = (own: string) => {
+    const into = own || document.querySelector<HTMLBaseElement>('base[target]')?.target
+    return !!into && into !== '_self'
+  }
+
   /** a link the client may follow itself (same origin, this window, no download): its URL; `soft`, a shallow one */
   const linkOf = (target: EventTarget | null): { url: URL; soft: boolean } | undefined => {
     const link = (target as Element | null)?.closest?.('a[href]')
     if (!(link instanceof HTMLAnchorElement)) return
-    // its own `target`, else the document's `<base target>`; SVG `<a>` and `<area>` are not matched: the browser's
-    const into = link.target || document.querySelector<HTMLBaseElement>('base[target]')?.target
-    if ((into && into !== '_self') || link.hasAttribute('download')) return
+    // SVG `<a>` and `<area>` are not matched: the browser's
+    if (elsewhere(link.target) || link.hasAttribute('download')) return
     const url = new URL(link.href)
     if (url.origin !== location.origin || !isWebUrl(url.href)) return
     // `data-shallow`: for the page on the screen's own URL (its query, its #fragment) a shallow navigation
@@ -492,8 +497,7 @@ export function startNavigation({
     const attr = (name: string, own: string) =>
       submitter?.getAttribute(own) ?? form.getAttribute(name) ?? ''
     const method = attr('method', 'formmethod').toLowerCase() || 'get'
-    const target = attr('target', 'formtarget')
-    if ((method !== 'get' && method !== 'post') || (target && target !== '_self')) return
+    if ((method !== 'get' && method !== 'post') || elsewhere(attr('target', 'formtarget'))) return
     const url = new URL(attr('action', 'formaction') || location.href, location.href)
     if (url.origin !== location.origin || !isWebUrl(url.href)) return
     // a GET to a URL that is none of the app's pages (a `.ts` route): the browser's, as for a link; asking first would
