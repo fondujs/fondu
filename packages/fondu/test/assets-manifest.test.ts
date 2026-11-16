@@ -7,7 +7,7 @@ import { join } from 'node:path'
 import type { ResolvedConfig } from 'vite'
 import { afterAll, describe, expect, test } from 'vitest'
 
-import { productionAssets } from '../src/vite/index.js'
+import { productionAssets } from '../src/vite/assets.js'
 
 const manifest = {
   'app/entry.ts': {

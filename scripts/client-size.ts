@@ -1,9 +1,10 @@
 // The size of fondu's browser code (what `fondu/client` gives an app's bundle), minified, from source.
 //   bun scripts/client-size.ts [dir] [--json]     dir: a checkout (default: this one)
 //   bun scripts/client-size.ts --summary head.json [base.json]     a Markdown table, for CI's job summary
-// The app's virtual client entry (vite/index.ts) imports only `__entry` from `fondu/client`, so the bundle of
-// `client.ts` is the one bundle. A report: it exits 0 unless the build itself fails.
-import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs'
+// An app's bundle has `fondu/client` and `fondu/client/internal` (the virtual client entry's `__entry`: vite/index.ts),
+// over the one module of the client: both are built as one bundle (a checkout without `client/internal.ts` has the
+// one entry). A report: it exits 0 unless the build itself fails.
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
@@ -32,7 +33,15 @@ async function measure(dir: string): Promise<Size[]> {
     ...Object.keys(manifest.peerDependencies ?? {}),
   ]
   const out = mkdtempSync(join(tmpdir(), 'fondu-size-'))
+  const entry = join(mkdtempSync(join(tmpdir(), 'fondu-size-entry-')), 'client.ts')
   try {
+    writeFileSync(
+      entry,
+      ['src/client.ts', 'src/client/internal.ts']
+        .filter((f) => existsSync(join(pkg, f)))
+        .map((f) => `export * from ${JSON.stringify(join(pkg, f))}\n`)
+        .join(''),
+    )
     await build({
       root: pkg,
       configFile: false,
@@ -43,7 +52,7 @@ async function measure(dir: string): Promise<Size[]> {
         target: 'esnext',
         minify: true,
         copyPublicDir: false,
-        lib: { entry: join(pkg, 'src/client.ts'), formats: ['es'], fileName: 'client' },
+        lib: { entry, formats: ['es'], fileName: 'client' },
         rolldownOptions: {
           external: (id) => external.some((name) => id === name || id.startsWith(`${name}/`)),
         },
@@ -66,6 +75,7 @@ async function measure(dir: string): Promise<Size[]> {
     )
   } finally {
     rmSync(out, { recursive: true, force: true })
+    rmSync(join(entry, '..'), { recursive: true, force: true })
   }
 }
 

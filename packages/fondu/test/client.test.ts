@@ -3,8 +3,9 @@ import { createElement as h, useId, type ReactNode } from 'react'
 import { renderToReadableStream, renderToString } from 'react-dom/server'
 import { expect, test } from 'vitest'
 
-import { __entry, Deferred, renderPage, usePage } from '../src/client.js'
+import { Deferred, usePage } from '../src/client.js'
 import { newer, pageAt, shownOf } from '../src/client/app.js'
+import { __entry, renderPage } from '../src/client/internal.js'
 
 const Outer = ({ children }: { children: ReactNode }) => h('section', { id: 'outer' }, children)
 const Inner = ({ children }: { children: ReactNode }) => h('div', { id: 'inner' }, children)

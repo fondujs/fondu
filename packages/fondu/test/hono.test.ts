@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url'
 
 import { expect, test } from 'vitest'
 
-import { HONO } from '../src/vite/index.js'
+import { HONO } from '../src/vite/hono.js'
 
 // The Worker's dependency optimizer is told what fondu imports from Hono (fondu itself is not pre-bundled): every
 // runtime import of src/ is in the list
