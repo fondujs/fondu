@@ -135,6 +135,22 @@ describe('deferred props', () => {
     expect(res.props).toEqual({})
     expect(calls).toMatchObject({ stats: 0, feed: 0, shared: 0 })
   })
+  test('a name asked twice runs once: duplicates (trimmed) are dropped, the first-seen order is kept', async () => {
+    const res = await page(
+      await app.request('/deferred', { headers: partial('stats,stats, stats ,stats') }),
+    )
+    expect(res.props).toEqual({ stats: { total: 3 } })
+    expect(calls).toMatchObject({ stats: 1, feed: 0 })
+    Object.assign(calls, { stats: 0, feed: 0 })
+    const mixed = await page(
+      await app.request('/deferred', {
+        headers: partial('feed,nope,stats,feed,nope,title,stats,title'),
+      }),
+    )
+    expect(Object.keys(mixed.props)).toEqual(['feed', 'stats', 'title'])
+    expect(mixed.props).toEqual({ feed: ['a'], stats: { total: 3 }, title: 'Dashboard' })
+    expect(calls).toMatchObject({ stats: 1, feed: 1 })
+  })
   test('a partial request from another build: 409 and X-Fondu-Location, no function runs', async () => {
     const res = await app.request('/deferred', {
       headers: partial('stats', 'deferred', { 'X-Fondu-Version': 'old' }),
