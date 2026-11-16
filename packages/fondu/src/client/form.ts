@@ -20,7 +20,7 @@ interface Schema {
 }
 type StandardResult = { readonly issues?: ReadonlyArray<Issue> | undefined }
 
-/** a form's fields as the server reads them: its body for a POST (`withValidator({ body })`), its query for a GET */
+/** a form's fields as the server reads them: its body for a POST (`withValidator({ body })`), its query for a GET: both as `formObject` reads them */
 function fieldsOf(form: HTMLFormElement, submitter?: HTMLElement | null): unknown {
   const data = new FormData(form, submitter ?? undefined)
   const entries = [...data].map(
@@ -32,10 +32,8 @@ function fieldsOf(form: HTMLFormElement, submitter?: HTMLElement | null): unknow
     'get'
   ).toLowerCase()
   if (method === 'post') return formObject(entries)
-  // a query, as Hono's `c.req.query()`: each name's first value, a file by its name
-  const query: Record<string, string> = Object.create(null)
-  for (const [k, v] of entries) query[k] ??= typeof v === 'string' ? v : v.name
-  return query
+  // a query, as the server reads it (`withValidator({ query })`): as a body, a file by its name
+  return formObject(entries.map(([k, v]) => [k, typeof v === 'string' ? v : v.name]))
 }
 
 /** the schema's errors for these fields; none for fields that can't be one object (the server answers those) */

@@ -55,6 +55,11 @@ href('/search') // error: the schema requires q
 href('/users/:id', { id: 7, query: { tab: 'posts' } }) // '/users/7?tab=posts': no schema, any query
 ```
 
+`href()` writes the query as `withValidator({ query })` reads it: a list as `tag[]=a` (one item too), an object as
+`user[name]=Ada`, a list of objects or lists with indexes (`rows[0][a]=1`). Numbers and booleans are written as text (`2`,
+`true`) and read back as strings, so a schema parses them. An empty list or object is left out and reads back as
+absent: give such a field a default in its schema.
+
 A param can't be named `query` or `hash`: they are `href()`'s (and `method`, `body`, `headers` and `signal` are `fetch()`'s). A value that is `undefined` or `null` is left out, and
 `z.coerce.number()` takes any value (a string or a number), as the URL carries it as text.
 

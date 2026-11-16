@@ -45,12 +45,10 @@ export function validationErrorResponse(c: Context, error: ValidationError): Res
  * entries) is a 400. A body of another type (`text/plain`, none) is a 415; a request with no body is `{}`.
  */
 export async function readBody(c: Context): Promise<unknown> {
-  const malformed = (why: string) =>
-    new HTTPException(400, { message: `Malformed request body: ${why}` })
   const type = (c.req.header('content-type') ?? '').toLowerCase()
   // `application/json`, and any `application/*+json` (`merge-patch+json`, `vnd.api+json`), as the client reads an answer
   if (type.includes('application/json') || /^application\/[^;\s]+\+json\s*(?:;|$)/.test(type))
-    return c.req.json().catch(() => Promise.reject(malformed('invalid JSON')))
+    return c.req.json().catch(() => Promise.reject(malformedBody('invalid JSON')))
   if (
     !type.includes('multipart/form-data') &&
     !type.includes('application/x-www-form-urlencoded')
@@ -65,13 +63,33 @@ export async function readBody(c: Context): Promise<unknown> {
       })
     return {}
   }
-  const form = await c.req.formData().catch(() => Promise.reject(malformed('invalid form data')))
+  const form = await c.req
+    .formData()
+    .catch(() => Promise.reject(malformedBody('invalid form data')))
+  return fields(form.entries(), malformedBody)
+}
+
+const malformedBody = (why: string) =>
+  new HTTPException(400, { message: `Malformed request body: ${why}` })
+
+/** form fields as `formObject` reads them, a 400 for those that can't be one object */
+function fields(
+  entries: Iterable<[string, FormDataEntryValue]>,
+  malformed: (why: string) => Error,
+) {
   try {
-    return formObject(form.entries())
+    return formObject(entries)
   } catch (error) {
     throw error instanceof MalformedForm ? malformed(error.message) : error
   }
 }
+
+/** the query, read as a body is (`tags[]=a&tags[]=b`, `user[name]=Ada`): a 400 for one that can't be one object */
+const readQuery = (c: Context) =>
+  fields(
+    new URL(c.req.url).searchParams.entries(),
+    (why) => new HTTPException(400, { message: `Malformed query: ${why}` }),
+  )
 
 /** What `withValidator` checks: the request body (JSON or form), the query, the route params. */
 export interface Schemas {
@@ -94,7 +112,7 @@ export function validator<S extends Schemas>(
   const middleware: MiddlewareHandler = async (c, next) => {
     const values = {
       body: () => readBody(c),
-      query: () => c.req.query(),
+      query: () => readQuery(c),
       params: () => c.req.param(),
     }
     // no prototype: a field named `toString` or `constructor` is a field like any other

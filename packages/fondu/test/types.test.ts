@@ -28,6 +28,10 @@ import type { FonduOptions } from '../src/vite/index.js'
 type Auth = { user: string | null }
 const searchQuery = z.object({ q: z.string(), page: z.optional(z.coerce.number()) })
 const listQuery = z.object({ sort: z.optional(z.enum(['name', 'date'])) })
+const filterQuery = z.object({
+  tag: z.array(z.string()),
+  user: z.optional(z.object({ name: z.string() })),
+})
 // the route files fetch() calls: their handlers, as `typeof import('./app/routes/…')` has them
 const getUsage = define((c) => c.json({ used: Number(c.req.query('used')), limit: 10 }))
 const getClock = define((c) =>
@@ -82,6 +86,7 @@ declare module '../src/types.js' {
         loader: Validated<{ query: typeof listQuery }>
         actions: { invite: Validated<{ query: typeof searchQuery }> }
       }
+      '/filter': { loader: Validated<{ query: typeof filterQuery }> }
       '/api/items': { GET: Validated<{ query: typeof listQuery }> }
       '/api/usage': { GET: typeof getUsage }
       '/api/clock': { GET: typeof getClock }
@@ -227,6 +232,28 @@ const hrefs = [
   typed(({ href }) => href('/api/items', { query: { order: 'name' } })),
   // @ts-expect-error the action's schema, not the loader's
   typed(({ href }) => href('/teams/:id?invite', { id: 1, query: { sort: 'date' } })),
+  // lists and nested objects, as href() writes them (`tag[]=a`, `user[name]=Ada`): with no schema, any depth
+  typed(({ href }) => href('/', { query: { tag: ['a'] } })),
+  typed(({ href }) => href('/', { query: { tag: [] } })),
+  typed(({ href }) => href('/', { query: { user: { name: 'Ada', tags: ['x'], age: 7 } } })),
+  typed(({ href }) => href('/', { query: { rows: [{ a: 1 }, { a: 2 }], grid: [['a'], ['b']] } })),
+  // a coerced field (any input) takes them too
+  typed(({ href }) => href('/search', { query: { q: 'ada', page: [1, 2] } })),
+  // a schema's own types stay: its list, its object
+  typed(({ href }) => href('/filter', { query: { tag: ['a', 'b'] } })),
+  typed(({ href }) => href('/filter', { query: { tag: ['a'], user: { name: 'Ada' } } })),
+  // @ts-expect-error a list the schema takes as strings
+  typed(({ href }) => href('/filter', { query: { tag: [1] } })),
+  // @ts-expect-error a plain value where the schema takes a list
+  typed(({ href }) => href('/filter', { query: { tag: 'a' } })),
+  // @ts-expect-error an object missing the schema's field
+  typed(({ href }) => href('/filter', { query: { tag: [], user: {} } })),
+  // @ts-expect-error a function is no query value
+  typed(({ href }) => href('/', { query: { f: () => 1 } })),
+  // @ts-expect-error nor a Date (write its string: `date.toISOString()`)
+  typed(({ href }) => href('/', { query: { at: new Date() } })),
+  // @ts-expect-error nor a function inside a list or an object
+  typed(({ href }) => href('/', { query: { user: { f: () => 1 }, tag: [Symbol('x')] } })),
 ]
 
 const shared = [
@@ -532,7 +559,7 @@ test('the types above are checked by tsc', () => {
     ...answers,
     ...navigation,
     ...navigations,
-  ]).toHaveLength(147)
+  ]).toHaveLength(160)
 })
 
 test('FonduOptions: the port is PORT, not an option', () => {
