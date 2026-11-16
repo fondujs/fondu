@@ -96,6 +96,11 @@ export const GET = defineHandler((c) => c.json({ ok: true }))
 ```
 
 - Throw `HTTPException` (`hono/http-exception`) or return `c.notFound()` for errors.
+- To log every request in development (the CSRF 403, the trailing-slash redirect included), a `logger()` in
+  `_middleware.ts` is too late. Wrap the app in an outer Hono app in `app/server.ts`: `outer.use(logger())`, then
+  `outer.all('*', (c) => app.fetch(c.req.raw, c.env, executionCtx(c)))`, and `export default import.meta.env.DEV ? outer : app`.
+  Not `outer.route('/', app)` (it drops the not-found page), not `mount()` (deprecated); keep `notFound` and `onError`
+  on `app`. On Bun, pass `app.websocket` along if the app sets one. The full recipe: <https://fondu.dev/docs/routes#logging-every-request-in-development>.
 
 ## Targets
 
