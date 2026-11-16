@@ -53,13 +53,12 @@ replace Fondu's.
 
 ## The Vite plugin
 
-`fondu(options)` from `fondu/vite`: The options are checked when the plugin is created: `target` is required, `port` is an integer from 1 to 65535
-(Bun and Node only), and an unknown option fails.
+`fondu(options)` from `fondu/vite`: The options are checked when the plugin is created: `target` is required, and an unknown option fails. There is
+no `port` option: the built server (Bun and Node) listens on `PORT`, else 3000.
 
 | Option      | Is                                                                       |
 | ----------- | ------------------------------------------------------------------------ |
 | `target`    | `'bun'`, `'cloudflare'` or `'node'`                                      |
-| `port`      | the production port on Bun and Node, 3000 by default (`PORT` overrides)  |
 | `ssr`       | `false`: pages render in the browser only                                |
 | `prerender` | `true`: write the chosen pages as static files                           |
 | `progress`  | the progress bar: `{ color, delay, forms }`, or `false`                  |
@@ -108,7 +107,7 @@ export const GET = defineHandler((c) => c.json({ ok: true }))
 
 ## Targets
 
-- **Node**: `npm run build` (`vite build`), `npm start` (`node dist/server/index.js`); `PORT`; the
+- **Node**: `npm run build` (`vite build`), `npm start` (`node dist/server/index.js`); `PORT` (else 3000); the
   dependencies stay in `node_modules`. On SIGTERM the server waits up to 10 s for running requests.
 - **Bun**: the same build with `target: 'bun'`; `NODE_ENV=production bun dist/server/index.js` (Bun reads `NODE_ENV` as it starts, so set it for Bun's own mode).
 - **Cloudflare Workers**: `npm run deploy` (`vite build && wrangler deploy`). `wrangler.jsonc`'s `main` is

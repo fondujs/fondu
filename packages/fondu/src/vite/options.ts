@@ -1,7 +1,7 @@
 import type { FonduOptions } from './index.js'
 
 const TARGETS = ['node', 'bun', 'cloudflare']
-const KEYS = ['target', 'port', 'ssr', 'react', 'prerender', 'progress']
+const KEYS = ['target', 'ssr', 'react', 'prerender', 'progress']
 const PROGRESS_KEYS = ['delay', 'color', 'forms']
 
 const isObject = (v: unknown): v is Record<string, unknown> =>
@@ -25,21 +25,17 @@ export function checkOptions(options: unknown): asserts options is FonduOptions 
     const extra = keys.filter((k) => !allowed.includes(k))
     if (extra.length)
       fail(
-        `unknown option${extra.length > 1 ? 's' : ''} ${extra.map((k) => `\`${prefix}${k}\``).join(', ')}. The options are ${allowed.join(', ')}`,
+        `unknown option${extra.length > 1 ? 's' : ''} ${extra.map((k) => `\`${prefix}${k}\``).join(', ')}. The options are ${allowed.join(', ')}` +
+          (!prefix && extra.includes('port')
+            ? '. There is no `port` option: the built server listens on the environment variable `PORT`, else 3000 (`PORT=8080 node dist/server/index.js`)'
+            : ''),
       )
   }
   unknown(Object.keys(options), KEYS)
-  const { target, port, ssr, prerender, progress, react } = options
+  const { target, ssr, prerender, progress, react } = options
   if (target === undefined) fail("`target` is required: 'node', 'bun' or 'cloudflare'")
   if (!TARGETS.includes(target as string))
     fail(`\`target\` must be 'node', 'bun' or 'cloudflare', not ${show(target)}`)
-  // `port` goes with the option (#249)
-  if (port !== undefined) {
-    if (target === 'cloudflare')
-      fail("`port` is for target 'node' or 'bun': a Worker has no port of its own")
-    if (typeof port !== 'number' || !Number.isInteger(port) || port < 1 || port > 65535)
-      fail(`\`port\` must be an integer from 1 to 65535, not ${show(port)}`)
-  }
   for (const [name, value] of Object.entries({ ssr, prerender }))
     if (value !== undefined && typeof value !== 'boolean')
       fail(`\`${name}\` must be true or false, not ${show(value)}`)

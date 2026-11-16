@@ -9,12 +9,10 @@ describe('fondu() options', () => {
   test('the valid ones', () => {
     for (const options of [
       { target: 'node' },
-      { target: 'bun', port: 8080 },
-      { target: 'node', port: 1 },
-      { target: 'node', port: 65535 },
+      { target: 'bun' },
       { target: 'cloudflare' },
       { target: 'node', ssr: false, prerender: true },
-      { target: 'node', ssr: undefined, port: undefined, react: undefined, progress: undefined },
+      { target: 'node', ssr: undefined, react: undefined, progress: undefined },
       { target: 'node', progress: false },
       { target: 'node', progress: { delay: 0, color: 'red', forms: false } },
       { target: 'node', react: {} },
@@ -43,19 +41,18 @@ describe('fondu() options', () => {
     expect(make({ target: 'Node' })).toThrow("not 'Node'")
   })
 
-  test('port is an integer from 1 to 65535, for node or bun', () => {
-    for (const port of [0, 65536, 3000.5, '3000'])
-      expect(make({ target: 'node', port }), String(port)).toThrow(
-        'fondu(): `port` must be an integer from 1 to 65535',
+  test('port is no option: it says to set PORT', () => {
+    for (const target of ['node', 'bun', 'cloudflare'])
+      expect(make({ target, port: 3000 }), target).toThrow(
+        'fondu(): unknown option `port`. The options are target, ssr, react, prerender, progress. There is no `port` option: the built server listens on the environment variable `PORT`, else 3000',
       )
-    expect(make({ target: 'cloudflare', port: 3000 })).toThrow(
-      "fondu(): `port` is for target 'node' or 'bun': a Worker has no port of its own",
-    )
+    expect(make({ target: 'node', port: 3000, a: 1 })).toThrow('unknown options `port`, `a`')
+    expect(make({ target: 'node', progress: { port: 1 } })).not.toThrow('PORT')
   })
 
   test('unknown keys', () => {
     expect(make({ target: 'node', prot: 3000 })).toThrow(
-      'fondu(): unknown option `prot`. The options are target, port, ssr, react, prerender, progress',
+      'fondu(): unknown option `prot`. The options are target, ssr, react, prerender, progress',
     )
     expect(make({ target: 'node', a: 1, b: 2 })).toThrow('unknown options `a`, `b`')
   })

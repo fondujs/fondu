@@ -23,6 +23,7 @@ import {
 } from '../src/server/handler.js'
 import { back } from '../src/server/http.js'
 import type { defer, render, share } from '../src/server/protocol.js'
+import type { FonduOptions } from '../src/vite/index.js'
 
 type Auth = { user: string | null }
 const searchQuery = z.object({ q: z.string(), page: z.optional(z.coerce.number()) })
@@ -532,4 +533,14 @@ test('the types above are checked by tsc', () => {
     ...navigation,
     ...navigations,
   ]).toHaveLength(147)
+})
+
+test('FonduOptions: the port is PORT, not an option', () => {
+  const options: FonduOptions[] = [
+    { target: 'node' },
+    { target: 'bun', ssr: false, prerender: true },
+    // @ts-expect-error `port` was removed: the server listens on PORT
+    { target: 'node', port: 8080 },
+  ]
+  expect(options).toHaveLength(3)
 })

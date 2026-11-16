@@ -39,8 +39,6 @@ import { typegen, walk as walkFiles } from './typegen.js'
  */
 export interface FonduOptions {
   target: 'node' | 'bun' | 'cloudflare'
-  /** production port (Node / Bun), default 3000 */
-  port?: number
   /** `false`: pages render in the browser only, no server render is built (an admin app). Per route: `withoutSsr()` */
   ssr?: boolean
   react?: ReactOptions
@@ -185,8 +183,8 @@ function dependencies(root = ''): string[] {
 /**
  * Node / Bun: the server build's entry, dist/server/index.js. The client build's files first (found next to the
  * server bundle wherever it runs from; hashed files never change), then the app. Node: @hono/node-server's serve()
- * on `PORT` (else the option), saying where it listens, with a graceful shutdown on SIGTERM / SIGINT (10 s). Bun
- * serves the default export itself, on `PORT` (else the option; Bun's own default without one), with the app's
+ * on `PORT` (else 3000), saying where it listens, with a graceful shutdown on SIGTERM / SIGINT (10 s). Bun
+ * serves the default export itself, on `PORT` (Bun reads it, else 3000), with the app's
  * `websocket`, if it has one.
  * With `prerender`, the pages the build wrote are served from their files first, with the headers it decided
  * (`prerender.json`, next to this entry).
@@ -257,14 +255,12 @@ export function entryCode(options: FonduOptions, paths: string[], assetsDir = 'a
     `main.all('*', (c) => app.fetch(c.req.raw, c.env))`,
     ...(bun
       ? [
-          // Bun serves the default export: its `port` (`PORT` first, as on Node), else Bun's own default (PORT, 3000)
-          options.port === undefined
-            ? `export default app.websocket ? { fetch: main.fetch, websocket: app.websocket } : main`
-            : `export default { fetch: main.fetch, port: Number(process.env.PORT) || ${Number(options.port)}, ...(app.websocket && { websocket: app.websocket }) }`,
+          // Bun serves the default export, on `PORT` (it reads it: BUN_PORT and NODE_PORT too), else 3000
+          `export default app.websocket ? { fetch: main.fetch, websocket: app.websocket } : main`,
         ]
       : [
           `const { serve } = await import('@hono/node-server')`,
-          `const server = serve({ fetch: main.fetch, port: Number(process.env.PORT) || ${options.port ?? 3000} }, (info) => console.log(\`Listening on http://localhost:\${info.port}\`))`,
+          `const server = serve({ fetch: main.fetch, port: Number(process.env.PORT) || 3000 }, (info) => console.log(\`Listening on http://localhost:\${info.port}\`))`,
           `const shutdown = () => { server.close(() => process.exit(0)); setTimeout(() => process.exit(1), 10_000).unref() }`,
           `process.on('SIGINT', shutdown)`,
           `process.on('SIGTERM', shutdown)`,
