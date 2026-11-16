@@ -129,7 +129,7 @@ export default function Search({ q, results }: { q: string; results: string[] })
 ```
 
 `replace` makes one history entry for the search, not one per letter. A navigation in flight is aborted by the next,
-so a fast typist sees only the last answer. Why not `fetch()` from an effect: the URL holds the search, so Back, a
+so a fast typist sees only the last answer. Why not `request()` from an effect: the URL holds the search, so Back, a
 reload and a shared link all work, and the loader is the one place the results are computed.
 
 | Export                                  | Does                                                                                                                 |
@@ -277,7 +277,7 @@ export default function Orders({ orders }: { orders: Order[] }) {
   adds an entry that `closeShallow()` replaces, as it replaces any other.
 
 If the drawer needs data the list does not have, ask for it with `reload({ only: ['order'] })` (the loader sees the
-query), or with `fetch()` from a `.ts` route.
+query), or with `request()` from a `.ts` route.
 
 A form in the dialog is posted as any form. Its answer at the same page (back with errors, or `back(c)`) keeps the
 `#fragment` on the screen, so the dialog stays open, with its errors or its result.

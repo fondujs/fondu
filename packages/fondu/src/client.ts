@@ -131,7 +131,7 @@ export { useForm } from './client/form.js'
 export { closeShallow, loadDocument, navigate, type Page } from './client/navigation.js'
 export type { ProgressOptions } from './client/progress.js'
 
-// ---- fetch(): a typed call to the app's `.ts` routes (as Void's typed fetch, with Fondu's URL patterns)
+// ---- request(): a typed call to the app's `.ts` routes (as Void's typed fetch, with Fondu's URL patterns)
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
 /** no generated types (or none of routes): everything is loose, as `Href` is */
@@ -144,7 +144,7 @@ type MethodsOf<P extends string> = Loose extends true
     : never
 /**
  * The URL patterns of route files that export an HTTP method (`.ts` files). A page's pattern is not one: a page's
- * data is its props (its loader, `defer()`), and `fetch()` is for effects and events.
+ * data is its props (its loader, `defer()`), and `request()` is for effects and events.
  */
 export type ApiPath = Loose extends true
   ? string
@@ -176,13 +176,15 @@ type BodyArg<M extends string, B> = M extends 'GET'
 /** `method`: omitted is GET, so it is left out only for a call that is GET: any other method, or a union, names it */
 type MethodArg<M extends string> = [M] extends ['GET'] ? { method?: M } : { method: M }
 
-type FetchOptions<P extends string, M extends HttpMethod> = ParamArgs<P> &
+type RequestOptions<P extends string, M extends HttpMethod> = ParamArgs<P> &
   MethodArg<M> &
   QueryArg<QueryOfHandler<HandlerOf<P, M>>> &
   BodyArg<M, BodyOfHandler<HandlerOf<P, M>>> & { headers?: HeadersInit; signal?: AbortSignal }
 /** the options are optional when nothing is required: no params, no `body`, `query` or `method` to give */
-export type FetchArgs<P extends string, M extends HttpMethod> =
-  {} extends FetchOptions<P, M> ? [options?: FetchOptions<P, M>] : [options: FetchOptions<P, M>]
+export type RequestArgs<P extends string, M extends HttpMethod> =
+  {} extends RequestOptions<P, M>
+    ? [options?: RequestOptions<P, M>]
+    : [options: RequestOptions<P, M>]
 
 /** what a handler returns, in the type: a `defineHandler(...)` tuple, a `withValidator` handler, a function */
 type ReturnedBy<H> = typeof answerOf extends keyof H
@@ -208,13 +210,13 @@ export type AnswerOf<P extends string, M extends string> = Loose extends true
   : AnswerOfResponse<ReturnedBy<HandlerOf<P, M>>>
 
 /** a non-2xx answer: `status`, `data` (the parsed body: a 422's `{ errors }`) and the `response` */
-export class FetchError extends Error {
+export class RequestError extends Error {
   readonly status: number
   readonly data: unknown
   readonly response: Response
   constructor(method: string, url: string, response: Response, data: unknown) {
     super(`${method} ${url}: ${response.status}`)
-    this.name = 'FetchError'
+    this.name = 'RequestError'
     this.status = response.status
     this.data = data
     this.response = response
@@ -226,19 +228,19 @@ export class FetchError extends Error {
  * `href()` takes them, `query` and `body` by the handler's `withValidator` schemas, `method` one the file exports
  * (GET when left out), the answer by what the handler returns with `c.json()`, as JSON delivers it.
  *
- *     const usage = await fetch('/api/usage')
- *     await fetch('/api/settings', { method: 'POST', body: { emails: false } })
+ *     const usage = await request('/api/usage')
+ *     await request('/api/settings', { method: 'POST', body: { emails: false } })
  *
- * A non-2xx answer throws a `FetchError`. No retry, no cache. A page's data comes from its loader or `defer()`:
+ * A non-2xx answer throws a `RequestError`. No retry, no cache. A page's data comes from its loader or `defer()`:
  * called during the server render, it throws. (Follows Void's typed fetch.)
  */
-export async function fetch<
+export async function request<
   P extends ApiPath,
   M extends MethodsOf<P> & HttpMethod = Extract<MethodsOf<P>, 'GET'>,
->(path: P, ...[options]: FetchArgs<P, M>): Promise<AnswerOf<P, M>> {
+>(path: P, ...[options]: RequestArgs<P, M>): Promise<AnswerOf<P, M>> {
   if (typeof document === 'undefined')
     throw new Error(
-      "fondu: fetch() from fondu/client is for the browser (effects, events); a page's data comes from its loader or defer()",
+      "fondu: request() from fondu/client is for the browser (effects, events); a page's data comes from its loader or defer()",
     )
   const {
     method = 'GET',
@@ -260,14 +262,14 @@ export async function fetch<
   const all = new Headers({ Accept: 'application/json' })
   if (body !== undefined) all.set('Content-Type', 'application/json')
   new Headers(headers).forEach((value, name) => all.set(name, value))
-  const response = await globalThis.fetch(url, {
+  const response = await fetch(url, {
     method,
     headers: all,
     body: JSON.stringify(body),
     signal,
   })
   const data = await readAnswer(response)
-  if (!response.ok) throw new FetchError(method, url, response, data)
+  if (!response.ok) throw new RequestError(method, url, response, data)
   return data as AnswerOf<P, M>
 }
 

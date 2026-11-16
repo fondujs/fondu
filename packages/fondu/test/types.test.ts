@@ -8,7 +8,7 @@ import * as z from 'zod/mini'
 
 import type {
   closeShallow,
-  fetch,
+  request,
   href,
   navigate,
   useForm,
@@ -32,7 +32,7 @@ const filterQuery = z.object({
   tag: z.array(z.string()),
   user: z.optional(z.object({ name: z.string() })),
 })
-// the route files fetch() calls: their handlers, as `typeof import('./app/routes/…')` has them
+// the route files request() calls: their handlers, as `typeof import('./app/routes/…')` has them
 const getUsage = define((c) => c.json({ used: Number(c.req.query('used')), limit: 10 }))
 const getClock = define((c) =>
   c.json({ at: new Date(), nested: { when: new Date() }, gone: undefined, n: 1 as number }),
@@ -116,7 +116,7 @@ type Api = {
   href: typeof href
   navigate: typeof navigate
   closeShallow: typeof closeShallow
-  fetch: typeof fetch
+  request: typeof request
   share: typeof share
   flash: typeof flash
   usePage: typeof usePage
@@ -398,133 +398,139 @@ const exactly =
     value
 
 type ClockWithDate = { at: Date; nested: { when: string }; n: number }
-// fetch(): a `.ts` route's answer as JSON delivers it, by the route file's own types
-const fetches = [
-  typed(async ({ fetch }) => exactly<{ used: number; limit: number }>()(await fetch('/api/usage'))),
+// request(): a `.ts` route's answer as JSON delivers it, by the route file's own types
+const requests = [
+  typed(async ({ request }) =>
+    exactly<{ used: number; limit: number }>()(await request('/api/usage')),
+  ),
   // a Date arrives as a string, nested too; an undefined field is dropped
-  typed(async ({ fetch }) =>
-    exactly<{ at: string; nested: { when: string }; n: number }>()(await fetch('/api/clock')),
+  typed(async ({ request }) =>
+    exactly<{ at: string; nested: { when: string }; n: number }>()(await request('/api/clock')),
   ),
   // @ts-expect-error a Date is not what arrives
-  typed(async ({ fetch }) => exactly<ClockWithDate>()(await fetch('/api/clock'))),
+  typed(async ({ request }) => exactly<ClockWithDate>()(await request('/api/clock'))),
   // params, as href() takes them; the handler's answer (a validated one, params and query)
-  typed(async ({ fetch }) =>
-    exactly<{ id: number; name: string }>()(await fetch('/api/users/:id', { id: 7 })),
+  typed(async ({ request }) =>
+    exactly<{ id: number; name: string }>()(await request('/api/users/:id', { id: 7 })),
   ),
-  typed(({ fetch }) => fetch('/api/users/:id', { id: '7' })),
+  typed(({ request }) => request('/api/users/:id', { id: '7' })),
   // @ts-expect-error the param is missing
-  typed(({ fetch }) => fetch('/api/users/:id')),
+  typed(({ request }) => request('/api/users/:id')),
   // @ts-expect-error the param is missing
-  typed(({ fetch }) => fetch('/api/users/:id', { query: { sort: 'name' } })),
+  typed(({ request }) => request('/api/users/:id', { query: { sort: 'name' } })),
   // @ts-expect-error a param named otherwise
-  typed(({ fetch }) => fetch('/api/users/:id', { slug: 7 })),
+  typed(({ request }) => request('/api/users/:id', { slug: 7 })),
   // @ts-expect-error a route without params takes none
-  typed(({ fetch }) => fetch('/api/usage', { id: 7 })),
+  typed(({ request }) => request('/api/usage', { id: 7 })),
   // a query, by the schema of the method (optional or required fields)
-  typed(({ fetch }) => fetch('/api/users/:id', { id: 7, query: { sort: 'name' } })),
-  typed(({ fetch }) => fetch('/api/search', { query: { q: 'ada', page: 2 } })),
-  typed(async ({ fetch }) =>
-    exactly<{ found: string[] }>()(await fetch('/api/search', { query: { q: 'ada' } })),
+  typed(({ request }) => request('/api/users/:id', { id: 7, query: { sort: 'name' } })),
+  typed(({ request }) => request('/api/search', { query: { q: 'ada', page: 2 } })),
+  typed(async ({ request }) =>
+    exactly<{ found: string[] }>()(await request('/api/search', { query: { q: 'ada' } })),
   ),
   // @ts-expect-error a value the schema doesn't take
-  typed(({ fetch }) => fetch('/api/users/:id', { id: 7, query: { sort: 'size' } })),
+  typed(({ request }) => request('/api/users/:id', { id: 7, query: { sort: 'size' } })),
   // @ts-expect-error a field of the wrong type
-  typed(({ fetch }) => fetch('/api/search', { query: { q: 1 } })),
+  typed(({ request }) => request('/api/search', { query: { q: 1 } })),
   // @ts-expect-error the schema requires q: the query is required
-  typed(({ fetch }) => fetch('/api/search')),
+  typed(({ request }) => request('/api/search')),
   // headers and signal pass through
-  typed(({ fetch }) =>
-    fetch('/api/usage', { headers: { 'X-Mode': 'x' }, signal: AbortSignal.timeout(1000) }),
+  typed(({ request }) =>
+    request('/api/usage', { headers: { 'X-Mode': 'x' }, signal: AbortSignal.timeout(1000) }),
   ),
   // a method the file exports (a body by its schema), GET when left out
-  typed(({ fetch }) => fetch('/api/settings', { method: 'GET' })),
-  typed(async ({ fetch }) =>
+  typed(({ request }) => request('/api/settings', { method: 'GET' })),
+  typed(async ({ request }) =>
     exactly<{ saved: boolean }>()(
-      await fetch('/api/settings', { method: 'POST', body: { emails: false } }),
+      await request('/api/settings', { method: 'POST', body: { emails: false } }),
     ),
   ),
-  typed(({ fetch }) =>
-    fetch('/api/settings', { method: 'POST', body: { emails: false, theme: 'dark' } }),
+  typed(({ request }) =>
+    request('/api/settings', { method: 'POST', body: { emails: false, theme: 'dark' } }),
   ),
   // a body whose fields are all optional may be left out
-  typed(({ fetch }) => fetch('/api/settings', { method: 'PATCH' })),
-  typed(({ fetch }) => fetch('/api/settings', { method: 'PATCH', body: { theme: 'dark' } })),
+  typed(({ request }) => request('/api/settings', { method: 'PATCH' })),
+  typed(({ request }) => request('/api/settings', { method: 'PATCH', body: { theme: 'dark' } })),
   // @ts-expect-error the schema requires emails: the body is required
-  typed(({ fetch }) => fetch('/api/settings', { method: 'POST' })),
+  typed(({ request }) => request('/api/settings', { method: 'POST' })),
   // @ts-expect-error a required field is missing
-  typed(({ fetch }) => fetch('/api/settings', { method: 'POST', body: { theme: 'dark' } })),
+  typed(({ request }) => request('/api/settings', { method: 'POST', body: { theme: 'dark' } })),
   // @ts-expect-error a field of the wrong type
-  typed(({ fetch }) => fetch('/api/settings', { method: 'POST', body: { emails: 'no' } })),
+  typed(({ request }) => request('/api/settings', { method: 'POST', body: { emails: 'no' } })),
   // @ts-expect-error a method the file doesn't export
-  typed(({ fetch }) => fetch('/api/settings', { method: 'DELETE' })),
+  typed(({ request }) => request('/api/settings', { method: 'DELETE' })),
   // @ts-expect-error a body is for a method other than GET
-  typed(({ fetch }) => fetch('/api/settings', { body: { emails: false } })),
+  typed(({ request }) => request('/api/settings', { body: { emails: false } })),
   // @ts-expect-error a body is for a method other than GET
-  typed(({ fetch }) => fetch('/api/usage', { body: {} })),
+  typed(({ request }) => request('/api/usage', { body: {} })),
   // a file with POST only: the method is required
-  typed(({ fetch }) => fetch('/api/tokens', { method: 'POST', body: { name: 'ci' } })),
+  typed(({ request }) => request('/api/tokens', { method: 'POST', body: { name: 'ci' } })),
   // @ts-expect-error no GET: the method is required
-  typed(({ fetch }) => fetch('/api/tokens', { body: { name: 'ci' } })),
+  typed(({ request }) => request('/api/tokens', { body: { name: 'ci' } })),
   // @ts-expect-error no GET: the method is required
-  typed(({ fetch }) => fetch('/api/tokens')),
+  typed(({ request }) => request('/api/tokens')),
   // @ts-expect-error no GET, the generic names POST: the method is still required
-  typed(({ fetch }) => fetch<'/api/tokens', 'POST'>('/api/tokens', { body: { name: 'ci' } })),
+  typed(({ request }) => request<'/api/tokens', 'POST'>('/api/tokens', { body: { name: 'ci' } })),
   // @ts-expect-error not a route's method: POST only
-  typed(({ fetch }) => fetch('/api/tokens', { method: 'PUT', body: { name: 'ci' } })),
+  typed(({ request }) => request('/api/tokens', { method: 'PUT', body: { name: 'ci' } })),
   // omitted is GET: a generic that names another method (or a union) names it in the options too
-  typed(({ fetch }) =>
+  typed(({ request }) =>
     // @ts-expect-error POST in the generic, no method: it would send a GET
-    fetch<'/api/settings', 'POST'>('/api/settings', { body: { emails: false } }),
+    request<'/api/settings', 'POST'>('/api/settings', { body: { emails: false } }),
   ),
   // @ts-expect-error PATCH in the generic, no options: it would send a GET
-  typed(({ fetch }) => fetch<'/api/settings', 'PATCH'>('/api/settings')),
+  typed(({ request }) => request<'/api/settings', 'PATCH'>('/api/settings')),
   // @ts-expect-error a union generic: no method to tell which
-  typed(({ fetch }) => fetch<'/api/settings', 'GET' | 'POST'>('/api/settings')),
-  // @ts-expect-error a union generic of the non-GET methods: no method to tell which
-  typed(({ fetch }) => fetch<'/api/settings', 'POST' | 'PATCH'>('/api/settings', { headers: {} })),
-  typed(({ fetch }) =>
-    fetch<'/api/settings', 'POST'>('/api/settings', { method: 'POST', body: { emails: false } }),
+  typed(({ request }) => request<'/api/settings', 'GET' | 'POST'>('/api/settings')),
+  typed(({ request }) =>
+    // @ts-expect-error a union generic of the non-GET methods: no method to tell which
+    request<'/api/settings', 'POST' | 'PATCH'>('/api/settings', { headers: {} }),
   ),
-  typed(async ({ fetch }) =>
+  typed(({ request }) =>
+    request<'/api/settings', 'POST'>('/api/settings', { method: 'POST', body: { emails: false } }),
+  ),
+  typed(async ({ request }) =>
     exactly<{ saved: boolean }>()(
-      await fetch<'/api/settings', 'POST'>('/api/settings', {
+      await request<'/api/settings', 'POST'>('/api/settings', {
         method: 'POST',
         body: { emails: false },
       }),
     ),
   ),
   // GET stays the default: inferred, or named, with no method
-  typed(({ fetch }) => fetch('/api/settings')),
-  typed(({ fetch }) => fetch<'/api/settings', 'GET'>('/api/settings')),
-  typed(({ fetch }) => fetch<'/api/settings', 'GET'>('/api/settings', { method: 'GET' })),
+  typed(({ request }) => request('/api/settings')),
+  typed(({ request }) => request<'/api/settings', 'GET'>('/api/settings')),
+  typed(({ request }) => request<'/api/settings', 'GET'>('/api/settings', { method: 'GET' })),
   // a page's data is its props: its pattern is not a path
   // @ts-expect-error a page
-  typed(({ fetch }) => fetch('/')),
+  typed(({ request }) => request('/')),
   // @ts-expect-error a page with params
-  typed(({ fetch }) => fetch('/users/:id', { id: 7 })),
+  typed(({ request }) => request('/users/:id', { id: 7 })),
   // @ts-expect-error a page's loader
-  typed(({ fetch }) => fetch('/search', { query: { q: 'ada' } })),
+  typed(({ request }) => request('/search', { query: { q: 'ada' } })),
   // @ts-expect-error a page's action
-  typed(({ fetch }) => fetch('/users/:id?rename', { id: 7 })),
+  typed(({ request }) => request('/users/:id?rename', { id: 7 })),
   // @ts-expect-error not a route
-  typed(({ fetch }) => fetch('/api/nothing')),
+  typed(({ request }) => request('/api/nothing')),
   // not c.json: unknown (text; a redirect or back(); a branch that isn't json)
-  typed(async ({ fetch }) => exactly<unknown>()(await fetch('/api/hello'))),
-  typed(async ({ fetch }) => exactly<unknown>()(await fetch('/api/redirect'))),
-  typed(async ({ fetch }) =>
-    exactly<unknown>()(await fetch('/api/redirect', { method: 'POST', body: {} })),
+  typed(async ({ request }) => exactly<unknown>()(await request('/api/hello'))),
+  typed(async ({ request }) => exactly<unknown>()(await request('/api/redirect'))),
+  typed(async ({ request }) =>
+    exactly<unknown>()(await request('/api/redirect', { method: 'POST', body: {} })),
   ),
-  typed(async ({ fetch }) => exactly<unknown>()(await fetch('/api/maybe'))),
+  typed(async ({ request }) => exactly<unknown>()(await request('/api/maybe'))),
   // a handler without a validator or with one that throws: the json (a throw is not an answer)
-  typed(async ({ fetch }) => exactly<{ ok: boolean }>()(await fetch('/api/throws'))),
+  typed(async ({ request }) => exactly<{ ok: boolean }>()(await request('/api/throws'))),
   // a handler with two json answers: either
-  typed(async ({ fetch }) => exactly<{ a: number } | { b: string }>()(await fetch('/api/outcome'))),
-  // a route written without the generated types: anything goes (see the loose case in fetch.test.ts)
+  typed(async ({ request }) =>
+    exactly<{ a: number } | { b: string }>()(await request('/api/outcome')),
+  ),
+  // a route written without the generated types: anything goes (see the loose case in request.test.ts)
   // the registry's own handlers keep their schemas for href() (the answer is not part of them)
   typed(({ href }) => href('/api/users/:id', { id: 7 })),
 ]
 
-// withValidator keeps what its handler returns: for fetch()'s answer, and every handler it accepted before
+// withValidator keeps what its handler returns: for request()'s answer, and every handler it accepted before
 const answers = [
   typed(({ defineHandler }) => {
     const handler = defineHandler.withValidator({ params })((c, { params }) => c.json(params.id))
@@ -555,7 +561,7 @@ test('the types above are checked by tsc', () => {
     ...hrefs,
     ...shared,
     ...validated,
-    ...fetches,
+    ...requests,
     ...answers,
     ...navigation,
     ...navigations,

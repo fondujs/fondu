@@ -13,11 +13,11 @@ type Handlers = Array<Handler | MiddlewareHandler>
 
 /** @internal a type only, never a value: the schemas a `withValidator` handler checks, for `href()`'s `query` */
 export declare const schemasOf: unique symbol
-/** @internal a type only, never a value: the response the handler returns, for `fetch()`'s answer */
+/** @internal a type only, never a value: the response the handler returns, for `request()`'s answer */
 export declare const answerOf: unique symbol
 /**
  * handlers of `withValidator`: with their schemas and the response they return, in the type only (`href()` types
- * the query by the schemas, `fetch()` the answer by the response)
+ * the query by the schemas, `request()` the answer by the response)
  */
 export type Validated<S extends Schemas, R extends Response = Response> = Handlers & {
   readonly [schemasOf]?: S

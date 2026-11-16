@@ -93,8 +93,8 @@ For the browser.
 | `navigate(href, { shallow: true, replace? })` | changes the query or `#fragment` of the page on the screen, asking for nothing; `usePage().url` follows ([Shallow navigation](/docs/navigation#shallow-navigation))                               |
 | `closeShallow(to)`                            | closes what a shallow navigation opened, one step: Back, or `to` in place of the current entry ([A dialog or a drawer](/docs/navigation#a-dialog-or-a-drawer))                                    |
 | `loadDocument(href)`                          | a document load, for what a page can't change in place                                                                                                                                            |
-| `fetch(path, options?)`                       | a typed call to a `.ts` route from the browser: `fetch('/api/users/:id', { id: 7, method?, query?, body? })`; a non-2xx answer throws ([Routes](/docs/routes#calling-a-route-from-the-browser))   |
-| `FetchError`                                  | what `fetch()` throws for a non-2xx answer: `status`, `data` (the parsed body), `response`                                                                                                        |
+| `request(path, options?)`                     | a typed call to a `.ts` route from the browser: `request('/api/users/:id', { id: 7, method?, query?, body? })`; a non-2xx answer throws ([Routes](/docs/routes#calling-a-route-from-the-browser)) |
+| `RequestError`                                | what `request()` throws for a non-2xx answer: `status`, `data` (the parsed body), `response`                                                                                                      |
 | `Errors`                                      | the type of a page's `errors` prop                                                                                                                                                                |
 
 ## `fondu/vite`

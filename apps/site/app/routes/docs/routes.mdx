@@ -19,7 +19,7 @@ then a catch-all: `/users/new` is `users/new.tsx`, not `users/[id].tsx`.
 
 A name with any of `[ ] : * { } ?` must be one of the forms above (a param is letters, digits and `_`). `[user-id].tsx`, `[id]x.ts`, `:id.ts` and `a{b}.ts` stop the app at startup, rather than become a literal URL or a wildcard.
 
-A param can't be named `query`, `hash`, `method`, `body`, `headers` or `signal`: the first two are `href()`'s options, the other four `fetch()`'s. A file such as `api/[method].ts` stops the app at startup; rename it (`api/[verb].ts`). The URLs don't change.
+A param can't be named `query`, `hash`, `method`, `body`, `headers` or `signal`: the first two are `href()`'s options, the other four `request()`'s. A file such as `api/[method].ts` stops the app at startup; rename it (`api/[verb].ts`). The URLs don't change.
 
 ## Optional segments
 
@@ -119,20 +119,20 @@ export const GET = defineHandler((c) => c.json({ ok: true }))
 
 ## Calling a route from the browser
 
-For an effect or an event (a dialog's tab, a toggle without a form), `fetch()` from `fondu/client` calls a `.ts` route,
+For an effect or an event (a dialog's tab, a toggle without a form), `request()` from `fondu/client` calls a `.ts` route,
 typed by its file:
 
 ```tsx
-import { fetch, FetchError } from 'fondu/client'
+import { request, RequestError } from 'fondu/client'
 
-const usage = await fetch('/api/usage') // the GET's c.json() type, as JSON delivers it: a Date is a string
-const user = await fetch('/api/users/:id', { id: 42, query: { full: 'yes' } })
-await fetch('/api/settings', { method: 'POST', body: { emails: false } })
+const usage = await request('/api/usage') // the GET's c.json() type, as JSON delivers it: a Date is a string
+const user = await request('/api/users/:id', { id: 42, query: { full: 'yes' } })
+await request('/api/settings', { method: 'POST', body: { emails: false } })
 
 try {
-  await fetch('/api/settings', { method: 'POST', body: { emails: 'no' } })
+  await request('/api/settings', { method: 'POST', body: { emails: 'no' } })
 } catch (error) {
-  if (error instanceof FetchError && error.status === 422) showErrors(error.data.errors)
+  if (error instanceof RequestError && error.status === 422) showErrors(error.data.errors)
 }
 ```
 
@@ -149,9 +149,9 @@ What is checked:
 - the answer is what the handler returns with `c.json()`, as JSON delivers it. A handler that answers otherwise (text, a
   redirect) gives `unknown`.
 
-A non-2xx answer throws a `FetchError`, with `status`, `data` (the parsed body: a 422's `{ errors }`) and `response`. A
+A non-2xx answer throws a `RequestError`, with `status`, `data` (the parsed body: a 422's `{ errors }`) and `response`. A
 network error is thrown as it is. There is no retry and no cache: use `use()`, an effect or a library of your own, and
-`AbortSignal.timeout()` for a timeout. `fetch()` is for the browser: during the server render it throws, as a page's data
+`AbortSignal.timeout()` for a timeout. `request()` is for the browser: during the server render it throws, as a page's data
 comes from its loader or `defer()`.
 
 ## Validated input

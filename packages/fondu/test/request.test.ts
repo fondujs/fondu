@@ -1,12 +1,12 @@
-// fetch() of fondu/client: the request it builds, the answer it reads, the errors it throws. The types are in
+// request() of fondu/client: the request it builds, the answer it reads, the errors it throws. The types are in
 // types.test.ts; the registry there declares routes, so the call is loose here.
 import { createApp } from 'fondu'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
-import { fetch, FetchError } from '../src/client.js'
+import { request, RequestError } from '../src/client.js'
 
 // oxlint-disable-next-line no-explicit-any -- what the stubbed answers are is checked per test
-const call = fetch as unknown as (path: string, options?: Record<string, unknown>) => Promise<any>
+const call = request as unknown as (path: string, options?: Record<string, unknown>) => Promise<any>
 
 const json = (data: unknown, init: ResponseInit = {}) =>
   new Response(JSON.stringify(data), {
@@ -86,11 +86,12 @@ describe('the answer', () => {
     stub(() => new Response('', { headers: { 'Content-Type': 'application/json' } }))
     expect(await call('/api/x')).toBeUndefined()
   })
-  test('a 422 throws a FetchError with its status, its parsed body and the response', async () => {
+  test('a 422 throws a RequestError with its status, its parsed body and the response', async () => {
     stub(() => json({ errors: { emails: 'Required' } }, { status: 422 }))
     const error = await call('/api/settings', { method: 'POST', body: {} }).catch((e) => e)
-    expect(error).toBeInstanceOf(FetchError)
+    expect(error).toBeInstanceOf(RequestError)
     expect(error).toBeInstanceOf(Error)
+    expect(error.name).toBe('RequestError')
     expect(error.message).toBe('POST /api/settings: 422')
     expect(error.status).toBe(422)
     expect(error.data).toEqual({ errors: { emails: 'Required' } })
@@ -121,14 +122,14 @@ describe('failures', () => {
     vi.unstubAllGlobals()
     const spy = stub(() => json({}))
     await expect(call('/api/usage')).rejects.toThrow(
-      "fondu: fetch() from fondu/client is for the browser (effects, events); a page's data comes from its loader or defer()",
+      "fondu: request() from fondu/client is for the browser (effects, events); a page's data comes from its loader or defer()",
     )
     expect(spy).not.toHaveBeenCalled()
   })
 })
 
 describe('against the app', () => {
-  test('a POST its schema refuses is a 422 FetchError, then 200 once it is right', async () => {
+  test('a POST its schema refuses is a 422 RequestError, then 200 once it is right', async () => {
     const app = createApp()
     vi.stubGlobal('fetch', (url: string, init: RequestInit) => {
       const headers = new Headers(init.headers)
@@ -136,7 +137,7 @@ describe('against the app', () => {
       return app.request(url, { ...init, headers })
     })
     const refused = await call('/api/data', { method: 'POST', body: { n: 'x' } }).catch((e) => e)
-    expect(refused).toBeInstanceOf(FetchError)
+    expect(refused).toBeInstanceOf(RequestError)
     expect(refused.status).toBe(422)
     expect(Object.keys(refused.data.errors)).toEqual(['n'])
     // the answer of the handler: its c.json(…, 201), parsed

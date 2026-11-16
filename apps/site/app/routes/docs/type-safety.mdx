@@ -60,7 +60,7 @@ href('/users/:id', { id: 7, query: { tab: 'posts' } }) // '/users/7?tab=posts': 
 `true`) and read back as strings, so a schema parses them. An empty list or object is left out and reads back as
 absent: give such a field a default in its schema.
 
-A param can't be named `query` or `hash`: they are `href()`'s (and `method`, `body`, `headers` and `signal` are `fetch()`'s). A value that is `undefined` or `null` is left out, and
+A param can't be named `query` or `hash`: they are `href()`'s (and `method`, `body`, `headers` and `signal` are `request()`'s). A value that is `undefined` or `null` is left out, and
 `z.coerce.number()` takes any value (a string or a number), as the URL carries it as text.
 
 A redirect takes `href()` too: `return c.redirect(href('/users/:id', { id: user.id }), 303)`.

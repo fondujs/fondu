@@ -20,7 +20,7 @@ Docs: [routes](https://fondu.dev/docs/routes.md), [pages](https://fondu.dev/docs
 - Two files that answer the same URLs stop the app at startup (`index.tsx` and `[[lang]]/index.tsx`, `about.tsx` and
   `about.ts`). Routes that differ by the values of a param list them with `params`.
 - A route has one optional segment at most. `href('/about')` and `href('/:lang/about', { lang: 'de' })` are both typed.
-- A param can't be named `query` or `hash` (`href()`'s options), or `method`, `body`, `headers` or `signal` (`fetch()`'s):
+- A param can't be named `query` or `hash` (`href()`'s options), or `method`, `body`, `headers` or `signal` (`request()`'s):
   the app stops at startup. Rename the file (`[verb].ts`); the URLs don't change.
 - A name with any of `[ ] : * { } ?` must be one of the forms above (a param is letters, digits, `_`): `[user-id].tsx`,
   `[id]x.ts`, `:id.ts` and `a{b}.ts` stop the app at startup.

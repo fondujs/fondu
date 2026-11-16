@@ -20,7 +20,7 @@ export function routePatterns(file: string): string[] {
     )
   if (optional.length > 1)
     throw new Error(`fondu: routes/${file} has ${optional.length} optional segments; one at most`)
-  // the options of href() and fetch(), next to the params
+  // the options of href() and request(), next to the params
   for (const segment of segments) {
     const name = /^\[{1,2}(?:\.\.\.)?(\w+)\]{1,2}$/.exec(segment)?.[1]
     const api = name && RESERVED[name]
@@ -60,14 +60,14 @@ export function checkRouteName(file: string): void {
   }
 }
 
-/** the names a param can't have, and the function whose option each is: `href()`'s and `fetch()`'s */
+/** the names a param can't have, and the function whose option each is: `href()`'s and `request()`'s */
 const RESERVED: Record<string, string | undefined> = Object.assign(Object.create(null), {
   query: 'href()',
   hash: 'href()',
-  method: 'fetch()',
-  body: 'fetch()',
-  headers: 'fetch()',
-  signal: 'fetch()',
+  method: 'request()',
+  body: 'request()',
+  headers: 'request()',
+  signal: 'request()',
 })
 
 const ROUTE_EXTENSION = /\.(?:tsx?|mdx)$/
