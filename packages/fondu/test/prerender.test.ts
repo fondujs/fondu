@@ -226,7 +226,7 @@ const logger = { error() {}, warn() {}, info() {} } as never
 /** a built server that answers each path with its document and its page object */
 const serverOf = (pages: Record<string, { doc: Response; visit: Response }>) => async () => ({
   fetch: async (path: string, headers: Record<string, string> = {}) =>
-    path === '/__fondu/prerender'
+    path === '/_fondu/prerender'
       ? Response.json({ version: 'v1', paths: Object.keys(pages), problems: [] })
       : 'X-Fondu' in headers
         ? pages[path]!.visit.clone()
@@ -252,7 +252,7 @@ describe('the build', () => {
     prerender(
       async () => ({
         fetch: async (path, headers = {}) =>
-          path === '/__fondu/prerender'
+          path === '/_fondu/prerender'
             ? Response.json({ version: 'v1', paths: ['/x'], problems: [] })
             : 'X-Fondu' in headers
               ? visit
@@ -387,8 +387,8 @@ describe('the build', () => {
 describe('the app', () => {
   const app = createApp()
   test('the paths, only while the build prerenders', async () => {
-    expect((await app.request('/__fondu/prerender')).status).toBe(404)
-    const res = await app.request('/__fondu/prerender', {}, { FONDU_PRERENDER: '1' })
+    expect((await app.request('/_fondu/prerender')).status).toBe(404)
+    const res = await app.request('/_fondu/prerender', {}, { FONDU_PRERENDER: '1' })
     expect(await res.json()).toEqual({
       version: 'v1',
       paths: ['/', '/de/hello', '/fr/hello', '/hello', '/users/1', '/users/2'],

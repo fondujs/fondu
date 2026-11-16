@@ -308,3 +308,19 @@ describe('in the app', async () => {
     expect(await answer('/de/hello/', appended)).toBe('200 de hello de')
   })
 })
+
+describe('the reserved prefix /_fondu/', () => {
+  test('a route that a listed value puts under it is refused; others are not', () => {
+    for (const values of [['_fondu'], ['de', '_fondu']])
+      expect(() => table({ '[dir]/pages/x.ts': { ...page, params: { dir: values } } })).toThrow(
+        "routes/[dir]/pages/x.ts: /_fondu/* is Fondu's",
+      )
+    expect(() =>
+      table({ '[[dir]]/prerender.ts': { ...page, params: { dir: ['_fondu'] } } }),
+    ).toThrow("/_fondu/* is Fondu's")
+    expect(
+      table({ '[dir]/pages/x.ts': { ...page, params: { dir: ['fondu', '_fonduu', 'x_fondu'] } } }),
+    ).toEqual(['/:dir{(?:fondu|_fonduu|x_fondu)}/pages/x'])
+    expect(table(files('fondu/pages/x.ts', '[...path].ts', '[id]/pages/x.ts'))).toHaveLength(3)
+  })
+})

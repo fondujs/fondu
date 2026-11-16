@@ -130,8 +130,14 @@ export function fillPattern(pattern: string, params: Record<string, string | num
 export const SCROLL_KEY = '__fondu'
 export const SCROLL_STORAGE = 'fondu-scroll:'
 
+/** the one prefix Fondu keeps for its own URLs: an app has no route under it */
+export const RESERVED_PREFIX = '/_fondu/'
+
 /** where prerendered pages keep their page objects (`fondu({ prerender: true })`) */
-export const PAGE_DATA = '/_fondu/pages'
+export const PAGE_DATA = `${RESERVED_PREFIX}pages`
+
+/** the build's list of pages to prerender: answered while `FONDU_PRERENDER` is set, 404 otherwise */
+export const PRERENDER_LIST = `${RESERVED_PREFIX}prerender`
 
 /**
  * a page's URL path → the URL of its page object, one for one whatever the app's trailing slashes: `/docs/intro` →
