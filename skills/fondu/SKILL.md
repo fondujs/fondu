@@ -73,7 +73,9 @@ export default function Show({ user }: { user: { name: string } }) {
 - **Server code never reaches the browser.** `.ts` files of `app/routes/`, `app/server.ts` and `*.server.ts` are
   server-only; a page's `loader`, `action`, `actions`, `prerender`, `params` are cut from its browser copy, with the
   imports only they use. A page imports `fondu/client`; `fondu` is the server's. Browser code that imports server
-  code fails the build. A type is fine: `import type`, the whole import.
+  code fails the build. A type is fine: `import type`, the whole import (in a page's route file, `import { type X }` too;
+  `typeof loader` in a type is fine). The copy is made from the source, so source maps (build and dev) hold the page
+  without its loader.
 - **Props are public.** They are written into the HTML and the JSON. Send what the page shows, not whole records.
   Props travel as JSON: a `Date` is a string, a `Map`, a `Set` or a function can't be a prop.
 - **Links are `<a>`, forms are `<form method="post">`.** After an action, redirect: `back(c)` or

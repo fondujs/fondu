@@ -47,7 +47,7 @@ describe('source maps of the client build', () => {
     ['cloudflare', true],
     ['cloudflare', 'hidden'],
   ] as const)
-    test(`${target}, sourcemap: ${JSON.stringify(sourcemap)}: a loader's source is not in the client build`, async () => {
+    test(`${target}, sourcemap: ${JSON.stringify(sourcemap)}: a loader's source is not in the client build, maps included`, async () => {
       app = tempApp({
         'app/routes/index.tsx': route,
         'app/routes/about.tsx': 'export default function About() { return <p>ABOUT_PAGE</p> }\n',
@@ -79,9 +79,17 @@ describe('source maps of the client build', () => {
         expect(map.sourcesContent).toHaveLength(map.sources.length)
         expect(map.mappings).not.toBe('')
         sources.push(...map.sources)
-        // what is not a route file keeps its source
         map.sources.forEach((s, i) => {
-          if (s.endsWith('app/routes/index.tsx')) expect(map.sourcesContent[i]).toBeNull()
+          // the source of a page's route file is its browser's copy: the loader and its import are gone, the
+          // page and the lines of the rest stay
+          if (s.endsWith('app/routes/index.tsx')) {
+            const text = map.sourcesContent[i]!
+            expect(text.split('\n')).toHaveLength(route.split('\n').length)
+            expect(text.split('\n')[2]).toBe(route.split('\n')[2])
+            expect(text).toContain('KEPT_IN_THE_BROWSER')
+            expect(text).not.toContain('loader')
+            expect(text).not.toContain('db.server')
+          }
           // a file the strip did not change keeps its source
           if (s.endsWith('app/routes/about.tsx'))
             expect(map.sourcesContent[i]).toContain('ABOUT_PAGE')
@@ -89,7 +97,42 @@ describe('source maps of the client build', () => {
             expect(map.sourcesContent[i]).toContain('LAYOUT')
         })
       }
-      expect(sources.some((s) => s.endsWith('app/routes/index.tsx'))).toBe(true)
+      expect(
+        sources.some((s) => s.endsWith('app/routes/index.tsx')),
+        'the route file is a source',
+      ).toBe(true)
       expect(sources.some((s) => s.endsWith('app/routes/about.tsx'))).toBe(true)
+    })
+})
+
+describe('what only a loader uses is not in the client build', () => {
+  const canaries = ['NS_CANARY_a1', 'ENUM_CANARY_b2', 'ROWS_c3', 'LOADER_CANARY_d4']
+  for (const verbatim of [false, true])
+    test(`a namespace, an enum, type-only imports of a server module (verbatimModuleSyntax: ${verbatim})`, async () => {
+      app = tempApp({
+        'tsconfig.json': JSON.stringify({
+          compilerOptions: { jsx: 'react-jsx', verbatimModuleSyntax: verbatim },
+        }),
+        'app/routes/index.tsx': [
+          `import { type Row } from '../rows.server'`,
+          `import type { Db } from '../rows.server'`,
+          `import { Badge } from '../badge'`,
+          `namespace Queries { export const q = () => 'NS_CANARY_a1' }`,
+          `enum Secret { A = 'ENUM_CANARY_b2' }`,
+          `export type Data = Awaited<ReturnType<typeof loader>>`,
+          `export async function loader(): Promise<{ r: Row; d: Db }> { return { r: Queries.q() + Secret.A, d: 'LOADER_CANARY_d4' as never } }`,
+          `export default function Page(p: { data: Data }) { return <Badge /> }`,
+          ``,
+        ].join('\n'),
+        'app/badge.tsx': 'export const Badge = () => <b>BADGE_SHOWN</b>\n',
+        'app/rows.server.ts': `export type Row = string\nexport type Db = number\nexport const ROWS = 'ROWS_c3'\n`,
+      })
+      await buildClient(app.root, {}, { build: { sourcemap: true } })
+      const dist = join(app.root, 'dist/client')
+      let all = ''
+      for (const f of readdirSync(dist, { recursive: true, encoding: 'utf8' }))
+        if (!statSync(join(dist, f)).isDirectory()) all += readFileSync(join(dist, f), 'utf8')
+      for (const canary of canaries) expect(all, canary).not.toContain(canary)
+      expect(all).toContain('BADGE_SHOWN')
     })
 })
