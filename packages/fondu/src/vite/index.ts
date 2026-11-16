@@ -182,7 +182,8 @@ function dependencies(root = ''): string[] {
  * Node / Bun: the server build's entry, dist/server/index.js. The client build's files first (found next to the
  * server bundle wherever it runs from; hashed files never change), then the app. Node: @hono/node-server's serve()
  * on `PORT` (else the option), saying where it listens, with a graceful shutdown on SIGTERM / SIGINT (10 s). Bun
- * serves the default export itself and reads `PORT` (with the app's `websocket`, if it has one).
+ * serves the default export itself, on `PORT` (else the option; Bun's own default without one), with the app's
+ * `websocket`, if it has one.
  * With `prerender`, the pages the build wrote are served from their files first, with the headers it decided
  * (`prerender.json`, next to this entry).
  */
@@ -205,43 +206,51 @@ function serverEntry(options: FonduOptions): Plugin {
               .filter((e) => e.name !== '.vite')
               .map((e) => (e.isDirectory() ? `/${e.name}/*` : `/${e.name}`))
           : []
-        const bun = options.target === 'bun'
-        return [
-          `import { Hono } from 'hono'`,
-          `import { serveStatic } from '${bun ? 'hono/bun' : '@hono/node-server/serve-static'}'`,
-          `import { fileURLToPath } from 'node:url'`,
-          `import app from '${SERVER.slice(1)}'`,
-          `const clientRoot = fileURLToPath(new URL('../client', import.meta.url))`,
-          `const main = new Hono()`,
-          `main.use('/assets/*', async (c, next) => { await next(); if (c.res.ok) c.header('Cache-Control', 'public, max-age=31536000, immutable') })`,
-          // prerender: the pages the build wrote are files, with the headers it decided (prerender.json, written after
-          // this server was built: not there while the build prerenders, so the app renders them then)
-          ...(options.prerender
-            ? [
-                `import { existsSync, readFileSync } from 'node:fs'`,
-                `import { staticPages } from ${JSON.stringify(staticModule)}`,
-                `const prerendered = fileURLToPath(new URL('./prerender.json', import.meta.url))`,
-                `if (existsSync(prerendered)) main.use('*', staticPages(serveStatic, clientRoot, JSON.parse(readFileSync(prerendered, 'utf8')).headers))`,
-              ]
-            : []),
-          ...paths.map((p) => `main.use(${JSON.stringify(p)}, serveStatic({ root: clientRoot }))`),
-          `main.all('*', (c) => app.fetch(c.req.raw, c.env))`,
-          ...(bun
-            ? [
-                `export default app.websocket ? { fetch: main.fetch, websocket: app.websocket } : main`,
-              ]
-            : [
-                `import { serve } from '@hono/node-server'`,
-                `const server = serve({ fetch: main.fetch, port: Number(process.env.PORT) || ${options.port ?? 3000} }, (info) => console.log(\`Listening on http://localhost:\${info.port}\`))`,
-                `const shutdown = () => { server.close(() => process.exit(0)); setTimeout(() => process.exit(1), 10_000).unref() }`,
-                `process.on('SIGINT', shutdown)`,
-                `process.on('SIGTERM', shutdown)`,
-                `export default main`,
-              ]),
-        ].join('\n')
+        return entryCode(options, paths)
       },
     },
   }
+}
+
+/** the code of dist/server/index.js: `paths` are the client build's files and directories (`/robots.txt`, `/assets`) */
+export function entryCode(options: FonduOptions, paths: string[]): string {
+  const bun = options.target === 'bun'
+  return [
+    `import { Hono } from 'hono'`,
+    `import { serveStatic } from '${bun ? 'hono/bun' : '@hono/node-server/serve-static'}'`,
+    `import { fileURLToPath } from 'node:url'`,
+    `import app from '${SERVER.slice(1)}'`,
+    `const clientRoot = fileURLToPath(new URL('../client', import.meta.url))`,
+    `const main = new Hono()`,
+    `main.use('/assets/*', async (c, next) => { await next(); if (c.res.ok) c.header('Cache-Control', 'public, max-age=31536000, immutable') })`,
+    // prerender: the pages the build wrote are files, with the headers it decided (prerender.json, written after
+    // this server was built: not there while the build prerenders, so the app renders them then)
+    ...(options.prerender
+      ? [
+          `import { existsSync, readFileSync } from 'node:fs'`,
+          `import { staticPages } from ${JSON.stringify(staticModule)}`,
+          `const prerendered = fileURLToPath(new URL('./prerender.json', import.meta.url))`,
+          `if (existsSync(prerendered)) main.use('*', staticPages(serveStatic, clientRoot, JSON.parse(readFileSync(prerendered, 'utf8')).headers))`,
+        ]
+      : []),
+    ...paths.map((p) => `main.use(${JSON.stringify(p)}, serveStatic({ root: clientRoot }))`),
+    `main.all('*', (c) => app.fetch(c.req.raw, c.env))`,
+    ...(bun
+      ? [
+          // Bun serves the default export: its `port` (`PORT` first, as on Node), else Bun's own default (PORT, 3000)
+          options.port === undefined
+            ? `export default app.websocket ? { fetch: main.fetch, websocket: app.websocket } : main`
+            : `export default { fetch: main.fetch, port: Number(process.env.PORT) || ${Number(options.port)}, ...(app.websocket && { websocket: app.websocket }) }`,
+        ]
+      : [
+          `import { serve } from '@hono/node-server'`,
+          `const server = serve({ fetch: main.fetch, port: Number(process.env.PORT) || ${options.port ?? 3000} }, (info) => console.log(\`Listening on http://localhost:\${info.port}\`))`,
+          `const shutdown = () => { server.close(() => process.exit(0)); setTimeout(() => process.exit(1), 10_000).unref() }`,
+          `process.on('SIGINT', shutdown)`,
+          `process.on('SIGTERM', shutdown)`,
+          `export default main`,
+        ]),
+  ].join('\n')
 }
 
 function runtimePlugins(options: FonduOptions): PluginOption[] {
