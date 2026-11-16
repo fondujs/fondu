@@ -80,7 +80,8 @@ navigate(href('/orders', { query: { page: 2 } }))
 - `{ keep: true }` shows the answer as `reload()` does: the page keeps its state (a focused input, what was typed) and
   the scroll position, and nothing is announced. The loader still runs for `url`. If another page answers, it is shown
   as any navigation's, from the top.
-- Any other URL loads as a document.
+- Any other URL loads as a document: `mailto:` and other sites too. A `javascript:` URL throws an `Error`, in
+  `navigate()` and in `loadDocument()`.
 
 ### Search as you type
 

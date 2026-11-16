@@ -774,6 +774,11 @@ const isWebUrl = (url: string) => {
   }
 }
 
+/** `javascript:` is never handed to `location`: the page's CSP would be all that stops it (the URL parser drops leading space, lowers the scheme) */
+function refuseScript(url: URL) {
+  if (url.protocol === 'javascript:') throw new Error('fondu: refusing to load a javascript: URL')
+}
+
 /** a Content-Disposition's file name: `filename*=UTF-8''…` (RFC 6266), else `filename="…"`; '' for none */
 function fileName(disposition: string): string {
   const encoded = /filename\*\s*=\s*UTF-8''([^;\s]+)/i.exec(disposition)?.[1]
@@ -790,6 +795,7 @@ function fileName(disposition: string): string {
  * can't change in place (`<html lang>`: another language).
  */
 export function loadDocument(href: string) {
+  refuseScript(new URL(href, location.href))
   location.assign(href)
 }
 
@@ -817,6 +823,7 @@ export function navigate(
   const shown = shownUrl?.()
   // a shallow navigation is relative to the page on the screen, whose URL `location` may have left
   const url = new URL(href, shallow ? (shown ?? location.href) : location.href)
+  refuseScript(url)
   if (shallow) {
     if (url.origin !== location.origin || url.pathname !== (shown ?? location).pathname)
       throw new Error(

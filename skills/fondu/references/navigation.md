@@ -41,6 +41,9 @@ Search as you type: put the value in the URL, answer in the loader, and navigate
 after a debounce. A navigation in flight is aborted by the next. Back, reload and shared links all work, unlike
 `fetch()` from an effect.
 
+`navigate()` and `loadDocument()` throw an `Error` for a `javascript:` URL. Other schemes (`mailto:`) and other sites
+are handed to the browser.
+
 | Export                               | Does                                                         |
 | ------------------------------------ | ------------------------------------------------------------ |
 | `navigate(url, { replace?, keep? })` | goes to `url` as a link would                                |
