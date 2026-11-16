@@ -13,6 +13,7 @@ declare module 'fondu' {
       "/ids": typeof import("./routes/ids")
       "/": typeof import("./routes/index")
       "/long": typeof import("./routes/long")
+      "/reloads": typeof import("./routes/reloads")
       "/search": typeof import("./routes/search")
       "/shallow-static": typeof import("./routes/shallow-static")
       "/shallow": typeof import("./routes/shallow")

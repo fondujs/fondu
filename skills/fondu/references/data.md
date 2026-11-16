@@ -52,6 +52,8 @@ export default function Dashboard({ user, stats }: { user: User; stats?: Stats }
 - What decides the status or a redirect is awaited in the loader, never deferred.
 - A static page evaluates its deferred props at build time.
 - `reload({ only: ['stats'] })` asks again for those props, in the same way, and the page keeps its state.
+  Requests that overlap: the newest answer for a prop is the page's; an older one that comes after it is dropped for
+  that prop (it keeps the props only it asked for).
 
 ## `fetch()` for `.ts` routes
 

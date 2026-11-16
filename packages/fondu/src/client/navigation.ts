@@ -100,6 +100,10 @@ export function startNavigation({
   // the URL the page's props are the loader's answer for: `on.url` changes with a shallow navigation, this does not
   let answered = initial.url
   const asking = new Set<AbortController>()
+  // each prop's newest answer put in the page: the request it came from (their order). An older request answering
+  // after it is dropped for that prop, as an answer for a page no longer there is
+  let requests = 0
+  let answers = new Map<string, number>()
   const put = async (page: Page, fresh: boolean, stale: () => boolean) => {
     await show(page, fresh, stale)
     if (stale()) return
@@ -109,6 +113,7 @@ export function startNavigation({
     answered = page.url
     // the page they were for is gone
     for (const quiet of asking) quiet.abort()
+    answers = new Map()
   }
   shownUrl = () => new URL(on.url, location.href)
   const headers = () => ({ 'X-Fondu': 'true', ...(version && { 'X-Fondu-Version': version }) })
@@ -157,6 +162,7 @@ export function startNavigation({
   ask = async (names) => {
     const at = shows
     const page = on
+    const id = ++requests
     const controller = new AbortController()
     asking.add(controller)
     // a prop asked for that is neither here nor coming (it failed): pending again, `<Deferred>` shows its fallback
@@ -179,18 +185,18 @@ export function startNavigation({
       })
       const answer =
         response.ok && response.headers.has('X-Fondu') ? ((await response.json()) as Page) : null
-      if (answer?.component === page.component)
-        got = Object.fromEntries(
-          Object.entries(answer.props).filter(([key]) => names.includes(key)),
-        )
+      if (answer?.component === page.component) got = answer.props
     } catch {} // offline, aborted
     asking.delete(controller)
     if (controller.signal.aborted || shows !== at) return
     // asked at the URL of a shallow entry, which the page has left since: not its answer
     if (page.url !== answered && page.url !== on.url) return
+    // the props of this answer that no newer request has answered already
+    const take = names.filter((n) => got && Object.hasOwn(got, n) && id > (answers.get(n) ?? 0))
+    for (const n of take) answers.set(n, id)
     const next: Page = {
       ...on,
-      props: { ...on.props, ...got },
+      props: { ...on.props, ...Object.fromEntries(take.map((n) => [n, got![n]])) },
       deferred: on.deferred?.filter((n) => !names.includes(n)),
     }
     on = next // before the module is awaited: another answer merges into this one
@@ -200,8 +206,10 @@ export function startNavigation({
       group = new Set([scroll.key()!])
       answered = page.url
     }
-    await show(next, false, () => shows !== at)
-    if (shows === at) keep(next)
+    // not once another answer has merged into the page since: its own show() has these props too
+    const stale = () => shows !== at || on !== next
+    await show(next, false, stale)
+    if (!stale()) keep(next)
   }
   /** a document load: in place of this entry, or after it */
   const documentLoad = (url: string, replace: boolean) => {
