@@ -82,14 +82,16 @@ function references(node: unknown, out = new Set<string>(), scopes: Scope[] = []
     case 'FunctionDeclaration':
     case 'FunctionExpression':
     case 'ArrowFunctionExpression': {
-      const scope: Scope = new Set()
-      if (n.type === 'FunctionExpression') bound(n.id as Node, []).forEach((x) => scope.add(x))
-      for (const p of n.params as Node[]) bound(p).forEach((x) => scope.add(x))
-      vars(n.body, scope)
-      if ((n.body as Node).type === 'BlockStatement')
-        lexical((n.body as Node).body as Node[], scope)
-      visit(n.params, [...scopes, scope])
-      visit(n.body, [...scopes, scope])
+      // the parameters' scope (a function expression's own name, the parameters): what their default expressions
+      // see. The body's own declarations are another scope, inside it: a default never reaches them
+      const params: Scope = new Set()
+      if (n.type === 'FunctionExpression') bound(n.id as Node, []).forEach((x) => params.add(x))
+      for (const p of n.params as Node[]) bound(p).forEach((x) => params.add(x))
+      const body: Scope = new Set()
+      vars(n.body, body)
+      if ((n.body as Node).type === 'BlockStatement') lexical((n.body as Node).body as Node[], body)
+      visit(n.params, [...scopes, params])
+      visit(n.body, [...scopes, params, body])
       return out
     }
     case 'ClassDeclaration':
