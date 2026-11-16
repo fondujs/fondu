@@ -48,9 +48,13 @@ createApp({
 
 ### Types
 
-| Export     | Is                                                                                                                  |
-| ---------- | ------------------------------------------------------------------------------------------------------------------- |
-| `Register` | declared by the app: `shared` and `flash` type `share()`, `flash()`, `usePage()` ([Type safety](/docs/type-safety)) |
+| Export             | Is                                                                                                                  |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------- |
+| `Register`         | declared by the app: `shared` and `flash` type `share()`, `flash()`, `usePage()` ([Type safety](/docs/type-safety)) |
+| `RenderOptions`    | the options of `render()`: `{ status? }`                                                                            |
+| `DocumentTemplate` | the type of the `document` option: `(parts) => JSX or string` ([The document](/docs/document))                      |
+| `DocumentParts`    | what a document template gets: `{ head, body, c, nonce }`                                                           |
+| `CreateAppOptions` | the options of `createApp()`, as the table above has them                                                           |
 
 ### Route exports
 
@@ -95,7 +99,15 @@ For the browser.
 | `loadDocument(href)`                          | a document load, for what a page can't change in place                                                                                                                                            |
 | `request(path, options?)`                     | a typed call to a `.ts` route from the browser: `request('/api/users/:id', { id: 7, method?, query?, body? })`; a non-2xx answer throws ([Routes](/docs/routes#calling-a-route-from-the-browser)) |
 | `RequestError`                                | what `request()` throws for a non-2xx answer: `status`, `data` (the parsed body), `response`                                                                                                      |
-| `Errors`                                      | the type of a page's `errors` prop                                                                                                                                                                |
+
+### Types
+
+| Export       | Is                                                                                            |
+| ------------ | --------------------------------------------------------------------------------------------- |
+| `Errors`     | the type of a page's `errors` prop: field name to message                                     |
+| `Href`       | the URLs `href()` takes: each route's pattern, and `pattern?action` for its actions           |
+| `Navigation` | what `useNavigation()` returns: `{ state, to, form }`                                         |
+| `Page`       | the page object the server sends: `component`, `props`, `url`, `version`, `flash`, `deferred` |
 
 ## `fondu/vite`
 
@@ -109,3 +121,10 @@ no `port` option: the built server (Bun and Node) listens on `PORT`, else 3000.
 | `prerender` | `true`: write the chosen pages as [static files](/docs/static-pages)     |
 | `progress`  | the navigations' progress bar: `{ color, delay, forms }`, or `false`     |
 | `react`     | options for `@vitejs/plugin-react` (its `include` has `.mdx` by default) |
+
+### Types
+
+| Export            | Is                                                           |
+| ----------------- | ------------------------------------------------------------ |
+| `FonduOptions`    | the options of `fondu()`, as the table above has them        |
+| `ProgressOptions` | the `progress` option's object: `{ color?, delay?, forms? }` |

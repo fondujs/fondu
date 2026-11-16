@@ -15,6 +15,12 @@ import type {
   useNavigation,
   usePage,
 } from '../src/client.js'
+// @ts-expect-error the plumbing types are not exported
+import type { AnswerOf, ApiPath, RequestArgs } from '../src/client.js'
+// @ts-expect-error ProgressOptions is fondu/vite's
+import type { ProgressOptions as ClientProgressOptions } from '../src/client.js'
+// @ts-expect-error StandardSchemaV1 is not exported
+import type { StandardSchemaV1 } from '../src/index.js'
 import type { flash } from '../src/server/flash.js'
 import {
   defineHandler as define,
@@ -23,7 +29,7 @@ import {
 } from '../src/server/handler.js'
 import { back } from '../src/server/http.js'
 import type { defer, render, share } from '../src/server/protocol.js'
-import type { FonduOptions } from '../src/vite/index.js'
+import type { FonduOptions, ProgressOptions } from '../src/vite/index.js'
 
 type Auth = { user: string | null }
 const searchQuery = z.object({ q: z.string(), page: z.optional(z.coerce.number()) })
@@ -605,4 +611,19 @@ test('FonduOptions: the port is PORT, not an option', () => {
     { target: 'node', port: 8080 },
   ]
   expect(options).toHaveLength(3)
+})
+
+test('ProgressOptions is the type of the progress option', () => {
+  const progress: ProgressOptions = { color: 'red', delay: 100 }
+  const options: FonduOptions = { target: 'node', progress }
+  expect(options.progress).toBe(progress)
+  // the unexported types are named only to check that importing them fails
+  type Unused = [
+    AnswerOf<'', ''>,
+    ApiPath,
+    RequestArgs<'', 'GET'>,
+    ClientProgressOptions,
+    StandardSchemaV1,
+  ]
+  expect<Unused | undefined>(undefined).toBeUndefined()
 })

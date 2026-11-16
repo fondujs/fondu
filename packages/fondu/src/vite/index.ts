@@ -16,6 +16,8 @@ import {
 } from 'vite'
 
 import type { ProgressOptions } from '../client/progress.js'
+
+export type { ProgressOptions }
 import { isPageFile, pageId } from '../paths.js'
 import { nonceAttr, productionAssets } from './assets.js'
 import { entryCode, SERVER } from './entry.js'
