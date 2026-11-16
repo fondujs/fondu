@@ -104,9 +104,9 @@ export const GET = defineHandler((c) => c.json({ ok: true }))
 
 ## Targets
 
-- **Node**: `npm run build` (`vite build`), `npm start` (`NODE_ENV=production node dist/server/index.js`); `PORT`; the
+- **Node**: `npm run build` (`vite build`), `npm start` (`node dist/server/index.js`); `PORT`; the
   dependencies stay in `node_modules`. On SIGTERM the server waits up to 10 s for running requests.
-- **Bun**: the same build with `target: 'bun'`; `NODE_ENV=production bun dist/server/index.js`.
+- **Bun**: the same build with `target: 'bun'`; `NODE_ENV=production bun dist/server/index.js` (Bun reads `NODE_ENV` as it starts, so set it for Bun's own mode).
 - **Cloudflare Workers**: `npm run deploy` (`vite build && wrangler deploy`). `wrangler.jsonc`'s `main` is
   `./app/server.ts`; bindings and variables are declared there, secrets in `.dev.vars` and `wrangler secret put`.
   `npm run cf-typegen` writes `worker-configuration.d.ts`.

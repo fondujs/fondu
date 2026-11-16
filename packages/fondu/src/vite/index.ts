@@ -223,18 +223,21 @@ export function entryCode(options: FonduOptions, paths: string[], assetsDir = 'a
   const bun = options.target === 'bun'
   const hashed = assetsDir ? `/${assetsDir}/*` : undefined
   return [
-    `import { Hono } from 'hono'`,
-    `import { serveStatic } from '${bun ? 'hono/bun' : '@hono/node-server/serve-static'}'`,
-    `import { fileURLToPath } from 'node:url'`,
-    `import app from '${SERVER.slice(1)}'`,
+    // NODE_ENV first, and the rest imported after it: static imports run before this line, and React picks its
+    // production or development build when it is first loaded
+    `process.env.NODE_ENV ??= 'production'`,
+    `const { Hono } = await import('hono')`,
+    `const { serveStatic } = await import('${bun ? 'hono/bun' : '@hono/node-server/serve-static'}')`,
+    `const { fileURLToPath } = await import('node:url')`,
+    `const { default: app } = await import('${SERVER.slice(1)}')`,
     `const clientRoot = fileURLToPath(new URL('../client', import.meta.url))`,
     `const main = new Hono()`,
     // prerender: the pages the build wrote are files, with the headers it decided (prerender.json, written after
     // this server was built: not there while the build prerenders, so the app renders them then)
     ...(options.prerender
       ? [
-          `import { existsSync, readFileSync } from 'node:fs'`,
-          `import { staticPages } from ${JSON.stringify(staticModule)}`,
+          `const { existsSync, readFileSync } = await import('node:fs')`,
+          `const { staticPages } = await import(${JSON.stringify(staticModule)})`,
           `const prerendered = fileURLToPath(new URL('./prerender.json', import.meta.url))`,
           `if (existsSync(prerendered)) main.use('*', staticPages(serveStatic, clientRoot, JSON.parse(readFileSync(prerendered, 'utf8')).headers))`,
         ]
@@ -256,7 +259,7 @@ export function entryCode(options: FonduOptions, paths: string[], assetsDir = 'a
             : `export default { fetch: main.fetch, port: Number(process.env.PORT) || ${Number(options.port)}, ...(app.websocket && { websocket: app.websocket }) }`,
         ]
       : [
-          `import { serve } from '@hono/node-server'`,
+          `const { serve } = await import('@hono/node-server')`,
           `const server = serve({ fetch: main.fetch, port: Number(process.env.PORT) || ${options.port ?? 3000} }, (info) => console.log(\`Listening on http://localhost:\${info.port}\`))`,
           `const shutdown = () => { server.close(() => process.exit(0)); setTimeout(() => process.exit(1), 10_000).unref() }`,
           `process.on('SIGINT', shutdown)`,

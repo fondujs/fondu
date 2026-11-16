@@ -2,13 +2,12 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite",
-    "start": "cross-env NODE_ENV=production node dist/server/index.js"
+    "start": "node dist/server/index.js"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.4"
   },
   "devDependencies": {
-    "@types/node": "^24.19.2",
-    "cross-env": "^10.1.0"
+    "@types/node": "^24.19.2"
   }
 }
