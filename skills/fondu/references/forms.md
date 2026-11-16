@@ -111,8 +111,9 @@ The body is one object, JSON or form fields. `user[name]` and `tags[]` become ne
 `File` objects, empty file inputs are left out. A body that can't be one object is a 400.
 
 The body is read whole, in memory, files too (about twice its size while parsed). Over 10 MB is a 413 by default,
-answered with the error page. The limit runs after the root `_middleware.ts` (the error page has its shared props), so
-that middleware must not read the body. Served by Node or Bun directly over HTTP/1.1, Firefox and Safari may show a
+answered with the error page. The limit is in each route that takes a body (POST, PUT, PATCH, DELETE), after its directories' `_middleware.ts` (the
+error page has their shared props), so a middleware must not read the body. A GET and a URL that is no route are never
+read. Served by Node or Bun directly over HTTP/1.1, Firefox and Safari may show a
 failed request rather than the 413 page for a large body refused unread; behind Cloudflare every browser gets the page. Raise the limit for the app only a little (Workers: 128 MB of memory per isolate):
 
 ```ts

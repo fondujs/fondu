@@ -113,6 +113,11 @@ for (const target of Object.keys(production).filter(
   // a page with a Suspense boundary that is slow on the server: streamed; and a copy of it that is prerendered
   writeFileSync(join(app, 'app/routes/slow.tsx'), SLOW)
   writeFileSync(join(app, 'app/routes/slow-static.tsx'), SLOW + 'export const prerender = true\n')
+  // a route that takes a body: the body limit is in the routes' chains, so a URL of no route is never read
+  writeFileSync(
+    join(app, 'app/routes/upload.ts'),
+    "import { defineHandler } from 'fondu'\n\nexport const POST = defineHandler((c) => c.text('received'))\n",
+  )
 
   // development: the page renders, and every module the browser would load is served without Vite finding a
   // dependency late (which reloads the page)
@@ -421,13 +426,14 @@ function raw(url, path, headers) {
   })
 }
 
-// a body over 10 MB is refused (createApp's bodyLimit), a small one is not. An URL of no page, so that a prerendered
-// home (a static file on Cloudflare, answered 405 to a POST) doesn't hide the app
+// a body over 10 MB is refused (createApp's bodyLimit), a small one is not. A route of its own (`upload.ts`, written
+// above) that takes a POST: the limit is in each route's chain, and a prerendered home (a static file on Cloudflare,
+// answered 405 to a POST) would hide the app
 async function bodyLimit(base, log, target, script) {
   const json = { 'Content-Type': 'application/json' }
   let status, error
   try {
-    const big = await fetch(base + '/nope', {
+    const big = await fetch(base + '/upload', {
       method: 'POST',
       headers: json,
       body: 'a'.repeat(10 * 1024 * 1024 + 1),
@@ -443,10 +449,10 @@ async function bodyLimit(base, log, target, script) {
   let logged = false
   if (target === 'cloudflare' && script === 'preview' && status !== 413)
     for (let i = 0; i < 20 && !logged; i++) {
-      logged = /POST \/nope 413/.test(log())
+      logged = /POST \/upload 413/.test(log())
       if (!logged) await new Promise((r) => setTimeout(r, 100))
     }
-  const small = await fetch(base + '/nope', { method: 'POST', headers: json, body: '{}' })
+  const small = await fetch(base + '/upload', { method: 'POST', headers: json, body: '{}' })
   await small.text()
   check(
     `${target} ${script}: a request body over 10 MB is refused with 413, a small one is not`,

@@ -136,7 +136,8 @@ function actionName(url: string): string | null {
  *   `action`, `actions`: those are a page's)
  * `_middleware.ts` applies to its directory and below (`routes/_middleware.ts`: every request, 404s included).
  * Built in: CSRF protection, security headers, one URL per page (trailing slash), the error page, and a request body
- * limit (413, after the root `_middleware.ts`, so its error page has the shared props; CSRF's 403 is plain text).
+ * limit (413, in each route that takes a body, after its directories' `_middleware.ts`, so its error page has the
+ * shared props; CSRF's 403 is plain text).
  * Your own 404 / error handling: Hono's `app.notFound()` / `app.onError()` on the returned app.
  */
 export function createApp(options: CreateAppOptions = {}): Hono {
@@ -186,6 +187,10 @@ export function createApp(options: CreateAppOptions = {}): Hono {
   app.use(append ? appendTrailingSlash() : trimTrailingSlash(), ...protocol)
   app.notFound((c) => errorResponse(c, 404))
   app.onError((error, c) => {
+    // the client left (a body cut off mid-upload, a handler that read it): nobody is there to answer, so no 500 is
+    // logged. Recognised by the request's own signal, not by the error's type or message (they differ by runtime)
+    if (!(error instanceof HTTPException) && c.req.raw.signal.aborted)
+      return new Response(null, { status: 499 })
     if (error instanceof HTTPException && error.res) return error.getResponse()
     return errorResponse(c, error instanceof HTTPException ? error.status : 500, error)
   })
@@ -193,20 +198,23 @@ export function createApp(options: CreateAppOptions = {}): Hono {
   // a _middleware.ts may only set what applies to its directory (`prerender`, `params`), without a default export
   const rootMiddleware = modules['_middleware.ts']?.default
   if (rootMiddleware) app.use(...chain(rootMiddleware))
-  // After the root middleware, so the error page of a 413 has the shared props it set (a layout reads them). The limit
-  // still runs before any body is read: with a Content-Length the header is checked, without one the body is counted
-  // as it is read. A root middleware must not read the body itself. CSRF stays above: Hono's 403 has its own plain
-  // response, so no page is rendered for it.
-  if (options.bodyLimit !== false)
-    app.use(
-      bodyLimit({
-        maxSize: options.bodyLimit ?? 10 * 1024 * 1024,
-        // Fondu's own answer: the error page for a visitor, the status alone for an API client
-        onError: () => {
-          throw new HTTPException(413)
-        },
-      }),
-    )
+  // One limit, in the chain of each route for the methods that take a body, after its directories' middleware (so a 413
+  // has their shared props, and a request they refuse is not read) and before its handler. Not for a GET, a HEAD or a
+  // URL that is no route: none of them reads a body. With a Content-Length the header is checked, without one the body
+  // is counted as it is read. A directory's middleware must not read the body itself. CSRF stays above: Hono's 403 has
+  // its own plain response, so no page is rendered for it.
+  const limit: MiddlewareHandler[] =
+    options.bodyLimit === false
+      ? []
+      : [
+          bodyLimit({
+            maxSize: options.bodyLimit ?? 10 * 1024 * 1024,
+            // Fondu's own answer: the error page for a visitor, the status alone for an API client
+            onError: () => {
+              throw new HTTPException(413)
+            },
+          }),
+        ]
 
   for (const { file, pattern, path, middleware } of routeTable(modules, append)) {
     const mod = modules[file]!
@@ -245,6 +253,7 @@ export function createApp(options: CreateAppOptions = {}): Hono {
       const actions = mod.actions ?? {}
       add('POST', [
         ...mws,
+        ...limit,
         async (c, next) => {
           const name = actionName(c.req.url)
           // actions: the one named (?name), else none; otherwise the one action
@@ -261,7 +270,7 @@ export function createApp(options: CreateAppOptions = {}): Hono {
     for (const method of METHODS) {
       if (method === 'GET' || method === 'POST') continue
       const h = mod[method]
-      if (h) add(method, [...mws, ...chain(h)])
+      if (h) add(method, [...mws, ...(method === 'OPTIONS' ? [] : limit), ...chain(h)])
     }
   }
   return app
