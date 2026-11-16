@@ -302,6 +302,9 @@ export function startNavigation({
         }
         const page = (await response.json()) as Page
         if (signal.aborted) return
+        // A prerendered page's file is made without a query. Its answer, not redirected, is for the URL asked: the
+        // visitor's query stays (as at a document load); a redirect, which the server made, is its target's
+        if (!response.redirected && page.url === url.pathname) page.url += url.search
         if (version && page.version && page.version !== version)
           return documentLoad(page.url, options.history !== 'push')
         version = page.version

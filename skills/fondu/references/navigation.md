@@ -99,7 +99,8 @@ closeShallow(url) // closes one level
   Back and Forward between them change `url` only, with no request. An answer from the server on a shallow entry
   (`reload()`, `reload({ only })`, a form's answer, deferred props asked at that URL) ends the sharing: Back to the other
   entries asks, as any Back does. Deferred props already on their way arrive in the shared page.
-- A prerendered page's `usePage().url` has the address bar's query once it has hydrated; its loader never saw it.
+- A prerendered page's `usePage().url` has the visitor's query once it has hydrated, and after a link, Back or `reload()`
+  too (and its `#fragment` is in the address bar); its loader never saw the query. A redirect is the server's answer.
 - A form in a dialog that answers at the same page keeps the `#fragment`, so the dialog stays open with its errors.
 
 ```tsx
