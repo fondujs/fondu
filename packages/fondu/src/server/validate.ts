@@ -41,8 +41,8 @@ export function validationErrorResponse(c: Context, error: ValidationError): Res
 
 /**
  * A request body as one object: JSON, or form fields as `formObject` reads them (the browser's `useForm` too). A body
- * that can't be one object (JSON or form data that doesn't parse, `a=1&a[b]=2`, names nested deeper than 32) is a
- * 400.
+ * that can't be one object (JSON or form data that doesn't parse, `a=1&a[b]=2`, names nested deeper than 32, more than 10,000
+ * entries) is a 400.
  */
 export async function readBody(c: Context): Promise<unknown> {
   const malformed = (why: string) =>
