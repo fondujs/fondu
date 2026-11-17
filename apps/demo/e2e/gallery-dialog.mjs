@@ -165,6 +165,17 @@ export async function checkGalleryDialog({ browser, base, ok, watchProblems }) {
         nativeForward.backdrop === '1' &&
         Math.abs(nativeForward.scroll - before) <= 1,
     )
+    await opened()
+    await page.goBack()
+    await page.waitForSelector(`${popup}[data-ending-style]`)
+    const afterNative = await page.$eval(popup, (element) =>
+      element
+        .getAnimations({ subtree: true })
+        .some((animation) => animation.transitionProperty === 'transform'),
+    )
+    await gone()
+    ok('gallery dialog: ordinary Back still animates after a browser-owned Forward', afterNative)
+    await native(true)
     const nativeBack = await native(false)
     ok(
       'gallery dialog: browser-owned Back releases the dialog and scroll lock in its first frame',
