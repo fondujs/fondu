@@ -5,5 +5,5 @@
     "allowImportingTsExtensions": true,
     "types": ["vite/client", "mdx"]
   },
-  "include": ["app", "vite.config.ts", "markdown.ts"]
+  "include": ["app", "vite.config.ts", "markdown.ts", "verify.ts"]
 }

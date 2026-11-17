@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 
 import type { Plugin } from 'vite'
 
-import { docs, docUrl, markdownUrl, type Doc } from './app/docs.ts'
+import { descriptionProblems, docs, docUrl, markdownUrl, type Doc } from './app/docs.ts'
 
 const SITE = 'https://fondu.dev'
 const SUMMARY =
@@ -63,6 +63,10 @@ const files = (): Record<string, string> => ({
 export function markdown(): Plugin {
   return {
     name: 'site:markdown',
+    buildStart() {
+      const problems = descriptionProblems()
+      if (problems.length) this.error(problems.join('\n'))
+    },
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
         const file = files()[(req.url ?? '').split('?')[0]!.slice(1)]
