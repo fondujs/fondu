@@ -71,6 +71,20 @@ The browser and create-fondu suites use fixed ports, so two runs on one machine 
 variables: `CONFORMANCE_PORT` (default 3100) for `apps/conformance`, and `CREATE_FONDU_DEV_PORT` (5173),
 `CREATE_FONDU_START_PORT` (3000) and `CREATE_FONDU_PREVIEW_PORT` (4173) for create-fondu.
 
+Conformance CI runs each browser engine in its own job, first with view transitions off, then with them on for the
+client's commit/history cases (the list is in `apps/conformance/playwright.config.ts`). To reproduce one engine:
+
+```bash
+cd apps/conformance
+CONFORMANCE_BASELINES=test-results/native bun run test -- --project=chromium
+CONFORMANCE_BASELINES=test-results/native FONDU_VIEW_TRANSITIONS=1 bun run test -- --project=chromium
+```
+
+`CONFORMANCE_BASELINES` lets the on run compare against the off run's no-JavaScript outcomes without loading those
+pages again; run off first. Without it, either build runs its comparisons independently. The transition specs remove
+`document.startViewTransition` per case, in every engine, to check the fallback. CI artifacts keep both builds' JSON
+timings (`test-results/off.json`, `on.json`) and retry traces (`test-results/off/`, `on/`) separately.
+
 `apps/demo` is the end-to-end test of every feature. Start it (`bun run dev`, or `bun run preview`), then run its
 checks with Chrome or Chromium:
 
