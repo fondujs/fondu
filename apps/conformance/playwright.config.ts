@@ -1,18 +1,35 @@
 import { defineConfig, devices } from '@playwright/test'
 
-// Each case runs twice, with fondu/client and without JavaScript (the browser's own navigation), in each engine.
+// `conformance.spec.ts` compares fondu/client with the browser's own navigation in each engine.
 // `bun run test` here builds the app, then runs it; `-- --project=chromium` for one engine.
 // `CONFORMANCE_PORT` moves the app and the tests to another port (two runs on one machine), 3100 by default.
 const port = Number(process.env.CONFORMANCE_PORT ?? 3100)
-const mode =
-  process.env.FONDU_VT_NO_API === '1'
-    ? 'no-api'
-    : process.env.FONDU_VIEW_TRANSITIONS === '1'
-      ? 'on'
-      : 'off'
+const transitions = process.env.FONDU_VIEW_TRANSITIONS === '1'
+const mode = transitions ? 'on' : 'off'
 
 export default defineConfig({
   testDir: 'e2e',
+  // The on build exercises the transition commit/history path, not server rendering or validation itself.
+  // Keep conformance's JS cases (including its unique form cases); CI reuses the off build's native outcomes.
+  testMatch: transitions
+    ? [
+        '**/conformance.spec.ts',
+        '**/transitions.spec.ts',
+        '**/transition-per-navigation.spec.ts',
+        '**/traversal.spec.ts',
+        '**/scroll-storage.spec.ts',
+        '**/shallow.spec.ts',
+        '**/shallow-path.spec.ts',
+        '**/links.spec.ts',
+        '**/reloads.spec.ts',
+        '**/deferred.spec.ts',
+        '**/static-query.spec.ts',
+        '**/dialog.spec.ts',
+        '**/search.spec.ts',
+      ]
+    : undefined,
+  // A browser with JavaScript disabled cannot see the build flag; these cases run in the off build only.
+  grepInvert: transitions ? /without JavaScript/ : undefined,
   fullyParallel: true,
   // CI: a case that fails is run once more, then reported as flaky if it passes (with a trace of the retry)
   retries: process.env.CI ? 1 : 0,

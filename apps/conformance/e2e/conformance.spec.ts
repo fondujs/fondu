@@ -1,7 +1,12 @@
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { dirname, join } from 'node:path'
+
 import { expect, test, type Browser, type Page } from '@playwright/test'
 
 // fondu/client against the browser itself: each case runs with the client and without JavaScript (the browser's own
 // navigation, the expected outcome), and the two must end the same: URL, page, history, scroll position.
+// CI sets CONFORMANCE_BASELINES: the off build records the native outcomes, the on build reuses them. Without it,
+// either build is self-contained. One file per test (including its engine), so parallel workers never share a write.
 
 type Outcome = Record<string, unknown> & { timeline?: string[] }
 
@@ -32,9 +37,21 @@ async function both(
       await context.close()
     }
   }
+  const baseline = async (): Promise<Outcome> => {
+    const dir = process.env.CONFORMANCE_BASELINES
+    const file = dir && join(dir, `${test.info().testId}.json`)
+    if (file && process.env.FONDU_VIEW_TRANSITIONS === '1')
+      return JSON.parse(await readFile(file, 'utf8')) as Outcome
+    const outcome = await run(false)
+    if (file) {
+      await mkdir(dirname(file), { recursive: true })
+      await writeFile(file, JSON.stringify(outcome))
+    }
+    return outcome
+  }
   const [{ timeline: scrolls, ...client }, { timeline: _, ...native }] = await Promise.all([
     run(true),
-    run(false),
+    baseline(),
   ])
   const wanted: Outcome = { ...native, ...expected }
   if (

@@ -1,5 +1,5 @@
 pre-commit:
-  parallel: true
+  piped: true
   commands:
     fmt:
       glob: '*.{ts,tsx,js,mjs,json,jsonc,css,md,yml}'
@@ -7,7 +7,7 @@ pre-commit:
       stage_fixed: true
     lint:
       glob: '*.{ts,tsx,js,mjs}'
-      run: bunx oxlint --no-error-on-unmatched-pattern {staged_files}
+      run: bunx oxlint --deny-warnings --no-error-on-unmatched-pattern {staged_files}
 
 commit-msg:
   commands:

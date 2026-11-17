@@ -118,21 +118,32 @@ test.describe('opting in', () => {
     ])
   })
 
-  test('without document.startViewTransition: the navigation is as any, and remembers nothing', async ({
-    page,
-  }) => {
-    await install(page, { api: false })
-    await page.goto('/vt/p')
-    await hydrated(page)
-    await press(page, '#to-a-zoom')
-    await shows(page, 'a')
-    await expect(page.locator('#state')).toHaveText('idle')
-    expect(await log(page)).toEqual([])
-    expect(await record(page)).toBeUndefined()
-    await page.goBack()
-    await shows(page, 'p')
-    expect(await log(page)).toEqual([])
-  })
+  for (const [kind, selector, name] of [
+    ['a link', '#to-a-zoom', 'a'],
+    ['a form', '#form-vt button', 'b'],
+    ['navigate()', '#nav-zoom', 'a'],
+  ] as const)
+    test(`without document.startViewTransition: ${kind} navigates in place and remembers nothing`, async ({
+      page,
+    }) => {
+      await install(page, { api: false })
+      await page.goto('/vt/p')
+      await hydrated(page)
+      expect(await hasApi(page)).toBe(false)
+      const original = await page.evaluateHandle(() => document)
+      await press(page, selector)
+      await shows(page, name)
+      expect(await original.evaluate((before) => before === document)).toBe(true)
+      await expect(page.locator('#state')).toHaveText('idle')
+      expect(await log(page)).toEqual([])
+      expect(await record(page)).toBeUndefined()
+      await page.goBack()
+      await shows(page, 'p')
+      await page.goForward()
+      await shows(page, name)
+      expect(await original.evaluate((before) => before === document)).toBe(true)
+      expect(await log(page)).toEqual([])
+    })
 })
 
 test.describe('Back and Forward remember', () => {

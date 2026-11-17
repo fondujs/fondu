@@ -384,8 +384,12 @@ test.describe('the types of the transitions', () => {
 test.describe('without document.startViewTransition', () => {
   test('the navigations are as they were: the pages, the scroll, the history', async ({ page }) => {
     const n = await start(page, { api: false })
+    expect(await hasApi(page)).toBe(false)
+    const original = await page.evaluateHandle(() => document)
     await press(page, '#to-a')
     await shows(page, 'a')
+    // A broken fallback can still show A by loading a new document: that is not a client navigation.
+    expect(await original.evaluate((before) => before === document)).toBe(true)
     await expect.poll(() => scrolled(page)).toBe(0)
     await page.goBack()
     await shows(page, 'o')
