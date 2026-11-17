@@ -6,6 +6,8 @@ import { join } from 'node:path'
 
 import puppeteer from 'puppeteer-core'
 
+import { checkGallerySnapshots } from './gallery-snapshots.mjs'
+
 const BASE = process.argv[2] ?? 'http://localhost:5173'
 const LABEL = process.argv[3] ?? BASE
 const ORIGIN = new URL(BASE).origin
@@ -30,14 +32,22 @@ const page = await browser.newPage()
 await page.setViewport({ width: 1100, height: 720 })
 
 const problems = []
+const intentionalFailures = new Set()
 const watchProblems = (p) => {
   p.on('console', (m) => {
+    // Only the POST deliberately aborted by the offline case below may log this network error.
+    if (
+      m.type() === 'error' &&
+      m.text() === 'Failed to load resource: net::ERR_INTERNET_DISCONNECTED' &&
+      intentionalFailures.has(m.location().url)
+    )
+      return
     // the browser's own log line for the intentional 401 / 404 / 409 / 422 / 500 responses below
     if (
       ['error', 'warning'].includes(m.type()) &&
       !/favicon|status of (401|403|404|409|413|422|500|502)\b/.test(m.text())
     )
-      problems.push(`[${m.type()}] ${m.text().slice(0, 240)}`)
+      problems.push(`[${m.type()}] ${m.text().slice(0, 240)} (${m.location().url ?? ''})`)
   })
   p.on('pageerror', (e) => problems.push(`[pageerror] ${String(e).slice(0, 240)}`))
 }
@@ -575,7 +585,10 @@ ok(
   )
   ok(
     'SSR: then a script that puts a reloaded page back where it was scrolled, with the nonce',
-    /<\/div><script nonce="[^"]+">try\{var k=history\.state&&history\.state\["__fondu"\]/.test(ssr),
+    // React may put its own timing script between the shell and our restore script.
+    /<\/div>(?:<script nonce="[^"]+">requestAnimationFrame\(function\(\)\{\$RT=performance\.now\(\)\}\);<\/script>)?<script nonce="[^"]+">try\{var k=history\.state&&history\.state\["__fondu"\]/.test(
+      ssr,
+    ),
   )
   ok(
     'withoutSsr(): this route is rendered in the browser only (the page data, an empty #app)',
@@ -820,6 +833,8 @@ ok('a link to the same page mounts it anew', (await testid('clicks')) === '0')
   await gp.close()
 }
 
+await checkGallerySnapshots({ browser, base: BASE, ok, watchProblems })
+
 // ---- a link's page modules are loaded when the pointer rests on it, before the click
 {
   await page.goto(BASE + '/navigation', { waitUntil: 'networkidle0' })
@@ -851,7 +866,10 @@ ok('a link to the same page mounts it anew', (await testid('clicks')) === '0')
   const onRequest = (r) => {
     if (r.method() === 'POST' && r.url().includes('/navigation?note')) {
       posts.push(r.url())
-      if (posts.length === 1) return r.abort('internetdisconnected')
+      if (posts.length === 1) {
+        intentionalFailures.add(r.url())
+        return r.abort('internetdisconnected')
+      }
     }
     r.continue()
   }
@@ -889,6 +907,7 @@ ok('a link to the same page mounts it anew', (await testid('clicks')) === '0')
   } finally {
     page.off('request', onRequest)
     await page.setRequestInterception(false)
+    intentionalFailures.clear()
   }
 }
 
