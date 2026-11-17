@@ -79,10 +79,11 @@ if (existsSync(new URL('index.html', dist))) {
       BreadcrumbList: ['itemListElement'],
     })
     const crumbs = graph.find((n) => n['@type'] === 'BreadcrumbList')?.itemListElement as
-      | Array<{ name: string }>
+      | Array<{ name: string; item?: string }>
       | undefined
-    if (crumbs?.length !== 3 || crumbs[0]!.name !== 'Docs' || crumbs[2]!.name !== doc.title)
-      problems.push(`${page}: its breadcrumbs are not Docs > section > ${doc.title}`)
+    const names = doc.slug ? ['Docs', doc.title] : ['Docs']
+    if (crumbs?.map((c) => c.name).join(' > ') !== names.join(' > ') || crumbs.some((c) => !c.item))
+      problems.push(`${page}: its breadcrumbs are not ${names.join(' > ')}, each a page`)
 
     // the Markdown copy names its page, under its title
     const copy = read(markdownUrl(doc).slice(1))
