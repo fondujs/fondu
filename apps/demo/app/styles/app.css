@@ -280,3 +280,12 @@
     }
   }
 }
+
+/* The photos' names are inline, so they move under reduced motion too: there, no transition animates at all */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none;
+  }
+}
