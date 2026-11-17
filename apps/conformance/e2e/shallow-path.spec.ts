@@ -60,6 +60,48 @@ test.describe('shallow navigation to another page URL', () => {
     expect(made).toEqual([])
   })
 
+  test('native shared traversals publish usePage().url before the first landing frame', async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      addEventListener(
+        'popstate',
+        (event) => {
+          Object.defineProperty(event, 'hasUAVisualTransition', { value: true })
+          requestAnimationFrame(() => {
+            ;(window as unknown as { shallowFrame: unknown }).shallowFrame = {
+              url: location.pathname,
+              rendered: document.getElementById('url')?.textContent,
+              dialog: !!document.getElementById('item-dialog'),
+            }
+          })
+        },
+        true,
+      )
+    })
+    await open(page)
+    await page.click('#open-7')
+    await dialog(page)
+    const made = requests(page)
+    for (let round = 0; round < 10; round++) {
+      for (const forward of [false, true]) {
+        await page.evaluate(() => {
+          ;(window as unknown as { shallowFrame: unknown }).shallowFrame = null
+        })
+        if (forward) await page.goForward()
+        else await page.goBack()
+        await page.waitForFunction(
+          () => (window as unknown as { shallowFrame: unknown }).shallowFrame,
+        )
+        const url = forward ? '/shallow-items/7' : '/shallow-list'
+        expect(
+          await page.evaluate(() => (window as unknown as { shallowFrame: unknown }).shallowFrame),
+        ).toEqual({ url, rendered: url, dialog: forward })
+      }
+    }
+    expect(made).toEqual([])
+  })
+
   test('navigate() and shallow replace use the same group: a double close returns one step', async ({
     page,
   }) => {
