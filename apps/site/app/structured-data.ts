@@ -1,5 +1,5 @@
 import pkg from '../../../packages/fondu/package.json'
-import { docs, docUrl, sections } from './docs.ts'
+import { docs, docUrl } from './docs.ts'
 import { SITE, SUMMARY } from './site.ts'
 
 // Structured data (JSON-LD, schema.org) for the document's <head>: the home page describes the site and the code,
@@ -28,18 +28,16 @@ export function structuredData(path: string): object | undefined {
   const doc = docs.find((d) => docUrl(d) === path)
   if (!doc) return
   const url = SITE + docUrl(doc)
-  const section = sections.find((s) => s.docs.includes(doc))!
   return {
     '@context': context,
     '@graph': [
       { '@type': 'TechArticle', headline: doc.title, description: doc.description, url },
       {
         '@type': 'BreadcrumbList',
-        // a section has no page of its own: its item has a name only
+        // every crumb is a page (a section has none of its own); the docs' own page is the one crumb
         itemListElement: [
           { name: 'Docs', item: SITE + '/docs' },
-          { name: section.title },
-          { name: doc.title, item: url },
+          ...(doc.slug ? [{ name: doc.title, item: url }] : []),
         ].map((item, i) => ({ '@type': 'ListItem', position: i + 1, ...item })),
       },
     ],
