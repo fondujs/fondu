@@ -67,6 +67,10 @@ is saved, as the commit hook does.
 `bun run --filter create-fondu test` creates an app for each target (Bun, Cloudflare Workers, Node) with `packages/fondu` as
 built here, and runs it in development and production.
 
+The browser and create-fondu suites use fixed ports, so two runs on one machine collide. Move them with environment
+variables: `CONFORMANCE_PORT` (default 3100) for `apps/conformance`, and `CREATE_FONDU_DEV_PORT` (5173),
+`CREATE_FONDU_START_PORT` (3000) and `CREATE_FONDU_PREVIEW_PORT` (4173) for create-fondu.
+
 `apps/demo` is the end-to-end test of every feature. Start it (`bun run dev`, or `bun run preview`), then run its
 checks with Chrome or Chromium:
 
