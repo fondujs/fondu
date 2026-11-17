@@ -135,11 +135,17 @@ export async function prerender(
     let security: Record<string, string> | undefined
     const errors: string[] = []
     for (const path of paths) {
+      // Each body is read as its answer arrives, before the next request. An answer left unread while the next request
+      // is awaited can be cancelled (wrangler's `fetch`, i.e. miniflare's `dispatchFetch`: it wraps undici's Response in
+      // another that shares its body stream, `new Response(response.body, response)`; undici cancels the stream of a
+      // Response that is garbage collected and unread). Then the read fails with "Body is unusable".
       const doc = await get(path, { Accept: 'text/html' })
+      const docBody = await doc.text()
       const visit = await get(path, {
         'X-Fondu': 'true',
         ...(version && { 'X-Fondu-Version': version }),
       })
+      const visitBody = await visit.text()
       if (doc.status !== 200 || visit.status !== 200) {
         // the request that failed: the document's, else the navigation's
         const [failed, as] = doc.status !== 200 ? [doc, 'a document'] : [visit, 'a navigation']
@@ -149,9 +155,9 @@ export async function prerender(
         )
         continue
       }
-      const page = (await visit.json()) as Record<string, unknown>
+      const page = JSON.parse(visitBody) as Record<string, unknown>
       const { html, hashes } = ownScripts(
-        await doc.text(),
+        docBody,
         doc.headers.get('content-security-policy') ?? undefined,
       )
       const headers = Object.fromEntries(
