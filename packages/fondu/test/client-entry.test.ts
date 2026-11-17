@@ -67,3 +67,27 @@ test('fondu/client is pre-bundled for an installed fondu only, not a linked one'
   expect(isInstalled('/repo/node_modules_old/fondu/dist/vite/index.js')).toBe(false)
   expect(fonduInstalled()).toBe(false) // this file's: src/vite/installed.ts
 })
+
+// `viewTransitions` reaches the browser as a setting of the entry (the default of each navigation), not as a build-time
+// constant: the entry imports `__entry` alone, whatever the option
+test('the entry carries viewTransitions as a setting, and nothing else of it', async () => {
+  for (const on of [true, false, undefined]) {
+    app = tempApp({ 'app/server.ts': `import { Hono } from 'hono'\nexport default new Hono()\n` })
+    dev = await createServer({
+      root: app.root,
+      configFile: false,
+      logLevel: 'silent',
+      server: { middlewareMode: true },
+      plugins: [fondu({ target: 'node', viewTransitions: on })],
+    })
+    const loaded = await dev.environments.client.pluginContainer.load('\0virtual:fondu/entry')
+    const code = typeof loaded === 'string' ? loaded : (loaded?.code ?? '')
+    expect(code).toContain(`"viewTransitions":${on === true}`)
+    expect(code).toContain("import { __entry } from 'fondu/client/internal'")
+    expect(code).not.toContain('VIEW_TRANSITIONS')
+    expect(dev.config.define ?? {}).not.toHaveProperty('__FONDU_VIEW_TRANSITIONS__')
+    await dev.close()
+    dev = undefined
+    app.remove()
+  }
+})

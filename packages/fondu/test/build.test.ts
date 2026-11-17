@@ -137,8 +137,8 @@ describe('what only a loader uses is not in the client build', () => {
     })
 })
 
-// `viewTransitions`: the code of the view transitions is in the client of a build that has it on, and not in one that has
-// it off (a constant at build time, `define`)
+// `viewTransitions` only sets the default: the code of the view transitions is in the client either way (a navigation
+// opts in on its own), and the option reaches it as a setting of the app's entry, not as a constant at build time
 describe('the client bundle and the viewTransitions option', () => {
   const MARKS = ['navigation-forward', 'active-view-transition-type', '__fondu_index']
   const bundle = (root: string) => {
@@ -149,10 +149,14 @@ describe('the client bundle and the viewTransitions option', () => {
       .join('\n')
   }
   for (const on of [false, true])
-    test(`option ${on ? 'on' : 'off'}: its code is ${on ? 'in' : 'not in'} the client`, async () => {
+    test(`option ${on ? 'on' : 'off'}: its code is in the client, and no constant of the build`, async () => {
       app = tempApp({ 'app/routes/index.tsx': page })
       await buildClient(app.root, { viewTransitions: on })
       const code = bundle(app.root)
-      for (const mark of MARKS) expect(code.includes(mark), mark).toBe(on)
+      for (const mark of [...MARKS, '__fondu_transition'])
+        expect(code.includes(mark), mark).toBe(true)
+      expect(code).not.toContain('__FONDU_VIEW_TRANSITIONS__')
+      // the setting of the entry: the default
+      expect(code).toMatch(new RegExp(`viewTransitions:\\s*!${on ? '0' : '1'}\\b`))
     })
 })

@@ -85,7 +85,8 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run test
         working-directory: apps/conformance
-      # the same suite against the build with `viewTransitions: true` (and its own cases, e2e/transitions.spec.ts)
+      # the same suite against the build with `viewTransitions: true`, the default of every navigation (and its own cases,
+      # e2e/transitions.spec.ts, and the opt-outs of e2e/transition-per-navigation.spec.ts)
       - run: bun run test
         working-directory: apps/conformance
         env:

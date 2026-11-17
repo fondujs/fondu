@@ -40,6 +40,7 @@ import { href, navigate } from 'fondu/client'
 navigate(href('/orders', { query: { page: 2 } }))
 navigate(url, { replace: true }) // no new history entry: Back skips it
 navigate(url, { keep: true }) // as reload(): keeps state (a focused input) and scroll; the loader still runs
+navigate(url, { transition: true }) // with a view transition (see below)
 ```
 
 Search as you type: put the value in the URL, answer in the loader, and navigate with `{ replace: true, keep: true }`
@@ -49,14 +50,14 @@ after a debounce. A navigation in flight is aborted by the next. Back, reload an
 `navigate()` and `loadDocument()` throw an `Error` for a `javascript:` URL. Other schemes (`mailto:`) and other sites
 are handed to the browser.
 
-| Export                               | Does                                                         |
-| ------------------------------------ | ------------------------------------------------------------ |
-| `navigate(url, { replace?, keep? })` | goes to `url` as a link would                                |
-| `navigate(url, { shallow: true })`   | changes this page's query or `#fragment`, asks for nothing   |
-| `closeShallow(to)`                   | closes what a shallow navigation opened, one step            |
-| `loadDocument(url)`                  | loads `url` as a document                                    |
-| `reload()`                           | asks for the page's props again; state and scroll stay       |
-| `reload({ only: ['stats'] })`        | asks for those props alone, quietly (see [data.md](data.md)) |
+| Export                                            | Does                                                                           |
+| ------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `navigate(url, { replace?, keep?, transition? })` | goes to `url` as a link would                                                  |
+| `navigate(url, { shallow: true })`                | changes this page's query or `#fragment`, asks for nothing, never a transition |
+| `closeShallow(to)`                                | closes what a shallow navigation opened, one step                              |
+| `loadDocument(url)`                               | loads `url` as a document                                                      |
+| `reload()`                                        | asks for the page's props again; state and scroll stay                         |
+| `reload({ only: ['stats'] })`                     | asks for those props alone, quietly (see [data.md](data.md))                   |
 
 ## Forms
 
@@ -126,25 +127,64 @@ const useHash = () => useSyncExternalStore(subscribe, () => location.hash, () =>
 
 ## View transitions
 
-Off by default: `fondu({ target, viewTransitions: true })`. A navigation that restores the scroll (link, form answer,
-`navigate()`, Back/Forward to another page) commits inside the browser's `document.startViewTransition()`: Fondu's own
-commit and scroll restore are the `update`. The animation is CSS; there is nothing to add to a page.
+Each navigation opts in to the browser's `document.startViewTransition()`; Fondu's commit and scroll restore are the
+`update`. The animation is CSS; there is nothing to add to a page.
 
-- Types, for `:root:active-view-transition-type(navigation-forward)` and so on: `navigation-forward` (a new entry,
-  Forward), `navigation-back`, `navigation-replace`.
+```html
+<a href="/photos/7" data-transition>Photo 7</a>
+<a href="/photos/7" data-transition="zoom fade">Photo 7</a> <!-- adds the types zoom and fade -->
+<form action="/search" data-transition>…</form>
+```
+
+```ts
+navigate('/photos/7', { transition: true })
+navigate('/photos/7', { transition: ['zoom'] })
+```
+
+In JSX, `<a data-transition>` is written as `data-transition="true"`: the same as the bare attribute.
+
+- Default for every navigation: `fondu({ target, viewTransitions: true })`. A link or call opts out with
+  `data-transition="false"` or `transition: false`. The option sets the default only: the code is in the client either
+  way, and a link opts in without it.
+- Types, for `:root:active-view-transition-type(zoom)`: the direction (`navigation-forward` for a new entry and
+  Forward, `navigation-back`, `navigation-replace`), then the navigation's own. Untyped where the browser has no
+  `:active-view-transition-type()`.
+- Back and Forward remember: an entry reached by a transition keeps its types in `history.state`, and Back from it,
+  Forward to it, run it again with the direction (`navigation-back zoom`). Of the two entries a traversal goes between
+  (also across several), the later one's record counts. Back from a page reached without a transition does not animate;
+  with `viewTransitions: true` it does, with the direction alone.
+- Never a transition for `reload()`, `keep`, shallow navigations (`data-shallow`, `shallow: true`), a form's answer at
+  its own URL, deferred props, or a swipe back the browser animates itself. Without `document.startViewTransition`
+  navigations are as they were.
 - React's `<ViewTransition>` does not animate Fondu's navigations (it works for the app's own `startTransition`
-  updates), and its `name` is not applied for them. Shared elements: `view-transition-name` in CSS. One view
-  transition runs per document: a navigation and an app's own transition cut each other short, and duplicate
-  names skip it.
-- No transition for `reload()`, `keep`, shallow navigations, deferred props, or a swipe back the browser animates
-  itself. Without `document.startViewTransition` navigations are as they were.
+  updates), and its `name` is not applied for them. Shared elements: `view-transition-name` in CSS, one element per
+  page. One view transition runs per document: a navigation and an app's own transition cut each other short, and
+  duplicate names skip it.
 - The old page stays under the new URL until the commit; a newer navigation in that time wins. Reduced motion is the
   app's CSS: animations in `@media (prefers-reduced-motion: no-preference)`.
 
 ```css
 @media (prefers-reduced-motion: no-preference) {
+  .photo {
+    view-transition-name: photo; /* the same element in the list and on its page */
+  }
+  :root:active-view-transition-type(navigation-forward)::view-transition-new(root) {
+    animation: slide-in-right 250ms ease-out;
+  }
   :root:active-view-transition-type(navigation-back)::view-transition-new(root) {
     animation: slide-in-left 250ms ease-out;
+  }
+  @keyframes slide-in-right {
+    from {
+      transform: translateX(2rem);
+      opacity: 0;
+    }
+  }
+  @keyframes slide-in-left {
+    from {
+      transform: translateX(-2rem);
+      opacity: 0;
+    }
   }
 }
 ```

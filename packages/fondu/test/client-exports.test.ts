@@ -69,7 +69,7 @@ test('the type exports of each entry are the documented ones', () => {
 })
 
 test('the internals are in fondu/client/internal, not in fondu/client', () => {
-  expect(Object.keys(internal).sort()).toEqual(['__entry', 'renderPage', 'viewTransitions'])
+  expect(Object.keys(internal).sort()).toEqual(['__entry', 'renderPage'])
   expect(client).not.toHaveProperty('__entry')
   expect(client).not.toHaveProperty('renderPage')
   expect(client).not.toHaveProperty('fetch')

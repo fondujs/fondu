@@ -358,7 +358,7 @@ const navigation = [
   }),
 ]
 
-// navigate(): replace, keep and shallow are optional booleans; shallow: true takes no keep
+// navigate(): replace, keep and shallow are optional booleans; shallow: true takes no keep, no transition
 const flags = { shallow: Math.random() > 0.5, keep: Math.random() > 0.5 }
 const navigations = [
   typed(({ navigate }) => navigate('/x')),
@@ -384,6 +384,25 @@ const navigations = [
   // @ts-expect-error keep may be true: shallow may not be
   typed(({ navigate }) => navigate('?a=1', { shallow: true, keep: flags.keep })),
   typed(({ navigate }) => navigate('?a=1', { shallow: flags.shallow })),
+  // transition: true, false, or the custom types the view transition adds; a shallow navigation never has one
+  typed(({ navigate }) => navigate('/x', { transition: true })),
+  typed(({ navigate }) => navigate('/x', { transition: false })),
+  typed(({ navigate }) => navigate('/x', { transition: ['zoom'] })),
+  typed(({ navigate }) => navigate('/x', { transition: ['zoom', 'fade'] })),
+  typed(({ navigate }) => navigate('/x', { transition: [] })),
+  typed(({ navigate }) => navigate('/x', { transition: undefined })),
+  typed(({ navigate }) => navigate('/x', { replace: true, keep: true, transition: ['zoom'] })),
+  typed(({ navigate }) => navigate('/x', { shallow: false, transition: true })),
+  // @ts-expect-error a list of types, or a boolean: not a string
+  typed(({ navigate }) => navigate('/x', { transition: 'zoom' })),
+  // @ts-expect-error the types are strings
+  typed(({ navigate }) => navigate('/x', { transition: [1] })),
+  // @ts-expect-error a shallow navigation never transitions
+  typed(({ navigate }) => navigate('?a=1', { shallow: true, transition: true })),
+  // @ts-expect-error not even false
+  typed(({ navigate }) => navigate('?a=1', { shallow: true, transition: false })),
+  // @ts-expect-error shallow may be true
+  typed(({ navigate }) => navigate('?a=1', { shallow: flags.shallow, transition: ['zoom'] })),
   typed(({ closeShallow }) => closeShallow('/x')),
   typed(({ closeShallow }) => closeShallow('/x?tab=a#b')),
   // @ts-expect-error the URL to fall back to is required
@@ -423,7 +442,7 @@ test('fondu/client exports exactly the documented values', () => {
     | 'request'
     | 'RequestError'
   >()(names)
-  exactly<'__entry' | 'renderPage' | 'viewTransitions'>()(
+  exactly<'__entry' | 'renderPage'>()(
     null as unknown as keyof typeof import('../src/client/internal.js'),
   )
 })
@@ -600,7 +619,7 @@ test('the types above are checked by tsc', () => {
     ...answers,
     ...navigation,
     ...navigations,
-  ]).toHaveLength(163)
+  ]).toHaveLength(176)
 })
 
 test('FonduOptions: the port is PORT, not an option', () => {

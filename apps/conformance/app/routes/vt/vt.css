@@ -4,3 +4,8 @@ html[data-vt-slow]::view-transition-old(*),
 html[data-vt-slow]::view-transition-new(*) {
   animation-duration: 60s;
 }
+
+/* a custom type (`data-transition="zoom"`) is a type like the direction's: a page can pick its animation by it */
+html:active-view-transition-type(zoom)::view-transition-new(root) {
+  animation-duration: 120ms;
+}

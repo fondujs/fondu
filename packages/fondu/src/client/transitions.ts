@@ -1,13 +1,16 @@
-// View transitions: the browser's, around the client's own commit (the `viewTransitions` option, off by default).
-
-declare const __FONDU_VIEW_TRANSITIONS__: boolean | undefined
+// View transitions: the browser's, around the client's own commit. A navigation opts in (`data-transition`,
+// `navigate(…, { transition })`); `fondu({ viewTransitions: true })` is the default for every navigation.
 
 /**
- * The `viewTransitions` option: a constant set at build time (Vite's `define`), so that the code behind it is gone from a
- * build that has it off. `false` where nothing defines it (a test, a build without the plugin)
+ * A `data-transition` attribute: none (undefined), `false` (opted out), or the custom types it adds, space-separated
+ * (a bare attribute adds none, and `"true"` is a bare one: React writes `data-transition` as `data-transition="true"`)
  */
-export const viewTransitions: boolean =
-  typeof __FONDU_VIEW_TRANSITIONS__ === 'undefined' ? false : __FONDU_VIEW_TRANSITIONS__
+export function optIn(value: string | null): string[] | false | undefined {
+  if (value === null) return
+  const types = value.match(/\S+/g) ?? []
+  const only = types.join()
+  return only === 'false' ? false : only === 'true' ? [] : types
+}
 
 type ViewTransition = {
   ready: Promise<void>

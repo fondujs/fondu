@@ -2,4 +2,3 @@
 // the same module as `fondu/client` (./app.js), so the two share one React context and one navigation state: the
 // plugin's optimizeDeps pre-bundles both in one run (vite/index.ts).
 export { __entry, renderPage } from './app.js'
-export { viewTransitions } from './transitions.js'

@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test'
+import { expect, type Page } from '@playwright/test'
 
 // What the view-transition cases (e2e/transitions.spec.ts) hold on to. An init script wraps `document.startViewTransition`:
 // React calls it when a transition commits with a <ViewTransition> in it, and the wrapper delays the `update` it gets
@@ -71,7 +71,13 @@ export async function install(page: Page, { api = true } = {}) {
               entry.phase = 'updating'
               await options.update()
               entry.scrollAfterUpdate = [scrollX, scrollY]
-              for (const type of ['navigation-forward', 'navigation-back', 'navigation-replace'])
+              for (const type of [
+                'navigation-forward',
+                'navigation-back',
+                'navigation-replace',
+                'zoom',
+                'fade',
+              ])
                 try {
                   if (document.documentElement.matches(`:active-view-transition-type(${type})`))
                     entry.matched.push(type)
@@ -113,6 +119,33 @@ export async function install(page: Page, { api = true } = {}) {
     { api },
   )
 }
+
+// What the cases share (e2e/transitions.spec.ts, e2e/transition-per-navigation.spec.ts)
+type W = Window & { __vt: VtWindow }
+export const hydrated = (page: Page) => page.waitForFunction(() => history.state?.__fondu)
+/** a click that doesn't scroll the page to the link first (as Playwright's does), and works under a transition */
+export const press = (page: Page, selector: string) =>
+  page.evaluate((s) => document.querySelector<HTMLElement>(s)!.click(), selector)
+export const address = (page: Page) =>
+  page.evaluate(() => location.pathname + location.search + location.hash)
+export const hasApi = (page: Page) =>
+  page.evaluate(() => typeof document.startViewTransition === 'function')
+export const frames = (page: Page) =>
+  page.evaluate(
+    () => new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r()))),
+  )
+export const shows = (page: Page, name: string) =>
+  expect(page.locator('#page')).toHaveAttribute('data-name', name)
+/** every transition has ended (none was started, without the API) */
+export const quiet = (page: Page) =>
+  page.waitForFunction(
+    () =>
+      (window as unknown as W).__vt.log.every(
+        (e) => e.phase === 'finished' || e.phase === 'skipped',
+      ),
+    undefined,
+    { polling: 50 },
+  )
 
 export const log = (page: Page) =>
   page.evaluate(() => (window as unknown as { __vt: VtWindow }).__vt.log)
