@@ -43,8 +43,12 @@ export default function Gallery() {
                     height={480}
                     // the first row is on the screen at once
                     loading={i < 3 ? undefined : 'lazy'}
-                    className="aspect-4/3 w-full object-cover"
-                    style={{ viewTransitionName: `photo-${photo.id}` }}
+                    // An independently captured image needs its own corners, not only the card's clipping.
+                    className="aspect-4/3 w-full rounded-t-[calc(var(--radius-2xl)-1px)] object-cover"
+                    style={{
+                      viewTransitionName: `photo-${photo.id}`,
+                      viewTransitionClass: 'gallery-photo',
+                    }}
                   />
                   <span className="block p-4 font-medium">{photo.title}</span>
                 </a>

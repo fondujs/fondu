@@ -234,6 +234,30 @@
   .gallery-page {
     view-transition-name: gallery-page;
   }
+  /* Both snapshots fill the animated group across the 4:3 → 3:2 change. Cover may crop the bitmap's
+     corners away, so clip the pair too. Unmatched photos keep their ordinary entry/exit fades. */
+  ::view-transition-image-pair(.gallery-photo) {
+    overflow: clip;
+    border-radius: calc(var(--radius-2xl) - 1px) calc(var(--radius-2xl) - 1px) 0 0;
+  }
+  ::view-transition-old(.gallery-photo),
+  ::view-transition-new(.gallery-photo) {
+    height: 100%;
+    overflow: clip;
+    animation: none;
+    mix-blend-mode: normal;
+  }
+  ::view-transition-old(.gallery-photo) {
+    object-fit: contain;
+  }
+  ::view-transition-new(.gallery-photo) {
+    object-fit: cover;
+  }
+  ::view-transition-old(.gallery-photo):only-child,
+  ::view-transition-new(.gallery-photo):only-child {
+    animation: revert;
+    mix-blend-mode: revert;
+  }
   ::view-transition-group(gallery-page) {
     animation: none;
   }
