@@ -9,6 +9,7 @@ import puppeteer from 'puppeteer-core'
 import { checkGalleryDialog } from './gallery-dialog.mjs'
 import { checkGallerySnapshots } from './gallery-snapshots.mjs'
 import { checkSettingsHistory } from './settings-history.mjs'
+import { checkSettingsLayout } from './settings-layout.mjs'
 
 const BASE = process.argv[2] ?? 'http://localhost:5173'
 const LABEL = process.argv[3] ?? BASE
@@ -1257,6 +1258,8 @@ await page.waitForFunction(
     () => document.querySelector('[data-testid=user]')?.ariaLabel === 'Demo User',
   )
 }
+
+await checkSettingsLayout({ browser, base: BASE, ok, watchProblems })
 
 // ---- errors: the error page, and the development report
 {
