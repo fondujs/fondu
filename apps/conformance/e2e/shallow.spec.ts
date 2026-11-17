@@ -569,17 +569,19 @@ test.describe('a real answer on a shallow entry ends the sharing: Back to the ot
 })
 
 test.describe('the API', () => {
-  test('shallow to another page throws, saying what to write; with a trailing slash it is another page', async ({
+  test('shallow accepts another page URL and a trailing slash recognized by the page check', async ({
     page,
   }) => {
     await open(page)
+    const made = requests(page)
     await page.click('#elsewhere')
-    await expect(text(page, 'refused')).toContainText(
-      'a shallow navigation stays on this page (its query, its #fragment); /long is another page: leave out `shallow`',
-    )
+    await expect(text(page, 'url')).toHaveText('/long')
+    await expect(text(page, 'component')).toHaveText('shallow')
     await page.click('#with-slash')
-    await expect(text(page, 'refused')).toContainText('/shallow/ is another page')
-    await expect(page).toHaveURL(/\/shallow$/)
+    await expect(text(page, 'url')).toHaveText('/shallow/?item=a')
+    await expect(item(page)).toHaveText('Alpha')
+    await expect(text(page, 'refused')).toHaveText('')
+    expect(made).toEqual([])
   })
 
   test('shallow with keep throws', async ({ page }) => {
@@ -601,7 +603,7 @@ test.describe('the API', () => {
     expect(made).toEqual([])
   })
 
-  test('data-shallow: a modified click, and a link to another page, are ordinary; a plain link without it is a visit', async ({
+  test('data-shallow: a modified click is ordinary; another page URL is also shallow', async ({
     page,
   }) => {
     await open(page)
@@ -627,25 +629,25 @@ test.describe('the API', () => {
     expect(prevented).toEqual({ 'open-a': true, 'open-b+ctrl': false, 'shallow-to-long': true })
   })
 
-  test('data-shallow to another page is an ordinary link: a visit, and the link is prefetched as usual', async ({
-    page,
-  }) => {
+  test('data-shallow to another page makes no request, including on hover', async ({ page }) => {
     await open(page)
     const made = requests(page)
     await page.hover('#open-a')
     await page.waitForTimeout(300)
     expect(made).toEqual([]) // a shallow link: nothing to ask for
     await page.hover('#shallow-to-long')
-    await expect.poll(() => made.some((url) => url.includes('/_fondu/pages/long.json'))).toBe(true)
-    made.length = 0
+    await page.waitForTimeout(300)
+    expect(made).toEqual([])
     await page.click('#shallow-to-long')
-    await expect.poll(() => new URL(page.url()).pathname).toBe('/long') // (a prerendered page has no query)
+    await expect(text(page, 'url')).toHaveText('/long?x=1')
+    await expect(text(page, 'component')).toHaveText('shallow')
+    expect(made).toEqual([])
   })
 })
 
 test.describe('the pathname', () => {
   for (const name of ['caf%C3%A9%20%E2%98%95', 'a%2Fb', '%2e%2e%2fb']) {
-    test(`encoded (/shallow/${name}): the same pathname however it is written is shallow; a trailing slash is another page`, async ({
+    test(`encoded (/shallow/${name}): shallow accepts the raw pathname and a trailing slash; an ordinary link still visits`, async ({
       page,
     }) => {
       await open(page, `/shallow/${name}`)
@@ -661,8 +663,10 @@ test.describe('the pathname', () => {
         expect(made).toEqual([])
       }
       await page.click('#slash-nav')
-      await expect(text(page, 'refused')).toContainText('is another page')
-      // a link with the slash is a visit: the server answers for it (it redirects to the path without)
+      await expect(text(page, 'url')).toHaveText(`${path}/?x=3`)
+      expect(made).toEqual([])
+      await page.goBack()
+      // Without data-shallow a trailing-slash link still visits and the server redirects to the canonical URL.
       await page.click('#slash')
       await expect.poll(() => made.length).toBeGreaterThan(0)
       await expect(page).toHaveURL(/\?x=3$/)

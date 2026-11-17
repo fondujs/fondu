@@ -10,6 +10,10 @@ component, which the loader renders with props; the browser gets the component a
 and `<form>`: Fondu's small client swaps the pages in place, with no API to write and no client-side router to keep in
 sync.
 
+A [shallow navigation](https://fondu.dev/docs/navigation#shallow-navigation) keeps the page on the screen at another
+page URL of the app, without a request: a gallery can open a photo in a dialog at its own URL, which loads the photo's
+page on a reload, a shared link or a new tab.
+
 ## Quick start
 
 ```bash
