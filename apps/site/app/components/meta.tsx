@@ -1,6 +1,6 @@
 import { usePage } from 'fondu/client'
 
-export const SITE = 'https://fondu.dev'
+import { SITE } from '#/site.ts'
 
 /** a page's <title>; the home page's is the site's own */
 export const fullTitle = (title?: string) =>
