@@ -14,6 +14,8 @@ describe('fondu() options', () => {
       { target: 'node', ssr: false, prerender: true },
       { target: 'node', ssr: undefined, react: undefined, progress: undefined },
       { target: 'node', progress: false },
+      { target: 'node', viewTransitions: true },
+      { target: 'node', viewTransitions: false },
       { target: 'node', progress: { delay: 0, color: 'red', forms: false } },
       { target: 'node', react: {} },
       {
@@ -44,7 +46,7 @@ describe('fondu() options', () => {
   test('port is no option: it says to set PORT', () => {
     for (const target of ['node', 'bun', 'cloudflare'])
       expect(make({ target, port: 3000 }), target).toThrow(
-        'fondu(): unknown option `port`. The options are target, ssr, react, prerender, progress. There is no `port` option: the built server listens on the environment variable `PORT`, else 3000',
+        'fondu(): unknown option `port`. The options are target, ssr, react, prerender, progress, viewTransitions. There is no `port` option: the built server listens on the environment variable `PORT`, else 3000',
       )
     expect(make({ target: 'node', port: 3000, a: 1 })).toThrow('unknown options `port`, `a`')
     expect(make({ target: 'node', progress: { port: 1 } })).not.toThrow('PORT')
@@ -62,6 +64,13 @@ describe('fondu() options', () => {
     expect(make({ target: 'node', prerender: 1 })).toThrow(
       'fondu(): `prerender` must be true or false',
     )
+  })
+
+  test('viewTransitions is a boolean', () => {
+    for (const value of ['yes', 1, null, {}])
+      expect(make({ target: 'node', viewTransitions: value })).toThrow(
+        'fondu(): `viewTransitions` must be true or false',
+      )
   })
 
   test('progress is false or its options', () => {

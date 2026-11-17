@@ -423,7 +423,7 @@ test('fondu/client exports exactly the documented values', () => {
     | 'request'
     | 'RequestError'
   >()(names)
-  exactly<'__entry' | 'renderPage'>()(
+  exactly<'__entry' | 'renderPage' | 'viewTransitions'>()(
     null as unknown as keyof typeof import('../src/client/internal.js'),
   )
 })
@@ -626,4 +626,15 @@ test('ProgressOptions is the type of the progress option', () => {
     StandardSchemaV1,
   ]
   expect<Unused | undefined>(undefined).toBeUndefined()
+})
+
+test('FonduOptions: viewTransitions is true or false', () => {
+  const options: FonduOptions[] = [
+    { target: 'node' },
+    { target: 'node', viewTransitions: true },
+    { target: 'cloudflare', viewTransitions: false, prerender: true, progress: false },
+    // @ts-expect-error a boolean, not a string
+    { target: 'node', viewTransitions: 'yes' },
+  ]
+  expect(options).toHaveLength(4)
 })

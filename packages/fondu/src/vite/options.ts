@@ -1,7 +1,7 @@
 import type { FonduOptions } from './index.js'
 
 const TARGETS = ['node', 'bun', 'cloudflare']
-const KEYS = ['target', 'ssr', 'react', 'prerender', 'progress']
+const KEYS = ['target', 'ssr', 'react', 'prerender', 'progress', 'viewTransitions']
 const PROGRESS_KEYS = ['delay', 'color', 'forms']
 
 const isObject = (v: unknown): v is Record<string, unknown> =>
@@ -32,11 +32,11 @@ export function checkOptions(options: unknown): asserts options is FonduOptions 
       )
   }
   unknown(Object.keys(options), KEYS)
-  const { target, ssr, prerender, progress, react } = options
+  const { target, ssr, prerender, progress, react, viewTransitions } = options
   if (target === undefined) fail("`target` is required: 'node', 'bun' or 'cloudflare'")
   if (!TARGETS.includes(target as string))
     fail(`\`target\` must be 'node', 'bun' or 'cloudflare', not ${show(target)}`)
-  for (const [name, value] of Object.entries({ ssr, prerender }))
+  for (const [name, value] of Object.entries({ ssr, prerender, viewTransitions }))
     if (value !== undefined && typeof value !== 'boolean')
       fail(`\`${name}\` must be true or false, not ${show(value)}`)
   if (progress !== undefined && progress !== false) {

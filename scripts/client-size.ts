@@ -4,6 +4,9 @@
 // An app's bundle has `fondu/client` and `fondu/client/internal` (the virtual client entry's `__entry`: vite/index.ts),
 // over the one module of the client: both are built as one bundle (a checkout without `client/internal.ts` has the
 // one entry). A report: it exits 0 unless the build itself fails.
+// `fondu({ viewTransitions })` is a build-time constant (`__FONDU_VIEW_TRANSITIONS__`, client/transitions.ts), which
+// the plugin defines for an app's build: the size is measured with it off (what an app that leaves the option out
+// ships) and on, each defined as the plugin does.
 import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
@@ -23,7 +26,7 @@ const args = process.argv.slice(2)
 const flag = (name: string) => args.includes(name)
 const files = args.filter((a) => !a.startsWith('--'))
 
-async function measure(dir: string): Promise<Size[]> {
+async function measure(dir: string, viewTransitions: boolean): Promise<Size> {
   const pkg = resolve(dir, 'packages/fondu')
   const manifest = JSON.parse(readFileSync(join(pkg, 'package.json'), 'utf8'))
   const external = [
@@ -46,6 +49,7 @@ async function measure(dir: string): Promise<Size[]> {
       root: pkg,
       configFile: false,
       logLevel: 'silent',
+      define: { __FONDU_VIEW_TRANSITIONS__: String(viewTransitions) },
       build: {
         outDir: out,
         emptyOutDir: true,
@@ -66,12 +70,11 @@ async function measure(dir: string): Promise<Size[]> {
           Buffer.from(readFileSync(join(out, f), 'utf8').replace(/^\/\/#(end)?region.*\n?/gm, '')),
         )
         .map((code) => ({
-          name: 'fondu/client',
+          name: viewTransitions ? 'fondu/client (viewTransitions)' : 'fondu/client',
           minified: code.length,
           gzip: gzipSync(code, { level: 9 }).length,
           brotli: brotliCompressSync(code).length,
-        }))
-        .slice(0, 1)
+        }))[0]!
     )
   } finally {
     rmSync(out, { recursive: true, force: true })
@@ -123,7 +126,8 @@ function summary(headFile: string, baseFile?: string): string {
 if (flag('--summary')) {
   console.log(summary(files[0]!, files[1]))
 } else {
-  const sizes = await measure(resolve(files[0] ?? join(import.meta.dirname, '..')))
+  const dir = resolve(files[0] ?? join(import.meta.dirname, '..'))
+  const sizes = [await measure(dir, false), await measure(dir, true)]
   if (flag('--json')) console.log(JSON.stringify(sizes, null, 2))
   else
     for (const s of sizes)

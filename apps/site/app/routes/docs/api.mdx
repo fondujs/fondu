@@ -116,13 +116,14 @@ the server they throw.
 The Vite plugin: `fondu(options)`. The options are checked when the plugin is created: `target` is required, and an unknown option fails. There is
 no `port` option: the built server (Bun and Node) listens on `PORT`, else 3000.
 
-| Option      | Is                                                                                                                                                    |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `target`    | `'bun'`, `'cloudflare'` or `'node'`                                                                                                                   |
-| `ssr`       | `false`: pages render in the browser only                                                                                                             |
-| `prerender` | `true`: write the chosen pages as [static files](/docs/static-pages)                                                                                  |
-| `progress`  | the navigations' progress bar: `{ color, delay, forms }`, or `false`                                                                                  |
-| `react`     | passed to [`@vitejs/plugin-react`](https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react) (its `include` has `.mdx` by default) |
+| Option            | Is                                                                                                                                                    |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `target`          | `'bun'`, `'cloudflare'` or `'node'`                                                                                                                   |
+| `ssr`             | `false`: pages render in the browser only                                                                                                             |
+| `prerender`       | `true`: write the chosen pages as [static files](/docs/static-pages)                                                                                  |
+| `progress`        | the navigations' progress bar: `{ color, delay, forms }`, or `false`                                                                                  |
+| `viewTransitions` | `true`: navigations that restore the scroll run inside the browser's view transition; [navigation](/docs/navigation#view-transitions)                 |
+| `react`           | passed to [`@vitejs/plugin-react`](https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react) (its `include` has `.mdx` by default) |
 
 ### Types
 

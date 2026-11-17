@@ -1,0 +1,6 @@
+/* e2e/transitions.spec.ts holds the animation of a view transition by this attribute: long, until the case skips it */
+html[data-vt-slow]::view-transition-group(*),
+html[data-vt-slow]::view-transition-old(*),
+html[data-vt-slow]::view-transition-new(*) {
+  animation-duration: 60s;
+}

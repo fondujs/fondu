@@ -55,6 +55,12 @@ export interface FonduOptions {
    * submissions show it (`forms`); `false`: none
    */
   progress?: ProgressOptions | false
+  /**
+   * Navigations that restore the scroll (links, forms, Back and Forward to another page) run their commit inside the
+   * browser's `document.startViewTransition`, typed `navigation-forward`, `navigation-back` or `navigation-replace`;
+   * the app styles them in CSS. Off by default
+   */
+  viewTransitions?: boolean
 }
 
 const DEV_CSS = '/@fondu/dev.css'
@@ -153,6 +159,7 @@ export default function fondu(options: FonduOptions): PluginOption[] {
     // .mdx too: MDX pages and components get Fast Refresh (as MDX's own docs set it up)
     react({ include: /\.(?:[jt]sx?|mdx)$/, ...options.react }),
     core(options),
+    viewTransitionsConstant(options),
     stripRoutes(),
     hmr(),
     loadFailure(),
@@ -277,6 +284,23 @@ function loadFailure(): Plugin {
       failed = false
       this.environment.hot.send({ type: 'full-reload' })
     },
+  }
+}
+
+/**
+ * `viewTransitions` as the build-time constant the client's code is cut by (client/transitions.ts): with it off the
+ * minifier removes that code. Vite's `define` reaches the app's modules; the pre-bundled copy of an installed fondu
+ * (dev) is a bundle of its own, which takes its `define` from `optimizeDeps` (and not from the top-level one)
+ */
+function viewTransitionsConstant(options: FonduOptions): Plugin {
+  const define = { __FONDU_VIEW_TRANSITIONS__: JSON.stringify(Boolean(options.viewTransitions)) }
+  return {
+    name: 'fondu:view-transitions',
+    config: () => ({ define }),
+    configEnvironment: (name) =>
+      name === 'client'
+        ? { optimizeDeps: { rolldownOptions: { transform: { define } } } }
+        : undefined,
   }
 }
 
@@ -501,9 +525,17 @@ function core(options: FonduOptions): Plugin {
       if (id === resolved(V.entry)) {
         const dev = this.environment.config.consumer === 'client' && !isBuild
         const settings = { prerender: Boolean(options.prerender), progress: options.progress ?? {} }
+        // `viewTransitions` is the client's build-time constant (VIEW_TRANSITIONS): the browser's copy of fondu/client
+        // must have been built with it, or its code was removed (a copy pre-bundled before the option was on)
+        const check = options.viewTransitions && this.environment.config.consumer === 'client'
         const glob = (pattern: string | string[]) => `import.meta.glob(${JSON.stringify(pattern)})`
         return [
-          `import { __entry } from 'fondu/client/internal'`,
+          `import { __entry${check ? ', viewTransitions' : ''} } from 'fondu/client/internal'`,
+          ...(check
+            ? [
+                `if (!viewTransitions) throw new Error('fondu: viewTransitions is on, but this copy of fondu/client was built without it (pre-bundled before the option was set): delete node_modules/.vite and restart')`,
+              ]
+            : []),
           ...(dev ? [`import { reload } from 'fondu/client'`] : []),
           ...(dev ? [`import.meta.hot?.on(${JSON.stringify(PROPS_EVENT)}, () => reload())`] : []),
           `__entry({ ...${glob(PAGES_GLOB)}, ...${glob(ERROR_GLOB)} }, ${glob(LAYOUTS_GLOB)}, ${JSON.stringify(settings)})`,

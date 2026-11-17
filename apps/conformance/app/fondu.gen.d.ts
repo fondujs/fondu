@@ -25,6 +25,7 @@ declare module 'fondu' {
       "/static-query": typeof import("./routes/static-query")
       "/traverse": typeof import("./routes/traverse")
       "/trim": typeof import("./routes/trim")
+      "/vt/:name": typeof import("./routes/vt/[name]")
     }
   }
 }
