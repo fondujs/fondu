@@ -35,17 +35,17 @@ const problems = []
 const intentionalFailures = new Set()
 const watchProblems = (p) => {
   p.on('console', (m) => {
-    // Only the POST deliberately aborted by the offline case below may log this network error.
+    // Only the POST deliberately aborted below may log this error. Chrome can replay it on history restores.
     if (
       m.type() === 'error' &&
       m.text() === 'Failed to load resource: net::ERR_INTERNET_DISCONNECTED' &&
       intentionalFailures.has(m.location().url)
     )
       return
-    // the browser's own log line for the intentional 401 / 404 / 409 / 422 / 500 responses below
+    // The browser's own log line for intentional error responses (including the text/plain API CSRF probe).
     if (
       ['error', 'warning'].includes(m.type()) &&
-      !/favicon|status of (401|403|404|409|413|422|500|502)\b/.test(m.text())
+      !/favicon|status of (401|403|404|409|413|415|422|500|502)\b/.test(m.text())
     )
       problems.push(`[${m.type()}] ${m.text().slice(0, 240)} (${m.location().url ?? ''})`)
   })
@@ -907,7 +907,6 @@ await checkGallerySnapshots({ browser, base: BASE, ok, watchProblems })
   } finally {
     page.off('request', onRequest)
     await page.setRequestInterception(false)
-    intentionalFailures.clear()
   }
 }
 
