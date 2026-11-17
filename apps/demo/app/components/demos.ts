@@ -66,6 +66,11 @@ export const groups: Array<[group: string, demos: Demo[]]> = [
         'Navigation',
         'Links and forms swapped in place: Back, the scroll position, pending and failed state, preloading.',
       ],
+      [
+        href('/transitions'),
+        'View transitions',
+        'A link with data-transition animates the page: a shared photo and a slide by direction.',
+      ],
       [href('/versioning'), 'Asset versioning', 'A version mismatch forces a full page reload.'],
     ],
   ],

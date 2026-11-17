@@ -21,6 +21,8 @@ declare module 'fondu' {
       "/signup": typeof import("./routes/(demos)/signup")
       "/ssr/browser": typeof import("./routes/(demos)/ssr/browser")
       "/ssr": typeof import("./routes/(demos)/ssr/index")
+      "/transitions/:id": typeof import("./routes/(demos)/transitions/[id]")
+      "/transitions": typeof import("./routes/(demos)/transitions/index")
       "/uploads": typeof import("./routes/(demos)/uploads")
       "/versioning": typeof import("./routes/(demos)/versioning")
       "/admin/dashboard": typeof import("./routes/admin/dashboard")

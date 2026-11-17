@@ -227,28 +227,56 @@
   @apply mb-8 text-[15px]/relaxed text-muted-foreground;
 }
 
-/* Only for visits that opt in with <Link viewTransition> */
-@keyframes vt-out {
-  to {
-    opacity: 0;
-    transform: translateY(-6px);
+/* The gallery (routes/(demos)/transitions/), for the links with data-transition. The photo of an item has its own
+   view-transition-name (inline, on both pages), so it moves from card to page. The page's content, named gallery-page,
+   slides by direction; the sidebar around it stays. */
+@media (prefers-reduced-motion: no-preference) {
+  .gallery-page {
+    view-transition-name: gallery-page;
   }
-}
-@keyframes vt-in {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-}
-::view-transition-old(main) {
-  animation: 160ms ease-in both vt-out;
-}
-::view-transition-new(main) {
-  animation: 200ms ease-out both vt-in;
-}
-@media (prefers-reduced-motion: reduce) {
-  ::view-transition-old(main),
-  ::view-transition-new(main) {
+  ::view-transition-group(gallery-page) {
     animation: none;
+  }
+  ::view-transition-old(gallery-page),
+  ::view-transition-new(gallery-page) {
+    animation-duration: 250ms;
+    animation-timing-function: ease-out;
+    animation-fill-mode: both;
+  }
+  :root:active-view-transition-type(navigation-forward)::view-transition-old(gallery-page) {
+    animation-name: gallery-out-left;
+  }
+  :root:active-view-transition-type(navigation-forward)::view-transition-new(gallery-page) {
+    animation-name: gallery-in-right;
+  }
+  :root:active-view-transition-type(navigation-back)::view-transition-old(gallery-page) {
+    animation-name: gallery-out-right;
+  }
+  :root:active-view-transition-type(navigation-back)::view-transition-new(gallery-page) {
+    animation-name: gallery-in-left;
+  }
+  @keyframes gallery-out-left {
+    to {
+      opacity: 0;
+      transform: translateX(-2rem);
+    }
+  }
+  @keyframes gallery-in-right {
+    from {
+      opacity: 0;
+      transform: translateX(2rem);
+    }
+  }
+  @keyframes gallery-out-right {
+    to {
+      opacity: 0;
+      transform: translateX(2rem);
+    }
+  }
+  @keyframes gallery-in-left {
+    from {
+      opacity: 0;
+      transform: translateX(-2rem);
+    }
   }
 }

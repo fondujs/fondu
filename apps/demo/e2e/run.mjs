@@ -131,6 +131,7 @@ for (const p of [
   '/ssr/browser',
   '/http',
   '/navigation',
+  '/transitions',
   '/routes',
   '/i18n',
   '/login',
@@ -690,6 +691,133 @@ ok('a link to the same page mounts it anew', (await testid('clicks')) === '0')
       docs.length === 0,
     JSON.stringify({ atOnce, served, docs }),
   )
+}
+
+// ---- view transitions: only the gallery's links (data-transition) animate; the images come from Unsplash, which the
+// CSP allows (img-src), and here a pixel answers for them
+{
+  const gp = await browser.newPage()
+  watchProblems(gp)
+  await gp.setViewport({ width: 1100, height: 720 })
+  const pixel = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+    'base64',
+  )
+  await gp.setRequestInterception(true)
+  gp.on('request', (r) =>
+    new URL(r.url()).hostname === 'images.unsplash.com'
+      ? r.respond({ status: 200, contentType: 'image/png', body: pixel })
+      : r.continue(),
+  )
+  // every document.startViewTransition(…) call, with the types it was given
+  await gp.evaluateOnNewDocument(() => {
+    window.__vt = []
+    const original = document.startViewTransition
+    if (original)
+      document.startViewTransition = function (arg) {
+        window.__vt.push([...((typeof arg === 'object' && arg?.types) || [])])
+        return original.call(this, arg)
+      }
+  })
+  const calls = () => gp.evaluate(() => window.__vt.length)
+  await gp.goto(BASE + '/transitions', { waitUntil: 'networkidle0' })
+  const grid = await gp.$$eval('[data-testid=gallery] li', (items) =>
+    items.map((li) => {
+      const img = li.querySelector('img')
+      return {
+        name: img.style.viewTransitionName,
+        lazy: img.getAttribute('loading'),
+        size: `${img.getAttribute('width')}x${img.getAttribute('height')}`,
+        transition: li.querySelector('a[data-transition]') !== null,
+        credit: li.querySelector('p a')?.href.startsWith('https://unsplash.com/photos/'),
+        src: img.src.startsWith('https://images.unsplash.com/photo-') && img.src.includes('?w='),
+      }
+    }),
+  )
+  ok(
+    'view transitions: the gallery has 6 cards, each with its own name, a size, a credit and a link that opts in',
+    grid.length === 6 &&
+      new Set(grid.map((g) => g.name)).size === 6 &&
+      grid.every(
+        (g) =>
+          g.name.startsWith('photo-') && g.size === '640x480' && g.transition && g.credit && g.src,
+      ),
+    JSON.stringify(grid[0]),
+  )
+  ok(
+    'view transitions: the first row loads at once, the rest lazily',
+    grid.slice(0, 3).every((g) => g.lazy === null) && grid.slice(3).every((g) => g.lazy === 'lazy'),
+  )
+  ok(
+    'view transitions: the CSP allows the images of Unsplash, and no other host',
+    await fetch(BASE + '/transitions').then((r) =>
+      /img-src 'self' data: https:\/\/images\.unsplash\.com;/.test(
+        r.headers.get('content-security-policy') ?? '',
+      ),
+    ),
+  )
+  const hasApi = await gp.evaluate(() => typeof document.startViewTransition === 'function')
+  const types = () => gp.evaluate(() => window.__vt.at(-1))
+  const before = await calls()
+  await gp.click('[data-testid=photo-pine-forest]')
+  await h1('Pine forest', gp)
+  const detail = await gp.evaluate(() => ({
+    named: [...document.querySelectorAll('main img')].map((i) => i.style.viewTransitionName),
+    size: `${document.querySelector('main img').getAttribute('width')}x${document.querySelector('main img').getAttribute('height')}`,
+    text: document.querySelector('main .lede').textContent.length > 20,
+    credit: document.querySelector('main p a[href^="https://unsplash.com/photos/"]')?.textContent,
+    docs: document.querySelector('[data-testid=gallery]') === null,
+  }))
+  ok(
+    'view transitions: the detail page has the large image with the name of its card (only that image), a credit and a paragraph',
+    detail.named.length === 1 &&
+      detail.named[0] === 'photo-pine-forest' &&
+      detail.size === '1200x800' &&
+      detail.text &&
+      detail.credit === 'Ashford Marx',
+    JSON.stringify(detail),
+  )
+  if (hasApi) {
+    ok(
+      'view transitions: a click on a gallery link starts one, typed navigation-forward',
+      (await calls()) === before + 1 && (await types()).includes('navigation-forward'),
+      JSON.stringify(await types()),
+    )
+    const mid = await calls()
+    await gp.goBack()
+    await h1('View transitions', gp)
+    ok(
+      'view transitions: Back from the detail page starts one, typed navigation-back',
+      (await calls()) === mid + 1 && (await types()).includes('navigation-back'),
+      JSON.stringify(await types()),
+    )
+    const after = await calls()
+    await nav('/props', gp)
+    await h1('Props', gp)
+    await nav('/navigation', gp)
+    await h1('Navigation', gp)
+    ok('view transitions: a link elsewhere in the demo starts none', (await calls()) === after)
+  } else {
+    ok(
+      'view transitions: no document.startViewTransition in this browser, navigations as they were',
+      true,
+    )
+  }
+  // the animations are all inside prefers-reduced-motion: no-preference
+  await gp.goto(BASE + '/transitions', { waitUntil: 'networkidle0' })
+  const named = () => gp.$eval('.gallery-page', (e) => getComputedStyle(e).viewTransitionName)
+  const motion = await named()
+  await gp.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }])
+  ok(
+    'view transitions: with reduced motion the page has no name to animate',
+    motion === 'gallery-page' && (await named()) === 'none',
+    `${motion} / ${await named()}`,
+  )
+  ok(
+    'view transitions: an id that is no photo is a 404',
+    (await fetch(BASE + '/transitions/nope')).status === 404,
+  )
+  await gp.close()
 }
 
 // ---- a link's page modules are loaded when the pointer rests on it, before the click

@@ -5,7 +5,13 @@ import { resetDemo } from '#/modules/demo/demo.server.ts'
 
 // The app from app/routes/. Built in: CSRF, security headers with a Content Security Policy, trailing slashes, the
 // error page (routes/_error.tsx). The document is this app's own (document.tsx): the chosen theme is on <html>.
-const app = createApp({ document: Document })
+// img-src also lets the gallery (/transitions) show its photos from Unsplash.
+const app = createApp({
+  document: Document,
+  secureHeaders: {
+    contentSecurityPolicy: { imgSrc: ["'self'", 'data:', 'https://images.unsplash.com'] },
+  },
+})
 
 // The Worker: the app for requests; the cron of wrangler.jsonc resets the demo's data
 export default {
