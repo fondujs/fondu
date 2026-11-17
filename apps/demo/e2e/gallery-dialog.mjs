@@ -94,12 +94,17 @@ export async function checkGalleryDialog({ browser, base, ok, watchProblems }) {
         !(await page.evaluate(() => document.documentElement.hasAttribute('data-gallery-dialog'))),
     )
     await page.goForward()
+    await page.waitForSelector(popup)
+    const instant = await page.$eval(
+      popup,
+      (element) =>
+        !element.hasAttribute('data-animate') &&
+        getComputedStyle(element).transitionDuration === '0s',
+    )
     await opened()
     ok(
       'gallery dialog: Forward reopens without another request or author animation',
-      (await path()) === '/transitions/pine-forest' &&
-        made.length === 0 &&
-        (await page.$eval(popup, (element) => !element.hasAttribute('data-animate'))),
+      (await path()) === '/transitions/pine-forest' && made.length === 0 && instant,
     )
     await page.goBack()
     await gone()
