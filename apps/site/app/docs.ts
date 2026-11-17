@@ -17,18 +17,26 @@ export const sections: Array<{ title: string; docs: Doc[] }> = [
       {
         slug: '',
         title: 'Introduction',
-        description: 'What Fondu is, and what each part of it does.',
+        description:
+          'Fondu is a small meta-framework for full-stack React apps on Hono and Vite: how its routes, pages and client fit together.',
       },
-      { slug: 'quick-start', title: 'Quick start', description: 'Create an app and run it.' },
+      {
+        slug: 'quick-start',
+        title: 'Quick start',
+        description:
+          'Create a Fondu app with create-fondu for Bun, Cloudflare Workers or Node, run it, add a page and build it for production.',
+      },
       {
         slug: 'project-structure',
         title: 'Project structure',
-        description: 'The files of an app, and what each is for.',
+        description:
+          'The files of a Fondu app: vite.config.ts, app/server.ts, the routes directory, the generated types, and one way to organize the rest.',
       },
       {
         slug: 'demo',
         title: 'Demo application',
-        description: 'Every Fondu feature in an app, one page each.',
+        description:
+          'A tour of the Fondu demo app at demo.fondu.dev: one page per feature, each with the code that makes it work.',
       },
     ],
   },
@@ -38,39 +46,50 @@ export const sections: Array<{ title: string; docs: Doc[] }> = [
       {
         slug: 'routes',
         title: 'Routes',
-        description: 'Files in app/routes/: loaders, actions and middleware.',
+        description:
+          'How files in app/routes/ become URLs: params, optional segments, loaders, actions, middleware, HTTP routes and calling a route from the browser.',
       },
       {
         slug: 'pages',
         title: 'Pages and props',
-        description: 'React pages, their props, title and meta tags.',
+        description:
+          'How a page is a React component fed by its loader: props, title and meta tags, shared props, deferred props and reading the page in a component.',
       },
       {
         slug: 'navigation',
         title: 'Navigation',
         description:
-          'Links, forms and Back in place; navigate() in code; shallow navigation; scroll positions.',
+          'How links and forms change pages in place with no router: prefetching, navigate() in code, search as you type and full page loads.',
       },
       {
         slug: 'layouts',
         title: 'Layouts',
-        description: 'What stays around the pages, by directory.',
+        description:
+          'How a _layout.tsx wraps the pages below it and stays mounted between them: nesting, route groups, code splitting and files that are not routes.',
       },
       {
         slug: 'forms',
         title: 'Forms and validation',
-        description: 'Plain forms, validated on the server.',
+        description:
+          'How a plain HTML form posts to an action: validation with one schema on the server and in the browser, errors, flash data, files and the body limit.',
       },
-      { slug: 'errors', title: 'Errors', description: 'Error pages, and what API clients get.' },
+      {
+        slug: 'errors',
+        title: 'Errors',
+        description:
+          'How Fondu answers unknown URLs and thrown errors: the error page, plain text for API clients, development reports and your own error handler.',
+      },
       {
         slug: 'server-and-client',
         title: 'Server and client code',
-        description: 'Where each file runs, and what reaches the browser.',
+        description:
+          'Where each file of an app runs, on the server, in the browser or both, how server code is kept out of the bundle, and what stops the build.',
       },
       {
         slug: 'type-safety',
         title: 'Type safety',
-        description: 'Pages, props, URLs and input, checked from server to browser.',
+        description:
+          'How Fondu types page props, URLs and handler input from your own files, so a renamed prop or a moved route fails at compile time.',
       },
     ],
   },
@@ -80,22 +99,26 @@ export const sections: Array<{ title: string; docs: Doc[] }> = [
       {
         slug: 'ssr',
         title: 'Server-side rendering',
-        description: 'Pages rendered on the server, then hydrated.',
+        description:
+          'How pages are rendered on the server and hydrated in the browser, how the document streams with Suspense, and how to turn server rendering off.',
       },
       {
         slug: 'static-pages',
         title: 'Static pages',
-        description: 'Pages written as files at build time (SSG).',
+        description:
+          'How to write pages as static files at build time (SSG): choosing the pages, what a static page can be, and the headers it is served with.',
       },
       {
         slug: 'mdx',
         title: 'MDX pages',
-        description: 'Pages written in Markdown, with React components.',
+        description:
+          'How to write pages as MDX, Markdown with React components: the Vite setup, layouts, your own components and remark or rehype plugins.',
       },
       {
         slug: 'document',
         title: 'The document',
-        description: 'The HTML around pages: attributes, icons, fonts.',
+        description:
+          'The HTML around every page: html attributes, head tags, icons, fonts, and inline scripts under the Content Security Policy.',
       },
     ],
   },
@@ -105,23 +128,38 @@ export const sections: Array<{ title: string; docs: Doc[] }> = [
       {
         slug: 'i18n',
         title: 'Internationalization',
-        description: 'Pages in several languages, a URL each, with Paraglide or i18next.',
+        description:
+          'How to serve pages in several languages with a URL each, using Paraglide or i18next: messages, links, switching language and search engines.',
       },
       {
         slug: 'deploying',
         title: 'Deploying',
-        description: 'Bun, Cloudflare Workers and Node in production.',
+        description:
+          'How to run a Fondu app in production on Node, Bun or Cloudflare Workers: the build, the Content Security Policy, proxies, caching and new versions.',
       },
       {
         slug: 'api',
         title: 'API',
-        description: 'Everything fondu, fondu/client and fondu/vite export.',
+        description:
+          'The reference for everything that fondu, fondu/client and fondu/vite export: functions, hooks, types, route exports and plugin options.',
       },
     ],
   },
 ]
 
 export const docs: Doc[] = sections.flatMap((s) => s.docs)
+
+/** the length of a description, in characters: long enough to say what the page covers, short enough for a search result */
+export const DESCRIPTION = { min: 70, max: 160 }
+
+/** the docs whose description is out of range, as messages */
+export const descriptionProblems = () =>
+  docs
+    .filter((d) => d.description.length < DESCRIPTION.min || d.description.length > DESCRIPTION.max)
+    .map(
+      (d) =>
+        `docs.ts: the description of "${d.title}" is ${d.description.length} characters, not ${DESCRIPTION.min}-${DESCRIPTION.max}: ${d.description}`,
+    )
 
 export const docUrl = (doc: Doc) => (doc.slug ? `/docs/${doc.slug}` : '/docs')
 
