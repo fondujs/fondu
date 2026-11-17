@@ -1,11 +1,12 @@
 import { defineHandler, render } from 'fondu'
 import { closeShallow, href, usePage } from 'fondu/client'
-import { useCallback, useState } from 'react'
+import { useLayoutEffect, useState } from 'react'
+import { flushSync } from 'react-dom'
 
 import { DemoCard, Title } from '#/components/demo.tsx'
 import { PhotoDialog } from '#/components/gallery-dialog.tsx'
 import { Card } from '#/components/ui/card.tsx'
-import { imageUrl, photos, type Photo } from '#/modules/gallery/photos.ts'
+import { imageUrl, photos } from '#/modules/gallery/photos.ts'
 
 export const loader = defineHandler((c) => render(c, Gallery, {}))
 
@@ -16,23 +17,35 @@ const code = (lines: string[]) => (
 )
 
 // Both sections use the same URLs. A shallow click keeps this page; the photo's route serves ordinary visits.
-// Only explicit card/close actions animate locally. History traversals settle at once, so Safari's own swipe is
-// not followed by another animation. No hasUAVisualTransition listener, history state or scroll restore is needed.
+// Ordinary Back/Forward animate too. A scoped listener reads only the browser's native-animation flag so Safari's
+// swipe is not followed by a second animation. It never changes history, predicts a target or restores scroll.
 export default function Gallery() {
   const { url } = usePage()
   const path = new URL(url, 'http://localhost').pathname
   const photo = photos.find((photo) => href('/transitions/:id', { id: photo.id }) === path)
-  const [motion, setMotion] = useState<Photo | null>()
-  const finished = useCallback(() => setMotion(undefined), [])
+  const [nativeTransition, setNativeTransition] = useState(false)
+  useLayoutEffect(() => {
+    // The browser needs its landing frame synchronously; a queued flag could leave an exiting popup over it.
+    const popped = (event: PopStateEvent) => {
+      flushSync(() =>
+        setNativeTransition(
+          (event as PopStateEvent & { hasUAVisualTransition?: boolean }).hasUAVisualTransition ===
+            true,
+        ),
+      )
+    }
+    addEventListener('popstate', popped, true)
+    return () => removeEventListener('popstate', popped, true)
+  }, [])
   const close = () => {
     if (!photo) return // The exiting popup can outlive the URL's open state.
-    setMotion(null)
+    setNativeTransition(false)
     closeShallow(href('/transitions')) // Fondu already guards a second close before Back lands.
   }
   return (
     <>
       <Title>View transitions</Title>
-      <div className="gallery-page">
+      <div className="gallery-page" data-gallery-url={url}>
         <h1>View transitions</h1>
         <p className="lede">
           A link with <code>data-transition</code> animates between two pages with the
@@ -122,7 +135,7 @@ export default function Gallery() {
                     !event.altKey &&
                     !event.shiftKey
                   )
-                    setMotion(photo)
+                    setNativeTransition(false)
                 }}
               >
                 <img
@@ -154,12 +167,7 @@ export default function Gallery() {
           ])}
         </DemoCard>
       </div>
-      <PhotoDialog
-        photo={photo}
-        animate={motion === (photo ?? null)}
-        onClose={close}
-        onFinished={finished}
-      />
+      <PhotoDialog photo={photo} animate={!nativeTransition} onClose={close} />
     </>
   )
 }
