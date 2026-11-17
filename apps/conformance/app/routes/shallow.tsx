@@ -56,7 +56,7 @@ export default function Shallow({
   loads: number
   later?: string
 }) {
-  const { url, flash, props } = usePage()
+  const { url, component, flash, props } = usePage()
   const { state } = useNavigation()
   const [refused, setRefused] = useState('')
   // the #fragment of the address bar: a shallow navigation fires `hashchange` for it
@@ -86,6 +86,7 @@ export default function Shallow({
       <h1>Shallow</h1>
       <output id="loads">{loads}</output>
       <output id="url">{url}</output>
+      <output id="component">{component}</output>
       <output id="nav">{state}</output>
       <output id="later">{later ?? 'pending'}</output>
       <output id="loaded">{loaded?.id ?? ''}</output>

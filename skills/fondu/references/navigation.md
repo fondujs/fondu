@@ -50,14 +50,14 @@ after a debounce. A navigation in flight is aborted by the next. Back, reload an
 `navigate()` and `loadDocument()` throw an `Error` for a `javascript:` URL. Other schemes (`mailto:`) and other sites
 are handed to the browser.
 
-| Export                                            | Does                                                                           |
-| ------------------------------------------------- | ------------------------------------------------------------------------------ |
-| `navigate(url, { replace?, keep?, transition? })` | goes to `url` as a link would                                                  |
-| `navigate(url, { shallow: true })`                | changes this page's query or `#fragment`, asks for nothing, never a transition |
-| `closeShallow(to)`                                | closes what a shallow navigation opened, one step                              |
-| `loadDocument(url)`                               | loads `url` as a document                                                      |
-| `reload()`                                        | asks for the page's props again; state and scroll stay                         |
-| `reload({ only: ['stats'] })`                     | asks for those props alone, quietly (see [data.md](data.md))                   |
+| Export                                            | Does                                                                                    |
+| ------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| `navigate(url, { replace?, keep?, transition? })` | goes to `url` as a link would                                                           |
+| `navigate(url, { shallow: true })`                | changes this page's URL to a page URL of this app, asks for nothing, never a transition |
+| `closeShallow(to)`                                | closes what a shallow navigation opened, one step                                       |
+| `loadDocument(url)`                               | loads `url` as a document                                                               |
+| `reload()`                                        | asks for the page's props again; state and scroll stay                                  |
+| `reload({ only: ['stats'] })`                     | asks for those props alone, quietly (see [data.md](data.md))                            |
 
 ## Forms
 
@@ -81,8 +81,8 @@ in memory only, and forgotten once a form is sent.
 
 ## Shallow navigation
 
-State in the URL that is not a page (a dialog, a drawer, a selected item, a tab): the query or `#fragment` of the page on
-the screen changes, and nothing is asked for. The loader does not run; props, state and scroll stay.
+State in the URL without loading another page (a dialog, a drawer, a selected item, a tab): the page on the screen takes
+any page URL of this app, including another pathname. Nothing is asked for; the component, props, state and scroll stay.
 
 ```tsx
 import { closeShallow, navigate, usePage } from 'fondu/client'
@@ -94,10 +94,11 @@ const { url } = usePage() // follows the address bar (path and query); props are
 closeShallow(url) // closes one level
 ```
 
-- Only this page's own pathname (a trailing slash is another). Another pathname throws. `shallow` with `keep` is a type
-  error and throws. Before the app has started: a document load. While a visit is being put on the screen (its URL is in
-  the address bar, its page is not shown): an ordinary navigation.
-- `data-shallow` to another pathname, a modified click, `target`, `download`: an ordinary link, prefetched as usual.
+- The URL must be a page of this app, using the same route check as links. Another origin or a URL that is not a page
+  throws, naming the URL. `shallow` with `keep` is a type error and throws. Before the app has started: a document load.
+  While a visit is being put on the screen (its URL is in the address bar, its page is not shown): an ordinary navigation.
+- `data-shallow` links are not prefetched. A modified click, `target`, `download`, another origin or a URL that is not a
+  page is an ordinary browser link.
 - `closeShallow(to)`: if the current entry was pushed by a shallow navigation, Back (one step); else `to` replaces the
   entry in place (a direct load, a reload, a replaced entry). Never leaves the page. A second call before the first's
   Back lands does nothing. A native `#fragment` entry is not a shallow one.
@@ -110,10 +111,23 @@ closeShallow(url) // closes one level
 - Entries that show the same page (the one that loaded it, the shallow ones, the browser's `#fragment` ones) share it:
   Back and Forward between them change `url` only, with no request. An answer from the server on a shallow entry
   (`reload()`, `reload({ only })`, a form's answer, deferred props asked at that URL) ends the sharing: Back to the other
-  entries asks, as any Back does. Deferred props already on their way arrive in the shared page.
+  entries asks, as any Back does. Leaving for another page also ends the sharing: Back or Forward into a former
+  shallow entry loads its URL's own page. `reload()` at another page's URL shows that page. Deferred props already on
+  their way arrive in the shared page.
 - A prerendered page's `usePage().url` has the visitor's query once it has hydrated, and after a link, Back or `reload()`
   too (and its `#fragment` is in the address bar); its loader never saw the query. A redirect is the server's answer.
 - A form in a dialog that answers at the same page keeps the `#fragment`, so the dialog stays open with its errors.
+
+A gallery can open an item's own URL without an application router or history handling:
+
+```tsx
+const { url } = usePage()
+const path = new URL(url, 'http://localhost').pathname
+const photo = photos.find((photo) => href('/photos/:id', { id: photo.id }) === path)
+// <a href={href('/photos/:id', { id })} data-shallow> opens the dialog without a request.
+// Render <PhotoDialog photo={photo} onClose={() => closeShallow(href('/photos'))} /> when photo exists.
+// routes/photos/[id].tsx serves the standalone photo on a reload, shared link or new tab.
+```
 
 ```tsx
 import { useSyncExternalStore } from 'react'

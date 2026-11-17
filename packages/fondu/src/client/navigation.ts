@@ -67,7 +67,7 @@ interface Visit {
 }
 
 let visit: ((url: string, options: Visit) => void) | undefined
-/** the page on the screen at another URL of its own, nothing asked for (`navigate(url, { shallow: true })`) */
+/** the page on the screen at another URL of this app, nothing asked for (`navigate(url, { shallow: true })`) */
 let shallowTo: ((url: URL, replace: boolean) => void) | undefined
 /** the URL of the page on the screen (its path and query): not `location`'s while a visit is being put on the screen */
 let shownUrl: (() => URL) | undefined
@@ -101,6 +101,10 @@ export function startNavigation({
     const key = scroll.key()
     if (!key) return
     kept.delete(key)
+    // Across pathnames shared props aren't this URL's own page, even after a deferred answer. Once the group
+    // is left, load its route rather than briefly restoring the list or dialog from the cache.
+    if (new URL(page.url, location.href).pathname !== new URL(answered, location.href).pathname)
+      return
     kept.set(key, { ...page, flash: {} })
     if (kept.size > 50) kept.delete(kept.keys().next().value!)
   }
@@ -453,7 +457,7 @@ export function startNavigation({
   }
 
   /**
-   * The page on the screen at a URL of its own (its query, its #fragment), nothing asked for: a new history entry, or
+   * The page on the screen at a URL of this app, nothing asked for: a new history entry, or
    * this one's. The props stay the loader's answer for the URL that got the page; its `url` follows the address bar.
    */
   shallowTo = (url, replace) => {
@@ -509,10 +513,10 @@ export function startNavigation({
     if (elsewhere(link.target) || link.hasAttribute('download')) return
     const url = new URL(link.href)
     if (url.origin !== location.origin || !isWebUrl(url.href)) return
-    // `data-shallow`: for the page on the screen's own URL (its query, its #fragment) a shallow navigation
+    // `data-shallow`: any page URL of this app; its own route still serves document loads.
     return {
       url,
-      soft: link.hasAttribute('data-shallow') && url.pathname === shownUrl!().pathname,
+      soft: link.hasAttribute('data-shallow') && isPage(url.pathname),
       transition: optIn(link.getAttribute('data-transition')),
     }
   }
@@ -623,7 +627,8 @@ export function startNavigation({
       scroll.commit()
       return settle(false)
     }
-    if (popped.fragment) {
+    // A known entry of another group may have the same URL, but is not this page's native #fragment entry.
+    if (popped.fragment && (!popped.key || group.has(popped.key))) {
       if (!popped.key) group.add(scroll.key()!) // an entry the browser made (no key yet): of this page
       // a #fragment that names no element (a dialog's `#settings/account`) leaves the page where it is, as the browser does
       if (!popped.position && location.hash && !fragmentTarget(location.hash.slice(1))) return
@@ -971,9 +976,9 @@ export function loadDocument(href: string) {
  * its state (a focused input, what was typed) and the scroll position, nothing is announced: a search box that
  * `navigate()`s to its query as it is typed. Another page's component is shown as any navigation's.
  *
- * `shallow`: the query and #fragment of the page on the screen change, and nothing is asked for: the page keeps its
- * props, its state and the scroll position, `usePage().url` follows, and a changed #fragment fires `hashchange` (the
- * browser doesn't scroll to it, and `:target` stays as it was). Only this page's own pathname; another page throws.
+ * `shallow`: the page on the screen takes a URL of this app, and nothing is asked for: the page keeps its props,
+ * its state and the scroll position, `usePage().url` follows, and a changed #fragment fires `hashchange` (the browser
+ * doesn't scroll to it, and `:target` stays as it was). A URL that is not a page of this app throws.
  * Not with `keep`: a shallow navigation keeps the page anyway. Before the app has started, a document load. While a
  * visit is being put on the screen (its URL is in the history, its page is not there yet), a normal navigation.
  *
@@ -1005,9 +1010,13 @@ export function navigate(
   const url = new URL(href, shallow ? (shown ?? location.href) : location.href)
   refuseScript(url)
   if (shallow) {
-    if (url.origin !== location.origin || url.pathname !== (shown ?? location).pathname)
+    if (
+      url.origin !== location.origin ||
+      !isWebUrl(url.href) ||
+      (isAppPage && !isAppPage(url.pathname))
+    )
       throw new Error(
-        `fondu: a shallow navigation stays on this page (its query, its #fragment); ${url.origin === location.origin ? url.pathname : url.href} is another page: leave out \`shallow\``,
+        `fondu: a shallow navigation needs a page of this app; ${url.href} is not one: leave out \`shallow\``,
       )
     if (shallowTo) return shallowTo(url, replace)
   }
@@ -1031,7 +1040,7 @@ export function navigate(
  * Closes what `navigate(…, { shallow: true })` or a `data-shallow` link opened (a dialog, a drawer), one step. An
  * entry that was pushed by a shallow navigation, from the entry below it: Back, to the page as it was. Any other (a
  * document loaded at this URL, a reload, an entry replaced…): `to` in its place, a shallow navigation with `replace`
- * (`to` is a URL of this page, as that takes it). Never leaves the page, and never adds an entry. A second call before
+ * (`to` is a page URL of this app). Never leaves the page on the screen, and never adds an entry. A second call before
  * the first one's Back has landed does nothing: a double click closes one level.
  */
 export function closeShallow(to: string) {

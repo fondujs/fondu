@@ -2,8 +2,7 @@ import { defineHandler, render } from 'fondu'
 import { closeShallow, navigate, usePage } from 'fondu/client'
 import { useState } from 'react'
 
-// A page whose pathname is a param, for the shallow navigations that compare pathnames (e2e/shallow.spec.ts): an
-// encoded one, and the same with a trailing slash
+// A parameterized pathname for shallow page matching (e2e/shallow.spec.ts): encoded, raw and with a trailing slash.
 export const loader = defineHandler((c) => render(c, Named, { name: c.req.param('name') ?? '' }))
 
 export default function Named({ name }: { name: string }) {
@@ -21,7 +20,7 @@ export default function Named({ name }: { name: string }) {
       <a id="raw" href="/shallow/café ☕?x=2" data-shallow>
         The same page, written raw
       </a>
-      <a id="slash" href={`${url.split('?')[0]}/?x=3`} data-shallow>
+      <a id="slash" href={`${url.split('?')[0]}/?x=3`}>
         With a slash
       </a>
       <button
