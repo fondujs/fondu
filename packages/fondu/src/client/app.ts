@@ -254,6 +254,7 @@ function start(settings: Parameters<typeof __entry>[2]) {
     // navigations start once the page is on the screen (hydrated)
     mounted = (set) => {
       mounted = undefined
+      let loaded = { component: initial.component, view }
       startNavigation({
         initial,
         prerender: settings.prerender,
@@ -266,10 +267,16 @@ function start(settings: Parameters<typeof __entry>[2]) {
         isPage: (pathname) => pageAt(pathname) !== undefined,
         hydrated,
         async show(page, fresh, stale) {
-          const view = await load(page.component)
+          // The live page's modules are already here. Shared URLs must settle before the next native frame,
+          // not wait for repeated import()s of the same component. No page props or React tree are cached here.
+          const view =
+            page.component === loaded.component ? loaded.view : await load(page.component)
           if (stale()) return
           // built when it is committed: what the page on the screen asked for in between is in it
-          return () => flushSync(() => set(newer(shownOf(page, view, fresh))))
+          return () => {
+            loaded = { component: page.component, view }
+            flushSync(() => set(newer(shownOf(page, view, fresh))))
+          }
         },
       })
     }
