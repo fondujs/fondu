@@ -289,6 +289,40 @@ describe('the build', () => {
     )
   })
 
+  test("each answer is read before the next request: wrangler's fetch can cancel one left unread (#273)", async () => {
+    // Wrangler's `fetch` hands back a Response that shares the body stream of undici's own. When that one is garbage
+    // collected, undici cancels the stream if nothing has read it. Here the next request does it, which is the same,
+    // but at the same time every run.
+    let unread: Response | undefined
+    const dir = mkdtempSync(join(tmpdir(), 'fondu-build-'))
+    try {
+      await prerender(
+        async () => ({
+          fetch: async (path: string, headers: Record<string, string> = {}) => {
+            if (unread && !unread.bodyUsed && !unread.body!.locked)
+              await unread.body!.cancel('Response object has been garbage collected')
+            if (path === '/_fondu/prerender')
+              return Response.json({ version: 'v1', paths: ['/x', '/y'], problems: [] })
+            return (unread =
+              'X-Fondu' in headers
+                ? Response.json({ component: path })
+                : new Response(`<p>${path}</p>`))
+          },
+          dispose: async () => {},
+        }),
+        join(dir, 'client'),
+        logger,
+        { serverDir: join(dir, 'server') },
+      )
+      expect(readFileSync(join(dir, 'client/x.html'), 'utf8')).toBe('<p>/x</p>')
+      expect(readFileSync(join(dir, 'client/_fondu/pages/y.json'), 'utf8')).toBe(
+        '{"component":"/y"}',
+      )
+    } finally {
+      rmSync(dir, { recursive: true })
+    }
+  })
+
   describe('the output stays in the client directory', () => {
     const inTemp = async (
       paths: string[],
