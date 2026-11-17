@@ -9,6 +9,7 @@ import {
   DialogPopup,
   DialogTitle,
 } from '#/components/ui/dialog.tsx'
+import { Skeleton } from '#/components/ui/skeleton.tsx'
 import { cn } from '#/lib/utils.ts'
 
 // A dialog the URL opens, over any page: `#settings/profile`, `#settings/account`, `#settings/usage`: a shallow
@@ -19,6 +20,9 @@ import { cn } from '#/lib/utils.ts'
 // page with the fragment still on it.
 const PREFIX = '#settings/'
 const TABS = { profile: 'Profile', account: 'Account', usage: 'Usage' } as const
+// Match the text's line boxes while loading, with room after the longest label (Member since).
+const FACTS =
+  'grid auto-rows-[minmax(1.25rem,auto)] grid-cols-[8rem_minmax(0,1fr)] items-center gap-y-1.5 text-sm'
 type Tab = keyof typeof TABS
 
 const subscribe = (notify: () => void) => {
@@ -119,7 +123,7 @@ function Profile() {
 function AccountFacts() {
   const { user } = usePage().props.auth
   return (
-    <dl className="grid grid-cols-[6rem_1fr] gap-y-1.5 text-sm">
+    <dl className={FACTS}>
       <dt className="text-muted-foreground">Email</dt>
       <dd className="truncate" data-testid="settings-email">
         {user?.email}
@@ -152,25 +156,35 @@ function Usage() {
     )
     return () => controller.abort()
   }, [])
-  if (state.status === 'loading')
-    return (
-      <p className="text-sm text-muted-foreground" data-testid="usage-loading">
-        Loading usage…
-      </p>
-    )
   if (state.status === 'failed')
     return (
       <p role="alert" className="text-sm text-destructive" data-testid="usage-error">
         {state.code ? `Could not load usage (${state.code})` : 'Could not load usage'}
       </p>
     )
+  const loading = state.status === 'loading'
   return (
-    <dl className="grid grid-cols-[6rem_1fr] gap-y-1.5 text-sm">
-      <dt className="text-muted-foreground">Contacts</dt>
-      <dd data-testid="usage-contacts">{state.contacts}</dd>
-      <dt className="text-muted-foreground">Since</dt>
-      <dd data-testid="usage-since">
-        {new Date(state.since).toLocaleDateString('en', { dateStyle: 'long', timeZone: 'UTC' })}
+    <dl
+      className={FACTS}
+      data-testid={loading ? 'usage-loading' : undefined}
+      aria-busy={loading}
+      aria-label={loading ? 'Loading usage' : undefined}
+    >
+      <dt className="text-muted-foreground">
+        {loading ? <Skeleton className="h-4 w-16" aria-hidden="true" /> : 'Contacts'}
+      </dt>
+      <dd data-testid={loading ? undefined : 'usage-contacts'}>
+        {loading ? <Skeleton className="h-4 w-8" aria-hidden="true" /> : state.contacts}
+      </dd>
+      <dt className="text-muted-foreground">
+        {loading ? <Skeleton className="h-4 w-10" aria-hidden="true" /> : 'Since'}
+      </dt>
+      <dd data-testid={loading ? undefined : 'usage-since'}>
+        {loading ? (
+          <Skeleton className="h-4 w-32" aria-hidden="true" />
+        ) : (
+          new Date(state.since).toLocaleDateString('en', { dateStyle: 'long', timeZone: 'UTC' })
+        )}
       </dd>
     </dl>
   )
