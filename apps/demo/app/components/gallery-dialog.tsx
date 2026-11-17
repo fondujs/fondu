@@ -16,18 +16,21 @@ import { usePhotoSrc } from '#/modules/gallery/use-photo-src.ts'
 
 export function PhotoDialog({
   photo,
-  animate = false,
+  animate = true,
   onClose,
-  onFinished,
 }: {
   photo?: Photo
   animate?: boolean
   onClose: () => void
-  onFinished?: () => void
 }) {
   const [shown, setShown] = useState(photo)
   if (photo && photo !== shown) setShown(photo)
-  // Only an explicit UI close retains the popup for its exit. History releases focus/scroll immediately.
+  // Ordinary closes, including Back, retain the photo for exit. A browser-owned swipe destroys the dialog root
+  // too: its pending close callbacks must not delay a quick native Forward or clear the reopened photo.
+  if (!photo && !animate) {
+    if (shown) setShown(undefined)
+    return null
+  }
   return (
     <Dialog
       open={!!photo}
@@ -35,7 +38,6 @@ export function PhotoDialog({
       onOpenChange={(open) => !open && onClose()}
       onOpenChangeComplete={(open) => {
         if (!open) setShown(undefined)
-        onFinished?.()
       }}
     >
       {shown && (photo || animate) && (
@@ -44,22 +46,14 @@ export function PhotoDialog({
             className="gallery-dialog-backdrop"
             data-animate={animate ? '' : undefined}
           />
-          <PhotoPopup photo={shown} animate={animate} onFinished={onFinished} />
+          <PhotoPopup photo={shown} animate={animate} />
         </DialogPortal>
       )}
     </Dialog>
   )
 }
 
-function PhotoPopup({
-  photo,
-  animate,
-  onFinished,
-}: {
-  photo: Photo
-  animate: boolean
-  onFinished?: () => void
-}) {
+function PhotoPopup({ photo, animate }: { photo: Photo; animate: boolean }) {
   const popup = useRef<HTMLDivElement>(null)
   const frame = useRef<HTMLDivElement>(null)
   const closeButton = useRef<HTMLButtonElement>(null)
@@ -69,9 +63,8 @@ function PhotoPopup({
     document.documentElement.setAttribute('data-gallery-dialog', '')
     return () => {
       document.documentElement.removeAttribute('data-gallery-dialog')
-      onFinished?.() // Discard the animation hint even if history interrupts entry before it finishes.
     }
-  }, [onFinished])
+  }, [])
   useLayoutEffect(() => {
     const element = popup.current,
       media = frame.current

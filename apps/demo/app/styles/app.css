@@ -305,7 +305,7 @@
   }
 }
 
-/* Local dialog motion, not a page transition. Only explicit card/close actions animate; history settles at once. */
+/* Local dialog motion, including Back/Forward, not a page transition. Browser-owned swipes settle at once. */
 html[data-gallery-dialog] {
   overflow: hidden;
   scrollbar-gutter: stable;
