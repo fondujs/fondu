@@ -1,9 +1,11 @@
 import { defineHandler, render } from 'fondu'
-import { href } from 'fondu/client'
+import { closeShallow, href, usePage } from 'fondu/client'
+import { useCallback, useState } from 'react'
 
 import { DemoCard, Title } from '#/components/demo.tsx'
+import { PhotoDialog } from '#/components/gallery-dialog.tsx'
 import { Card } from '#/components/ui/card.tsx'
-import { imageUrl, photos } from '#/modules/gallery/photos.ts'
+import { imageUrl, photos, type Photo } from '#/modules/gallery/photos.ts'
 
 export const loader = defineHandler((c) => render(c, Gallery, {}))
 
@@ -13,7 +15,20 @@ const code = (lines: string[]) => (
   </pre>
 )
 
+// Both sections use the same URLs. A shallow click keeps this page; the photo's route serves ordinary visits.
+// Only explicit card/close actions animate locally. History traversals settle at once, so Safari's own swipe is
+// not followed by another animation. No hasUAVisualTransition listener, history state or scroll restore is needed.
 export default function Gallery() {
+  const { url } = usePage()
+  const path = new URL(url, 'http://localhost').pathname
+  const photo = photos.find((photo) => href('/transitions/:id', { id: photo.id }) === path)
+  const [motion, setMotion] = useState<Photo | null>()
+  const finished = useCallback(() => setMotion(undefined), [])
+  const close = () => {
+    if (!photo) return // The exiting popup can outlive the URL's open state.
+    setMotion(null)
+    closeShallow(href('/transitions')) // Fondu already guards a second close before Back lands.
+  }
   return (
     <>
       <Title>View transitions</Title>
@@ -26,6 +41,7 @@ export default function Gallery() {
           of the other demos have no attribute, and don&apos;t animate. See{' '}
           <a href="https://fondu.dev/docs/navigation#view-transitions">the docs</a>.
         </p>
+        <h2 className="mb-4 text-lg font-semibold">Card to page</h2>
         <ul className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3" data-testid="gallery">
           {photos.map((photo, i) => (
             <li key={photo.id} className="min-w-0">
@@ -82,7 +98,68 @@ export default function Gallery() {
             ])}
           </DemoCard>
         </div>
+        <h2 className="mt-12 mb-3 text-lg font-semibold">Card to dialog</h2>
+        <p className="lede">
+          One URL serves both: a dialog when opened from this gallery with <code>data-shallow</code>
+          , the photo&apos;s page on a reload, shared link or new tab. Nothing is requested for the
+          dialog; the gallery and its scroll stay where they are.
+        </p>
+        <ul className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3" data-testid="dialog-gallery">
+          {photos.map((photo) => (
+            <li key={photo.id} className="min-w-0">
+              <a
+                href={href('/transitions/:id', { id: photo.id })}
+                data-shallow
+                aria-haspopup="dialog"
+                className="group block rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-4 focus-visible:ring-offset-background"
+                data-testid={`dialog-photo-${photo.id}`}
+                onClick={(event) => {
+                  if (
+                    !event.defaultPrevented &&
+                    event.button === 0 &&
+                    !event.metaKey &&
+                    !event.ctrlKey &&
+                    !event.altKey &&
+                    !event.shiftKey
+                  )
+                    setMotion(photo)
+                }}
+              >
+                <img
+                  id={`dialog-photo-${photo.id}`}
+                  src={imageUrl(photo, 640)}
+                  alt=""
+                  width={640}
+                  height={480}
+                  loading="lazy"
+                  className="aspect-4/3 w-full rounded-2xl object-cover"
+                />
+                <span className="mt-3 block font-medium underline-offset-4 group-hover:underline">
+                  {photo.title}
+                </span>
+              </a>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Photo by <a href={photo.page}>{photo.photographer}</a> on Unsplash
+              </p>
+            </li>
+          ))}
+        </ul>
+        <DemoCard title="One URL, two presentations" tag="data-shallow · usePage().url">
+          {code([
+            "<a href={href('/transitions/:id', { id })} data-shallow>…</a>",
+            'const { url } = usePage()',
+            "const path = new URL(url, 'http://localhost').pathname",
+            "const photo = photos.find(p => href('/transitions/:id', { id: p.id }) === path)",
+            "<PhotoDialog photo={photo} onClose={() => closeShallow(href('/transitions'))} />",
+          ])}
+        </DemoCard>
       </div>
+      <PhotoDialog
+        photo={photo}
+        animate={motion === (photo ?? null)}
+        onClose={close}
+        onFinished={finished}
+      />
     </>
   )
 }

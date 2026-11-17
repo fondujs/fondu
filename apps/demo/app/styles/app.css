@@ -305,8 +305,66 @@
   }
 }
 
+/* Local dialog motion, not a page transition. Only explicit card/close actions animate; history settles at once. */
+html[data-gallery-dialog] {
+  overflow: hidden;
+  scrollbar-gutter: stable;
+}
+.gallery-dialog-backdrop {
+  position: fixed;
+  background: rgb(0 0 0 / 64%);
+  backdrop-filter: blur(16px);
+  transition: none;
+}
+.gallery-dialog-backdrop:not([data-animate]) {
+  opacity: 1;
+}
+.gallery-dialog {
+  clip-path: inset(0);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .gallery-dialog-backdrop[data-animate] {
+    transition: opacity 350ms ease;
+  }
+  .gallery-dialog[data-animate] {
+    transition:
+      clip-path 350ms cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 350ms ease;
+  }
+  .gallery-dialog[data-animate] .gallery-dialog-media {
+    transform-origin: top left;
+    transition:
+      transform 350ms cubic-bezier(0.22, 1, 0.36, 1),
+      border-radius 350ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .gallery-dialog[data-animate] .gallery-dialog-info {
+    transition: opacity 200ms ease;
+  }
+  .gallery-dialog[data-animate][data-starting-style],
+  .gallery-dialog[data-animate][data-starting-style] .gallery-dialog-media {
+    transition: none;
+  }
+  .gallery-dialog[data-animate][data-starting-style],
+  .gallery-dialog[data-animate][data-ending-style] {
+    clip-path: var(--photo-origin-clip, inset(0));
+    opacity: var(--photo-origin-opacity, 0);
+  }
+  .gallery-dialog[data-animate][data-starting-style] .gallery-dialog-media,
+  .gallery-dialog[data-animate][data-ending-style] .gallery-dialog-media {
+    transform: var(--photo-origin-transform, none);
+    border-radius: var(--photo-origin-radius, var(--radius-2xl));
+  }
+  .gallery-dialog[data-animate][data-starting-style] .gallery-dialog-info,
+  .gallery-dialog[data-animate][data-ending-style] .gallery-dialog-info {
+    opacity: 0;
+  }
+}
+
 /* The photos' names are inline, so they move under reduced motion too: there, no transition animates at all */
 @media (prefers-reduced-motion: reduce) {
+  .gallery-dialog-backdrop {
+    opacity: 1;
+  }
   ::view-transition-group(*),
   ::view-transition-old(*),
   ::view-transition-new(*) {

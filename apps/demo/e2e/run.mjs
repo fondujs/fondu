@@ -6,6 +6,7 @@ import { join } from 'node:path'
 
 import puppeteer from 'puppeteer-core'
 
+import { checkGalleryDialog } from './gallery-dialog.mjs'
 import { checkGallerySnapshots } from './gallery-snapshots.mjs'
 
 const BASE = process.argv[2] ?? 'http://localhost:5173'
@@ -834,6 +835,7 @@ ok('a link to the same page mounts it anew', (await testid('clicks')) === '0')
 }
 
 await checkGallerySnapshots({ browser, base: BASE, ok, watchProblems })
+await checkGalleryDialog({ browser, base: BASE, ok, watchProblems })
 
 // ---- a link's page modules are loaded when the pointer rests on it, before the click
 {
