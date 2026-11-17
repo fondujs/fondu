@@ -12,7 +12,9 @@ const requests = (page: Page) => {
   const made: string[] = []
   page.on('request', (request) => {
     const only = request.headers()['x-fondu-only']
-    made.push(request.url().replace('http://localhost:3100', '') + (only ? ` only=${only}` : ''))
+    made.push(
+      request.url().replace(new URL(request.url()).origin, '') + (only ? ` only=${only}` : ''),
+    )
   })
   return made
 }
@@ -650,12 +652,12 @@ test.describe('the pathname', () => {
       const path = new URL(page.url()).pathname
       const made = requests(page)
       await page.click('#same')
-      await expect(page).toHaveURL(`http://localhost:3100${path}?x=1`)
+      await expect(page).toHaveURL(`${path}?x=1`)
       await expect(text(page, 'url')).toHaveText(`${path}?x=1`)
       expect(made).toEqual([])
       if (name.startsWith('caf')) {
         await page.click('#raw') // written raw in the link's href
-        await expect(page).toHaveURL(`http://localhost:3100${path}?x=2`)
+        await expect(page).toHaveURL(`${path}?x=2`)
         expect(made).toEqual([])
       }
       await page.click('#slash-nav')

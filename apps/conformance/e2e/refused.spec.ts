@@ -20,11 +20,11 @@ for (const js of [true, false]) {
       await expect(page.locator('#who')).toHaveText('VISITOR')
     })
 
-    test('a cross-site form: refused, plain text', async ({ page }) => {
+    test('a cross-site form: refused, plain text', async ({ page, baseURL }) => {
       await page.route('http://evil.example/**', (route) =>
         route.fulfill({
           contentType: 'text/html',
-          body: '<form id="f" method="post" action="http://localhost:3100/echo"><input name="a" value="b"><button>go</button></form>',
+          body: `<form id="f" method="post" action="${baseURL}/echo"><input name="a" value="b"><button>go</button></form>`,
         }),
       )
       await page.goto('http://evil.example/')

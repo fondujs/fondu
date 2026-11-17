@@ -58,10 +58,15 @@ export const GET = defineHandler((c) =>
 `
 process.env.FONDU_ENV_SET = 'from-shell'
 
+// the ports: development (Vite's 5173), `start` (Node and Bun, 3000), `preview` (Cloudflare, 4173); each can be moved
+// with CREATE_FONDU_DEV_PORT, CREATE_FONDU_START_PORT and CREATE_FONDU_PREVIEW_PORT (two runs on one machine)
+const devPort = Number(process.env.CREATE_FONDU_DEV_PORT ?? 5173)
+const startPort = Number(process.env.CREATE_FONDU_START_PORT ?? 3000)
+const previewPort = Number(process.env.CREATE_FONDU_PREVIEW_PORT ?? 4173)
 const production = {
-  node: { script: 'start', port: 3000, says: 'Listening on http://localhost:3000' },
-  bun: { script: 'start', port: 3000, says: 'Started server: http://localhost:3000' },
-  cloudflare: { script: 'preview', port: 4173, says: 'http://localhost:4173' },
+  node: { script: 'start', port: startPort, says: `Listening on http://localhost:${startPort}` },
+  bun: { script: 'start', port: startPort, says: `Started server: http://localhost:${startPort}` },
+  cloudflare: { script: 'preview', port: previewPort, says: `http://localhost:${previewPort}` },
 }
 let failed = false
 const check = (name, ok, detail = '') => {
@@ -135,7 +140,7 @@ for (const target of Object.keys(production).filter(
 
   // development: the page renders, and every module the browser would load is served without Vite finding a
   // dependency late (which reloads the page)
-  await run(app, 'dev', 5173, async (base, output) => {
+  await run(app, 'dev', devPort, async (base, output) => {
     const html = await (await page(base + '/')).text()
     await crawl(base, html)
     check(
@@ -498,7 +503,8 @@ async function bodyLimit(base, log, target, script) {
 /** `bun run <script>` in the app until `test` is done, with what it printed */
 async function run(app, script, port, test) {
   const args = script === 'start' ? ['run', script] : ['run', script, '--port', String(port)] // start: PORT, default 3000
-  const server = spawn('bun', args, { cwd: app, detached: !windows, shell })
+  const env = script === 'start' ? { ...process.env, PORT: String(port) } : process.env
+  const server = spawn('bun', args, { cwd: app, detached: !windows, shell, env })
   let log = ''
   for (const stream of [server.stdout, server.stderr]) stream.on('data', (chunk) => (log += chunk))
   try {
