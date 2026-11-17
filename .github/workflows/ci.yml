@@ -83,17 +83,20 @@ jobs:
           persist-credentials: false
       - run: npm install --global bun # the image has no unzip, which setup-bun needs
       - run: bun install --frozen-lockfile
-      - run: bun run test
+      - name: View transitions off
+        run: bun run test
         working-directory: apps/conformance
       # the same suite against the build with `viewTransitions: true`, the default of every navigation (and its own cases,
       # e2e/transitions.spec.ts, and the opt-outs of e2e/transition-per-navigation.spec.ts)
-      - run: bun run test
+      - name: View transitions on
+        run: bun run test
         working-directory: apps/conformance
         env:
           FONDU_VIEW_TRANSITIONS: '1'
       # and with no `document.startViewTransition` (the app's entry removes it), in Chromium: the other engines either
       # have none or are the ones above
-      - run: bun run test -- --project=chromium
+      - name: View transitions without the browser API
+        run: bun run test -- --project=chromium
         working-directory: apps/conformance
         env:
           FONDU_VIEW_TRANSITIONS: '1'
