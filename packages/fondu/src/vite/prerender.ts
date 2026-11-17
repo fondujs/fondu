@@ -9,6 +9,7 @@ import { pathToFileURL } from 'node:url'
 import type { Logger } from 'vite'
 
 import { PAGE_DATA, PRERENDER_LIST, staticFiles } from '../paths.js'
+import { runsAsScript } from '../script-type.js'
 
 /** the response headers a static document keeps: the security headers (hono/secure-headers' and the like) */
 const SECURITY_HEADERS =
@@ -17,7 +18,8 @@ const SECURITY_HEADERS =
 /**
  * A static document's own tags: those with the build's nonce (its Content Security Policy's). The policy of a static
  * document has no nonce: its inline scripts are allowed by their hashes instead, and only these tags may have had the
- * nonce: a `nonce` the document has otherwise (in a page's markup) is dropped. Then the hashes of these inline scripts.
+ * nonce: a `nonce` the document has otherwise (in a page's markup) is dropped. Then the hashes of these inline scripts,
+ * those the browser runs: a data block (`application/ld+json`) needs none, and often differs from page to page.
  */
 export function ownScripts(
   html: string,
@@ -31,7 +33,7 @@ export function ownScripts(
   )
   const hashes = new Set<string>()
   for (const [, attrs, code] of own.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi))
-    if (attrs!.includes(` nonce="${nonce}"`) && !/\ssrc=/i.test(attrs!))
+    if (attrs!.includes(` nonce="${nonce}"`) && !/\ssrc=/i.test(attrs!) && runsAsScript(attrs!))
       hashes.add(`'sha256-${createHash('sha256').update(code!).digest('base64')}'`)
   return { html: own, hashes: [...hashes] }
 }

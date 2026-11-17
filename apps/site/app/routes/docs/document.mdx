@@ -106,7 +106,8 @@ style attributes), `'self'` and `data:` for fonts.
 
 The policy runs scripts of the site's own files, or with the request's nonce. Fondu gives the nonce to the inline
 scripts of a JSX document, so one runs as it is, before the page paints. React's own scripts, which put a streamed
-Suspense boundary in place, carry it too:
+Suspense boundary in place, carry it too. A data block (`<script type="application/ld+json">`) is never run, so it gets
+no nonce, and no hash on a static page:
 
 ```tsx
 // sets the theme a visitor chose (a cookie) before the first paint

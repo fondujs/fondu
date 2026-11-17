@@ -775,6 +775,41 @@ describe('the document', () => {
     expect(text).toMatch(/<\/head><body><script data-page="app"/)
     expect(text).not.toMatch(/fondu:document-(head|body)/)
   })
+  test('JSX: the nonce is for the scripts the browser runs; a data block gets none (#268)', async () => {
+    const LD = '{"@type":"WebSite","name":"x"}'
+    const app = createApp({
+      document: ({ head, body }) =>
+        h(
+          'html',
+          null,
+          h(
+            'head',
+            null,
+            h('script', { dangerouslySetInnerHTML: { __html: THEME } }),
+            h('script', { type: 'text/javascript', dangerouslySetInnerHTML: { __html: '1' } }),
+            h('script', { type: 'module', dangerouslySetInnerHTML: { __html: '2' } }),
+            h('script', { type: 'importmap', dangerouslySetInnerHTML: { __html: '{}' } }),
+            h('script', { type: 'speculationrules', dangerouslySetInnerHTML: { __html: '{}' } }),
+            h('script', { type: 'application/ld+json', dangerouslySetInnerHTML: { __html: LD } }),
+            h('script', { type: 'application/json', dangerouslySetInnerHTML: { __html: '{}' } }),
+            head,
+          ),
+          h('body', null, body),
+        ),
+    })
+    const res = await app.request('/', { headers: html })
+    const text = await res.text()
+    const nonce = /'nonce-([\w+/=]+)'/.exec(res.headers.get('content-security-policy')!)![1]
+    expect(text).toContain(`<script nonce="${nonce}">${THEME}</script>`)
+    expect(text).toContain(`<script nonce="${nonce}" type="text/javascript">1</script>`)
+    expect(text).toContain(`<script nonce="${nonce}" type="module">2</script>`)
+    expect(text).toContain(`<script nonce="${nonce}" type="importmap">{}</script>`)
+    expect(text).toContain(`<script nonce="${nonce}" type="speculationrules">{}</script>`)
+    expect(text).toContain(
+      `<script type="application/ld+json">${LD.replace(/</g, '\\u003c')}</script>`,
+    )
+    expect(text).toContain('<script type="application/json">{}</script>')
+  })
   test('a string: taken as it is, its scripts given the nonce it writes', async () => {
     const app = createApp({
       document: ({ head, body, nonce }) =>

@@ -98,6 +98,20 @@ describe('headers', () => {
       "script-src 'self' 'unsafe-inline'",
     )
   })
+  test('data blocks are not hashed; the scripts the browser runs are (#268)', () => {
+    const run = (code: string, attrs = '') => `<script nonce="abc"${attrs}>${code}</script>`
+    const hash = (code: string) => `'sha256-${createHash('sha256').update(code).digest('base64')}'`
+    const html =
+      run('a()') +
+      run('b()', ' type="module"') +
+      run('c()', ' type="text/javascript"') +
+      run('{}', ' type="importmap"') +
+      run('{"x":1}', ' type="application/ld+json"') +
+      run('{"y":2}', ' type="application/json"')
+    expect(ownScripts(html, "script-src 'nonce-abc'").hashes).toEqual(
+      ['a()', 'b()', 'c()', '{}'].map(hash),
+    )
+  })
   test("only the build's nonce is the document's: another one is dropped, its script not hashed", () => {
     const html =
       '<script nonce="abc">a()</script><div><script nonce="guess">evil()</script><link nonce="x" href="/y"></div>'
@@ -350,6 +364,35 @@ describe('the build', () => {
       expect(Object.keys(headers)).not.toContain('set-cookie')
       expect(existsSync(join(dir, 'client/x.html'))).toBe(true)
       expect(existsSync(join(dir, 'client/_headers'))).toBe(false)
+    } finally {
+      rmSync(dir, { recursive: true })
+    }
+  })
+  test('pages whose JSON-LD differs build: the policy has the hashes of the executable scripts only (#268)', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'fondu-build-'))
+    try {
+      const page = (ld: string) => ({
+        doc: new Response(
+          `<script nonce="abc">a()</script><script nonce="abc" type="application/ld+json">${ld}</script>`,
+          { headers: { 'content-security-policy': "script-src 'nonce-abc'" } },
+        ),
+        visit: Response.json({ component: 'x' }),
+      })
+      await prerender(
+        serverOf({ '/x': page('{"name":"x"}'), '/y': page('{"name":"y"}') }),
+        join(dir, 'client'),
+        logger,
+        { serverDir: join(dir, 'server') },
+      )
+      const { headers } = JSON.parse(readFileSync(join(dir, 'server/prerender.json'), 'utf8')) as {
+        headers: Record<string, string>
+      }
+      expect(headers['content-security-policy']).toBe(
+        `script-src 'sha256-${createHash('sha256').update('a()').digest('base64')}'`,
+      )
+      expect(readFileSync(join(dir, 'client/y.html'), 'utf8')).toContain(
+        'type="application/ld+json">{"name":"y"}</script>',
+      )
     } finally {
       rmSync(dir, { recursive: true })
     }
