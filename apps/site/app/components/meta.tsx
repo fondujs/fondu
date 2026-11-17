@@ -8,16 +8,19 @@ export const fullTitle = (title?: string) =>
 
 /**
  * A page's title and the tags search engines and link previews read: the description, the canonical URL (no query),
- * Open Graph with the site's image (public/og.png, from .github/assets/og.svg). `noindex`: kept out of search results
- * (the error page).
+ * Open Graph with the site's image (public/og.png, from .github/assets/og.svg). `markdown`: the URL of the page's
+ * Markdown copy, which the page links to (crawlers and agents follow it) and which makes it an article. `noindex`:
+ * kept out of search results (the error page).
  */
 export function Meta({
   title,
   description,
+  markdown,
   noindex,
 }: {
   title?: string
   description?: string
+  markdown?: string
   noindex?: boolean
 }) {
   const { url } = usePage()
@@ -32,7 +35,8 @@ export function Meta({
       ) : (
         <link rel="canonical" href={canonical} />
       )}
-      <meta property="og:type" content="website" />
+      {markdown && <link rel="alternate" type="text/markdown" href={markdown} />}
+      <meta property="og:type" content={markdown ? 'article' : 'website'} />
       <meta property="og:site_name" content="Fondu" />
       <meta property="og:title" content={fullTitle(title)} />
       {description && <meta property="og:description" content={description} />}
