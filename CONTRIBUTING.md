@@ -155,8 +155,10 @@ One wording everywhere: the READMEs, both `package.json` descriptions, the GitHu
 
 Maintainers release with `bun run release` from the repository's root, on an up-to-date `main` (`git pull` first:
 a release made on an old `main` is refused when it is pushed): fondu and create-fondu get the same version
-(create-fondu's apps depend on `^` its own version). CI stages both on npm and a maintainer approves them (npmjs.com
-→ Staged Packages, or `npm stage approve <id>`, with 2FA).
+(create-fondu's apps depend on `^` its own version). The release waits up to 20 minutes for every job of the `CI`
+workflow on that exact commit's push to main to succeed, including Windows, browser conformance and create-fondu.
+Red, cancelled, skipped or missing CI means no package is staged. After CI passes, the release stages both on npm
+and a maintainer approves them (npmjs.com → Staged Packages, or `npm stage approve <id>`, with 2FA).
 
 The version, by what changed since the last release (`bun run release` offers them; not `next`, which only adds one
 to the last number):

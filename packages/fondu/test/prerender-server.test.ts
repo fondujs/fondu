@@ -3,13 +3,14 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { afterEach, describe, expect, test } from 'vitest'
+import { afterEach, describe, expect, test, vi } from 'vitest'
 
 import { nodeServer, prerender } from '../src/vite/prerender.js'
 
 const logger = { error() {}, warn() {}, info() {} } as never
 const roots: string[] = []
 afterEach(() => {
+  vi.restoreAllMocks()
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true })
 })
 
@@ -34,13 +35,26 @@ const alive = (pid: number) => {
   }
 }
 const quick = { startup: 1500, request: 400 }
-const took = async (run: Promise<unknown>) => {
-  const start = Date.now()
-  const result = await run.then(
+const failure = (run: Promise<unknown>) =>
+  run.then(
     () => null,
     (error: Error) => error,
   )
-  return { error: result, ms: Date.now() - start }
+
+// Observe the real fetch's deadline, not the runner's speed. A missing signal leaves the read hanging until the
+// test's own timeout; a different cause of failure does not match this signal's reason.
+const deadlineFailure = async (run: () => Promise<unknown>) => {
+  const deadlines = vi.spyOn(AbortSignal, 'timeout')
+  const requests = vi.spyOn(globalThis, 'fetch')
+  const reading = run()
+  const signal = requests.mock.calls[0]?.[1]?.signal
+  expect(deadlines).toHaveBeenCalledExactlyOnceWith(quick.request)
+  expect(signal).toBe(deadlines.mock.results[0]?.value)
+  const error = await failure(reading)
+  expect(error).toBeInstanceOf(Error)
+  expect(['TimeoutError', 'AbortError']).toContain(error?.name)
+  expect(signal?.aborted).toBe(true)
+  expect(error).toBe(signal?.reason)
 }
 
 // a server that takes the connection and never answers
@@ -55,33 +69,31 @@ const stalls = `require('http').createServer((req, res) => {
 describe('the server of the prerender: a failed start', () => {
   test('a server that takes the connection and sends no headers: a deadline, and the child is stopped', async () => {
     const root = fake(mute)
-    const { error, ms } = await took(nodeServer(root, 'node', quick)())
+    const error = await failure(nodeServer(root, 'node', quick)())
     expect(error?.message).toContain('did not start')
     expect(error?.message).toContain('no answer within')
-    expect(ms).toBeLessThan(quick.startup + 4000)
     expect(alive(pidOf(root))).toBe(false)
   })
   test('a server that never listens: the same', async () => {
     const root = fake('setInterval(() => {}, 1000)')
-    const { error, ms } = await took(nodeServer(root, 'node', quick)())
+    const error = await failure(nodeServer(root, 'node', quick)())
     expect(error?.message).toContain('no answer within')
-    expect(ms).toBeLessThan(quick.startup + 4000)
     expect(alive(pidOf(root))).toBe(false)
   })
   test('a child that exits at once: its output is the error, fast', async () => {
     const root = fake(`console.error('boom: no config'); process.exit(3)`)
-    const { error, ms } = await took(nodeServer(root, 'node', quick)())
+    const error = await failure(nodeServer(root, 'node', quick)())
     expect(error?.message).toContain('did not start')
     expect(error?.message).toContain('boom: no config')
-    expect(ms).toBeLessThan(quick.startup)
+    expect(error?.message).not.toContain('no answer within')
     expect(alive(pidOf(root))).toBe(false)
   })
   test('an executable that is not there: an error, not a crash of the build', async () => {
     const root = fake(mute)
-    const { error, ms } = await took(nodeServer(root, 'fondu-no-such-runtime', quick)())
+    const error = await failure(nodeServer(root, 'fondu-no-such-runtime', quick)())
     expect(error?.message).toContain('did not start')
     expect(error?.message).toContain('ENOENT')
-    expect(ms).toBeLessThan(quick.startup)
+    expect(error?.message).not.toContain('no answer within')
   })
   test('through the build: it fails, naming the problem, and leaves no child', async () => {
     const root = fake(mute)
@@ -99,10 +111,7 @@ describe('the server of the prerender: a request that does not finish', () => {
     const root = fake(stalls)
     const server = await nodeServer(root, 'node', quick)()
     try {
-      const { error, ms } = await took(server.fetch('/x').then((res) => res.text()))
-      expect(error).toBeInstanceOf(Error)
-      expect(['TimeoutError', 'AbortError']).toContain(error?.name)
-      expect(ms).toBeLessThan(quick.request + 2000)
+      await deadlineFailure(() => server.fetch('/x').then((res) => res.text()))
     } finally {
       await server.dispose()
     }
@@ -114,9 +123,7 @@ describe('the server of the prerender: a request that does not finish', () => {
     )
     const server = await nodeServer(root, 'node', quick)()
     try {
-      const { error, ms } = await took(server.fetch('/x'))
-      expect(['TimeoutError', 'AbortError']).toContain(error?.name)
-      expect(ms).toBeLessThan(quick.request + 2000)
+      await deadlineFailure(() => server.fetch('/x'))
     } finally {
       await server.dispose()
     }
@@ -124,13 +131,12 @@ describe('the server of the prerender: a request that does not finish', () => {
   })
   test('through the build: a page whose body stalls fails it, and the child is stopped', async () => {
     const root = fake(stalls)
-    const { error, ms } = await took(
+    const error = await failure(
       prerender(nodeServer(root, 'node', quick), join(root, 'client'), logger, {
         serverDir: root,
       }),
     )
     expect(error?.message).toContain('prerendering failed')
-    expect(ms).toBeLessThan(quick.request + 5000)
     expect(alive(pidOf(root))).toBe(false)
   })
 })

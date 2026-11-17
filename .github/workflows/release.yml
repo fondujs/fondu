@@ -1,5 +1,6 @@
 # `bun run release` pushes a tag v*; this stages fondu and create-fondu (one version for both) on npm (trusted
-# publishing: no token, with provenance) and writes the GitHub Release from the commits since the last tag. Each
+# publishing: no token, with provenance), only after every CI job on the tagged commit succeeds, and writes the
+# GitHub Release from the commits since the last tag. Each
 # package goes live once a maintainer approves it with 2FA: npmjs.com → Staged Packages, or `npm stage approve <id>`.
 # Each job has only the permissions it needs; the tools are pinned.
 name: Release
@@ -15,6 +16,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      actions: read # find the CI workflow run on the tagged commit
+      checks: read # every job in that run must succeed
       id-token: write # trusted publishing
     steps:
       - uses: actions/checkout@v7
@@ -25,8 +28,12 @@ jobs:
         with:
           node-version: 24
           registry-url: https://registry.npmjs.org
+      - name: Wait for CI on the tagged commit
+        run: node scripts/wait-for-ci.ts
+        timeout-minutes: 21 # the script's 20-minute deadline includes API requests
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: bun install --frozen-lockfile
-      - run: bun run test
       - run: cp README.md packages/fondu/
       - run: npm install -g npm@12.2.0 # `npm stage` needs npm 11.15 or later
       - run: npm stage publish
