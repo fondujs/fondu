@@ -6,12 +6,13 @@ import { renderMarkup, renderPage } from 'virtual:fondu/ssr'
 
 import type { Page } from '../client/navigation.js'
 import { SCROLL_KEY, SCROLL_STORAGE } from '../paths.js'
+import { runsAsScript } from '../script-type.js'
 import { nonceOf } from './http.js'
 
 /**
  * The HTML document around a page: `{head}` and `{body}` (in JSX, or `${head}` in a string) are where the page goes.
- * An inline `<script>` of a JSX document gets the request's nonce, so the Content Security Policy runs it; a string's
- * writes it: `<script nonce="${nonce}">`.
+ * An inline `<script>` of a JSX document gets the request's nonce, so the Content Security Policy runs it (a data
+ * block, `type="application/ld+json"`, is not run and gets none); a string's writes it: `<script nonce="${nonce}">`.
  */
 export interface DocumentParts {
   /** the tags the page renders (`<title>`, `<meta>`: server render), then the client's styles and scripts */
@@ -77,7 +78,13 @@ async function shell(
   if (typeof out === 'string') return out
   const html = `<!doctype html>${await renderMarkup(out)}`
   if (!nonce) return html
-  return html.replace(/<script\b(?![^>]*\s(?:src|nonce)=)/gi, `<script nonce="${nonce}"`)
+  // a script with a `src` or a nonce of its own is left as it is, and so is a data block (`application/ld+json`):
+  // the browser never runs it, so the policy has nothing to allow
+  return html.replace(/<script\b([^>]*)/gi, (tag, attrs: string) =>
+    /\s(?:src|nonce)=/.test(attrs) || !runsAsScript(attrs)
+      ? tag
+      : `<script nonce="${nonce}"${attrs}`,
+  )
 }
 
 let shellEndReported = false

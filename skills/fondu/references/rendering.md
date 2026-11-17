@@ -108,9 +108,10 @@ export default createApp({ document: Document })
 ## Scripts, fonts and the nonce
 
 - The Content Security Policy runs scripts of the site's own files, or with the request's nonce. A JSX document's
-  inline scripts get the nonce from Fondu, as do React's own streaming scripts. Never put what a request brings in a
+  inline scripts get the nonce from Fondu, as do React's own streaming scripts; a data block
+  (`<script type="application/ld+json">`) is never run, so it gets none. Never put what a request brings in a
   script or in `dangerouslySetInnerHTML`.
 - A string document is not escaped and its scripts get no nonce: write it, `<script nonce="${nonce}">`.
-- On a static page there is no nonce: the scripts that had it are allowed by their hashes.
+- On a static page there is no nonce: the scripts that had it are allowed by their hashes (a data block has none).
 - A script from another origin needs that origin in `scriptSrc`. Fonts served by the app (Fontsource) need nothing;
   Google Fonts needs `styleSrc` and `fontSrc` (see [server.md](server.md) for how a directive is replaced).
