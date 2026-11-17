@@ -1,5 +1,6 @@
 import { back, defer, defineHandler, flash, render, ValidationError } from 'fondu'
 import { closeShallow, navigate, reload, useNavigation, usePage } from 'fondu/client'
+import { HTTPException } from 'hono/http-exception'
 import { useState, useSyncExternalStore } from 'react'
 
 // A drawer the URL holds (`?item=b`) over a list, and tabs in a #fragment (e2e/shallow.spec.ts). A click on an item is
@@ -18,6 +19,11 @@ export const actions = {
   note: defineHandler((c) => {
     flash(c, { message: 'Saved' })
     return back(c)
+  }),
+  query: defineHandler((c) => c.redirect('/shallow?item=b', 303)),
+  fragment: defineHandler((c) => c.redirect('/shallow?item=b#tab/y', 303)),
+  other: defineHandler(() => {
+    throw new HTTPException(403)
   }),
   // errors, back to the page it came from
   check: defineHandler(() => {
@@ -176,6 +182,15 @@ export default function Shallow({
         </button>
         <form method="post" action="?note">
           <button id="note">Note</button>
+        </form>
+        <form method="post" action="?query">
+          <button id="answer-query">Answer at another query</button>
+        </form>
+        <form method="post" action="?fragment">
+          <button id="answer-fragment">Answer at another fragment</button>
+        </form>
+        <form method="post" action="?other">
+          <button id="answer-other">Answer with another component</button>
         </form>
         <form method="post" action="?check">
           <input name="name" defaultValue="x" />

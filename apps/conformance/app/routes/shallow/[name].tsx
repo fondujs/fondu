@@ -4,6 +4,7 @@ import { useState } from 'react'
 
 // A parameterized pathname for shallow page matching (e2e/shallow.spec.ts): encoded, raw and with a trailing slash.
 export const loader = defineHandler((c) => render(c, Named, { name: c.req.param('name') ?? '' }))
+export const action = defineHandler((c) => c.redirect('/shallow/other', 303))
 
 export default function Named({ name }: { name: string }) {
   const { url } = usePage()
@@ -35,6 +36,9 @@ export default function Named({ name }: { name: string }) {
       >
         With a slash
       </button>
+      <form method="post" action={url.split('?')[0]}>
+        <button id="redirect-other">Post to another pathname</button>
+      </form>
       <button id="replace-other" onClick={() => navigate('/shallow/other', { replace: true })}>
         Replace with another
       </button>
