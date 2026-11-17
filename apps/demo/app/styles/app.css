@@ -234,6 +234,31 @@
   .gallery-page {
     view-transition-name: gallery-page;
   }
+  /* Shared photos change from 4:3 to 3:2. The default auto-height snapshots have different bottom edges;
+     size both to the animated group instead. Leave unmatched photos' entry/exit fades alone. */
+  /* Cover can crop the bitmap's own corners away. Keep the card's top corners on the snapshot container too. */
+  ::view-transition-image-pair(.gallery-photo) {
+    overflow: clip;
+    border-radius: calc(var(--radius-2xl) - 1px) calc(var(--radius-2xl) - 1px) 0 0;
+  }
+  ::view-transition-old(.gallery-photo),
+  ::view-transition-new(.gallery-photo) {
+    height: 100%;
+    overflow: clip;
+    animation: none;
+    mix-blend-mode: normal;
+  }
+  ::view-transition-old(.gallery-photo) {
+    object-fit: contain;
+  }
+  ::view-transition-new(.gallery-photo) {
+    object-fit: cover;
+  }
+  ::view-transition-old(.gallery-photo):only-child,
+  ::view-transition-new(.gallery-photo):only-child {
+    animation: revert;
+    mix-blend-mode: revert;
+  }
   ::view-transition-group(gallery-page) {
     animation: none;
   }
@@ -281,8 +306,64 @@
   }
 }
 
+/* The photo dialog over the retained gallery is local UI, not a page transition. Base UI owns focus, dismissal and the exit's
+   lifetime. Its popup clips from/to the card, while the image moves independently and the details fade. */
+/* Keep the native gesture's landing frame consistent: this image viewer cannot defer scroll lock or unlock. */
+html[data-gallery-dialog] {
+  overflow: hidden;
+  scrollbar-gutter: stable;
+}
+.gallery-dialog-backdrop {
+  background: rgb(0 0 0 / 64%);
+  backdrop-filter: blur(16px);
+  transition-duration: 350ms;
+}
+.gallery-dialog-backdrop[data-native-transition] {
+  transition: none;
+}
+.gallery-dialog {
+  clip-path: inset(0);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .gallery-dialog:not([data-native-transition]) {
+    transition:
+      clip-path 350ms cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 350ms ease;
+  }
+  .gallery-dialog:not([data-native-transition]) .gallery-dialog-media {
+    transform-origin: top left;
+    transition:
+      transform 350ms cubic-bezier(0.22, 1, 0.36, 1),
+      border-radius 350ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .gallery-dialog:not([data-native-transition]) .gallery-dialog-info {
+    transition: opacity 200ms ease;
+  }
+  .gallery-dialog:not([data-native-transition])[data-starting-style],
+  .gallery-dialog:not([data-native-transition])[data-starting-style] .gallery-dialog-media {
+    transition: none;
+  }
+  .gallery-dialog:not([data-native-transition])[data-starting-style],
+  .gallery-dialog:not([data-native-transition])[data-ending-style] {
+    clip-path: var(--photo-origin-clip, inset(0));
+    opacity: var(--photo-origin-opacity, 0);
+  }
+  .gallery-dialog:not([data-native-transition])[data-starting-style] .gallery-dialog-media,
+  .gallery-dialog:not([data-native-transition])[data-ending-style] .gallery-dialog-media {
+    transform: var(--photo-origin-transform, none);
+    border-radius: var(--photo-origin-radius, var(--radius-2xl));
+  }
+  .gallery-dialog:not([data-native-transition])[data-starting-style] .gallery-dialog-info,
+  .gallery-dialog:not([data-native-transition])[data-ending-style] .gallery-dialog-info {
+    opacity: 0;
+  }
+}
+
 /* The photos' names are inline, so they move under reduced motion too: there, no transition animates at all */
 @media (prefers-reduced-motion: reduce) {
+  .gallery-dialog-backdrop {
+    transition: none;
+  }
   ::view-transition-group(*),
   ::view-transition-old(*),
   ::view-transition-new(*) {

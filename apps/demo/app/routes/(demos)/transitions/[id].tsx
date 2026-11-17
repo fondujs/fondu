@@ -3,7 +3,8 @@ import { href } from 'fondu/client'
 import { HTTPException } from 'hono/http-exception'
 
 import { Title } from '#/components/demo.tsx'
-import { imageUrl, photos, type Photo } from '#/modules/gallery/photos.ts'
+import { photos, type Photo } from '#/modules/gallery/photos.ts'
+import { usePhotoSrc } from '#/modules/gallery/use-photo-src.ts'
 
 // GET /transitions/:id — an id that is not a photo's is a 404
 export const loader = defineHandler((c) => {
@@ -13,6 +14,7 @@ export const loader = defineHandler((c) => {
 })
 
 export default function Show({ photo }: { photo: Photo }) {
+  const src = usePhotoSrc(photo)
   return (
     <>
       <Title>{photo.title}</Title>
@@ -24,12 +26,12 @@ export default function Show({ photo }: { photo: Photo }) {
         </p>
         <h1 data-testid="photo-title">{photo.title}</h1>
         <img
-          src={imageUrl(photo, 1200)}
+          src={src}
           alt={photo.title}
           width={1200}
           height={800}
           className="my-6 aspect-3/2 w-full rounded-2xl object-cover"
-          style={{ viewTransitionName: `photo-${photo.id}` }}
+          style={{ viewTransitionName: `photo-${photo.id}`, viewTransitionClass: 'gallery-photo' }}
         />
         <p className="mb-8 text-xs text-muted-foreground">
           Photo by <a href={photo.page}>{photo.photographer}</a> on Unsplash
