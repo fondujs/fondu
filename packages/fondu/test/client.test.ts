@@ -51,7 +51,7 @@ __entry(
     '/app/routes/admin/_layout.tsx': async () => ({ default: Outer }),
     '/app/routes/admin/users/_layout.tsx': async () => ({ default: Inner }),
   },
-  { prerender: false, progress: false },
+  { prerender: false, progress: false, viewTransitions: false },
 )
 
 // the page's stream, read whole: the tags it hoists (before `<div id="app"`) and the page

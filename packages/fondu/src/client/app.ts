@@ -35,13 +35,13 @@ let patterns: Array<{ id: string; segments: string[] }> = []
 
 /**
  * @internal the app's entry (the Vite plugin writes it), in the browser and for the server render: `import.meta.glob`
- * of the pages and layouts of `app/routes/`, and `fondu({ prerender, progress })`. In the browser it starts the app:
+ * of the pages and layouts of `app/routes/`, and `fondu({ prerender, progress, viewTransitions })`. In the browser it starts the app:
  * it hydrates the server's page and starts navigating.
  */
 export function __entry(
   pageModules: Record<string, Loader>,
   layouts: Record<string, Loader>,
-  settings: { prerender: boolean; progress: ProgressOptions | false },
+  settings: { prerender: boolean; progress: ProgressOptions | false; viewTransitions: boolean },
 ) {
   pages = new Map(
     Object.entries(pageModules).map(([key, loader]) => [pageId(key.slice(ROUTES.length)), loader]),
@@ -227,7 +227,7 @@ function setNavigation(
 // ---- the app
 
 /** the browser's app: the server's page hydrated, then navigations */
-function start(settings: { prerender: boolean; progress: ProgressOptions | false }) {
+function start(settings: Parameters<typeof __entry>[2]) {
   const progress = settings.progress
   if (progress)
     subscribe(
@@ -257,6 +257,7 @@ function start(settings: { prerender: boolean; progress: ProgressOptions | false
       startNavigation({
         initial,
         prerender: settings.prerender,
+        viewTransitions: settings.viewTransitions,
         pending: setNavigation,
         preload(pathname) {
           const page = pageAt(pathname)

@@ -1,47 +1,36 @@
 import { expect, test, type Page } from '@playwright/test'
 
-import { announced, install, log, type VtWindow } from './support/view-transitions.ts'
+import {
+  address,
+  announced,
+  frames,
+  hasApi,
+  hydrated,
+  install,
+  log,
+  press,
+  quiet,
+  shows,
+  type VtWindow,
+} from './support/view-transitions.ts'
 
-// `fondu({ viewTransitions: true })` (app/routes/vt/): a navigation that restores the scroll commits inside the browser's
-// `document.startViewTransition`. The `update` is held at known points (support/view-transitions.ts) to see what a newer
-// navigation does while one is pending. JavaScript only, and only against the build with the option on
-// (`FONDU_VIEW_TRANSITIONS=1`)
+// `fondu({ viewTransitions: true })`, the default of every navigation (app/routes/vt/): a navigation that restores the
+// scroll commits inside the browser's `document.startViewTransition`. The `update` is held at known points
+// (support/view-transitions.ts) to see what a newer navigation does while one is pending. JavaScript only, and only
+// against the build with the option on (`FONDU_VIEW_TRANSITIONS=1`); a navigation's own choice, which also works with it
+// off, is e2e/transition-per-navigation.spec.ts
 test.skip(process.env.FONDU_VIEW_TRANSITIONS !== '1', 'the app is built with viewTransitions off')
 
 type W = Window & {
   __vt: VtWindow
 }
-const hydrated = (page: Page) => page.waitForFunction(() => history.state?.__fondu)
-/** a click that doesn't scroll the page to the link first (as Playwright's does), and works under a transition */
-const press = (page: Page, selector: string) =>
-  page.evaluate((s) => document.querySelector<HTMLElement>(s)!.click(), selector)
-const address = (page: Page) =>
-  page.evaluate(() => location.pathname + location.search + location.hash)
 const entries = (page: Page) => page.evaluate(() => history.length)
 const scrolled = (page: Page) => page.evaluate(() => Math.round(scrollY))
-const hasApi = (page: Page) =>
-  page.evaluate(() => typeof document.startViewTransition === 'function')
-const frames = (page: Page) =>
-  page.evaluate(
-    () => new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r()))),
-  )
 const scrollPage = async (page: Page, y: number) => {
   await page.evaluate((y) => scrollTo(0, y), y)
   await page.waitForFunction((y) => Math.round(scrollY) === y, y)
   await frames(page) // the scroll position is kept a frame later
 }
-const shows = (page: Page, name: string) =>
-  expect(page.locator('#page')).toHaveAttribute('data-name', name)
-/** every transition has ended (none was started, without the API) */
-const quiet = (page: Page) =>
-  page.waitForFunction(
-    () =>
-      (window as unknown as W).__vt.log.every(
-        (e) => e.phase === 'finished' || e.phase === 'skipped',
-      ),
-    undefined,
-    { polling: 50 },
-  )
 // Rendering is paused while a transition's `update` is held (and the browser gives it about 4 seconds): wait on a
 // timer then, as `waitForFunction` does by default on animation frames
 const phaseIs = (page: Page, phase: string) =>

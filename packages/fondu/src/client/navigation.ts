@@ -1,6 +1,6 @@
 import { crlf } from '../form.js'
 import { pageDataPath, SCROLL_KEY, SCROLL_STORAGE } from '../paths.js'
-import { canTransition, instantly, skipActive, transition, viewTransitions } from './transitions.js'
+import { canTransition, instantly, optIn, skipActive, transition } from './transitions.js'
 
 /** what the server sends for a page: its id (its route file, `users/[id]`), its props, its URL, the build's version */
 export interface Page {
@@ -23,6 +23,8 @@ interface Options {
   show: (page: Page, fresh: boolean, stale: () => boolean) => Promise<(() => void) | undefined>
   /** `fondu({ prerender: true })`: GET navigations read `/_fondu/pages/<path>.json` */
   prerender: boolean
+  /** `fondu({ viewTransitions: true })`: a navigation transitions unless it opts out (it opts in on its own otherwise) */
+  viewTransitions: boolean
   /** a navigation started (to `to`: a path, its query and fragment; `form`: a form's submission) or ended (null) */
   pending: (
     navigation: {
@@ -52,7 +54,13 @@ interface Visit {
   keep?: boolean
   /** Back and Forward: the page the entry showed, put on the screen at once, then the server's in its place */
   kept?: Page
-  /** Back and Forward, with `viewTransitions`: the view transition's types (the direction, where the browser says) */
+  /**
+   * The navigation's own choice of a view transition, over the default (`fondu({ viewTransitions })`): `false`, opted
+   * out; else opted in, with these custom types (a link's or form's `data-transition`, `navigate()`'s `transition`; for
+   * Back and Forward, those of the entry's record, `TRANSITION`)
+   */
+  transition?: false | string[]
+  /** Back and Forward: the direction, a view transition's type (none if either entry has no index) */
   traversal?: string[]
   /** the browser animates this traversal already (a swipe back): none of our own */
   swipe?: boolean
@@ -77,6 +85,7 @@ export function startNavigation({
   initial,
   show,
   prerender,
+  viewTransitions,
   pending,
   preload,
   isPage,
@@ -115,8 +124,8 @@ export function startNavigation({
     (await show(page, fresh, stale))?.()
   /**
    * The page put on the screen, and what follows it (`tail`: keep it, announce it, scroll). With `types` (a view
-   * transition: `viewTransitions`, and the browser has it) all of it is the transition's `update`, which runs when the
-   * browser has captured the old page; a visit superseded by then commits nothing (`update` runs on a skip too)
+   * transition: the navigation has one, and the browser has them) all of it is the transition's `update`, which runs
+   * when the browser has captured the old page; a visit superseded by then commits nothing (`update` runs on a skip too)
    */
   const put = async (
     page: Page,
@@ -138,7 +147,7 @@ export function startNavigation({
       answers = new Map()
       tail()
     }
-    if (viewTransitions && types)
+    if (types)
       await transition((skip) => {
         if (stale()) return skip()
         instantly(update)
@@ -282,14 +291,16 @@ export function startNavigation({
     // a GET that is not asked for again: the answer kept for it (never a form's POST, reload() or Back's)
     const found = !post && !options.keep && !shown ? prefetched.get(from) : undefined
     const entry = found && Date.now() - found.at < freshFor ? found : undefined
-    // `viewTransitions`: the visit's one view transition, for the first commit that restores the scroll (a kept page's
-    // refresh after it is plain). Not for a swipe, which the browser animates, nor without `document.startViewTransition`
-    let transitions = viewTransitions && !options.swipe && canTransition()
+    // The visit's one view transition, for the first commit that restores the scroll (a kept page's refresh after it is
+    // plain): if the navigation opted in, or did not say and `viewTransitions` is on. Not for a swipe, which the browser
+    // animates, nor without `document.startViewTransition`. Its types: the direction, then the navigation's own
+    const custom = options.transition || []
+    let transitions = !!(options.transition ?? viewTransitions) && !options.swipe && canTransition()
     void (async () => {
       try {
         if (shown) {
           scroll.commit()
-          const types = viewTransitions && transitions ? (options.traversal ?? []) : undefined
+          const types = transitions ? [...(options.traversal ?? []), ...custom] : undefined
           transitions = false
           await put(
             shown,
@@ -323,7 +334,10 @@ export function startNavigation({
         const redirect = response.headers.get('X-Fondu-Redirect')
         if (redirect) {
           if (isWebUrl(redirect))
-            visit!(redirect, { history: options.history === 'push' ? 'push' : 'replace' })
+            visit!(redirect, {
+              history: options.history === 'push' ? 'push' : 'replace',
+              transition: options.transition,
+            })
           return
         }
         if (!response.headers.has('X-Fondu')) {
@@ -389,16 +403,20 @@ export function startNavigation({
             : options.history === 'none' && asked !== page.url
               ? 'replace'
               : options.history
-        if (history !== 'none') scroll.write(target, history === 'replace')
-        scroll.commit()
         const types =
-          viewTransitions && transitions && !stay && !same && !(shown && !fresh)
-            ? history === 'push'
-              ? ['navigation-forward']
-              : history === 'replace'
-                ? ['navigation-replace']
-                : (options.traversal ?? [])
+          transitions && !stay && !same && !(shown && !fresh)
+            ? [
+                ...(history === 'push'
+                  ? ['navigation-forward']
+                  : history === 'replace'
+                    ? ['navigation-replace']
+                    : (options.traversal ?? [])),
+                ...custom,
+              ]
             : undefined
+        // an entry that transitioned remembers its custom types, for Back and Forward (`TRANSITION`)
+        if (history !== 'none') scroll.write(target, history === 'replace', false, types && custom)
+        scroll.commit()
         await put(
           page,
           fresh,
@@ -478,8 +496,13 @@ export function startNavigation({
     return !!into && into !== '_self'
   }
 
-  /** a link the client may follow itself (same origin, this window, no download): its URL; `soft`, a shallow one */
-  const linkOf = (target: EventTarget | null): { url: URL; soft: boolean } | undefined => {
+  /**
+   * a link the client may follow itself (same origin, this window, no download): its URL; `soft`, a shallow one;
+   * `transition`, its `data-transition`
+   */
+  const linkOf = (
+    target: EventTarget | null,
+  ): { url: URL; soft: boolean; transition: false | string[] | undefined } | undefined => {
     const link = (target as Element | null)?.closest?.('a[href]')
     if (!(link instanceof HTMLAnchorElement)) return
     // SVG `<a>` and `<area>` are not matched: the browser's
@@ -490,6 +513,7 @@ export function startNavigation({
     return {
       url,
       soft: link.hasAttribute('data-shallow') && url.pathname === shownUrl!().pathname,
+      transition: optIn(link.getAttribute('data-transition')),
     }
   }
 
@@ -512,7 +536,10 @@ export function startNavigation({
     // a URL that is none of the app's pages (a file, /llms.txt; an HTTP route; nothing at all): the browser's
     if (!isPage(url.pathname)) return
     event.preventDefault()
-    visit!(url.href, { history: url.href === location.href ? 'replace' : 'push' })
+    visit!(url.href, {
+      history: url.href === location.href ? 'replace' : 'push',
+      transition: link.transition,
+    })
   })
 
   // a link's page modules load before the click: when the pointer rests on it (80 ms), or a touch starts on it, and
@@ -560,6 +587,7 @@ export function startNavigation({
     // run its handler twice
     if (method === 'get' && !isPage(url.pathname)) return
     event.preventDefault()
+    const transition = optIn(form.getAttribute('data-transition'))
     const data = new FormData(form, submitter)
     // as the browser would send them: a file by its name in a URL or plain text, line breaks as CRLF
     const fields = [...data].map(([k, v]) => [crlf(k), crlf(typeof v === 'string' ? v : v.name)])
@@ -571,19 +599,19 @@ export function startNavigation({
           : enctype === 'text/plain'
             ? fields.map(([k, v]) => `${k}=${v}\r\n`).join('')
             : new URLSearchParams(fields)
-      return visit!(url.href, { history: 'push', body, form })
+      return visit!(url.href, { history: 'push', body, form, transition })
     }
     url.search = new URLSearchParams(fields).toString()
-    visit!(url.href, { history: 'push', form })
+    visit!(url.href, { history: 'push', form, transition })
   })
 
   // Back and Forward: the entry's page, where it was scrolled
   window.addEventListener('popstate', (event) => {
     closing = false
     // a view transition on its way is over: this traversal is the newer navigation (its `update` commits nothing)
-    if (viewTransitions) skipActive()
+    skipActive()
     // Back or Forward, from the entry's index (written beside its key), before the entry is the page's own
-    const traversal = viewTransitions ? scroll.direction!(event.state) : undefined
+    const { traversal, record } = scroll.direction(event.state)
     const popped = scroll.pop(event.state)
     // a visit on its way is given up by any Back or Forward, the browser's own #fragment entries too: its answer
     // would put a page on the screen over the entry the visitor is at
@@ -605,11 +633,11 @@ export function startNavigation({
       history: 'none',
       scroll: popped.position,
       kept: kept.get(popped.key ?? ''),
-      ...(viewTransitions && {
-        traversal,
-        // the browser's own animation (a swipe) plays already: ours would play twice
-        swipe: (event as { hasUAVisualTransition?: boolean }).hasUAVisualTransition,
-      }),
+      traversal,
+      // the entry's record (a transition, with its types), else the default
+      transition: record,
+      // the browser's own animation (a swipe) plays already: ours would play twice
+      swipe: (event as { hasUAVisualTransition?: boolean }).hasUAVisualTransition,
     })
   })
   // leaving the document (a reload, another site): its position, put back by the document when it is loaded again.
@@ -647,8 +675,13 @@ export function startNavigation({
  * same page. `closeShallow()` goes back (one step) from such an entry; any other it replaces in place.
  */
 const SHALLOW = '__fondu_shallow'
-/** `history.state`'s place of the entry (`viewTransitions`): the direction of a traversal */
+/** `history.state`'s place of the entry: the direction of a traversal */
 const INDEX = '__fondu_index'
+/**
+ * `__fondu_transition: string[]`: the entry was reached (pushed, or replaced) by a navigation that ran a view transition,
+ * and these are its custom types (none: an empty array). Back and Forward across the entry run it again (`direction()`)
+ */
+const TRANSITION = '__fondu_transition'
 /** `closeShallow()` has gone back, and the browser has not landed yet: a second call waits (until the entry is there) */
 let closing = false
 
@@ -681,13 +714,22 @@ function scrollPositions() {
       ? ((state as Record<string, string>)[KEY] as string)
       : null
   const newKey = () => Math.random().toString(36).slice(2, 10)
-  // `viewTransitions`: each entry's place in the history, a number that only grows with each entry this client pushes
-  // (beside its key, in its state): Back or Forward is the entry's against the one it left
+  // each entry's place in the history, a number that only grows with each entry this client pushes (beside its key, in
+  // its state): Back or Forward is the entry's against the one it left
   const indexOf = (state: unknown) => {
     const index = (state as Record<string, unknown> | null)?.[INDEX]
     return typeof index === 'number' ? index : undefined
   }
-  let at = viewTransitions ? indexOf(history.state) : undefined
+  const recordOf = (state: unknown) => {
+    const types = (state as Record<string, unknown> | null)?.[TRANSITION]
+    return Array.isArray(types) && types.every((t) => typeof t === 'string')
+      ? (types as string[])
+      : undefined
+  }
+  // the entry on the screen: its index, and its record. In memory, as `history.state` is the arrived entry's already
+  // when a popstate fires: the entry left can't be read from it
+  let at = indexOf(history.state)
+  let recorded = recordOf(history.state)
   let rendered = keyOf(history.state)
   let renderedUrl = location.pathname + location.search
   const read = (key: string | null) => {
@@ -737,10 +779,11 @@ function scrollPositions() {
         {
           ...(history.state as object | null),
           [KEY]: (key = newKey()),
-          ...(viewTransitions && { [INDEX]: (at = at === undefined ? 0 : at + 1) }),
+          [INDEX]: (at = at === undefined ? 0 : at + 1),
         },
         '',
       )
+    recorded = recordOf(history.state)
     rendered = key
     renderedUrl = location.pathname + location.search
     return added
@@ -750,16 +793,28 @@ function scrollPositions() {
     commit,
     /** the key of the entry on the screen */
     key: () => rendered,
-    /** Back or Forward to `state`'s entry, as a view transition's type; none if either entry has no index */
-    direction: viewTransitions
-      ? (state: unknown) => {
-          const from = at
-          const to = (at = indexOf(state))
-          return from === undefined || to === undefined || to === from
-            ? undefined
-            : [to < from ? 'navigation-back' : 'navigation-forward']
-        }
-      : undefined,
+    /**
+     * Back or Forward to `state`'s entry (`history.state`'s own is that entry's by now): the direction, as a view
+     * transition's type, and the transition to make (its custom types), if the entries remember one. Of the two entries
+     * the one with the higher index, E, is the one a transition went to, and its record is the one read:
+     * - Back from E: E's record, in the state of the entry being left, which is `recorded` (kept in memory: nothing
+     *   else has it, and `pop()` and `commit()` after this overwrite it);
+     * - Forward to E: E's record, in the state of the entry arrived at, `state`.
+     * A traversal that skips entries (`history.go(-3)`) is Back or Forward between the same two, the higher index too.
+     * None if either entry has no index (an entry this client did not push): the direction and the record are unknown
+     */
+    direction(state: unknown): { traversal?: string[]; record?: string[] } {
+      const from = at
+      const to = (at = indexOf(state))
+      const left = recorded
+      recorded = recordOf(state)
+      if (from === undefined || to === undefined || to === from) return {}
+      const back = to < from
+      return {
+        traversal: [back ? 'navigation-back' : 'navigation-forward'],
+        record: back ? left : recorded,
+      }
+    },
     /**
      * The document's entry: its key, and where it was scrolled, if it was (an entry this client pushed, loaded again:
      * a reload, Back from another site past it)
@@ -777,13 +832,14 @@ function scrollPositions() {
       return read(rendered)
     },
     /**
-     * The page on the screen, at `url`: a new entry or this one. `shallow`: by a shallow navigation, which marks a
+     * The page on the screen, at `url`: a new entry or this one, with `record` (a view transition it ran: its custom
+     * types; none, if it ran none: a replaced entry forgets the one it had unless it is the same URL). `shallow`: by a shallow navigation, which marks a
      * new entry (SHALLOW); a replaced entry keeps its state, but another URL, by a navigation that is not
      * shallow, takes the mark away: `closeShallow()` there must not go Back off it. A replaced entry is the same
      * entry (its key stays) for a shallow navigation and an answer at its URL; another page is a new one, and
      * nothing can visit the entry it replaced.
      */
-    write(url: string, replace: boolean, shallow = false) {
+    write(url: string, replace: boolean, shallow = false, record?: string[]) {
       const to = new URL(url, location.href)
       // the same URL (a form's answer, reload()): the same overlay
       const same = to.pathname + to.search === location.pathname + location.search
@@ -794,10 +850,15 @@ function scrollPositions() {
         [KEY]: kept ? old : newKey(),
       }
       if (replace && old && !kept) forget(old)
-      if (viewTransitions && !replace) state[INDEX] = at = (at ?? 0) + 1
+      if (!replace) state[INDEX] = at = (at ?? 0) + 1
       if (shallow) {
         if (!replace) state[SHALLOW] = true
-      } else if (!same) delete state[SHALLOW] // another page: not a shallow entry
+      } else {
+        if (!same) delete state[SHALLOW] // another page: not a shallow entry
+        if (record) state[TRANSITION] = record
+        else if (!same) delete state[TRANSITION]
+      }
+      recorded = recordOf(state)
       if (replace) history.replaceState(state, '', url)
       else history.pushState(state, '', url)
     },
@@ -915,14 +976,28 @@ export function loadDocument(href: string) {
  * browser doesn't scroll to it, and `:target` stays as it was). Only this page's own pathname; another page throws.
  * Not with `keep`: a shallow navigation keeps the page anyway. Before the app has started, a document load. While a
  * visit is being put on the screen (its URL is in the history, its page is not there yet), a normal navigation.
+ *
+ * `transition`: the page comes with the browser's view transition: `true`, or the custom types it adds (`['zoom']`; the
+ * direction is always there); `false` opts out where `fondu({ viewTransitions: true })` is the default. Back and Forward
+ * across the entry remember it. Never for a shallow navigation.
  */
 export function navigate(
   href: string,
   options:
-    | { replace?: boolean; keep?: boolean; shallow?: false }
-    | { replace?: boolean; keep?: never; shallow: true } = {},
+    | { replace?: boolean; keep?: boolean; shallow?: false; transition?: boolean | string[] }
+    | { replace?: boolean; keep?: never; shallow: true; transition?: never } = {},
 ) {
-  const { replace = false, keep = false, shallow = false } = options as Record<string, boolean>
+  const {
+    replace = false,
+    keep = false,
+    shallow = false,
+    transition,
+  } = options as {
+    replace?: boolean
+    keep?: boolean
+    shallow?: boolean
+    transition?: boolean | string[]
+  }
   if (shallow && keep)
     throw new Error('fondu: a shallow navigation takes no `keep`: the page stays as it is')
   const shown = shownUrl?.()
@@ -945,7 +1020,11 @@ export function navigate(
     (here && url.hash)
   )
     return replace ? location.replace(url.href) : location.assign(url.href) // a #fragment of this page: the browser's; shallow: the app has not started
-  visit(url.href, { history: replace || url.href === location.href ? 'replace' : 'push', keep })
+  visit(url.href, {
+    history: replace || url.href === location.href ? 'replace' : 'push',
+    keep,
+    transition: transition === true ? [] : transition,
+  })
 }
 
 /**

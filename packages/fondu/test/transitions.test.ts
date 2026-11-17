@@ -15,9 +15,8 @@ let started: Stub[]
 let unhandled: unknown[]
 const onUnhandled = (reason: unknown) => unhandled.push(reason)
 
-async function load(constant = true, typed = true) {
+async function load(typed = true) {
   vi.resetModules()
-  vi.stubGlobal('__FONDU_VIEW_TRANSITIONS__', constant)
   vi.stubGlobal('CSS', { supports: () => typed })
   vi.stubGlobal('document', {
     documentElement: { style: { scrollBehavior: 'smooth' } },
@@ -66,11 +65,11 @@ const settle = () => new Promise((resolve) => setTimeout(resolve, 10))
 
 describe('transition()', () => {
   test('the object form with types where the browser has them, the function form without', async () => {
-    const typed = await load(true, true)
+    const typed = await load(true)
     void typed.transition(() => {}, ['navigation-back'])
     expect(started[0]!.types).toEqual(['navigation-back'])
     started = []
-    const plain = await load(true, false)
+    const plain = await load(false)
     void plain.transition(() => {}, ['navigation-back'])
     expect(started[0]!.types).toBeUndefined()
     expect(typeof started[0]!.update).toBe('function')
@@ -138,11 +137,19 @@ describe('transition()', () => {
     expect(style.scrollBehavior).toBe('smooth')
   })
 
-  test('the constant: false where nothing defines it, and what the build defines', async () => {
-    vi.resetModules()
-    vi.unstubAllGlobals()
-    expect((await import('../src/client/transitions.js')).viewTransitions).toBe(false)
-    expect((await load(true)).viewTransitions).toBe(true)
-    expect((await load(false)).viewTransitions).toBe(false)
+  test('a data-transition attribute: none, opted out, or the custom types it adds', async () => {
+    const { optIn } = await load()
+    expect(optIn(null)).toBeUndefined()
+    expect(optIn('')).toEqual([])
+    expect(optIn('zoom')).toEqual(['zoom'])
+    expect(optIn('zoom fade')).toEqual(['zoom', 'fade'])
+    expect(optIn('  zoom \n\t fade  ')).toEqual(['zoom', 'fade'])
+    // JSX: `<a data-transition>` is rendered as `data-transition="true"`
+    expect(optIn('true')).toEqual([])
+    expect(optIn('false')).toBe(false)
+    expect(optIn(' false ')).toBe(false)
+    // only the whole value opts out
+    expect(optIn('zoom false')).toEqual(['zoom', 'false'])
+    expect(optIn('zoom true')).toEqual(['zoom', 'true'])
   })
 })

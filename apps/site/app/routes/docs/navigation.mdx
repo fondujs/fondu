@@ -86,6 +86,8 @@ navigate(href('/orders', { query: { page: 2 } }))
 - `{ keep: true }` shows the answer as `reload()` does: the page keeps its state (a focused input, what was typed) and
   the scroll position, and nothing is announced. The loader still runs for `url`. If another page answers, it is shown
   as any navigation's, from the top.
+- `{ transition: true }`, or `{ transition: ['zoom'] }` to add types, animates the navigation
+  ([View transitions](#view-transitions)). `false` opts out where every navigation transitions by default.
 - Any other URL loads as a document: `mailto:` and other sites too. A `javascript:` URL throws an `Error`, in
   `navigate()` and in `loadDocument()`.
 
@@ -132,14 +134,14 @@ export default function Search({ q, results }: { q: string; results: string[] })
 so a fast typist sees only the last answer. Why not `request()` from an effect: the URL holds the search, so Back, a
 reload and a shared link all work, and the loader is the one place the results are computed.
 
-| Export                                  | Does                                                                                                                 |
-| --------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `navigate(url, { replace?, keep? })`    | goes to `url` as a link would; `keep`: the page keeps its state and scroll, as `reload()` does                       |
-| `navigate(url, { shallow: true, ... })` | changes the query or `#fragment` of this page, with no request; `replace?`, no `keep` ([below](#shallow-navigation)) |
-| `closeShallow(to)`                      | closes what a shallow navigation opened, one step: Back, or `to` in place of this entry                              |
-| `loadDocument(url)`                     | loads `url` as a document (a full page load)                                                                         |
-| `reload()`                              | asks for the current page's props again; state and scroll stay                                                       |
-| `reload({ only: ['stats'] })`           | asks for those props alone, quietly: [deferred props](/docs/pages#deferred-props)                                    |
+| Export                                            | Does                                                                                                                                                 |
+| ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `navigate(url, { replace?, keep?, transition? })` | goes to `url` as a link would; `keep`: the page keeps its state and scroll, as `reload()` does; `transition`: a [view transition](#view-transitions) |
+| `navigate(url, { shallow: true, ... })`           | changes the query or `#fragment` of this page, with no request; `replace?`, no `keep`, no `transition` ([below](#shallow-navigation))                |
+| `closeShallow(to)`                                | closes what a shallow navigation opened, one step: Back, or `to` in place of this entry                                                              |
+| `loadDocument(url)`                               | loads `url` as a document (a full page load)                                                                                                         |
+| `reload()`                                        | asks for the current page's props again; state and scroll stay                                                                                       |
+| `reload({ only: ['stats'] })`                     | asks for those props alone, quietly: [deferred props](/docs/pages#deferred-props)                                                                    |
 
 ## Forms
 
@@ -310,47 +312,109 @@ loader.
 
 ## View transitions
 
-A navigation can animate between two pages, with the browser's View Transition API. It is off by default. In
-`vite.config.ts`:
+A navigation can animate between two pages, with the browser's View Transition API. Each navigation opts in on its own.
+
+A link, with `data-transition`:
+
+```tsx
+<a href="/photos/7" data-transition>
+  Photo 7
+</a>
+```
+
+- A value adds types of your own, separated by spaces: `data-transition="zoom fade"`. A bare attribute adds none.
+  (React writes `<a data-transition>` as `data-transition="true"`, which means the same.)
+- A form takes the same attribute: `<form data-transition>`.
+- In code, `navigate()` takes `transition`: `true`, or the types to add.
+
+  ```ts
+  navigate('/photos/7', { transition: true })
+  navigate('/photos/7', { transition: ['zoom'] })
+  ```
+
+A navigation that opted in runs its commit inside `document.startViewTransition()`: the old page is captured, the new
+page is put on the screen and scrolled where it belongs, and the browser animates between the two. It is the browser's
+API around Fondu's own commit. The animation is CSS (`::view-transition-*`), and there is nothing to add to a page.
+Without `document.startViewTransition`, a navigation is as it was.
+
+### Every navigation by default
+
+An app where most navigations animate sets the default in `vite.config.ts`:
 
 ```ts
 fondu({ target: 'node', viewTransitions: true })
 ```
 
-With the option on, a navigation that restores the scroll (a link, a form's answer, `navigate()`, Back and Forward to
-another page) runs its commit inside `document.startViewTransition()`: the old page is captured, the new page is put on
-the screen and scrolled where it belongs, and the browser animates between the two. It is the browser's API around
-Fondu's own commit. The animation is CSS (`::view-transition-*`), and there is nothing to add to a page. Without the
-option, or in a browser that has no `document.startViewTransition`, a navigation is as it was.
+Every navigation then transitions, and one opts out with `data-transition="false"` or `transition: false`. The option
+sets the default and nothing else: the code is in the client either way, and a link can opt in without it.
 
-React's `<ViewTransition>` component does not animate Fondu's navigations: Fondu's commit is not a React transition,
-and the component sets nothing for it (not even its `name`). It works as it does anywhere for your own `startTransition`
-updates. A shared element between two pages is a `view-transition-name` in CSS, on the same element in each page.
+### Types
 
-Each navigation has a type, for CSS to pick the animation:
+Each transition has types, for CSS to pick the animation: the direction first, then the navigation's own.
 
-| Type                 | For                                                                                                 |
-| -------------------- | --------------------------------------------------------------------------------------------------- |
-| `navigation-forward` | a new history entry (a link, a form, `navigate()`), and Forward                                     |
-| `navigation-back`    | Back                                                                                                |
-| `navigation-replace` | an entry replaced (`navigate(…, { replace: true })`, a link to the page's own URL, a form's answer) |
+| Type                 | For                                                                                |
+| -------------------- | ---------------------------------------------------------------------------------- |
+| `navigation-forward` | a new history entry (a link, a form, `navigate()`), and Forward                    |
+| `navigation-back`    | Back                                                                               |
+| `navigation-replace` | an entry replaced (`navigate(…, { replace: true })`, a link to the page's own URL) |
+| your own             | those of `data-transition="zoom fade"` or `transition: ['zoom']`                   |
 
 In a browser that has no `:active-view-transition-type()`, the transition is untyped.
 
 ```css
-/* the new page comes in from the right, and from the left for Back */
 @media (prefers-reduced-motion: no-preference) {
+  /* the photo in the list and the photo on its page are one element to the browser */
+  .photo {
+    view-transition-name: photo;
+  }
+
+  /* the new page comes in from the right, and from the left for Back */
   :root:active-view-transition-type(navigation-forward)::view-transition-new(root) {
     animation: slide-in-right 250ms ease-out;
   }
   :root:active-view-transition-type(navigation-back)::view-transition-new(root) {
     animation: slide-in-left 250ms ease-out;
   }
+
+  /* a link with data-transition="zoom": the photo takes its time */
+  :root:active-view-transition-type(zoom)::view-transition-group(photo) {
+    animation-duration: 500ms;
+  }
+
+  @keyframes slide-in-right {
+    from {
+      transform: translateX(2rem);
+      opacity: 0;
+    }
+  }
+  @keyframes slide-in-left {
+    from {
+      transform: translateX(-2rem);
+      opacity: 0;
+    }
+  }
 }
 ```
 
-No transition is made for what does not restore the scroll: `reload()`, `navigate()` with `keep`, a shallow
-navigation, a page's deferred props arriving, and a swipe back that the browser animates itself.
+### Back and Forward
+
+An entry that a navigation reached with a transition remembers it, with the types it added, in `history.state` (so it
+survives a reload). Back from that page and Forward to it run the transition again, with the types and the direction:
+a link with `data-transition="zoom"` is `navigation-forward zoom`, and Back from the page it opened is
+`navigation-back zoom`.
+
+Of the two entries a traversal goes between, the one that was reached later is the one that matters: Back from it, and
+Forward to it. When Back or Forward skips several entries, it is the later of the two it goes between.
+
+- Back from a page reached without a transition does not animate.
+- With `viewTransitions: true`, every Back and Forward animates: with the remembered types if the entry has them, with
+  the direction alone if it does not (a page reached by a navigation that opted out).
+- A navigation that replaces an entry (`replace: true`, a link to the page's own URL) with a transition stores its types
+  in that entry, and one without a transition clears what the entry had.
+
+No transition is made for what does not restore the scroll: `reload()`, `navigate()` with `keep`, a form's answer at
+its own URL, a page's deferred props arriving, and a swipe back that the browser animates itself. A shallow navigation
+(`data-shallow`, `shallow: true`) never transitions, whatever else is on it.
 
 ### What to know
 
@@ -358,6 +422,10 @@ navigation, a page's deferred props arriving, and a swipe back that the browser 
   the page's title is announced when it is on the screen.
 - While the browser captures the old page, and while a page's modules load, the old page is still on the screen under
   the new URL. A newer navigation in that time wins: the older one commits nothing.
+- React's `<ViewTransition>` component does not animate Fondu's navigations: Fondu's commit is not a React transition,
+  and the component sets nothing for it (not even its `name`). It works as it does anywhere for your own
+  `startTransition` updates. A shared element between two pages is a `view-transition-name` in CSS, on the same element
+  in each page.
 - The document runs one view transition at a time. A navigation and a transition of your own (a React
   `<ViewTransition>` in a `startTransition`, or your own `document.startViewTransition()`) cut each other short: the
   newer one skips the older. Two elements with the same `view-transition-name` skip the transition too.
