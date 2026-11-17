@@ -3,6 +3,8 @@ import inter from '@fontsource-variable/inter/files/inter-latin-wght-normal.woff
 import instrumentSerif from '@fontsource/instrument-serif/files/instrument-serif-latin-400-italic.woff2?url'
 import type { DocumentParts } from 'fondu'
 
+import { jsonLd, structuredData } from '#/structured-data.ts'
+
 /**
  * Sets the theme chosen in the theme menu (a cookie) on <html> before the page paints. Fondu gives the document's
  * scripts the nonce, and allows them on static pages by their hashes.
@@ -12,6 +14,7 @@ const THEME =
 
 /** The HTML around every page (server.ts) */
 export default function Document({ head, body, c }: DocumentParts) {
+  const data = structuredData(c.req.path)
   return (
     <html lang="en" className="system">
       <head>
@@ -29,6 +32,10 @@ export default function Document({ head, body, c }: DocumentParts) {
             navigation to it, once the page is loaded, for a font its stylesheet has asked for already) */}
         {c.req.path === '/' && (
           <link rel="preload" href={instrumentSerif} as="font" type="font/woff2" crossOrigin="" />
+        )}
+        {/* structured data (structured-data.ts): a data block, so Fondu gives it no nonce and no hash */}
+        {data && (
+          <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(data) }} />
         )}
         {head}
       </head>

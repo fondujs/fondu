@@ -3,10 +3,7 @@ import { readFileSync } from 'node:fs'
 import type { Plugin } from 'vite'
 
 import { descriptionProblems, docs, docUrl, markdownUrl, type Doc } from './app/docs.ts'
-
-const SITE = 'https://fondu.dev'
-const SUMMARY =
-  'A small meta-framework for full-stack React apps, built on Hono and Vite. It runs on Bun, Cloudflare Workers and Node.'
+import { SITE, SUMMARY } from './app/site.ts'
 
 /**
  * A page as Markdown: its title and description, then the MDX source less its import / export lines and its
