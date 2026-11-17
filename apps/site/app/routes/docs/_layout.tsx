@@ -110,7 +110,11 @@ export default function DocsLayout({ children }: { children: ReactNode }) {
         </aside>
 
         <div className="min-w-0 py-8" data-pagefind-body>
-          <Meta title={doc.slug ? doc.title : 'Docs'} description={doc.description} />
+          <Meta
+            title={doc.slug ? doc.title : 'Docs'}
+            description={doc.description}
+            markdown={markdownUrl(doc)}
+          />
           <article className="prose">
             <h1>{doc.title}</h1>
             <MarkdownActions url={markdownUrl(doc)} />
