@@ -308,6 +308,61 @@ the query of the address bar, so a state in the query works on a direct load, as
 not see that query: it ran at build time. Whatever a page must have for a query, a prerendered page cannot get from its
 loader.
 
+## View transitions
+
+A navigation can animate between two pages, with the browser's View Transition API. It is off by default. In
+`vite.config.ts`:
+
+```ts
+fondu({ target: 'node', viewTransitions: true })
+```
+
+With the option on, a navigation that restores the scroll (a link, a form's answer, `navigate()`, Back and Forward to
+another page) runs its commit inside `document.startViewTransition()`: the old page is captured, the new page is put on
+the screen and scrolled where it belongs, and the browser animates between the two. It is the browser's API around
+Fondu's own commit. The animation is CSS (`::view-transition-*`), and there is nothing to add to a page. Without the
+option, or in a browser that has no `document.startViewTransition`, a navigation is as it was.
+
+React's `<ViewTransition>` component does not animate Fondu's navigations: Fondu's commit is not a React transition,
+and the component sets nothing for it (not even its `name`). It works as it does anywhere for your own `startTransition`
+updates. A shared element between two pages is a `view-transition-name` in CSS, on the same element in each page.
+
+Each navigation has a type, for CSS to pick the animation:
+
+| Type                 | For                                                                                                 |
+| -------------------- | --------------------------------------------------------------------------------------------------- |
+| `navigation-forward` | a new history entry (a link, a form, `navigate()`), and Forward                                     |
+| `navigation-back`    | Back                                                                                                |
+| `navigation-replace` | an entry replaced (`navigate(…, { replace: true })`, a link to the page's own URL, a form's answer) |
+
+In a browser that has no `:active-view-transition-type()`, the transition is untyped.
+
+```css
+/* the new page comes in from the right, and from the left for Back */
+@media (prefers-reduced-motion: no-preference) {
+  :root:active-view-transition-type(navigation-forward)::view-transition-new(root) {
+    animation: slide-in-right 250ms ease-out;
+  }
+  :root:active-view-transition-type(navigation-back)::view-transition-new(root) {
+    animation: slide-in-left 250ms ease-out;
+  }
+}
+```
+
+No transition is made for what does not restore the scroll: `reload()`, `navigate()` with `keep`, a shallow
+navigation, a page's deferred props arriving, and a swipe back that the browser animates itself.
+
+### What to know
+
+- The scroll position is restored inside the transition, so the new snapshot is of the page where it is scrolled, and
+  the page's title is announced when it is on the screen.
+- While the browser captures the old page, and while a page's modules load, the old page is still on the screen under
+  the new URL. A newer navigation in that time wins: the older one commits nothing.
+- The document runs one view transition at a time. A navigation and a transition of your own (a React
+  `<ViewTransition>` in a `startTransition`, or your own `document.startViewTransition()`) cut each other short: the
+  newer one skips the older. Two elements with the same `view-transition-name` skip the transition too.
+- Reduced motion is your CSS: put the animations in `@media (prefers-reduced-motion: no-preference)`, as above.
+
 ## While a page loads
 
 `useNavigation()` from `fondu/client` says what is on its way, from a click or a submit until the next page is on

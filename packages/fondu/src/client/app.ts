@@ -267,8 +267,8 @@ function start(settings: { prerender: boolean; progress: ProgressOptions | false
         async show(page, fresh, stale) {
           const view = await load(page.component)
           if (stale()) return
-          const next = shownOf(page, view, fresh)
-          flushSync(() => set(newer(next)))
+          // built when it is committed: what the page on the screen asked for in between is in it
+          return () => flushSync(() => set(newer(shownOf(page, view, fresh))))
         },
       })
     }

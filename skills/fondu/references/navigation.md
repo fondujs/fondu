@@ -124,6 +124,31 @@ const subscribe = (notify: () => void) => {
 const useHash = () => useSyncExternalStore(subscribe, () => location.hash, () => '') // '' on the server
 ```
 
+## View transitions
+
+Off by default: `fondu({ target, viewTransitions: true })`. A navigation that restores the scroll (link, form answer,
+`navigate()`, Back/Forward to another page) commits inside the browser's `document.startViewTransition()`: Fondu's own
+commit and scroll restore are the `update`. The animation is CSS; there is nothing to add to a page.
+
+- Types, for `:root:active-view-transition-type(navigation-forward)` and so on: `navigation-forward` (a new entry,
+  Forward), `navigation-back`, `navigation-replace`.
+- React's `<ViewTransition>` does not animate Fondu's navigations (it works for the app's own `startTransition`
+  updates), and its `name` is not applied for them. Shared elements: `view-transition-name` in CSS. One view
+  transition runs per document: a navigation and an app's own transition cut each other short, and duplicate
+  names skip it.
+- No transition for `reload()`, `keep`, shallow navigations, deferred props, or a swipe back the browser animates
+  itself. Without `document.startViewTransition` navigations are as they were.
+- The old page stays under the new URL until the commit; a newer navigation in that time wins. Reduced motion is the
+  app's CSS: animations in `@media (prefers-reduced-motion: no-preference)`.
+
+```css
+@media (prefers-reduced-motion: no-preference) {
+  :root:active-view-transition-type(navigation-back)::view-transition-new(root) {
+    animation: slide-in-left 250ms ease-out;
+  }
+}
+```
+
 ## Pending state
 
 ```tsx

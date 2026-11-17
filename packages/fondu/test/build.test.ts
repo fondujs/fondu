@@ -136,3 +136,23 @@ describe('what only a loader uses is not in the client build', () => {
       expect(all).toContain('BADGE_SHOWN')
     })
 })
+
+// `viewTransitions`: the code of the view transitions is in the client of a build that has it on, and not in one that has
+// it off (a constant at build time, `define`)
+describe('the client bundle and the viewTransitions option', () => {
+  const MARKS = ['navigation-forward', 'active-view-transition-type', '__fondu_index']
+  const bundle = (root: string) => {
+    const assets = join(root, 'dist/client/assets')
+    return readdirSync(assets)
+      .filter((f) => f.endsWith('.js'))
+      .map((f) => readFileSync(join(assets, f), 'utf8'))
+      .join('\n')
+  }
+  for (const on of [false, true])
+    test(`option ${on ? 'on' : 'off'}: its code is ${on ? 'in' : 'not in'} the client`, async () => {
+      app = tempApp({ 'app/routes/index.tsx': page })
+      await buildClient(app.root, { viewTransitions: on })
+      const code = bundle(app.root)
+      for (const mark of MARKS) expect(code.includes(mark), mark).toBe(on)
+    })
+})

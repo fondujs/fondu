@@ -1,5 +1,6 @@
 import { crlf } from '../form.js'
 import { pageDataPath, SCROLL_KEY, SCROLL_STORAGE } from '../paths.js'
+import { canTransition, instantly, skipActive, transition, viewTransitions } from './transitions.js'
 
 /** what the server sends for a page: its id (its route file, `users/[id]`), its props, its URL, the build's version */
 export interface Page {
@@ -15,10 +16,11 @@ export interface Page {
 interface Options {
   initial: Page
   /**
-   * puts the page on the screen (in the DOM once it resolves); `fresh`: mounted anew, else it keeps its state (a form
-   * back with its errors, reload()); not once `stale()` (superseded while its modules loaded)
+   * loads the page's modules, and gives what puts it on the screen, in the DOM once it has run (the page is built then,
+   * not before: what the page on the screen asked for in between is in it); `fresh`: mounted anew, else it keeps its
+   * state (a form back with its errors, reload()); nothing once `stale()` (superseded while its modules loaded)
    */
-  show: (page: Page, fresh: boolean, stale: () => boolean) => Promise<void>
+  show: (page: Page, fresh: boolean, stale: () => boolean) => Promise<(() => void) | undefined>
   /** `fondu({ prerender: true })`: GET navigations read `/_fondu/pages/<path>.json` */
   prerender: boolean
   /** a navigation started (to `to`: a path, its query and fragment; `form`: a form's submission) or ended (null) */
@@ -50,6 +52,10 @@ interface Visit {
   keep?: boolean
   /** Back and Forward: the page the entry showed, put on the screen at once, then the server's in its place */
   kept?: Page
+  /** Back and Forward, with `viewTransitions`: the view transition's types (the direction, where the browser says) */
+  traversal?: string[]
+  /** the browser animates this traversal already (a swipe back): none of our own */
+  swipe?: boolean
 }
 
 let visit: ((url: string, options: Visit) => void) | undefined
@@ -104,16 +110,40 @@ export function startNavigation({
   // after it is dropped for that prop, as an answer for a page no longer there is
   let requests = 0
   let answers = new Map<string, number>()
-  const put = async (page: Page, fresh: boolean, stale: () => boolean) => {
-    await show(page, fresh, stale)
-    if (stale()) return
-    on = page
-    shows++
-    group = new Set([scroll.key()!])
-    answered = page.url
-    // the page they were for is gone
-    for (const quiet of asking) quiet.abort()
-    answers = new Map()
+  /** the page on the screen, at once: its modules loaded, then committed (the DOM has it when this resolves) */
+  const showNow = async (page: Page, fresh: boolean, stale: () => boolean) =>
+    (await show(page, fresh, stale))?.()
+  /**
+   * The page put on the screen, and what follows it (`tail`: keep it, announce it, scroll). With `types` (a view
+   * transition: `viewTransitions`, and the browser has it) all of it is the transition's `update`, which runs when the
+   * browser has captured the old page; a visit superseded by then commits nothing (`update` runs on a skip too)
+   */
+  const put = async (
+    page: Page,
+    fresh: boolean,
+    stale: () => boolean,
+    tail: () => void,
+    types?: string[],
+  ) => {
+    const commit = await show(page, fresh, stale)
+    if (!commit) return
+    const update = () => {
+      commit()
+      on = page
+      shows++
+      group = new Set([scroll.key()!])
+      answered = page.url
+      // the page they were for is gone
+      for (const quiet of asking) quiet.abort()
+      answers = new Map()
+      tail()
+    }
+    if (viewTransitions && types)
+      await transition((skip) => {
+        if (stale()) return skip()
+        instantly(update)
+      }, types)
+    else update()
   }
   shownUrl = () => new URL(on.url, location.href)
   const headers = () => ({ 'X-Fondu': 'true', ...(version && { 'X-Fondu-Version': version }) })
@@ -172,7 +202,7 @@ export function startNavigation({
     // a prop asked for that is neither here nor coming (it failed): pending again, `<Deferred>` shows its fallback
     const absent = names.filter((n) => !Object.hasOwn(page.props, n) && !page.deferred?.includes(n))
     if (absent.length)
-      void show(
+      void showNow(
         (on = { ...page, deferred: [...(page.deferred ?? []), ...absent] }),
         false,
         () => shows !== at,
@@ -212,7 +242,7 @@ export function startNavigation({
     }
     // not once another answer has merged into the page since: its own show() has these props too
     const stale = () => shows !== at || on !== next
-    await show(next, false, stale)
+    await showNow(next, false, stale)
     if (!stale()) keep(next)
   }
   /** a document load: in place of this entry, or after it */
@@ -252,14 +282,26 @@ export function startNavigation({
     // a GET that is not asked for again: the answer kept for it (never a form's POST, reload() or Back's)
     const found = !post && !options.keep && !shown ? prefetched.get(from) : undefined
     const entry = found && Date.now() - found.at < freshFor ? found : undefined
+    // `viewTransitions`: the visit's one view transition, for the first commit that restores the scroll (a kept page's
+    // refresh after it is plain). Not for a swipe, which the browser animates, nor without `document.startViewTransition`
+    let transitions = viewTransitions && !options.swipe && canTransition()
     void (async () => {
       try {
         if (shown) {
           scroll.commit()
-          await put(shown, true, () => signal.aborted)
+          const types = viewTransitions && transitions ? (options.traversal ?? []) : undefined
+          transitions = false
+          await put(
+            shown,
+            true,
+            () => signal.aborted,
+            () => {
+              announce()
+              restore(options.scroll, url.hash)
+            },
+            types,
+          )
           if (signal.aborted) return
-          announce()
-          restore(options.scroll, url.hash)
         }
         // the file asked for early, waited for if it is on its way; none (null): the app is asked
         const early = entry ? await entry.answer : null
@@ -349,16 +391,30 @@ export function startNavigation({
               : options.history
         if (history !== 'none') scroll.write(target, history === 'replace')
         scroll.commit()
-        await put(page, fresh, () => signal.aborted)
-        if (signal.aborted) return
-        keep(page)
-        if (page.deferred?.length) ask!(page.deferred)
-        if (shown && !fresh) return
-        if (!stay) announce()
-        // a page asked for again stays where it is: reload(), navigate() with `keep`, a form's answer at its URL
-        if (stay || same) return
-        // at once, the page in the DOM (show() renders it synchronously): no frame drawn where it doesn't belong
-        restore(options.history === 'none' ? options.scroll : null, url.hash)
+        const types =
+          viewTransitions && transitions && !stay && !same && !(shown && !fresh)
+            ? history === 'push'
+              ? ['navigation-forward']
+              : history === 'replace'
+                ? ['navigation-replace']
+                : (options.traversal ?? [])
+            : undefined
+        await put(
+          page,
+          fresh,
+          () => signal.aborted,
+          () => {
+            keep(page)
+            if (page.deferred?.length) ask!(page.deferred)
+            if (shown && !fresh) return
+            if (!stay) announce()
+            // a page asked for again stays where it is: reload(), navigate() with `keep`, a form's answer at its URL
+            if (stay || same) return
+            // at once, the page in the DOM (show() renders it synchronously): no frame drawn where it doesn't belong
+            restore(options.history === 'none' ? options.scroll : null, url.hash)
+          },
+          types,
+        )
       } catch (error) {
         if ((error as Error).name === 'AbortError') return
         if (shown) {
@@ -412,7 +468,7 @@ export function startNavigation({
       url: location.pathname + location.search,
       ...(fresh && { flash: {}, props: { ...on.props, errors: {} } }),
     }
-    void show(on, false, () => shows !== at)
+    void showNow(on, false, () => shows !== at)
     keep(on)
   }
 
@@ -524,6 +580,10 @@ export function startNavigation({
   // Back and Forward: the entry's page, where it was scrolled
   window.addEventListener('popstate', (event) => {
     closing = false
+    // a view transition on its way is over: this traversal is the newer navigation (its `update` commits nothing)
+    if (viewTransitions) skipActive()
+    // Back or Forward, from the entry's index (written beside its key), before the entry is the page's own
+    const traversal = viewTransitions ? scroll.direction!(event.state) : undefined
     const popped = scroll.pop(event.state)
     // a visit on its way is given up by any Back or Forward, the browser's own #fragment entries too: its answer
     // would put a page on the screen over the entry the visitor is at
@@ -545,6 +605,11 @@ export function startNavigation({
       history: 'none',
       scroll: popped.position,
       kept: kept.get(popped.key ?? ''),
+      ...(viewTransitions && {
+        traversal,
+        // the browser's own animation (a swipe) plays already: ours would play twice
+        swipe: (event as { hasUAVisualTransition?: boolean }).hasUAVisualTransition,
+      }),
     })
   })
   // leaving the document (a reload, another site): its position, put back by the document when it is loaded again.
@@ -582,6 +647,8 @@ export function startNavigation({
  * same page. `closeShallow()` goes back (one step) from such an entry; any other it replaces in place.
  */
 const SHALLOW = '__fondu_shallow'
+/** `history.state`'s place of the entry (`viewTransitions`): the direction of a traversal */
+const INDEX = '__fondu_index'
 /** `closeShallow()` has gone back, and the browser has not landed yet: a second call waits (until the entry is there) */
 let closing = false
 
@@ -614,6 +681,13 @@ function scrollPositions() {
       ? ((state as Record<string, string>)[KEY] as string)
       : null
   const newKey = () => Math.random().toString(36).slice(2, 10)
+  // `viewTransitions`: each entry's place in the history, a number that only grows with each entry this client pushes
+  // (beside its key, in its state): Back or Forward is the entry's against the one it left
+  const indexOf = (state: unknown) => {
+    const index = (state as Record<string, unknown> | null)?.[INDEX]
+    return typeof index === 'number' ? index : undefined
+  }
+  let at = viewTransitions ? indexOf(history.state) : undefined
   let rendered = keyOf(history.state)
   let renderedUrl = location.pathname + location.search
   const read = (key: string | null) => {
@@ -659,7 +733,14 @@ function scrollPositions() {
     let key = keyOf(history.state)
     const added = !key
     if (!key)
-      history.replaceState({ ...(history.state as object | null), [KEY]: (key = newKey()) }, '')
+      history.replaceState(
+        {
+          ...(history.state as object | null),
+          [KEY]: (key = newKey()),
+          ...(viewTransitions && { [INDEX]: (at = at === undefined ? 0 : at + 1) }),
+        },
+        '',
+      )
     rendered = key
     renderedUrl = location.pathname + location.search
     return added
@@ -669,6 +750,16 @@ function scrollPositions() {
     commit,
     /** the key of the entry on the screen */
     key: () => rendered,
+    /** Back or Forward to `state`'s entry, as a view transition's type; none if either entry has no index */
+    direction: viewTransitions
+      ? (state: unknown) => {
+          const from = at
+          const to = (at = indexOf(state))
+          return from === undefined || to === undefined || to === from
+            ? undefined
+            : [to < from ? 'navigation-back' : 'navigation-forward']
+        }
+      : undefined,
     /**
      * The document's entry: its key, and where it was scrolled, if it was (an entry this client pushed, loaded again:
      * a reload, Back from another site past it)
@@ -703,6 +794,7 @@ function scrollPositions() {
         [KEY]: kept ? old : newKey(),
       }
       if (replace && old && !kept) forget(old)
+      if (viewTransitions && !replace) state[INDEX] = at = (at ?? 0) + 1
       if (shallow) {
         if (!replace) state[SHALLOW] = true
       } else if (!same) delete state[SHALLOW] // another page: not a shallow entry
