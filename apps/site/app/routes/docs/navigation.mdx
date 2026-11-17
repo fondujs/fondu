@@ -282,7 +282,8 @@ If the drawer needs data the list does not have, ask for it with `reload({ only:
 query), or with `request()` from a `.ts` route.
 
 A form in the dialog is posted as any form. Its answer at the same page (back with errors, or `back(c)`) keeps the
-`#fragment` on the screen, so the dialog stays open, with its errors or its result.
+`#fragment` on the screen, so the dialog stays open, with its errors or its result. The entries that shared the page
+keep sharing it with the answer's props: closing the dialog asks for nothing more.
 
 ### A gallery at an item's own URL
 
@@ -320,12 +321,16 @@ and the state stays. A visit still on its way is given up, as with any Back. Onc
 left: Back or Forward into one of its entries is an ordinary visit to that URL. For `/photos/7`, it loads the photo's
 own page, not the gallery's dialog.
 
-An answer from the server on a shallow entry belongs to that entry alone. It ends the sharing, and the other entries
-become normal ones: Back to them asks, as it does for any page. This is the case for:
+A form's answer for the page on the screen keeps the group: the same component at the same pathname, even if the
+query or fragment differs. All the entries that shared the page now share the answer's props; Back and Forward
+between them still change `url` without a request. Flash is not shown again. An answer from another component, or a
+redirect to another pathname, starts a new group instead.
+
+Other answers from the server on a shallow entry belong to that entry alone. They end the sharing, and the other
+entries become normal ones: Back to them asks, as it does for any page. This is the case for:
 
 - `reload()` and `reload({ only })`, asked at the entry's URL, so the loader sees its path and query;
   `reload()` at another page's URL shows that page, rather than keeping the gallery or dialog;
-- a form's answer;
 - deferred props asked at that URL.
 
 Deferred props already on their way when the shallow navigation happens are the loader's answer for the page. They

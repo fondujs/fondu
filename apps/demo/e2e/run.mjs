@@ -8,6 +8,7 @@ import puppeteer from 'puppeteer-core'
 
 import { checkGalleryDialog } from './gallery-dialog.mjs'
 import { checkGallerySnapshots } from './gallery-snapshots.mjs'
+import { checkSettingsHistory } from './settings-history.mjs'
 
 const BASE = process.argv[2] ?? 'http://localhost:5173'
 const LABEL = process.argv[3] ?? BASE
@@ -1639,6 +1640,7 @@ await page.waitForFunction(
   )
   await waitText('Role changed to user')
   ok("an admin action (Better Auth's setRole), there and back", true)
+  await checkSettingsHistory({ page, ok })
   // signed out from here, Back: the admin page is not shown again (asked again: the sign-in page)
   await page.click('[data-testid=user]')
   await (await page.waitForSelector('[data-testid=sign-out]')).click()

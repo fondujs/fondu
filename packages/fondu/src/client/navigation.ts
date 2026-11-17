@@ -48,6 +48,8 @@ interface Visit {
   /** a POST form's body, from its form */
   body?: FormData | URLSearchParams | string
   form?: HTMLFormElement
+  /** following a POST's redirect to a #fragment: a GET, but still the form's answer for the shared page */
+  formAnswer?: boolean
   /** Back and Forward: where the entry was scrolled; reload(): undefined, the scroll stays */
   scroll?: { x: number; y: number } | null
   /** reload(), navigate(…, { keep }): the page keeps its state and the scroll, if the same component answers */
@@ -114,7 +116,8 @@ export function startNavigation({
   let shows = 0
   // The history entries (their keys) that show the page on the screen, at URLs of their own: the one that got it, the
   // ones shallow navigations added, the browser's own #fragment entries. Back and Forward between them ask for
-  // nothing. A page put on the screen is its entry's alone: the others are normal entries again (Back asks)
+  // nothing. A form's answer for this component at this pathname updates their shared page too; any other page
+  // put on the screen is its entry's alone: the others are normal entries again (Back asks)
   let group = new Set<string>()
   // the URL the page's props are the loader's answer for: `on.url` changes with a shallow navigation, this does not
   let answered = initial.url
@@ -137,6 +140,7 @@ export function startNavigation({
     stale: () => boolean,
     tail: () => void,
     types?: string[],
+    shared = false,
   ) => {
     const commit = await show(page, fresh, stale)
     if (!commit) return
@@ -144,7 +148,8 @@ export function startNavigation({
       commit()
       on = page
       shows++
-      group = new Set([scroll.key()!])
+      if (!shared) group = new Set()
+      group.add(scroll.key()!)
       answered = page.url
       // the page they were for is gone
       for (const quiet of asking) quiet.abort()
@@ -341,6 +346,7 @@ export function startNavigation({
             visit!(redirect, {
               history: options.history === 'push' ? 'push' : 'replace',
               transition: options.transition,
+              formAnswer: post || options.formAnswer,
             })
           return
         }
@@ -384,6 +390,11 @@ export function startNavigation({
         // the form and what was typed stay too
         const here = location.pathname + location.search
         const same = post && page.url === here
+        // a form's answer for the page on the screen updates all the entries that shared it, even at another query
+        const shared =
+          (post || options.formAnswer) &&
+          page.component === on.component &&
+          new URL(page.url, location.href).pathname === new URL(on.url, location.href).pathname
         const errors = Object.keys((page.props.errors as object | undefined) ?? {}).length > 0
         const asked = url.pathname + url.search
         // asked for the entry on the screen, which a shallow navigation has since left for another URL: not its answer
@@ -436,6 +447,7 @@ export function startNavigation({
             restore(options.history === 'none' ? options.scroll : null, url.hash)
           },
           types,
+          shared,
         )
       } catch (error) {
         if ((error as Error).name === 'AbortError') return
@@ -480,15 +492,16 @@ export function startNavigation({
       dispatchEvent(new HashChangeEvent('hashchange', { oldURL: was, newURL: url.href }))
   }
   /**
-   * The page on the screen follows the address bar (its `url`; a shallow navigation also drops its flash and errors,
-   * which belonged to the answer before it), and is kept for the entry
+   * The page on the screen follows the address bar (its `url`), and is kept for the entry. Flash is shown once;
+   * a shallow navigation also drops the errors, which belonged to the answer before it
    */
   const settle = (fresh: boolean) => {
     const at = shows
     on = {
       ...on,
       url: location.pathname + location.search,
-      ...(fresh && { flash: {}, props: { ...on.props, errors: {} } }),
+      flash: {},
+      ...(fresh && { props: { ...on.props, errors: {} } }),
     }
     void showNow(on, false, () => shows !== at)
     keep(on)
@@ -630,6 +643,7 @@ export function startNavigation({
     // A known entry of another group may have the same URL, but is not this page's native #fragment entry.
     if (popped.fragment && (!popped.key || group.has(popped.key))) {
       if (!popped.key) group.add(scroll.key()!) // an entry the browser made (no key yet): of this page
+      settle(false)
       // a #fragment that names no element (a dialog's `#settings/account`) leaves the page where it is, as the browser does
       if (!popped.position && location.hash && !fragmentTarget(location.hash.slice(1))) return
       return restore(popped.position, location.hash)

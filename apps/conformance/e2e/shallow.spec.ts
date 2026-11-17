@@ -439,7 +439,7 @@ test.describe('a #fragment', () => {
   })
 })
 
-test.describe('a real answer on a shallow entry ends the sharing: Back to the others asks', () => {
+test.describe('server answers on shallow entries', () => {
   test('reload(): the entry’s URL is asked for; Back to the list is a request', async ({
     page,
   }) => {
@@ -481,24 +481,94 @@ test.describe('a real answer on a shallow entry ends the sharing: Back to the ot
     await expect.poll(() => visits(made)).toEqual(['/_fondu/pages/shallow.json'])
   })
 
-  test('a form’s answer with flash: the drawer and its entry stay; Back asks; the flash is not shown again', async ({
+  for (const fragment of [false, true]) {
+    test(`a form’s answer shares its new props: closeShallow(), Back and Forward ask for nothing (fragment=${fragment})`, async ({
+      page,
+    }) => {
+      await open(page)
+      const base = await page.evaluate(() => history.state.__fondu)
+      await page.click(fragment ? '#tab-x' : '#open-a')
+      const overlay = await page.evaluate(() => history.state.__fondu)
+      expect(overlay).not.toBe(base)
+      const before = await loads(page)
+      await page.click('#note')
+      await expect(text(page, 'flash')).toHaveText('Saved')
+      await expect(text(page, 'later')).not.toHaveText('pending')
+      const answered = await loads(page)
+      expect(answered).toBeGreaterThan(before)
+      expect(await page.evaluate(() => history.state.__fondu)).toBe(overlay)
+      expect(await page.evaluate(() => history.state.__fondu_shallow)).toBe(true)
+      const made = requests(page)
+      await page.click(fragment ? '#close-tab' : '#close')
+      await expect(page).toHaveURL(/\/shallow$/)
+      await expect(drawer(page)).toHaveCount(0)
+      await expect(text(page, 'flash')).toHaveText('')
+      expect(await page.evaluate(() => history.state.__fondu)).toBe(base)
+      expect(await loads(page)).toBe(answered)
+      await expect(text(page, 'loaded')).toHaveText(fragment ? '' : 'a')
+      await page.goForward()
+      await expect(page).toHaveURL(fragment ? /\/shallow#tab\/x$/ : /\/shallow\?item=a$/)
+      await page.goBack()
+      await expect(page).toHaveURL(/\/shallow$/)
+      expect(await loads(page)).toBe(answered)
+      expect(made).toEqual([])
+    })
+  }
+
+  for (const fragment of [false, true]) {
+    test(`a form’s query/fragment redirect shares the answer with the entries before it (fragment=${fragment})`, async ({
+      page,
+    }) => {
+      await open(page)
+      await page.click('#open-a')
+      await page.click(fragment ? '#answer-fragment' : '#answer-query')
+      const target = fragment ? /\/shallow\?item=b#tab\/y$/ : /\/shallow\?item=b$/
+      await expect(page).toHaveURL(target)
+      await expect(text(page, 'loaded')).toHaveText('b')
+      await expect(text(page, 'later')).not.toHaveText('pending')
+      const answered = await loads(page)
+      const made = requests(page)
+      for (const url of [/\/shallow\?item=a$/, /\/shallow$/]) {
+        await page.goBack()
+        await expect(page).toHaveURL(url)
+        await expect(text(page, 'loaded')).toHaveText('b')
+        expect(await loads(page)).toBe(answered)
+      }
+      for (const url of [/\/shallow\?item=a$/, target]) {
+        await page.goForward()
+        await expect(page).toHaveURL(url)
+      }
+      expect(made).toEqual([])
+    })
+  }
+
+  test('a form’s answer from another component at the same pathname ends the sharing', async ({
     page,
   }) => {
-    await page.goto('/long')
     await open(page)
     await page.click('#open-a')
-    await page.click('#note')
-    await expect(text(page, 'flash')).toHaveText('Saved')
-    await expect(item(page)).toHaveText('Alpha')
-    await expect(page).toHaveURL(/\/shallow\?item=a$/)
+    await page.click('#answer-other')
+    await expect(page).toHaveTitle('Error 403')
+    expect(new URL(page.url()).pathname).toBe('/shallow')
     const made = requests(page)
     await page.goBack()
-    await expect(drawer(page)).toHaveCount(0)
+    await expect(page).toHaveURL(/\/shallow$/)
+    await expect(text(page, 'component')).toHaveText('shallow')
     await expect.poll(() => visits(made)).toEqual(['/_fondu/pages/shallow.json'])
-    await expect(text(page, 'flash')).toHaveText('')
-    await page.goForward()
-    await expect(item(page)).toHaveText('Alpha')
-    await expect(text(page, 'flash')).toHaveText('')
+  })
+
+  test('a form’s redirect to another pathname ends the sharing, even with the same component', async ({
+    page,
+  }) => {
+    await open(page, '/shallow/first')
+    await page.click('#same')
+    await page.click('#redirect-other')
+    await expect(text(page, 'name')).toHaveText('other')
+    const made = requests(page)
+    await page.goBack()
+    await expect(page).toHaveURL(/\/shallow\/first\?x=1$/)
+    await expect(text(page, 'name')).toHaveText('first')
+    expect(made).toContain('/_fondu/pages/shallow/first.json?x=1')
   })
 
   test('a form’s answer with flash, then a shallow navigation: the flash is gone; Back to the answer’s entry asks for nothing', async ({
@@ -532,14 +602,14 @@ test.describe('a real answer on a shallow entry ends the sharing: Back to the ot
     await expect(item(page)).toHaveText('Beta')
     await expect(text(page, 'errors')).toHaveText('')
     expect(made).toEqual([])
-    // the entries after the answer share its page; the one before it (the list) does not
+    // the entries before and after the form's answer share its updated page
     await page.click('#next-push')
     await page.goBack()
     await expect(item(page)).toHaveText('Beta')
     expect(made).toEqual([])
     await page.goBack()
     await expect(drawer(page)).toHaveCount(0)
-    await expect.poll(() => visits(made)).toEqual(['/_fondu/pages/shallow.json'])
+    expect(made).toEqual([])
   })
 
   test('deferred props in flight across a shallow navigation: they arrive in the page, nothing else is asked', async ({

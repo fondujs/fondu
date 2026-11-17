@@ -109,11 +109,13 @@ closeShallow(url) // closes one level
 - A shallow navigation drops the page's `flash` and `errors`. A `#fragment` change dispatches `hashchange` (read it with
   `useSyncExternalStore`), but the page does not scroll to it and `:target` does not follow.
 - Entries that show the same page (the one that loaded it, the shallow ones, the browser's `#fragment` ones) share it:
-  Back and Forward between them change `url` only, with no request. An answer from the server on a shallow entry
-  (`reload()`, `reload({ only })`, a form's answer, deferred props asked at that URL) ends the sharing: Back to the other
-  entries asks, as any Back does. Leaving for another page also ends the sharing: Back or Forward into a former
-  shallow entry loads its URL's own page. `reload()` at another page's URL shows that page. Deferred props already on
-  their way arrive in the shared page.
+  Back and Forward between them change `url` only, with no request. A form's answer for the same component at the
+  same pathname keeps the group, even if its query or fragment differs: the entries share the answer's props, and
+  closing asks for nothing more. Flash is not shown again. Another component or a redirect to another pathname starts
+  a new group. Other answers on a shallow entry (`reload()`, `reload({ only })`, deferred props asked at that URL) end
+  the sharing: Back to the other entries asks, as any Back does. Leaving for another page also ends the sharing: Back
+  or Forward into a former shallow entry loads its URL's own page. `reload()` at another page's URL shows that page.
+  Deferred props already on their way arrive in the shared page.
 - A prerendered page's `usePage().url` has the visitor's query once it has hydrated, and after a link, Back or `reload()`
   too (and its `#fragment` is in the address bar); its loader never saw the query. A redirect is the server's answer.
 - A form in a dialog that answers at the same page keeps the `#fragment`, so the dialog stays open with its errors.
