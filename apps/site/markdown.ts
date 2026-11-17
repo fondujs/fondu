@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 
 import type { Plugin } from 'vite'
@@ -6,7 +7,7 @@ import { descriptionProblems, docs, docUrl, markdownUrl, type Doc } from './app/
 import { SITE, SUMMARY } from './app/site.ts'
 
 /**
- * A page as Markdown: its title and description, then the MDX source less its import / export lines and its
+ * A page as Markdown: its title, its URL (a reader of the text alone can cite it) and description, then the MDX source less its import / export lines and its
  * components' tags (outside code blocks), links to the docs made absolute, to their Markdown
  */
 function pageMarkdown(doc: Doc): string {
@@ -27,8 +28,51 @@ function pageMarkdown(doc: Doc): string {
     )
     .replace(/\n{3,}/g, '\n\n')
     .trim()
-  return `# ${doc.title}\n\n> ${doc.description}\n\n${body}\n`
+  return `# ${doc.title}\n\n${SITE}${docUrl(doc)}\n\n> ${doc.description}\n\n${body}\n`
 }
+
+const here = new URL('.', import.meta.url)
+const git = (...args: string[]) =>
+  execFileSync('git', args, {
+    cwd: here,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'ignore'],
+  }).trim()
+
+const dates = new Map<string, string | undefined>()
+/**
+ * When a source file last changed: its last commit's date. None when it can't be known: no git, a file git doesn't
+ * know, or a shallow clone (every file would get the date of its newest commit: wrong, rather than missing).
+ */
+function lastModified(file: string): string | undefined {
+  if (!dates.has(file))
+    dates.set(
+      file,
+      (() => {
+        try {
+          if (git('rev-parse', '--is-shallow-repository') !== 'false') return
+          return git('log', '-1', '--format=%cI', '--', file) || undefined
+        } catch {
+          return
+        }
+      })(),
+    )
+  return dates.get(file)
+}
+
+/** the source of each page of the site: the home page, the docs (MDX) */
+const sources: Array<[path: string, file: string]> = [
+  ['/', 'app/routes/index.tsx'],
+  ...docs.map((d): [string, string] => [docUrl(d), `app/routes/docs/${d.slug || 'index'}.mdx`]),
+]
+
+const sitemap = () =>
+  `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${sources
+    .map(([path, file]) => {
+      const date = lastModified(file)
+      return `  <url><loc>${SITE}${path}</loc>${date ? `<lastmod>${date}</lastmod>` : ''}</url>`
+    })
+    .join('\n')}\n</urlset>\n`
 
 const files = (): Record<string, string> => ({
   'llms.txt':
@@ -44,12 +88,7 @@ const files = (): Record<string, string> => ({
   'llms-full.txt': [`# Fondu\n\n> ${SUMMARY}\n`, ...docs.map(pageMarkdown)].join('\n'),
   ...Object.fromEntries(docs.map((d) => [markdownUrl(d).slice(1), pageMarkdown(d)])),
   // for search engines: every page, and where the list is
-  'sitemap.xml': `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${[
-    '/',
-    ...docs.map(docUrl),
-  ]
-    .map((path) => `  <url><loc>${SITE}${path}</loc></url>`)
-    .join('\n')}\n</urlset>\n`,
+  'sitemap.xml': sitemap(),
   'robots.txt': `User-agent: *\nAllow: /\n\nSitemap: ${SITE}/sitemap.xml\n`,
 })
 
