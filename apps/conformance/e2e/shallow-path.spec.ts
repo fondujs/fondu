@@ -229,7 +229,10 @@ test.describe('shallow navigation to another page URL', () => {
     const made = requests(page)
     await page.hover('#open-7')
     await page.waitForTimeout(300)
-    await page.dispatchEvent('#open-8', 'touchstart')
+    // Desktop Firefox has no TouchEvent constructor; the prefetch handler only needs a bubbling event.
+    await page.$eval('#open-8', (link) =>
+      link.dispatchEvent(new Event('touchstart', { bubbles: true })),
+    )
     await page.waitForTimeout(300)
     expect(made).toEqual([])
   })
