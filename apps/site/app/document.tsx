@@ -1,6 +1,6 @@
 import geistMono from '@fontsource-variable/geist-mono/files/geist-mono-latin-wght-normal.woff2?url'
-import inter from '@fontsource-variable/inter/files/inter-latin-wght-normal.woff2?url'
 import instrumentSerif from '@fontsource/instrument-serif/files/instrument-serif-latin-400-italic.woff2?url'
+import allo from 'allo-font/fonts/webfonts/AlloVariableFriendly.woff2?url'
 import type { DocumentParts } from 'fondu'
 
 import { jsonLd, structuredData } from '#/structured-data.ts'
@@ -26,7 +26,7 @@ export default function Document({ head, body, c }: DocumentParts) {
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         {/* the fonts of every page, fetched with the stylesheet rather than after it: the text is laid out once,
             in them, not in a fallback first (a layout shift on a slow network) */}
-        <link rel="preload" href={inter} as="font" type="font/woff2" crossOrigin="" />
+        <link rel="preload" href={allo} as="font" type="font/woff2" crossOrigin="" />
         <link rel="preload" href={geistMono} as="font" type="font/woff2" crossOrigin="" />
         {/* the home page's headline serif: in its document only (a page's own <link> would be added again on a
             navigation to it, once the page is loaded, for a font its stylesheet has asked for already) */}

@@ -1,5 +1,5 @@
 @import 'tailwindcss';
-@import '@fontsource-variable/inter';
+@import 'allo-font/friendly';
 @import '@fontsource-variable/geist-mono';
 @import '@fontsource/instrument-serif/400-italic.css';
 
@@ -111,7 +111,7 @@
   --color-ring: var(--ring);
   --color-brand: var(--brand);
   --color-brand-foreground: var(--brand-foreground);
-  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Allo', ui-sans-serif, system-ui, sans-serif;
   --font-heading: var(--font-sans);
   --font-serif: 'Instrument Serif', ui-serif, Georgia, serif;
   --font-mono: 'Geist Mono Variable', ui-monospace, Menlo, Consolas, monospace;

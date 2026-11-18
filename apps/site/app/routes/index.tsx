@@ -126,11 +126,11 @@ export default function Home() {
           <h1 className="text-[2.5rem]/[1.05] font-semibold tracking-[-0.035em] text-balance sm:text-[3.5rem]/[1.03]">
             <span className="block">Server routes.</span>
             <span className="block">React pages.</span>
-            <span className="mt-[5px] block font-serif text-[1.1em]/[1] font-normal tracking-[-0.01em] italic">
+            <span className="mt-1.25 block font-serif text-[1.1em]/[1] font-normal tracking-[-0.01em] italic">
               No API in between.
             </span>
           </h1>
-          <p className="mt-6 max-w-xl text-base/[1.5] text-(--hero-text) sm:text-lg/[1.5]">
+          <p className="mt-6 max-w-xl text-base/normal text-(--hero-text) sm:text-lg/normal">
             A route file holds a{' '}
             <Chip
               mark={<Hono />}
@@ -166,7 +166,7 @@ export default function Home() {
         </Mosaic>
       </section>
 
-      <section className="border-t">
+      <section className="border-t border-border/64">
         <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6">
           <h2 className="font-heading text-2xl font-semibold tracking-tight sm:text-3xl">
             Who does what
@@ -175,7 +175,7 @@ export default function Home() {
             Two projects you may know already do most of the work, and their docs apply as they are;
             Fondu holds them together.
           </p>
-          <ul className="mt-10 grid gap-px overflow-hidden rounded-xl border bg-border sm:grid-cols-3">
+          <ul className="mt-10 grid gap-px overflow-hidden rounded-xl border border-border/32 bg-border sm:grid-cols-3">
             {parts.map(({ name, url, mark, tint, does }) => {
               const Anchor = url.startsWith('/') ? 'a' : External
               return (
@@ -198,7 +198,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="border-t">
+      <section className="border-t border-border/64">
         <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6">
           <h2 className="font-heading text-2xl font-semibold tracking-tight sm:text-3xl">
             What Fondu adds
@@ -206,16 +206,18 @@ export default function Home() {
           <p className="mt-3 max-w-2xl text-muted-foreground sm:text-base">
             The parts no one of them does, each a page of the docs.
           </p>
-          <ul className="mt-8 grid gap-1 sm:grid-cols-2 sm:gap-2">
+          <ul className="mt-8 grid gap-px overflow-hidden rounded-2xl border border-border/32 bg-border md:grid-cols-2 xl:grid-cols-4">
             {features.map(([Icon, title, slug, text]) => (
-              <li key={slug}>
+              <li key={slug} className="bg-card">
                 <a
                   href={`/docs/${slug}`}
-                  className="grid h-full grid-cols-[auto_1fr] content-start gap-x-4 gap-y-1 rounded-xl p-4 transition-colors hover:bg-accent sm:p-5"
+                  className="flex h-full flex-col items-start bg-card p-4 text-card-foreground transition-colors duration-150 outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset sm:p-5"
                 >
-                  <Icon className="row-span-2 mt-0.5 size-5 text-muted-foreground" />
-                  <span className="text-base font-medium">{title}</span>
-                  <span className="text-muted-foreground">{text}</span>
+                  <span className="mb-3 flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand/10 text-brand-foreground">
+                    <Icon className="size-4" aria-hidden="true" />
+                  </span>
+                  <h3 className="mb-1 text-base font-medium">{title}</h3>
+                  <p className="text-muted-foreground">{text}</p>
                 </a>
               </li>
             ))}
@@ -223,7 +225,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="border-t">
+      <section className="border-t border-border/64">
         <div className="mx-auto flex max-w-7xl flex-col items-center px-4 py-24 text-center sm:px-6">
           <h2 className="text-[2.25rem]/[1.1] font-semibold tracking-[-0.03em] text-balance sm:text-[3.25rem]/[1.05]">
             Start with one route
