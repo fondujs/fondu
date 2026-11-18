@@ -109,7 +109,7 @@ export default function DocsLayout({ children }: { children: ReactNode }) {
           <Sidebar doc={doc} />
         </aside>
 
-        <div className="min-w-0 py-8" data-pagefind-body>
+        <div className="min-w-0 pt-8 pb-16" data-pagefind-body>
           <Meta
             title={doc.slug ? doc.title : 'Docs'}
             description={doc.description}

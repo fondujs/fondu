@@ -1,0 +1,75 @@
+Fondu's agent skill gives a coding agent the framework's rules before it changes your app. It covers routes,
+pages, forms, navigation, data loading, rendering, server code and types, with topic references for the details.
+The [skill source](https://github.com/fondujs/fondu/tree/main/skills/fondu) is kept in the same repository as Fondu
+and these docs.
+
+The skill is instructions for your agent, not a package your app imports. It adds no code to the server or browser.
+
+## Install the skill
+
+From your app's root directory, run the [skills CLI](https://github.com/vercel-labs/skills):
+
+```sh
+npx skills add fondujs/fondu
+```
+
+Select the `fondu` skill and the coding agents you use. The CLI installs to the current project by default and
+handles each agent's skill directory. See its documentation for prerequisites and supported agents.
+
+## Use it in a task
+
+Ask your agent to use the `fondu` skill when building or changing a Fondu app. For example:
+
+```text wrap
+Use the fondu skill and this app's AGENTS.md. Add a contacts page with a server loader and a plain HTML form. Validate the form with one schema on the server and in the browser, preserve entered values when validation fails, and run the app's checks.
+```
+
+The skill starts with the framework's model and links to the relevant topic references. The agent should read
+those references for its task rather than load every topic or invent another way to write a route, form or
+navigation.
+
+Review the resulting code and run your app's checks as usual. Installing a skill does not validate the changes
+for you.
+
+## Keep app rules in AGENTS.md
+
+Use the skill for Fondu's framework rules. Keep your app's own commands, directory conventions, data layer,
+authentication and UI constraints in `AGENTS.md`. A new app created with `create-fondu` includes that file.
+
+For example, an app can specify where domain modules live, which test command to run and which shared UI
+components must stay unchanged. It does not need to copy all of Fondu's routing and form rules into the same file.
+[Project structure](/docs/project-structure) shows one way to organize an app.
+
+## Use it without installing
+
+You can give the instructions to an agent for one task without registering a persistent skill. The CLI can
+print a prompt without installing it:
+
+```sh
+npx skills use fondujs/fondu@fondu
+```
+
+Or ask the agent to read [SKILL.md](https://github.com/fondujs/fondu/blob/main/skills/fondu/SKILL.md) and the topic
+references it links to. If the agent cannot fetch them, provide those files directly. This supplies the same
+instructions for the task, but does not make the skill automatically discoverable in later sessions.
+
+## Keep it up to date
+
+Check for skill updates when you update Fondu, then review the changes before using them:
+
+```sh
+npx skills check
+npx skills update
+```
+
+These commands check and update installed skills, not your app's `fondu` dependency.
+
+## Give agents the docs
+
+Every documentation page also has a Markdown copy: add `.md` to its URL, or use **Copy as Markdown** at the top
+of the page. For example, [Quick start as Markdown](/docs/quick-start.md) contains the setup instructions without
+page navigation.
+
+- [llms.txt](/llms.txt) lists the documentation pages and their Markdown URLs.
+- [llms-full.txt](/llms-full.txt) contains all of the docs in one file.
+- The topic references in the skill point back to the docs, which remain the source of truth for Fondu's API.

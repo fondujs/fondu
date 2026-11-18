@@ -89,6 +89,9 @@ if (existsSync(new URL('index.html', dist))) {
     const copy = read(markdownUrl(doc).slice(1))
     if (!copy.startsWith(`# ${doc.title}\n\nhttps://fondu.dev${page}\n\n`))
       problems.push(`${markdownUrl(doc)}: its URL is not under its title`)
+    for (const [, path] of copy.matchAll(/\]\(https:\/\/fondu\.dev(\/docs[^)#]*)(?:#[^)]*)?\)/g))
+      if (!existsSync(new URL(path!.slice(1), dist)))
+        problems.push(`${markdownUrl(doc)}: broken documentation link ${path}`)
   }
   const full = read('llms-full.txt')
   for (const doc of docs)

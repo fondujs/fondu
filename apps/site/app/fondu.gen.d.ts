@@ -18,6 +18,7 @@ declare module 'fondu' {
       "/docs/quick-start": typeof import("./routes/docs/quick-start.mdx")
       "/docs/routes": typeof import("./routes/docs/routes.mdx")
       "/docs/server-and-client": typeof import("./routes/docs/server-and-client.mdx")
+      "/docs/skills": typeof import("./routes/docs/skills.mdx")
       "/docs/ssr": typeof import("./routes/docs/ssr.mdx")
       "/docs/static-pages": typeof import("./routes/docs/static-pages.mdx")
       "/docs/type-safety": typeof import("./routes/docs/type-safety.mdx")

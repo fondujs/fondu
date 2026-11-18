@@ -24,7 +24,8 @@ function pageMarkdown(doc: Doc): string {
     .join('\n')
     .replace(
       /\]\((\/docs[^)#]*)(#[^)]*)?\)/g,
-      (_, path: string, hash = '') => `](${SITE}${path}.md${hash})`,
+      (_, path: string, hash = '') =>
+        `](${SITE}${path}${path.endsWith('.md') ? '' : '.md'}${hash})`,
     )
     .replace(/\n{3,}/g, '\n\n')
     .trim()

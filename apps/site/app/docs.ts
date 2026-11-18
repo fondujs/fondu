@@ -27,6 +27,12 @@ export const sections: Array<{ title: string; docs: Doc[] }> = [
           'Create a Fondu app with create-fondu for Bun, Cloudflare Workers or Node, run it, add a page and build it for production.',
       },
       {
+        slug: 'skills',
+        title: 'Agent skills',
+        description:
+          "How to install Fondu's agent skill, use it in a task, keep app rules in AGENTS.md, and give agents the docs as Markdown.",
+      },
+      {
         slug: 'project-structure',
         title: 'Project structure',
         description:

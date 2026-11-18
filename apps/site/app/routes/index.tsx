@@ -16,7 +16,7 @@ import {
 import { useState, type ComponentProps, type ReactNode } from 'react'
 
 import { Bun, Hono, Npm, Pnpm, React as ReactMark, Vite, Yarn } from '#/components/brands.tsx'
-import { CodeTabs, useGroup } from '#/components/code.tsx'
+import { useGroup } from '#/components/code.tsx'
 import { CopyPrompt } from '#/components/copy-prompt.tsx'
 import { External } from '#/components/external.tsx'
 import { Logo } from '#/components/logo.tsx'
@@ -46,22 +46,29 @@ const parts: Array<{ name: string; url: string; mark: ReactNode; tint: string; d
     name: 'Hono',
     url: 'https://hono.dev',
     mark: <Hono className="size-6 text-[#E36002]" />,
-    tint: 'from-[#E36002]/10',
+    tint: 'from-[#E36002]/10 hover:bg-[#E36002]/5',
     does: 'Answers every request. Your routes are its handlers, with its middleware, CSRF protection and security headers.',
   },
   {
-    name: 'Vite',
-    url: 'https://vite.dev',
-    mark: <Vite className="size-6 text-[#9135FF]" />,
-    tint: 'from-[#9135FF]/10',
-    does: 'Serves the app while you work, updating it in place, and builds it for production.',
+    name: 'React',
+    url: 'https://react.dev',
+    mark: <ReactMark className="size-6 text-[#087EA4] dark:text-[#61DAFB]" />,
+    tint: 'from-[#087EA4]/10 hover:bg-[#087EA4]/5',
+    does: 'Renders your page components and manages their state. React DOM renders the first page on the server and hydrates it in the browser.',
   },
   {
     name: 'Fondu',
     url: '/docs',
     mark: <Logo className="size-6" />,
-    tint: 'from-brand/16',
+    tint: 'from-brand/16 hover:bg-brand/8',
     does: 'Holds them together: routes from files, typed pages and URLs, the server render, the pages swapped in the browser.',
+  },
+  {
+    name: 'Vite',
+    url: 'https://vite.dev',
+    mark: <Vite className="size-6 text-[#9135FF]" />,
+    tint: 'from-[#9135FF]/10 hover:bg-[#9135FF]/5',
+    does: 'Serves the app while you work, updating it in place, and builds it for production.',
   },
 ]
 
@@ -160,7 +167,10 @@ export default function Home() {
         <Mosaic>
           <div aria-label="A route file" role="group" className="hero-code">
             <Code
-              components={{ pre: (props: ComponentProps<'pre'>) => <pre {...props} />, CodeTabs }}
+              components={{
+                pre: (props: ComponentProps<'pre'>) => <pre {...props} />,
+                CodeTabs: BrowserCode,
+              }}
             />
           </div>
         </Mosaic>
@@ -172,10 +182,10 @@ export default function Home() {
             Who does what
           </h2>
           <p className="mt-3 max-w-2xl text-muted-foreground sm:text-base">
-            Two projects you may know already do most of the work, and their docs apply as they are;
-            Fondu holds them together.
+            Three projects you may know already do most of the work, and their docs apply as they
+            are; Fondu holds them together.
           </p>
-          <ul className="mt-10 grid gap-px overflow-hidden rounded-xl border border-border/32 bg-border sm:grid-cols-3">
+          <ul className="mt-10 grid gap-px overflow-hidden rounded-xl border border-border/32 bg-border sm:grid-cols-2 lg:grid-cols-4">
             {parts.map(({ name, url, mark, tint, does }) => {
               const Anchor = url.startsWith('/') ? 'a' : External
               return (
@@ -183,7 +193,7 @@ export default function Home() {
                   <Anchor
                     href={url}
                     className={cn(
-                      'flex h-full flex-col gap-3 bg-linear-to-br to-transparent to-60% p-5 transition-colors hover:bg-accent sm:p-6',
+                      'flex h-full flex-col gap-3 bg-linear-to-br to-transparent to-60% p-5 transition-colors sm:p-6',
                       tint,
                     )}
                   >
@@ -247,6 +257,20 @@ export default function Home() {
         </div>
       </section>
     </>
+  )
+}
+
+/** The hero's single code example: browser-style chrome, without the docs' interactive tabs. */
+function BrowserCode({ children }: { children: ReactNode }) {
+  return (
+    <div className="code-tabs overflow-hidden rounded-xl">
+      <div aria-hidden="true" className="flex h-9 items-center gap-1.5 border-b px-4">
+        <span className="size-2.5 rounded-full bg-destructive/70" />
+        <span className="size-2.5 rounded-full bg-warning/70" />
+        <span className="size-2.5 rounded-full bg-success/70" />
+      </div>
+      {children}
+    </div>
   )
 }
 
