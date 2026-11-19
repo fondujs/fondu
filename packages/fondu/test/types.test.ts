@@ -139,12 +139,34 @@ declare function Titled(props: { title: string; auth: Auth }): null
 declare function Clashing(props: { auth: string }): null
 declare function Errors(props: { errors?: Record<string, string> }): null
 
+type Result = { kind: 'hit'; title: string } | { kind: 'miss'; reason: string }
+declare function SearchResult(props: Result & { auth: Auth }): null
+declare const result: Result
+declare function OptionalResult(props: { kind?: 'empty' } | Result): null
+
 type Stats = { total: number }
 declare function Dashboard(props: { title: string; stats?: Stats; at?: string }): null
 declare function Maybe(props: { stats: Stats | undefined }): null
 declare function Dated(props: { when?: Date }): null
 
 const renders = [
+  typed(({ render }, c) => render(c, SearchResult, { kind: 'hit', title: 'Found' })),
+  typed(({ render }, c) =>
+    render(c, SearchResult, { kind: 'miss', reason: 'Gone' }, { status: 404 }),
+  ),
+  typed(({ render }, c) => render(c, SearchResult, result)),
+  // @ts-expect-error the hit branch needs its title
+  typed(({ render }, c) => render(c, SearchResult, { kind: 'hit' })),
+  // @ts-expect-error the miss branch needs its reason, even with a status
+  typed(({ render }, c) => render(c, SearchResult, { kind: 'miss' }, { status: 404 })),
+  // @ts-expect-error reason belongs to the miss branch, not hit
+  typed(({ render }, c) => render(c, SearchResult, { kind: 'hit', reason: 'Gone' })),
+  // Omitting props is valid only when at least one complete branch accepts {}.
+  typed(({ render }, c) => render(c, OptionalResult)),
+  // @ts-expect-error neither branch takes an empty object
+  typed(({ render }, c) => render(c, SearchResult)),
+  // @ts-expect-error the empty branch cannot supply a missing title for a hit
+  typed(({ render }, c) => render(c, OptionalResult, { kind: 'hit' })),
   typed(({ render }, c) => render(c, Bare)),
   // a page without props, with options: its props are {} whatever is shared (#83)
   typed(({ render }, c) => render(c, Bare, {}, { status: 404 })),
@@ -619,7 +641,7 @@ test('the types above are checked by tsc', () => {
     ...answers,
     ...navigation,
     ...navigations,
-  ]).toHaveLength(176)
+  ]).toHaveLength(185)
 })
 
 test('FonduOptions: the port is PORT, not an option', () => {

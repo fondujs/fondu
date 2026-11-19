@@ -140,21 +140,20 @@ export type Delivered<P> = {
 /** `defer()` for a prop the page takes as optional: it renders without it */
 type Deferrable<P, K extends keyof P> =
   {} extends Pick<P, K> ? DeferredProp<JsonInput<Exclude<P[K], undefined>>> : never
-type RequiredKeys<T> = { [K in keyof T]-?: object extends Pick<T, K> ? never : K }[keyof T]
 
 export interface RenderOptions {
   status?: number
 }
-// a page with no props of its own (none at all: P is inferred as `object`) takes none
-type RenderArgs<P> = [keyof OwnProps<P>] extends [never]
-  ? [props?: Record<string, never>, options?: RenderOptions]
-  : [RequiredKeys<OwnProps<P>>] extends [never]
-    ? OptionalArgs<P>
-    : string extends keyof OwnProps<P>
-      ? OptionalArgs<P>
-      : RequiredArgs<P>
-type OptionalArgs<P> = [props?: Delivered<OwnProps<P>>, options?: RenderOptions]
-type RequiredArgs<P> = [props: Delivered<OwnProps<P>>, options?: RenderOptions]
+// Omit keeps only common keys of a union: remove shared props from each branch separately.
+type RenderProps<P> = P extends unknown
+  ? keyof OwnProps<P> extends never
+    ? Record<string, never>
+    : Delivered<OwnProps<P>>
+  : never
+type RenderArgs<P> =
+  {} extends RenderProps<P>
+    ? [props?: RenderProps<P>, options?: RenderOptions]
+    : [props: RenderProps<P>, options?: RenderOptions]
 
 // the pages of app/routes/ (createApp): a component → its ids; and, per request, the page of the route answering it
 // (the ids: a page may be the default export of several, `export { default } from './index.tsx'`)
@@ -185,7 +184,7 @@ function pageUrl(c: Context): string {
 export function render<P extends object>(
   c: Context,
   page: PageComponent<P>,
-  ...[props = {} as Delivered<OwnProps<P>>, options = {}]: RenderArgs<P>
+  ...[props = {} as RenderProps<P>, options = {}]: RenderArgs<P>
 ): Promise<Response> {
   const own = ownPages.get(c)
   if (!own || !pageIds.get(page)?.has(own))
