@@ -43,6 +43,34 @@ test('rejects a cycle between directory layout declarations before running their
   }
 })
 
+test('a wildcard exporting layout is diagnosed, not silently treated as inheritance', async () => {
+  const app = tempApp({
+    'app/routes/_layout.tsx': `export * from '../parents'; ${shell('site')}`,
+    'app/parents.ts': 'export const layout = []',
+    'app/other.ts': 'export default 1',
+    'app/routes/ordinary/_layout.tsx': `export * from '../../other'; ${shell('ordinary')}`,
+    'app/routes/index.tsx': page,
+  })
+  const dev = await createServer({
+    root: app.root,
+    configFile: false,
+    logLevel: 'silent',
+    server: { middlewareMode: true },
+    plugins: [fondu({ target: 'node' })],
+  })
+  try {
+    expect((await dev.ssrLoadModule('/app/routes/ordinary/_layout.tsx')).default).toBeTypeOf(
+      'function',
+    )
+    await expect(dev.ssrLoadModule('/app/routes/_layout.tsx')).rejects.toThrow(
+      /routes\/_layout.tsx.*layout/,
+    )
+  } finally {
+    await dev.close()
+    app.remove()
+  }
+})
+
 test('the generated TS check rejects a layout requiring extra props under skipLibCheck', async () => {
   const app = tempApp({
     'app/routes/topic.tsx': `import Shell from '../shell'; export const layout=[Shell]; ${page}`,
@@ -116,6 +144,42 @@ test('a running dev server tracks added, changed and deleted directory layouts i
     app.remove()
   }
 })
+
+test.each(['/', '/demo/'])(
+  'dev CSS at %s follows static layout imports, not a closed drawer or inline CSS',
+  async (base) => {
+    const app = tempApp({
+      'app/routes/index.tsx': page,
+      'app/routes/_layout.tsx': `import Shared from '../../ui/shell'; import './site.css'; export default function Layout({children}) { return <Shared>{children}<button onClick={() => import('../drawer')}>Open</button></Shared> }`,
+      'app/routes/site.css': ':root { --site: 1 }',
+      'ui/shell.tsx': `import './shell.css'; import text from './shadow.css?inline'; export default function Shared({children}) { return <div data-css={text}>{children}</div> }`,
+      'ui/shell.css': ':root { --shared-shell: 1 }',
+      'ui/shadow.css': ':root { --shadow-only: 1 }',
+      'app/drawer.tsx': `import './drawer.css'; export default function Drawer(){return null}`,
+      'app/drawer.css': ':root { --drawer-only: 1 }',
+    })
+    const dev = await createServer({
+      root: app.root,
+      base,
+      configFile: false,
+      logLevel: 'silent',
+      server: { port: 0, host: '127.0.0.1' },
+      plugins: [fondu({ target: 'node' })],
+    })
+    try {
+      await dev.listen()
+      const url = dev.resolvedUrls!.local[0]!
+      const css = await (await fetch(new URL('@fondu/dev.css?page=index', url))).text()
+      expect(css).toContain('--site')
+      expect(css).not.toContain('--drawer-only')
+      expect(css).toContain('--shared-shell')
+      expect(css).not.toContain('--shadow-only')
+    } finally {
+      await dev.close()
+      app.remove()
+    }
+  },
+)
 
 test('preloads follow the selected layout chain, including CSS, not just the directory', async () => {
   const app = tempApp({

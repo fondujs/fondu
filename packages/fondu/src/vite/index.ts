@@ -6,6 +6,7 @@ import { relative, resolve, sep } from 'node:path'
 import devServer, { defaultOptions as devServerDefaults } from '@hono/vite-dev-server'
 import react, { type Options as ReactOptions } from '@vitejs/plugin-react'
 import {
+  isCSSRequest,
   loadEnv,
   parseAst,
   transformWithOxc,
@@ -433,7 +434,7 @@ function core(options: FonduOptions): Plugin {
     // stylesheet in the document, so a server-rendered page is styled at first paint (Vite would add it only once the
     // JS runs); removed by fondu/client once the page's modules (its layouts: their CSS) are loaded
     configureServer(server) {
-      server.middlewares.use(DEV_CSS, async (req, res) => {
+      server.middlewares.use(`${config.base}${DEV_CSS.slice(1)}`, async (req, res) => {
         const env = server.environments.client
         const css: string[] = []
         try {
@@ -443,16 +444,34 @@ function core(options: FonduOptions): Plugin {
           )
           const seen = new Set<string>()
           async function visit(url: string) {
-            if (seen.has(url)) return
+            // Only modules in the initial view. A lazy drawer's styles (and a shadow root's CSS text) aren't document CSS.
+            if (seen.has(url) || /[?&](?:inline|raw|url|worker|sharedworker)(?:[&=]|$)/.test(url))
+              return
             seen.add(url)
-            if (/\.(css|scss|sass|less|styl|pcss|postcss)(\?|$)/.test(url)) {
+            if (isCSSRequest(url)) {
               css.push(url)
               return
             }
-            if (!url.startsWith('/app/')) return
-            await env.transformRequest(url)
-            const mod = await env.moduleGraph.getModuleByUrl(url)
-            for (const dep of mod?.importedModules ?? []) await visit(dep.url)
+            if (
+              url.startsWith('/@vite/') ||
+              url.startsWith('/@id/') ||
+              url.includes('/node_modules/')
+            )
+              return
+            const result = await env.transformRequest(url)
+            if (!result) return
+            // Vite rewrites import and re-export sources to served URLs. The module graph also contains dynamic imports.
+            for (const n of parseAst(result.code).body) {
+              if (
+                n.type !== 'ImportDeclaration' &&
+                n.type !== 'ExportNamedDeclaration' &&
+                n.type !== 'ExportAllDeclaration'
+              )
+                continue
+              const dep = n.source?.value
+              if (dep?.startsWith(config.base) && !dep.startsWith('//'))
+                await visit('/' + dep.slice(config.base.length))
+            }
           }
           if (file) await visit('/app/routes/' + file + VIEW_QUERY)
           const parts = await Promise.all(

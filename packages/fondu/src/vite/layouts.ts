@@ -64,6 +64,30 @@ export function layoutImports(code: string, file: string): LayoutImport[] | unde
   }
 }
 
+/** MDX may re-export metadata. Only an actual layout from a wildcard is ambiguous: the compiler hasn't seen its list. */
+function checkStarExports(code: string, file: string) {
+  if (!code.includes('*') || !code.includes('export')) return
+  const message = `fondu: routes/${file}: declare layout in this file with export const layout = [...] instead of a wildcard re-export`
+  const checks: string[] = []
+  for (const node of parseAst(code, { lang: 'tsx' }).body) {
+    if (node.type !== 'ExportAllDeclaration' || node.exportKind === 'type') continue
+    if (node.exported) {
+      if (
+        (node.exported.type === 'Identifier' ? node.exported.name : node.exported.value) ===
+        'layout'
+      )
+        throw new Error(message)
+      continue
+    }
+    let ns = `__fonduStar${checks.length}`
+    while (code.includes(ns)) ns += '_'
+    checks.push(
+      `import * as ${ns} from ${JSON.stringify(node.source.value)}; if ('layout' in ${ns}) throw new Error(${JSON.stringify(message)});`,
+    )
+  }
+  if (checks.length) return { code: [code, ...checks].join('\n'), map: null }
+}
+
 /** The dynamic entry of a page re-exports its component and exact layout chain. The document, client navigation
  * and Vite's preload manifest all use these same ESM edges. Importing a layout's component does not wrap it. */
 export function layoutChains(): Plugin {
@@ -81,7 +105,10 @@ export function layoutChains(): Plugin {
   }
   const record = (file: string, refs: LayoutImport[] | undefined) => {
     if (refs) declarations.set(file, refs)
-    else declarations.delete(file)
+    else {
+      declarations.delete(file)
+      edges.delete(file)
+    }
   }
   const relevant = (file: string) =>
     isPageFile(file) ||
@@ -126,8 +153,9 @@ export function layoutChains(): Plugin {
         (query && query !== OUTER_QUERY.slice(1) && query !== VIEW_QUERY.slice(1))
       )
         return
-      if (!query && (!code.includes('layout') || file === '_error.tsx')) return
       const refs = file === '_error.tsx' ? undefined : layoutImports(code, file)
+      if (!query && refs === undefined)
+        return file === '_error.tsx' ? undefined : checkStarExports(code, file)
       record(file, refs)
       const parents: string[] = []
       for (const ref of refs ?? []) {
@@ -198,7 +226,7 @@ export function layoutChains(): Plugin {
       } else {
         const code = await read()
         if (!name.endsWith('.mdx')) record(name, layoutImports(code, name))
-        else if (!code.includes('layout')) declarations.delete(name)
+        else if (!code.includes('layout')) record(name, undefined)
         else if (!directory) {
           const env = server.environments.client
           const url = '/app/routes/' + name + VIEW_QUERY
