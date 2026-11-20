@@ -3,6 +3,8 @@ import { fileURLToPath } from 'node:url'
 import type { Plugin } from 'vite'
 import { defineConfig } from 'vitest/config'
 
+import { layoutChains } from './src/vite/layouts.js'
+
 // The protocol, tested on a small app (test/app/) with `app.request()`, as Hono apps are tested. The Vite plugin's
 // virtual modules are replaced by fixed ones: asset version "v1", no server render.
 const virtual: Plugin = {
@@ -15,7 +17,7 @@ const virtual: Plugin = {
       return [
         `import { renderToReadableStream, renderToStaticMarkup } from 'react-dom/server'`,
         `import { __entry, renderPage as render } from 'fondu/client/internal'`,
-        `__entry(import.meta.glob(['/app/routes/**/*.tsx', '!/app/routes/**/_layout.tsx']), import.meta.glob('/app/routes/**/_layout.tsx'), { prerender: false, progress: false })`,
+        `__entry(import.meta.glob(['/app/routes/**/*.tsx', '!/app/routes/**/_layout.tsx'], { query: '?fondu-view' }), { prerender: false, progress: false })`,
         `export const renderPage = (page, options, after) => render(page, (el) => renderToReadableStream(el, options), after)`,
         `export { renderToStaticMarkup as renderMarkup }`,
       ].join('\n')
@@ -24,7 +26,7 @@ const virtual: Plugin = {
 
 export default defineConfig({
   root: fileURLToPath(new URL('./test', import.meta.url)),
-  plugins: [virtual],
+  plugins: [virtual, layoutChains()],
   resolve: {
     alias: [
       {

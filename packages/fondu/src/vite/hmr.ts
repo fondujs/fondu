@@ -54,7 +54,8 @@ export function hmr(): Plugin {
     transform: {
       order: 'post',
       handler(code, id) {
-        if (this.environment.config.consumer !== 'client') return
+        if (this.environment.config.consumer !== 'client' || /\?fondu-(?:view|outer)$/.test(id))
+          return
         const file = id.split('?')[0]!
         const rel = relative(`${root}/app/routes`, file).split(sep).join('/')
         if (rel.startsWith('..') || !isPageFile(rel)) return

@@ -98,13 +98,14 @@ so `c.req.param()`, `c.req.query()`, `c.json()` and the rest are there.
 Each kind of file exports what it is for, and nothing else: the app stops at startup with what to do instead. Code
 they share goes in a file of its own (`app/lib/`, `app/components/`).
 
-| File                        | Exports                                                                    |
-| --------------------------- | -------------------------------------------------------------------------- |
-| `.tsx`                      | the page (default), `loader`, `action` or `actions`, `prerender`, `params` |
-| `.ts`                       | `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS`, `prerender`, `params`  |
-| `.mdx`                      | its content: an [MDX page](/docs/mdx) has no handlers                      |
-| `_middleware.ts`            | its middleware (default), `prerender`, `params`                            |
-| `_layout.tsx`, `_error.tsx` | the component (default)                                                    |
+| File             | Exports                                                                              |
+| ---------------- | ------------------------------------------------------------------------------------ |
+| `.tsx`           | the page (default), `layout`, `loader`, `action` or `actions`, `prerender`, `params` |
+| `.ts`            | `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS`, `prerender`, `params`            |
+| `.mdx`           | its content, optional `layout`: an [MDX page](/docs/mdx) has no handlers             |
+| `_middleware.ts` | its middleware (default), `prerender`, `params`                                      |
+| `_layout.tsx`    | the component (default), optional `layout`                                           |
+| `_error.tsx`     | the component (default)                                                              |
 
 The browser gets a page's file without its server code: [Server and client code](/docs/server-and-client).
 

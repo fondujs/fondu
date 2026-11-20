@@ -4,8 +4,9 @@ import { resolve } from 'node:path'
 
 import type { ResolvedConfig } from 'vite'
 
-import { isPageFile, layoutsOf, pageId } from '../paths.js'
+import { isPageFile, pageId } from '../paths.js'
 import type { FonduOptions } from './index.js'
+import { VIEW_QUERY } from './layouts.js'
 
 /** the nonce of a tag in the generated `assetTags()` */
 export const nonceAttr = `\${nonce ? \` nonce="\${nonce}"\` : ''}`
@@ -47,26 +48,20 @@ export function productionAssets(config: ResolvedConfig, options: FonduOptions):
   const entry = tags(Object.keys(manifest).find((k) => manifest[k]!.isEntry)!)
   const pages: Record<string, { css: string[]; js: string[] }> = {}
   for (const key of Object.keys(manifest)) {
-    const file = key.startsWith('app/routes/') ? key.slice('app/routes/'.length) : undefined
+    if (!key.endsWith(VIEW_QUERY)) continue
+    const file = key.startsWith('app/routes/')
+      ? key.slice('app/routes/'.length, -VIEW_QUERY.length)
+      : undefined
     if (!file || !(isPageFile(file) || /^_error\.tsx$/.test(file))) continue
-    // the page's chunk, and its layouts' (loaded with it)
-    const around = layoutsOf(file)
-      .map((dir) => `app/routes/${dir ? `${dir}/` : ''}_layout.tsx`)
-      .filter((k) => k in manifest)
-    const all = [...around, key].map(tags)
+    // Layouts are static imports of the page, including its inherited chain.
+    const page = tags(key)
     // each file once, and not the entry's: assetTags() adds those to every page (the entry's first)
     const own = (files: string[], entryFiles: string[]) => [
       ...new Set(files.filter((f) => !entryFiles.includes(f))),
     ]
     pages[pageId(file)] = {
-      css: own(
-        all.flatMap((t) => t.css),
-        entry.css,
-      ),
-      js: own(
-        all.flatMap((t) => t.js),
-        entry.js,
-      ),
+      css: own(page.css, entry.css),
+      js: own(page.js, entry.js),
     }
   }
   const version = createHash('sha256').update(text).digest('hex').slice(0, 16)
