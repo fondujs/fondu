@@ -54,8 +54,30 @@ const CSP = {
 
 const ROOT = '/app/routes/'
 
+// React's callable components and the three wrapper types React can render with children.
+const reactWrappers = new Set([
+  Symbol.for('react.memo'),
+  Symbol.for('react.forward_ref'),
+  Symbol.for('react.lazy'),
+])
+const layoutComponent = (value: unknown) =>
+  typeof value === 'function' ||
+  (value !== null &&
+    typeof value === 'object' &&
+    '$$typeof' in value &&
+    typeof value.$$typeof === 'symbol' &&
+    reactWrappers.has(value.$$typeof))
+
 export function checkExports(file: string, mod: Record<string, unknown>) {
   checkExportNames(file, Object.keys(mod))
+  if (
+    'layout' in mod &&
+    (!Array.isArray(mod.layout) ||
+      mod.layout.some((parent: unknown) => parent === mod.default || !layoutComponent(parent)))
+  )
+    throw new Error(
+      `fondu: routes/${file}: layout must list React components other than the module's own default export`,
+    )
   if (/\.(?:tsx|mdx)$/.test(file) && typeof mod.default !== 'function')
     throw new Error(
       `fondu: routes/${file} is a page: its default export is the component (code for the server only: a .ts file)`,

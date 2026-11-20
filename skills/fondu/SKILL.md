@@ -43,7 +43,7 @@ https://fondu.dev/llms.txt). Most server code is Hono's API: https://hono.dev.
   props)`; `action` answers POST (one form), or `actions = { name }` answers `POST ?name` (several forms; not both).
 - A `.ts` route file is server code only: HTTP methods (`GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS`) for API
   clients and files. It has no `loader`, `action` or `actions`.
-- `_layout.tsx` wraps the pages of its directory and below, and nests. `_middleware.ts` runs for its directory and
+- `_layout.tsx` wraps the pages of its directory by default. A TSX/MDX page or directory layout may set its entire outer chain with `export const layout = [Site, Feature]` (imported components), or `[]` for none. `_middleware.ts` still runs for its directory and
   below. `_error.tsx` is the app's one error page. Other files and directories starting with `_` are not routes.
 - A page is one JSON object, the same for a document and for a navigation: the props of `render()`, the shared props
   (`share()`), `errors`, `flash`. The first request gets HTML; after that the client asks the same route for JSON.
@@ -86,7 +86,7 @@ export default function Show({ user }: { user: { name: string } }) {
 - **Do not reach for** a client-side router, a client cache (React Query, SWR), or `request()` for a page's own data:
   the loader and `defer()` are the page's data. `request()` from `fondu/client` is for effects and events, calling a
   `.ts` route. Sessions, auth and the data layer are the app's own (or another library's).
-- **Providers go in the root `_layout.tsx`**, which stays mounted across navigations. The document
+- **Put a provider in a layout shared by every page that needs it.** An explicit chain can omit the root `_layout.tsx`. The document
   (`app/document.tsx`) is rendered once on the server and never hydrated: no state, context or effects there.
 - **Do not edit** `app/fondu.gen.d.ts` (generated; commit it). After updating a dependency, restart the dev server.
 - Errors: `throw new HTTPException(404)` (from `hono/http-exception`) or `c.notFound()`.
