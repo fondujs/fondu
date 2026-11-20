@@ -192,6 +192,37 @@ const renders = [
   typed(({ share, defer }, c) => share(c, { auth: defer(async () => ({ user: null })) })),
 ]
 
+declare function Pair(props: { pair: [string, number]; auth: Auth }): null
+declare function Lists(props: {
+  optional: readonly [string, number?]
+  rest: [string, ...number[]]
+  tags: string[]
+}): null
+
+// Type-checked at the render call, never run: JSON inputs keep tuple positions and lengths (#295).
+typed(({ render }, c) => {
+  const pair = ['Ada', 1] as const
+  render(c, Pair, { pair })
+  render(c, Pair, { pair: [new Date(), 1] }) // the first slot receives a string
+  render(c, Pair, { pair: { toJSON: (): [string, number] => ['Ada', 1] } })
+  // @ts-expect-error a pair cannot be empty
+  render(c, Pair, { pair: [] })
+  // @ts-expect-error the second slot is required
+  render(c, Pair, { pair: ['Ada'] })
+  // @ts-expect-error there is no third slot
+  render(c, Pair, { pair: ['Ada', 1, 2] })
+  // @ts-expect-error both values are present, but in the wrong positions
+  render(c, Pair, { pair: [1, 'Ada'] })
+
+  const tags: readonly string[] = ['green']
+  render(c, Lists, { optional: ['Ada'], rest: ['Ada'], tags: [] })
+  render(c, Lists, { optional: pair, rest: ['Ada', 1, 2], tags })
+  // @ts-expect-error the readonly tuple's first slot is still required
+  render(c, Lists, { optional: [], rest: ['Ada'], tags })
+  // @ts-expect-error elements after the first must be numbers
+  render(c, Lists, { optional: pair, rest: ['Ada', 'extra'], tags })
+})
+
 const hrefs = [
   typed(({ href }) => href('/')),
   typed(({ href }) => href('/users/:id', { id: 7 })),
