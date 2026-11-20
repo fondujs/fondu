@@ -24,6 +24,7 @@ import { entryCode, SERVER } from './entry.js'
 import { hmr, PAGE_EXPORTS, PROPS_EVENT } from './hmr.js'
 import { HONO } from './hono.js'
 import { fonduInstalled } from './installed.js'
+import { layoutChains, VIEW_QUERY } from './layouts.js'
 import { devServerNodeServer } from './node-server.js'
 import { checkOptions } from './options.js'
 import { nodeServer, prerender, worker } from './prerender.js'
@@ -84,8 +85,6 @@ const PAGES_GLOB = [
 ]
 /** the error page (`_error.tsx`: a page, though its name says it is no URL) */
 const ERROR_GLOB = '/app/routes/_error.tsx'
-/** and the layouts (`_layout.tsx`): the client puts a page in those of its directories */
-const LAYOUTS_GLOB = ['/app/routes/**/_layout.tsx', '!/app/routes/**/_*/**']
 
 /**
  * For the dependency scan: a page's route file as the browser gets it, its server code removed. The scan would find
@@ -160,6 +159,7 @@ export default function fondu(options: FonduOptions): PluginOption[] {
     // .mdx too: MDX pages and components get Fast Refresh (as MDX's own docs set it up)
     react({ include: /\.(?:[jt]sx?|mdx)$/, ...options.react }),
     core(options),
+    layoutChains(),
     stripRoutes(),
     hmr(),
     loadFailure(),
@@ -433,30 +433,28 @@ function core(options: FonduOptions): Plugin {
     // stylesheet in the document, so a server-rendered page is styled at first paint (Vite would add it only once the
     // JS runs); removed by fondu/client once the page's modules (its layouts: their CSS) are loaded
     configureServer(server) {
-      server.middlewares.use(DEV_CSS, async (_req, res) => {
+      server.middlewares.use(DEV_CSS, async (req, res) => {
         const env = server.environments.client
         const css: string[] = []
         try {
-          const layouts = walkFiles(resolve(config.root, 'app/routes')).filter(
-            (f) =>
-              /(?:^|\/)_layout\.tsx$/.test(f) &&
-              !f
-                .split('/')
-                .slice(0, -1)
-                .some((d) => d.startsWith('_')),
+          const component = new URL(req.url ?? '/', 'http://localhost').searchParams.get('page')
+          const file = walkFiles(resolve(config.root, 'app/routes')).find(
+            (f) => (isPageFile(f) || f === '_error.tsx') && pageId(f) === component,
           )
-          await Promise.all(layouts.map((f) => env.transformRequest(`/app/routes/${f}`)))
           const seen = new Set<string>()
-          const walk = (
-            mod: { id: string | null; url: string; importedModules: Set<typeof mod> } | undefined,
-          ) => {
-            if (!mod?.id || seen.has(mod.id)) return
-            seen.add(mod.id)
-            if (/\.(css|scss|sass|less|styl|pcss|postcss)(\?|$)/.test(mod.url)) css.push(mod.url)
-            for (const m of mod.importedModules) walk(m)
+          async function visit(url: string) {
+            if (seen.has(url)) return
+            seen.add(url)
+            if (/\.(css|scss|sass|less|styl|pcss|postcss)(\?|$)/.test(url)) {
+              css.push(url)
+              return
+            }
+            if (!url.startsWith('/app/')) return
+            await env.transformRequest(url)
+            const mod = await env.moduleGraph.getModuleByUrl(url)
+            for (const dep of mod?.importedModules ?? []) await visit(dep.url)
           }
-          for (const f of layouts)
-            walk(env.moduleGraph.getModuleById(resolve(config.root, 'app/routes', f)) as never)
+          if (file) await visit('/app/routes/' + file + VIEW_QUERY)
           const parts = await Promise.all(
             css.map(
               async (url) =>
@@ -512,12 +510,13 @@ function core(options: FonduOptions): Plugin {
           progress: options.progress ?? {},
           viewTransitions: Boolean(options.viewTransitions),
         }
-        const glob = (pattern: string | string[]) => `import.meta.glob(${JSON.stringify(pattern)})`
+        const glob = (pattern: string | string[], view = true) =>
+          `import.meta.glob(${JSON.stringify(pattern)}${view ? `, {query:${JSON.stringify(VIEW_QUERY)}}` : ''})`
         return [
           `import { __entry } from 'fondu/client/internal'`,
           ...(dev ? [`import { reload } from 'fondu/client'`] : []),
           ...(dev ? [`import.meta.hot?.on(${JSON.stringify(PROPS_EVENT)}, () => reload())`] : []),
-          `__entry({ ...${glob(PAGES_GLOB)}, ...${glob(ERROR_GLOB)} }, ${glob(LAYOUTS_GLOB)}, ${JSON.stringify(settings)})`,
+          `__entry({ ...${glob(PAGES_GLOB)}, ...${glob(ERROR_GLOB)} }, ${JSON.stringify(settings)}, ${glob(ERROR_GLOB, false)}[${JSON.stringify(ERROR_GLOB)}])`,
         ].join('\n')
       }
       // and React's static markup for a JSX document (react-dom/server: the server render's, or loaded for it)
@@ -590,8 +589,8 @@ function workerFirstForIndex(file: string) {
 function devAssets(base: string): string {
   const preamble = `import RefreshRuntime from "${base}@react-refresh";RefreshRuntime.injectIntoGlobalHook(window);window.$RefreshReg$=()=>{};window.$RefreshSig$=()=>(type)=>type;window.__vite_plugin_react_preamble_installed__=true;window.__getReactRefreshIgnoredExports=({id})=>window.${PAGE_EXPORTS}?.[id]??[]`
   return `export const version = null
-export function assetTags(_component, nonce) {
-  return '<link rel="stylesheet" href="${base}${DEV_CSS.slice(1)}" data-fondu-dev-css>'
+export function assetTags(component, nonce) {
+  return '<link rel="stylesheet" href="${base}${DEV_CSS.slice(1)}?page=' + encodeURIComponent(component) + '" data-fondu-dev-css>'
     + \`<script type="module"${nonceAttr}>${preamble}</script><script type="module" src="${base}@vite/client"${nonceAttr}></script><script type="module" src="${base}@id/__x00__${V.entry}"${nonceAttr}></script>\`
 }`
 }

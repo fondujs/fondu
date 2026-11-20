@@ -15,7 +15,7 @@ import {
 import { flushSync } from 'react-dom'
 import { createRoot, hydrateRoot } from 'react-dom/client'
 
-import { decoded, layoutsOf, pageId, routePatterns } from '../paths.js'
+import { decoded, pageId, routePatterns } from '../paths.js'
 import type { Flash, Shared } from '../types.js'
 import { again, startNavigation, type Page } from './navigation.js'
 import { progressBar, type ProgressOptions } from './progress.js'
@@ -25,11 +25,9 @@ type PageComponent = ComponentType<Record<string, unknown>>
 type Loader = () => Promise<unknown>
 
 const ROUTES = '/app/routes/'
-const ERROR = '_error'
 
 // set by the app's entry (the Vite plugin's): the pages and layouts of app/routes/, and the build's settings
 let pages = new Map<string, Loader>()
-let layoutModules: Record<string, Loader> = {}
 /** each page's URL patterns, segment by segment: for `pageAt` */
 let patterns: Array<{ id: string; segments: string[] }> = []
 
@@ -40,32 +38,26 @@ let patterns: Array<{ id: string; segments: string[] }> = []
  */
 export function __entry(
   pageModules: Record<string, Loader>,
-  layouts: Record<string, Loader>,
   settings: { prerender: boolean; progress: ProgressOptions | false; viewTransitions: boolean },
+  errorComponent?: Loader,
 ) {
   pages = new Map(
     Object.entries(pageModules).map(([key, loader]) => [pageId(key.slice(ROUTES.length)), loader]),
   )
-  layoutModules = layouts
   patterns = [...pages.keys()]
     .filter((id) => !id.split('/').some((s) => s.startsWith('_'))) // the error page is no URL
     .flatMap((id) => routePatterns(id).map((p) => ({ id, segments: p.split('/').filter(Boolean) })))
-  if (typeof document !== 'undefined') start(settings)
+  if (typeof document !== 'undefined') start(settings, errorComponent)
 }
 
-const defaultOf = async (loader: Loader) => ((await loader()) as { default: never }).default
-
-/** a page's component, and the `_layout.tsx` files of its directories it's drawn in, outermost first */
+/** Vite compiles inherited layouts into the same `layout` export as an explicit chain. */
 async function load(component: string): Promise<Shown['view']> {
   const page = pages.get(component)
   if (!page) throw new Error(`fondu: there is no page "${component}" in app/routes/`)
-  const chain = layoutsOf(component)
-    .map((dir) => `${ROUTES}${dir ? `${dir}/` : ''}_layout.tsx`)
-    .filter((k) => k in layoutModules)
-  const [Component, ...layouts] = await Promise.all([
-    defaultOf(page) as Promise<PageComponent>,
-    ...chain.map((k) => defaultOf(layoutModules[k]!) as Promise<Layout>),
-  ])
+  const { default: Component, layout: layouts } = (await page()) as {
+    default: PageComponent
+    layout: Layout[]
+  }
   return { Component, layouts }
 }
 
@@ -227,7 +219,7 @@ function setNavigation(
 // ---- the app
 
 /** the browser's app: the server's page hydrated, then navigations */
-function start(settings: Parameters<typeof __entry>[2]) {
+function start(settings: Parameters<typeof __entry>[1], errorComponent?: Loader) {
   const progress = settings.progress
   if (progress)
     subscribe(
@@ -243,9 +235,7 @@ function start(settings: Parameters<typeof __entry>[2]) {
   if (!data || !root)
     throw new Error('fondu: the document has no page (script[data-page="app"], #app)')
   const initial = JSON.parse(data) as Page
-  void pages
-    .get(ERROR)?.()
-    .then((m) => (ErrorPage = (m as { default: typeof ErrorPage }).default))
+  void errorComponent?.().then((m) => (ErrorPage = (m as { default: typeof ErrorPage }).default))
   void load(initial.component).then((view) => {
     // dev: the stylesheet the server gave the page until its layouts brought their CSS (they have now)
     document.querySelector('[data-fondu-dev-css]')?.remove()

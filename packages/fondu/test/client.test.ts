@@ -31,25 +31,22 @@ const Inherited = () =>
     'done',
   )
 
+const plainView = async () => ({ default: Plain, layout: [] })
+
 // on the server, the entry only keeps the modules (no document to start the app in)
 __entry(
   {
-    '/app/routes/(site)/users/[id].tsx': async () => ({ default: Show }),
-    '/app/routes/labeled.tsx': async () => ({ default: Labeled }),
-    '/app/routes/about.mdx': async () => ({ default: Plain }),
-    '/app/routes/admin/users/list.tsx': async () => ({ default: Plain }),
-    '/app/routes/(site)/users/new.tsx': async () => ({ default: Plain }),
-    '/app/routes/(site)/index.tsx': async () => ({ default: Plain }),
-    '/app/routes/files/[...path].tsx': async () => ({ default: Plain }),
-    '/app/routes/café.tsx': async () => ({ default: Plain }),
-    '/app/routes/_error.tsx': async () => ({ default: Plain }),
-    '/app/routes/board.tsx': async () => ({ default: Board }),
-    '/app/routes/inherited.tsx': async () => ({ default: Inherited }),
-  },
-  {
-    '/app/routes/(site)/_layout.tsx': async () => ({ default: Inner }),
-    '/app/routes/admin/_layout.tsx': async () => ({ default: Outer }),
-    '/app/routes/admin/users/_layout.tsx': async () => ({ default: Inner }),
+    '/app/routes/(site)/users/[id].tsx': async () => ({ default: Show, layout: [Inner] }),
+    '/app/routes/labeled.tsx': async () => ({ default: Labeled, layout: [] }),
+    '/app/routes/about.mdx': plainView,
+    '/app/routes/admin/users/list.tsx': async () => ({ default: Plain, layout: [Outer, Inner] }),
+    '/app/routes/(site)/users/new.tsx': plainView,
+    '/app/routes/(site)/index.tsx': plainView,
+    '/app/routes/files/[...path].tsx': plainView,
+    '/app/routes/café.tsx': plainView,
+    '/app/routes/_error.tsx': plainView,
+    '/app/routes/board.tsx': async () => ({ default: Board, layout: [] }),
+    '/app/routes/inherited.tsx': async () => ({ default: Inherited, layout: [] }),
   },
   { prerender: false, progress: false, viewTransitions: false },
 )

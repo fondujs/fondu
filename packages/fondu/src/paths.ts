@@ -203,8 +203,12 @@ function exportsOf(file: string): { allowed: readonly string[]; hint: string } {
   const name = file.split('/').at(-1)!
   if (name === '_middleware.ts')
     return { allowed: ['default', ...CONFIG], hint: 'its middleware (default), prerender, params' }
-  if (/^_(?:layout|error)\.tsx$/.test(name))
-    return { allowed: ['default'], hint: 'its component only (default)' }
+  if (name === '_error.tsx') return { allowed: ['default'], hint: 'its component (default)' }
+  if (name === '_layout.tsx')
+    return {
+      allowed: ['default', 'layout'],
+      hint: 'its component (default) and optional layout chain',
+    }
   if (file.endsWith('.mdx'))
     return {
       allowed: [],
@@ -216,8 +220,8 @@ function exportsOf(file: string): { allowed: readonly string[]; hint: string } {
       hint: 'GET, POST, PUT, PATCH, DELETE, OPTIONS, prerender, params',
     }
   return {
-    allowed: ['default', ...HANDLERS, ...CONFIG],
-    hint: 'its page (default), loader, action or actions, prerender, params; the rest goes to a module of its own',
+    allowed: ['default', 'layout', ...HANDLERS, ...CONFIG],
+    hint: 'its page (default), layout, loader, action or actions, prerender, params; the rest goes to a module of its own',
   }
 }
 

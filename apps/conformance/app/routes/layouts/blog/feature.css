@@ -1,0 +1,3 @@
+article[aria-label='Special feature'] {
+  --feature-layout: selected;
+}

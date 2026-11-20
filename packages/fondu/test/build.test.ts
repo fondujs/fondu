@@ -18,7 +18,7 @@ describe('server exports of a layout or an error page', () => {
           'app/routes/index.tsx': page,
           [`app/routes/${file}`]: `export default function X() { return null }\nexport const ${name} = () => ({})\n`,
         })
-        const message = `fondu: routes/${file} exports \`${name}\`. It exports its component only (default)`
+        const message = `fondu: routes/${file} exports \`${name}\`. It exports its component (default)${file === '_layout.tsx' ? ' and optional layout chain' : ''}`
         await expect(buildClient(app.root)).rejects.toThrow(message)
         // the server's own check, at startup, says the same
         expect(() => checkExports(file, { default: () => null, [name]: () => ({}) })).toThrow(

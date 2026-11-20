@@ -28,7 +28,16 @@ describe('a route file has one spelling per handler', () => {
   })
   test('a .tsx file with GET: a page has loader', () => {
     expect(() => checkExports('a.tsx', { default: Page, GET: handler })).toThrow(
-      'fondu: routes/a.tsx exports `GET`. It exports its page (default), loader, action or actions',
+      'fondu: routes/a.tsx exports `GET`. It exports its page (default), layout, loader, action or actions',
+    )
+  })
+  test('a page cannot select itself or a non-component; error pages keep their existing contract', () => {
+    for (const layout of [[Page], [42], ['aside'], null])
+      expect(() => checkExports('print.tsx', { default: Page, layout })).toThrow(
+        'routes/print.tsx: layout must list React components',
+      )
+    expect(() => checkExports('_error.tsx', { default: Page, layout: [] })).toThrow(
+      'routes/_error.tsx exports `layout`',
     )
   })
   test('a .ts file with GET and POST, a .tsx file with loader and action: accepted', () => {

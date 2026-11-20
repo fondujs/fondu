@@ -1,3 +1,4 @@
+import mdx from '@mdx-js/rollup'
 import fondu from 'fondu/vite'
 import { defineConfig } from 'vite'
 
@@ -7,6 +8,7 @@ import { defineConfig } from 'vite'
 
 export default defineConfig({
   plugins: [
+    { enforce: 'pre', ...mdx() },
     fondu({
       target: 'node',
       prerender: true,

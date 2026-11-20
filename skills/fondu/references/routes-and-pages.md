@@ -39,13 +39,14 @@ export const params = { lang: ['de', 'fr'] }
 
 ## What each file exports
 
-| File                        | Exports                                                                    |
-| --------------------------- | -------------------------------------------------------------------------- |
-| `.tsx`                      | the page (default), `loader`, `action` or `actions`, `prerender`, `params` |
-| `.ts`                       | `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS`, `prerender`, `params`  |
-| `.mdx`                      | its content: no handlers; `share()` props are in `props`                   |
-| `_middleware.ts`            | its middleware (default), `prerender`, `params`                            |
-| `_layout.tsx`, `_error.tsx` | the component (default)                                                    |
+| File             | Exports                                                                              |
+| ---------------- | ------------------------------------------------------------------------------------ |
+| `.tsx`           | the page (default), `layout`, `loader`, `action` or `actions`, `prerender`, `params` |
+| `.ts`            | `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS`, `prerender`, `params`            |
+| `.mdx`           | its content and optional `layout`: no handlers; `share()` props are in `props`       |
+| `_middleware.ts` | its middleware (default), `prerender`, `params`                                      |
+| `_error.tsx`     | the component (default)                                                              |
+| `_layout.tsx`    | the component (default), optional `layout`                                           |
 
 ## A page
 
@@ -115,6 +116,7 @@ export default function Layout({ children }: { children: ReactNode }) {
 - A layout stays mounted while pages change, so its state is kept. It has no loader: `share()` gives it props, and
   `usePage()` reads them. A `loader` or `action` exported from a layout (or `_error.tsx`) fails the build and the
   server's start.
+- A TSX/MDX page or `_layout.tsx` may export `const layout = [Site, Feature]` using imported components, outermost first. This replaces **all** inherited parents, root included. On a directory layout its own component still wraps its children. A print page can use `[]`: no layout provider, but still the document and the same Hono middleware. React preserves only the shared outer prefix. Commit `app/fondu.layouts.gen.ts` when generated: it checks the component props with `tsc`.
 - A layout is in the JavaScript of its pages only.
 
 ## Error page and middleware
