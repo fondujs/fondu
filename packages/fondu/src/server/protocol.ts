@@ -126,8 +126,8 @@ type JsonInput<T> =
     ? T
     : T extends Json | undefined
       ? T | { toJSON(): T }
-      : T extends readonly (infer E)[]
-        ? readonly JsonInput<E>[] | { toJSON(): T }
+      : T extends readonly unknown[]
+        ? { readonly [K in keyof T]: JsonInput<T[K]> } | { toJSON(): T }
         : T extends object
           ? { [K in keyof T]: JsonInput<T[K]> } | { toJSON(): T }
           : T
