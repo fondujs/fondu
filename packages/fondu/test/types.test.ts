@@ -78,7 +78,7 @@ const getThrows = define.withValidator({ query: listQuery })((c, { query }) => {
 
 declare module '../src/types.js' {
   interface Register {
-    shared: { auth: Auth }
+    shared: { auth: Auth; mode: 'text' | 'count' }
     flash: { message?: string }
     routes: {
       '/': object
@@ -243,6 +243,42 @@ typed(({ render }, c) => {
   render(c, Lists, { optional: [], rest: ['Ada'], tags })
   // @ts-expect-error elements after the first must be numbers
   render(c, Lists, { optional: pair, rest: ['Ada', 'extra'], tags })
+})
+
+type IndexedHit = { kind: 'hit'; title: string; [key: string]: unknown }
+declare function IndexedResult(props: IndexedHit | { kind: 'miss'; reason: string }): null
+declare function Dictionary(props: Record<string, string>): null
+
+type ModeResult = { mode: 'text'; value: string } | { mode: 'count'; value: number }
+declare function SharedMode(props: ModeResult): null
+declare const sharedModeResult: ModeResult
+declare function OptionalSharedMode(props: { mode?: 'text' } | { mode: 'count' }): null
+declare function InvalidSharedMode(props: ModeResult | { mode: 'other'; value: boolean }): null
+
+typed(({ render }, c) => {
+  render(c, IndexedResult, { kind: 'hit', title: 'Found', extra: 1 })
+  render(c, IndexedResult, { kind: 'miss', reason: 'Gone' })
+  // @ts-expect-error an index signature doesn't supply an explicitly required title
+  render(c, IndexedResult, { kind: 'hit' })
+  // @ts-expect-error extra fields don't make the discriminant arbitrary
+  render(c, IndexedResult, { kind: 'other', title: 'Found' })
+  // @ts-expect-error the index signature doesn't make either branch empty
+  render(c, IndexedResult)
+  render(c, Dictionary)
+  render(c, Dictionary, { section: 'news' })
+
+  render(c, SharedMode, { mode: 'text', value: 'Hello' })
+  render(c, SharedMode, { mode: 'count', value: 2 }, { status: 202 })
+  render(c, SharedMode, sharedModeResult)
+  // @ts-expect-error middleware may provide either mode, not necessarily count
+  render(c, SharedMode, { value: 2 })
+  // @ts-expect-error the mode and value must agree
+  render(c, SharedMode, { mode: 'count', value: 'Hello' })
+  render(c, OptionalSharedMode, { mode: 'text' })
+  // @ts-expect-error even the text branch needs a mode; middleware could give it count
+  render(c, OptionalSharedMode)
+  // @ts-expect-error a page may not overwrite a shared value with one layouts cannot handle
+  render(c, InvalidSharedMode, { mode: 'other', value: true })
 })
 
 const hrefs = [

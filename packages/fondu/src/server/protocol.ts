@@ -70,19 +70,28 @@ type PageComponent<P> =
 type Named<P> = keyof {
   [K in keyof P as string extends K ? never : number extends K ? never : K]: 0
 }
-/** shared props the page takes with the same type: `render` may leave them out (every page gets them) */
+type SharedNames<P> = Exclude<Named<P> & keyof P & keyof Shared, 'errors'>
+/** Only omit a shared prop when any value from middleware fits this branch. */
 type FromShared<P> = {
-  [K in Named<P> & keyof Shared]: Shared[K] extends P[K] ? K : never
-}[Named<P> & keyof Shared]
-/** a page prop named like a shared prop, of another type: it would hide the shared one from the layout */
-type Clashing<P> = string extends keyof Shared
+  [K in SharedNames<P>]: Shared[K] extends P[K] ? K : never
+}[SharedNames<P>]
+type ExplicitShared<P> = string extends keyof Shared
   ? never
-  : Exclude<Named<P> & keyof Shared, FromShared<P>>
+  : Exclude<SharedNames<P>, FromShared<P>>
+type NamedValue<P, K> = P extends unknown ? (K extends Named<P> & keyof P ? P[K] : never) : never
 type ClashError = 'fondu: this page prop has the name of a shared prop (share()); rename it'
-/** what `render` takes: the component's props, less `errors` and the shared props it gets anyway (may still be given) */
-type OwnProps<P> = Omit<P, FromShared<P> | Clashing<P> | 'errors'> &
-  Partial<Pick<P, FromShared<P>>> & {
-    [K in Clashing<P>]: ClashError
+/** A shared prop can select a branch, but it must still be safe for layouts reading the shared value. */
+type SharedOverride<P, Whole, K extends keyof P & keyof Shared> =
+  Shared[K] extends NamedValue<Whole, K>
+    ? [P[K] & Shared[K]] extends [never]
+      ? ClashError
+      : P[K] & Shared[K]
+    : ClashError
+
+type OwnProps<P, Whole> = {
+  [K in keyof P as K extends 'errors' | FromShared<P> | ExplicitShared<P> ? never : K]: P[K]
+} & Partial<Pick<P, FromShared<P>>> & {
+    [K in ExplicitShared<P>]: SharedOverride<P, Whole, K>
   }
 
 // ---- props as JSON delivers them: a page's prop types are what it receives; `render` takes what becomes that
@@ -144,11 +153,10 @@ type Deferrable<P, K extends keyof P> =
 export interface RenderOptions {
   status?: number
 }
-// Omit keeps only common keys of a union: remove shared props from each branch separately.
-type RenderProps<P> = P extends unknown
-  ? keyof OwnProps<P> extends never
+type RenderProps<P, Whole = P> = P extends unknown
+  ? keyof OwnProps<P, Whole> extends never
     ? Record<string, never>
-    : Delivered<OwnProps<P>>
+    : Delivered<OwnProps<P, Whole>>
   : never
 type RenderArgs<P> =
   {} extends RenderProps<P>
