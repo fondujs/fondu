@@ -88,6 +88,18 @@ test('contacts share their workspace across list, detail, edit and Back', async 
   await expect(filter).toHaveValue('Ada')
 })
 
+test.describe('without JavaScript: layout CSS cascade', () => {
+  test.use({ javaScriptEnabled: false })
+
+  test('page styles override inherited styles on a prerendered page', async ({ page }) => {
+    expect((await page.goto('/layouts/blog/news'))?.status()).toBe(200)
+    await expect(page.getByRole('link', { name: 'Annual review' })).toHaveCSS(
+      'color',
+      'rgb(0, 0, 255)',
+    )
+  })
+})
+
 test('without JavaScript: MDX uses its chain and a standalone print page still requires authorization', async ({
   browser,
   baseURL,

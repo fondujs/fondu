@@ -35,8 +35,8 @@ export function productionAssets(config: ResolvedConfig, options: FonduOptions):
     if (!chunk || seen.has(key)) return
     seen.add(key)
     js.add(chunk.file)
-    for (const c of chunk.css ?? []) css.add(c)
     for (const i of chunk.imports ?? []) collect(i, css, js, seen)
+    for (const c of chunk.css ?? []) css.add(c)
   }
   const tags = (key: string) => {
     const css = new Set<string>(),

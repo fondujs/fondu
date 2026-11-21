@@ -1,4 +1,7 @@
-// a page with no loader: a GET renders it, with the shared props only
+import { Fragment, Suspense } from 'react'
+
+export const layout = [Fragment, Suspense]
+
 export default function Notes() {
-  return null
+  return <h1>Notes</h1>
 }
