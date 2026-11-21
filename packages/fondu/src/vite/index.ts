@@ -443,8 +443,13 @@ function core(options: FonduOptions): Plugin {
             (f) => (isPageFile(f) || f === '_error.tsx') && pageId(f) === component,
           )
           const seen = new Set<string>()
-          async function visit(url: string) {
-            // Only modules in the initial view. A lazy drawer's styles (and a shadow root's CSS text) aren't document CSS.
+          async function visit(servedUrl: string) {
+            // Undo Vite's browser ID encoding, as its transform middleware does.
+            const url = servedUrl
+              .replace(/^\/@id\/(?:__x00__)?/, (prefix) => (prefix.endsWith('__x00__') ? '\0' : ''))
+              .replace(/([?&])import(?=&|$)&?/, '$1')
+              .replace(/([?&])t=\d+(?=&|$)&?/, '$1')
+              .replace(/[?&]$/, '')
             if (seen.has(url) || /[?&](?:inline|raw|url|worker|sharedworker)(?:[&=]|$)/.test(url))
               return
             seen.add(url)
@@ -454,8 +459,9 @@ function core(options: FonduOptions): Plugin {
             }
             if (
               url.startsWith('/@vite/') ||
-              url.startsWith('/@id/') ||
-              url.includes('/node_modules/')
+              url === '__vite-browser-external' ||
+              url.startsWith('__vite-browser-external:') ||
+              env.depsOptimizer?.isOptimizedDepUrl(url)
             )
               return
             const result = await env.transformRequest(url)

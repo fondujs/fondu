@@ -3,7 +3,7 @@ import { readFileSync, unlinkSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { join } from 'node:path'
 
-import { createServer } from 'vite'
+import { createServer, type Plugin } from 'vite'
 import { expect, test, vi } from 'vitest'
 
 import fondu from '../src/vite/index.js'
@@ -71,9 +71,12 @@ test('a wildcard exporting layout is diagnosed, not silently treated as inherita
   }
 })
 
-test('the generated TS check rejects a layout requiring extra props under skipLibCheck', async () => {
+test('the generated TS check includes a directory layout no page uses, in dev and production', async () => {
   const app = tempApp({
-    'app/routes/topic.tsx': `import Shell from '../shell'; export const layout=[Shell]; ${page}`,
+    'app/routes/reports/_layout.tsx': `import Shell from '../../shell'; export const layout=[Shell]; export default function Reports({children}: {children: import('react').ReactNode}) { return children }`,
+    'app/routes/reports/print.tsx': `export const layout = []; ${page}`,
+    'app/routes/topic.mdx': '# Use shell',
+    'app/mdx-shell.tsx': `export default function MdxShell({children}: {children: import('react').ReactNode}) { return children }`,
     'app/shell.tsx':
       'export default function Shell(p:{children: import("react").ReactNode; name:string}) {return p.children}',
     'tsconfig.json': JSON.stringify({
@@ -88,17 +91,58 @@ test('the generated TS check rejects a layout requiring extra props under skipLi
       include: ['app'],
     }),
   })
+  const mdx: Plugin = {
+    name: 'test-mdx',
+    enforce: 'pre',
+    transform(code, id) {
+      if (!id.split('?')[0]?.endsWith('.mdx')) return
+      const view = `export default function Topic(){return 'Topic'}`
+      return code.includes('Use shell')
+        ? `import MdxShell from '../mdx-shell'; export const layout=[MdxShell]; ${view}`
+        : view
+    },
+  }
+  const plugins = () => [mdx, fondu({ target: 'node' })]
+  const generated = join(app.root, 'app/fondu.layouts.gen.ts')
+  const tsc = join(createRequire(import.meta.url).resolve('typescript/package.json'), '../bin/tsc')
+  const check = () => spawnSync(process.execPath, [tsc, '-p', app.root], { encoding: 'utf8' })
+  const invalid = () => {
+    const result = check()
+    expect(result.status, result.stdout + result.stderr).not.toBe(0)
+    expect(result.stdout).toContain('fondu.layouts.gen.ts')
+    expect(result.stdout).toContain("'name' is missing")
+    return result.stdout
+  }
   try {
-    await buildClient(app.root)
-    const tsc = join(
-      createRequire(import.meta.url).resolve('typescript/package.json'),
-      '../bin/tsc',
-    )
-    const check = () => spawnSync(process.execPath, [tsc, '-p', app.root], { encoding: 'utf8' })
-    const bad = check()
-    expect(bad.status, bad.stdout + bad.stderr).not.toBe(0)
-    expect(bad.stdout).toContain('fondu.layouts.gen.ts')
-    expect(bad.stdout).toContain("'name' is missing")
+    const dev = await createServer({
+      root: app.root,
+      configFile: false,
+      logLevel: 'silent',
+      server: { port: 0, host: '127.0.0.1' },
+      plugins: plugins(),
+    })
+    try {
+      await dev.listen()
+      const topic = join(app.root, 'app/routes/topic.mdx')
+      const containsTopic = (expected: boolean) =>
+        vi.waitFor(
+          () => expect(readFileSync(generated, 'utf8').includes('routes/topic.mdx')).toBe(expected),
+          { timeout: 5000 },
+        )
+      await containsTopic(true)
+      writeFileSync(topic, '# Plain topic')
+      await containsTopic(false)
+      writeFileSync(topic, '# Use shell')
+      await containsTopic(true)
+    } finally {
+      await dev.close()
+    }
+    const contents = readFileSync(generated, 'utf8')
+    expect(contents).toContain('routes/topic.mdx')
+    const diagnostic = invalid()
+    await buildClient(app.root, {}, { plugins: plugins() })
+    expect(readFileSync(generated, 'utf8')).toBe(contents)
+    expect(invalid()).toBe(diagnostic)
     writeFileSync(
       join(app.root, 'app/shell.tsx'),
       'export default function Shell(p:{children: import("react").ReactNode; name?:string}) {return p.children}',
@@ -146,12 +190,14 @@ test('a running dev server tracks added, changed and deleted directory layouts i
 })
 
 test.each(['/', '/demo/'])(
-  'dev CSS at %s follows static layout imports, not a closed drawer or inline CSS',
+  'dev CSS at %s follows static layout imports, including virtual themes, but not lazy or inline styles',
   async (base) => {
     const app = tempApp({
       'app/routes/index.tsx': page,
-      'app/routes/_layout.tsx': `import Shared from '../../ui/shell'; import './site.css'; export default function Layout({children}) { return <Shared>{children}<button onClick={() => import('../drawer')}>Open</button></Shared> }`,
+      'app/routes/_layout.tsx': `import Shared from '../../ui/shell'; import 'virtual:theme'; import './site.css'; export default function Layout({children}) { return <Shared>{children}<button onClick={() => import('../drawer')}>Open</button></Shared> }`,
       'app/routes/site.css': ':root { --site: 1 }',
+      'app/theme.css': ':root { --theme: 1 }',
+      'app/palette.css': ':root { --palette: 1 }',
       'ui/shell.tsx': `import './shell.css'; import text from './shadow.css?inline'; export default function Shared({children}) { return <div data-css={text}>{children}</div> }`,
       'ui/shell.css': ':root { --shared-shell: 1 }',
       'ui/shadow.css': ':root { --shadow-only: 1 }',
@@ -164,13 +210,32 @@ test.each(['/', '/demo/'])(
       configFile: false,
       logLevel: 'silent',
       server: { port: 0, host: '127.0.0.1' },
-      plugins: [fondu({ target: 'node' })],
+      plugins: [
+        {
+          name: 'theme',
+          resolveId(id) {
+            if (id === 'virtual:theme') return '\0virtual:theme'
+            if (id === 'virtual:palette') return id
+          },
+          load(id) {
+            if (id === '\0virtual:theme')
+              return `import '/app/theme.css'; export * from 'virtual:palette'; import('/app/drawer')`
+            if (id === 'virtual:palette')
+              return `import '/app/palette.css'; export const palette = true`
+          },
+        },
+        fondu({ target: 'node' }),
+      ],
     })
     try {
       await dev.listen()
       const url = dev.resolvedUrls!.local[0]!
-      const css = await (await fetch(new URL('@fondu/dev.css?page=index', url))).text()
+      const response = await fetch(new URL('@fondu/dev.css?page=index', url))
+      expect(response.status).toBe(200)
+      const css = await response.text()
       expect(css).toContain('--site')
+      expect(css).toContain('--theme')
+      expect(css).toContain('--palette')
       expect(css).not.toContain('--drawer-only')
       expect(css).toContain('--shared-shell')
       expect(css).not.toContain('--shadow-only')

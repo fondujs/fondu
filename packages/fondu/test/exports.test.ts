@@ -32,7 +32,7 @@ describe('a route file has one spelling per handler', () => {
     )
   })
   test('a page cannot select itself or a non-component; error pages keep their existing contract', () => {
-    for (const layout of [[Page], [42], ['aside'], null])
+    for (const layout of [[Page], [42], ['aside'], [{}], [Symbol('not a component')], null])
       expect(() => checkExports('print.tsx', { default: Page, layout })).toThrow(
         'routes/print.tsx: layout must list React components',
       )

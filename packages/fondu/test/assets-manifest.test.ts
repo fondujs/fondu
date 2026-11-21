@@ -59,7 +59,7 @@ describe('the route manifest', () => {
       { css: string[]; js: string[] }
     >
     expect(byPage['docs/intro']).toEqual({
-      css: ['assets/docs-intro-I.css', 'assets/layout-L.css'],
+      css: ['assets/layout-L.css', 'assets/docs-intro-I.css'],
       js: [
         'assets/docs-intro-I.js',
         'assets/layout-L.js',
@@ -80,10 +80,10 @@ describe('the route manifest', () => {
     const { module } = await load()
     expect(module.assetTags('docs/intro')).toBe(
       [
-        '<link rel="stylesheet" href="/assets/entry-E.css">',
         '<link rel="stylesheet" href="/assets/shared-S.css">',
-        '<link rel="stylesheet" href="/assets/docs-intro-I.css">',
+        '<link rel="stylesheet" href="/assets/entry-E.css">',
         '<link rel="stylesheet" href="/assets/layout-L.css">',
+        '<link rel="stylesheet" href="/assets/docs-intro-I.css">',
         '<link rel="modulepreload" href="/assets/shared-S.js">',
         '<link rel="modulepreload" href="/assets/docs-intro-I.js">',
         '<link rel="modulepreload" href="/assets/layout-L.js">',
