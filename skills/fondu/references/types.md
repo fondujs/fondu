@@ -83,6 +83,52 @@ fields are left out. `render()` checks both sides: `render(c, Show, { post: { ti
 fine for a page typed `publishedAt: string`. A page that types a prop as `Date`, `Map`, `Set` or a function is an
 error at `render()`. Anything with `toJSON()` passes for what that returns.
 
+## `AsJson<T>`: props from your data
+
+A page declares its props; `render()` checks every writer (a loader, an action, middleware) against them. To write the
+type once, from the data's own type, use `AsJson<T>` (`fondu`, a type only): `T` after the JSON round trip, as a page
+receives it.
+
+- `Date`, or anything with `toJSON()`, becomes what that returns (a `Date` is a `string`).
+- `undefined` properties become optional, and `undefined` in an array becomes `null`.
+- Functions and symbols are left out of objects, and are `null` in arrays.
+- `Map`, `Set` and other objects with no own data become `{}`.
+- A `bigint` is a type error, as `JSON.stringify` throws on it.
+- Unions, tuples and readonly arrays keep their shape.
+
+`render()` takes what becomes the page's type: a page that declares `AsJson<Row>` gets a `Row` (with its `Date`) from the
+loader. Don't rewrite the row's type by hand (`Omit<Row, 'createdAt'> & { createdAt: string }`).
+
+```tsx
+// a whole Drizzle row (props are public: a whole row sends every column; select the ones the page shows)
+type Contact = AsJson<typeof contacts.$inferSelect>
+export default function Contacts({ contacts }: { contacts: Contact[] }) { … }
+```
+
+```tsx
+// a selected shape: a query function in the route file, its type used in a type position only
+const listContacts = () =>
+  db.select({ id: contacts.id, name: contacts.name, createdAt: contacts.createdAt }).from(contacts)
+
+export const loader = defineHandler(async (c) =>
+  render(c, Contacts, { contacts: await listContacts() }),
+)
+
+type Props = { contacts: AsJson<Awaited<ReturnType<typeof listContacts>>> }
+```
+
+`typeof listContacts` is not a use, so the browser's copy of the file drops the query. When an action or another route
+needs it too, move it to a `*.server.ts` module and import it in the page with `import type { listContacts } from …`
+(the whole import as `import type`).
+
+```tsx
+// a form's values: from its schema (the action's `body` is already typed by withValidator)
+type Values = z.infer<typeof newContactSchema>
+```
+
+`AsJson` goes by the declared type: it can't tell that a class getter, or an `Error`'s `message`, is not own data (convert
+such a value first). It needs a concrete type: for an unresolved type parameter, TypeScript reports an error.
+
 `Errors` (`fondu/client`) is the type of a page's `errors` prop. `fondu/client` also exports the types `Href`, `Navigation`
-and `Page`; `fondu` exports `Register`, `RenderOptions`, `DocumentParts`, `DocumentTemplate` and `CreateAppOptions`;
+and `Page`; `fondu` exports `Register`, `AsJson`, `RenderOptions`, `DocumentParts`, `DocumentTemplate` and `CreateAppOptions`;
 `fondu/vite` exports `FonduOptions` and `ProgressOptions`.

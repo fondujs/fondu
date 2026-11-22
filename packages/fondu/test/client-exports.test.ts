@@ -53,13 +53,18 @@ test("fondu/client's exports are the documented ones", () => {
   expect(documented('fondu/client')).toContain('RequestError')
 })
 
-test('the type exports of each entry are the documented ones', () => {
+test('the type exports of each entry are the documented ones', async () => {
   for (const [entry, file] of [
     ['fondu', '../src/index.ts'],
     ['fondu/client', '../src/client.ts'],
     ['fondu/vite', '../src/vite/index.ts'],
   ] as const)
     expect(typeExports(file), entry).toEqual(documented(entry, true).sort())
+  // AsJson is a type only: documented with the types, exported with `type`, and no value of that name
+  expect(typeExports('../src/index.ts')).toContain('AsJson')
+  expect(documented('fondu', true)).toContain('AsJson')
+  expect(documented('fondu')).not.toContain('AsJson')
+  expect(await import('../src/index.js')).not.toHaveProperty('AsJson')
   // the plumbing is not exported (ApiPath, AnswerOf, RequestArgs: request()'s types; StandardSchemaV1: validate.ts's)
   for (const name of ['ApiPath', 'AnswerOf', 'RequestArgs', 'StandardSchemaV1'])
     for (const file of ['../src/index.ts', '../src/client.ts', '../src/vite/index.ts'])

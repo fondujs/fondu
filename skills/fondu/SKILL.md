@@ -101,4 +101,4 @@ export default function Show({ user }: { user: { name: string } }) {
 | [references/data.md](references/data.md)                         | `defer()` and `<Deferred>`, typed `request()` and `RequestError`, when to use which                                           |
 | [references/rendering.md](references/rendering.md)               | streaming, Suspense, static pages (`prerender`), `withoutSsr()`, the document and its nonce                                   |
 | [references/server.md](references/server.md)                     | `createApp` options, the Vite plugin, middleware, `.ts` routes, Bun, Node and Workers                                         |
-| [references/types.md](references/types.md)                       | `fondu.gen.d.ts`, `Register`, typed `href`, `usePage`, what crosses as JSON                                                   |
+| [references/types.md](references/types.md)                       | `fondu.gen.d.ts`, `Register`, typed `href`, `usePage`, what crosses as JSON, `AsJson`                                         |

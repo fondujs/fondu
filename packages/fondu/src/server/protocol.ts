@@ -89,49 +89,110 @@ type OwnProps<P> = {
 // ---- props as JSON delivers them: a page's prop types are what it receives; `render` takes what becomes that
 
 type Json = string | number | boolean | null
-/** types JSON doesn't deliver as they are: a Date arrives as a string, a Map or a Set as {}, a function not at all */
-type NotJson =
-  | Date
+/** JSON.stringify leaves these out of an object, and writes null for them in an array */
+type Omitted = undefined | symbol | ((...args: never[]) => unknown)
+/** objects with no own data: JSON writes {} */
+type Hollow =
   | Map<unknown, unknown>
   | Set<unknown>
   | WeakMap<object, unknown>
   | WeakSet<object>
   | RegExp
-  | bigint
-  | symbol
-  | ((...args: never[]) => unknown)
-type IsAny<T> = 0 extends 1 & T ? true : false
-/** each member of T arrives as itself (depth-limited, for recursive types) */
-type JsonMember<T, D extends unknown[]> = T extends Json | undefined
-  ? true
-  : T extends NotJson
+/** types JSON doesn't deliver as they are: a Date arrives as a string, a Map or a Set as {}, a function not at all */
+type NotJson = Date | Hollow | bigint | Exclude<Omitted, undefined>
+/** (not `0 extends 1 & T`: a constraint written with T on the right is a circular one, as AsJson's is) */
+type IsAny<T> = unknown extends T ? ([T] extends [string] ? true : false) : false
+/** does a member of T, at any depth (limited, for recursive types), extend Needle? */
+type Holds<T, Needle, D extends unknown[] = []> =
+  IsAny<T> extends true
     ? false
-    : D['length'] extends 6
+    : T extends Needle
       ? true
-      : T extends readonly (infer E)[]
-        ? Arrives<E, [...D, 0]>
-        : T extends object
-          ? Arrives<T[keyof T], [...D, 0]>
-          : true
-type Arrives<T, D extends unknown[] = []> =
-  IsAny<T> extends true
-    ? true
-    : unknown extends T
-      ? true
-      : [JsonMember<T, D>] extends [true]
-        ? true
-        : false
-/** what a route may pass for a page prop of type T: T, or anything JSON turns into it (a Date for a string: toJSON) */
-type JsonInput<T> =
-  IsAny<T> extends true
-    ? T
-    : T extends Json | undefined
-      ? T | { toJSON(): T }
-      : T extends readonly unknown[]
-        ? { readonly [K in keyof T]: JsonInput<T[K]> } | { toJSON(): T }
-        : T extends object
-          ? { [K in keyof T]: JsonInput<T[K]> } | { toJSON(): T }
-          : T
+      : D['length'] extends 6
+        ? false
+        : T extends readonly (infer E)[]
+          ? Holds<E, Needle, [...D, 0]>
+          : T extends object
+            ? Holds<T[keyof T], Needle, [...D, 0]>
+            : false
+/** T arrives as itself: nothing in it is a type JSON doesn't deliver as it is */
+type Arrives<T> = true extends Holds<T, NotJson> ? false : true
+/**
+ * What a route may pass for a page prop of type T: a value of type T (its parts through JsonInput too), or one whose
+ * toJSON() gives that (a Date for a string). Nested, JSON drops what a slot may not hold: an optional property takes
+ * undefined, a function or a symbol; a null in an array takes them too (they are written as null).
+ */
+type JsonInput<T> = IsAny<T> extends true ? T : Plain<T> | { toJSON(): Plain<T> }
+/** T without its own toJSON() step (JSON.stringify calls it once: its result's own is not called) */
+type Plain<T> = T extends Json | undefined
+  ? T
+  : T extends readonly unknown[]
+    ? {
+        readonly [K in keyof T]: JsonInput<T[K]> | (null extends T[K] ? Omitted : never)
+      } & NoToJson
+    : T extends object
+      ? { [K in keyof T]: JsonInput<T[K]> | (undefined extends T[K] ? Omitted : never) } & NoToJson
+      : T
+/** a value shaped as T that has a toJSON() is written as that gives, not as T: it goes by the other branch */
+type NoToJson = { toJSON?: never }
+/** where a bigint was: JSON.stringify throws on one (an object, so that a string in a union doesn't absorb it) */
+type BigIntError = {
+  error: 'fondu: JSON cannot carry a bigint (JSON.stringify throws): convert it first'
+}
+/** T as JSON.stringify writes it, what a page receives (the other side of JsonInput); undefined: left out */
+type Wire<T> = IsAny<T> extends true ? T : T extends { toJSON(): infer R } ? Written<R> : Written<T>
+type Written<T> = unknown extends T
+  ? T
+  : T extends bigint
+    ? BigIntError
+    : T extends Json
+      ? T
+      : T extends Omitted
+        ? undefined
+        : T extends Hollow
+          ? {}
+          : T extends readonly unknown[]
+            ? { [K in keyof T]: NullForUndefined<Wire<T[K]>> }
+            : T extends object
+              ? WrittenObject<T>
+              : T
+type NullForUndefined<W> = W extends undefined ? null : W
+/**
+ * A property is left out when its value is undefined (or a function, or a symbol): optional if it may be anything
+ * else, none if it is only that. An index signature has no optional keys: its values are the rest.
+ */
+type WrittenObject<T> = Flat<
+  {
+    [
+      K in keyof T as K extends symbol
+        ? never
+        : [Exclude<Wire<T[K]>, undefined>] extends [never]
+          ? never
+          : {} extends Record<K, unknown>
+            ? K
+            : undefined extends Wire<T[K]>
+              ? never
+              : K
+    ]: Exclude<Wire<T[K]>, undefined>
+  } & {
+    [
+      K in keyof T as K extends symbol
+        ? never
+        : [Exclude<Wire<T[K]>, undefined>] extends [never]
+          ? never
+          : {} extends Record<K, unknown>
+            ? never
+            : undefined extends Wire<T[K]>
+              ? K
+              : never
+    ]?: Exclude<Wire<T[K]>, undefined>
+  }
+>
+type Flat<T> = { [K in keyof T]: T[K] }
+/** a bigint anywhere in T: JSON.stringify throws on it, so AsJson<T> is an error */
+type Carrier<T> = true extends Holds<Wire<T>, BigIntError> ? BigIntError['error'] : unknown
+export type AsJson<T extends Carrier<T>> = Wire<T>
+
 type NotJsonError =
   'fondu: the page receives this prop as JSON (a Date as a string, a Map as {}): type it as such'
 /** Only defer a value when the page can render without the override. */

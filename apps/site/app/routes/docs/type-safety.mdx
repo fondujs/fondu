@@ -121,6 +121,73 @@ render(c, Show, { post: { title, publishedAt: new Date() } }) // fine: JSON make
 A page that types a prop as `Date`, `Map`, `Set` or a function is an error at `render()`, as the page would get
 something else. Anything with a `toJSON()` passes for what that returns.
 
+## Props from your data
+
+A page declares its props, and `render()` checks every writer against them. To write that type once, from the type of
+the data, use `AsJson<T>` from `fondu`. It is `T` after the JSON round trip, the way a page receives it:
+
+- `Date`, or anything with `toJSON()`, becomes what that returns (a `Date` is a `string`).
+- `undefined` properties become optional, and `undefined` in an array becomes `null`.
+- Functions and symbols are left out of objects, and are `null` in arrays.
+- `Map`, `Set` and other objects with no own data become `{}`.
+- A `bigint` is a type error, as `JSON.stringify` throws on it.
+- Unions, tuples and readonly arrays keep their shape.
+
+`render()` takes what becomes the page's type, so a page that declares `AsJson<Row>` gets a `Row` from the loader, with
+its `Date`. Nothing is converted by hand, and the page never types a `Date`.
+
+### A whole row
+
+```tsx
+// app/routes/contacts.tsx
+type Contact = AsJson<typeof contacts.$inferSelect>
+
+export default function Contacts({ contacts }: { contacts: Contact[] }) { … }
+```
+
+Props are public, and a whole row sends every column. Use this for a table the page shows in full, and select columns
+for the rest.
+
+### A selected shape
+
+Write the query as a function in the route file, and take the page's type from its result:
+
+```tsx
+// app/routes/contacts.tsx
+const listContacts = () =>
+  db.select({ id: contacts.id, name: contacts.name, createdAt: contacts.createdAt }).from(contacts)
+
+export const loader = defineHandler(async (c) =>
+  render(c, Contacts, { contacts: await listContacts() }),
+)
+
+type Props = { contacts: AsJson<Awaited<ReturnType<typeof listContacts>>> }
+
+export default function Contacts({ contacts }: Props) { … }
+```
+
+`typeof listContacts` is in a type position, so the browser's copy of the file does not keep the query (or `db`):
+[Server and client](/docs/server-and-client#a-pages-route-file). When an action or another route needs the query too,
+move it to a module named `*.server.ts` and import its type in the page with `import type { listContacts } from …`:
+that import is removed with the other types.
+
+### A form's values
+
+For the values a form starts with, take the type from the form's schema. The action's `body` is already typed by
+`withValidator`.
+
+```tsx
+type Values = z.infer<typeof newContactSchema>
+
+export default function NewContact({ values }: { values: Values }) { … }
+```
+
+### Where it stops
+
+`AsJson` goes by the declared type. It can't tell that a getter of a class, or the `message` of an `Error`, is not own
+data: convert such a value before it is a prop. It needs a concrete type, as a `bigint` is found by looking inside it:
+for a type parameter `T` that is not resolved yet, TypeScript reports an error.
+
 ## Setup
 
 None beyond `tsconfig.json`: a new app has it. Keep `app/fondu.gen.d.ts` committed, so a fresh clone or CI has the

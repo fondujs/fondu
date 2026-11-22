@@ -48,13 +48,14 @@ createApp({
 
 ### Types
 
-| Export             | Is                                                                                                                  |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------- |
-| `Register`         | declared by the app: `shared` and `flash` type `share()`, `flash()`, `usePage()` ([Type safety](/docs/type-safety)) |
-| `RenderOptions`    | the options of `render()`: `{ status? }`                                                                            |
-| `DocumentTemplate` | the type of the `document` option: `(parts) => JSX or string` ([The document](/docs/document))                      |
-| `DocumentParts`    | what a document template gets: `{ head, body, c, nonce }`                                                           |
-| `CreateAppOptions` | the options of `createApp()`, as the table above has them                                                           |
+| Export             | Is                                                                                                                                 |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `Register`         | declared by the app: `shared` and `flash` type `share()`, `flash()`, `usePage()` ([Type safety](/docs/type-safety))                |
+| `RenderOptions`    | the options of `render()`: `{ status? }`                                                                                           |
+| `AsJson`           | a type as a page receives it as JSON: `AsJson<Row>` (a `Date` is a string) ([Type safety](/docs/type-safety#props-from-your-data)) |
+| `DocumentTemplate` | the type of the `document` option: `(parts) => JSX or string` ([The document](/docs/document))                                     |
+| `DocumentParts`    | what a document template gets: `{ head, body, c, nonce }`                                                                          |
+| `CreateAppOptions` | the options of `createApp()`, as the table above has them                                                                          |
 
 ### Route exports
 
