@@ -70,14 +70,12 @@ type PageComponent<P> =
 type Named<P> = keyof {
   [K in keyof P as string extends K ? never : number extends K ? never : K]: 0
 }
-type SharedNames<P> = Exclude<Named<P> & keyof P & keyof Shared, 'errors'>
+/** An open dictionary doesn't promise that middleware supplies any particular key. */
+type SharedNames<P> = Exclude<Named<P> & Named<Shared> & keyof P & keyof Shared, 'errors'>
 /** Only omit a shared prop when any value from middleware fits this branch. */
 type FromShared<P> = {
   [K in SharedNames<P>]: Shared[K] extends P[K] ? K : never
 }[SharedNames<P>]
-type ExplicitShared<P> = string extends keyof Shared
-  ? never
-  : Exclude<SharedNames<P>, FromShared<P>>
 type NamedValue<P, K> = P extends unknown ? (K extends Named<P> & keyof P ? P[K] : never) : never
 type ClashError = 'fondu: this page prop has the name of a shared prop (share()); rename it'
 /** A shared prop can select a branch, but it must still be safe for layouts reading the shared value. */
@@ -89,10 +87,12 @@ type SharedOverride<P, Whole, K extends keyof P & keyof Shared> =
     : ClashError
 
 type OwnProps<P, Whole> = {
-  [K in keyof P as K extends 'errors' | FromShared<P> | ExplicitShared<P> ? never : K]: P[K]
-} & Partial<Pick<P, FromShared<P>>> & {
-    [K in ExplicitShared<P>]: SharedOverride<P, Whole, K>
-  }
+  [K in keyof P as K extends 'errors' | SharedNames<P> ? never : K]: P[K]
+} & {
+  [K in FromShared<P>]?: P[K] & Shared[K]
+} & {
+  [K in Exclude<SharedNames<P>, FromShared<P>>]: SharedOverride<P, Whole, K>
+}
 
 // ---- props as JSON delivers them: a page's prop types are what it receives; `render` takes what becomes that
 
