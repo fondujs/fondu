@@ -1,9 +1,7 @@
-import { spawnSync } from 'node:child_process'
 import { readFileSync, unlinkSync, writeFileSync } from 'node:fs'
-import { createRequire } from 'node:module'
-import { basename, join } from 'node:path'
+import { join } from 'node:path'
 
-import { createLogger, createServer, type Plugin, type ViteDevServer } from 'vite'
+import { createServer, type ViteDevServer } from 'vite'
 import { expect, test, vi } from 'vitest'
 
 import fondu from '../src/vite/index.js'
@@ -80,167 +78,11 @@ test('a wildcard exporting layout is diagnosed, not silently treated as inherita
   }
 })
 
-test('the generated TS check includes a directory layout no page uses, in dev and production', async () => {
+test('editing a visited MDX page reloads its compiled layout selection', async () => {
   const app = tempApp({
-    'app/routes/reports/_layout.tsx': `import Shell from '../../shell'; export const layout=[Shell]; export default function Reports({children}: {children: import('react').ReactNode}) { return children }`,
-    'app/routes/reports/print.tsx': `export const layout = []; ${page}`,
-    'app/routes/topic.mdx': '# Use shell',
-    'app/mdx-shell.tsx': `export default function MdxShell({children}: {children: import('react').ReactNode}) { return children }`,
-    'app/shell.tsx':
-      'export default function Shell(p:{children: import("react").ReactNode; name:string}) {return p.children}',
-    'tsconfig.json': JSON.stringify({
-      compilerOptions: {
-        strict: true,
-        noEmit: true,
-        jsx: 'react-jsx',
-        module: 'preserve',
-        moduleResolution: 'bundler',
-        skipLibCheck: true,
-      },
-      include: ['app'],
-    }),
+    'app/routes/topic.mdx': '# Plain',
+    'app/routes/_layout.tsx': shell('site'),
   })
-  const mdx: Plugin = {
-    name: 'test-mdx',
-    enforce: 'pre',
-    transform(code, id) {
-      if (!id.split('?')[0]?.endsWith('.mdx')) return
-      const view = `export default function Topic(){return 'Topic'}`
-      return code.includes('Use shell')
-        ? `import MdxShell from '../mdx-shell'; export const layout=[MdxShell]; ${view}`
-        : view
-    },
-  }
-  const plugins = () => [mdx, fondu({ target: 'node' })]
-  const generated = join(app.root, 'app/fondu.layouts.gen.ts')
-  const tsc = join(createRequire(import.meta.url).resolve('typescript/package.json'), '../bin/tsc')
-  const check = () => spawnSync(process.execPath, [tsc, '-p', app.root], { encoding: 'utf8' })
-  const invalid = () => {
-    const result = check()
-    expect(result.status, result.stdout + result.stderr).not.toBe(0)
-    expect(result.stdout).toContain('fondu.layouts.gen.ts')
-    expect(result.stdout).toContain("'name' is missing")
-    return result.stdout
-  }
-  try {
-    const dev = await createServer({
-      root: app.root,
-      configFile: false,
-      logLevel: 'silent',
-      server: { port: 0, host: '127.0.0.1' },
-      plugins: plugins(),
-    })
-    try {
-      const routes = join(app.root, 'app/routes')
-      await listenForEdits(dev, routes, 'topic.mdx')
-      const topic = join(routes, 'topic.mdx')
-      const containsTopic = (expected: boolean) =>
-        vi.waitFor(
-          () => expect(readFileSync(generated, 'utf8').includes('routes/topic.mdx')).toBe(expected),
-          { timeout: 5000 },
-        )
-      await containsTopic(true)
-      writeFileSync(topic, '# Plain topic')
-      await containsTopic(false)
-      writeFileSync(topic, '# Use shell')
-      await containsTopic(true)
-    } finally {
-      await dev.close()
-    }
-    const contents = readFileSync(generated, 'utf8')
-    expect(contents).toContain('routes/topic.mdx')
-    const diagnostic = invalid()
-    await buildClient(app.root, {}, { plugins: plugins() })
-    expect(readFileSync(generated, 'utf8')).toBe(contents)
-    expect(invalid()).toBe(diagnostic)
-    writeFileSync(
-      join(app.root, 'app/shell.tsx'),
-      'export default function Shell(p:{children: import("react").ReactNode; name?:string}) {return p.children}',
-    )
-    const good = check()
-    expect(good.status, good.stdout + good.stderr).toBe(0)
-  } finally {
-    app.remove()
-  }
-}, 30_000)
-
-test('repairing a startup error publishes the complete inventory, including untouched routes', async () => {
-  const selected = `import L from '../shell'; export const layout=[L]; ${page}`
-  const app = tempApp({
-    'app/routes/a.tsx': selected,
-    'app/routes/b.tsx': page,
-    'app/routes/z.tsx': selected,
-    'app/shell.tsx': shell('site'),
-  })
-  const routes = join(app.root, 'app/routes')
-  const generated = () => readFileSync(join(app.root, 'app/fondu.layouts.gen.ts'), 'utf8')
-  const logger = createLogger('silent')
-  const errors = vi.spyOn(logger, 'error')
-  let editedB = false
-  try {
-    await buildClient(app.root)
-    const committed = generated()
-    writeFileSync(join(routes, 'a.tsx'), selected.replace('const layout', 'let layout'))
-    const dev = await createServer({
-      root: app.root,
-      configFile: false,
-      customLogger: logger,
-      server: { port: 0, host: '127.0.0.1' },
-      plugins: [
-        fondu({ target: 'node' }),
-        {
-          name: 'observe-b',
-          enforce: 'post',
-          hotUpdate({ file }) {
-            if (this.environment.name === 'client' && basename(file) === 'b.tsx') editedB = true
-          },
-        },
-      ],
-    })
-    try {
-      await listenForEdits(dev, routes, 'a.tsx', 'b.tsx')
-      await vi.waitFor(() =>
-        expect(errors).toHaveBeenCalledWith(
-          expect.stringContaining('routes/a.tsx: use export const layout'),
-        ),
-      )
-      writeFileSync(join(routes, 'b.tsx'), selected)
-      await vi.waitFor(() => expect(editedB).toBe(true), { timeout: 5000 })
-      expect(generated()).toBe(committed)
-      // Returning to inheritance repairs the file without introducing a declaration of its own.
-      writeFileSync(join(routes, 'a.tsx'), page)
-      await vi.waitFor(() => expect(generated()).toContain('routes/b.tsx'), { timeout: 5000 })
-      expect(generated()).not.toContain('routes/a.tsx')
-      expect(generated()).toContain('routes/z.tsx')
-    } finally {
-      await dev.close()
-    }
-    const recovered = generated()
-    await buildClient(app.root)
-    expect(generated()).toBe(recovered)
-  } finally {
-    app.remove()
-  }
-}, 30_000)
-
-test('edits received while the initial MDX scan is in flight survive the scan', async () => {
-  const withLayout = (name: string) =>
-    `import L from '../${name}'; export const layout=[L]; ${page}`
-  const app = tempApp({
-    'app/routes/a.tsx': withLayout('old'),
-    'app/routes/b.tsx': withLayout('old'),
-    'app/routes/z.mdx': '# Last page',
-    'app/old.tsx': shell('old'),
-    'app/new.tsx': shell('new'),
-  })
-  const routes = join(app.root, 'app/routes')
-  const generated = () => readFileSync(join(app.root, 'app/fondu.layouts.gen.ts'), 'utf8')
-  let release!: () => void
-  const gate = new Promise<void>((resolve) => {
-    release = resolve
-  })
-  let scanning = false
-  const received = new Set<string>()
   const dev = await createServer({
     root: app.root,
     configFile: false,
@@ -248,47 +90,39 @@ test('edits received while the initial MDX scan is in flight survive the scan', 
     server: { port: 0, host: '127.0.0.1' },
     plugins: [
       {
-        name: 'slow-mdx',
+        name: 'test-mdx',
         enforce: 'pre',
-        async transform(_code, id) {
-          if (!id.split('?')[0]?.endsWith('/z.mdx')) return
-          if (id.endsWith('?fondu-view')) {
-            scanning = true
-            await gate
-          }
-          return `import L from '../old'; export const layout=[L]; export default function Z(){return null}`
+        transform(code, id) {
+          if (id.split('?')[0]?.endsWith('.mdx'))
+            return (
+              (code.includes('# Print') ? 'export const layout=[]; ' : '') +
+              'export default function Topic(){return null}'
+            )
         },
       },
       fondu({ target: 'node' }),
-      {
-        name: 'observe-edits',
-        enforce: 'post',
-        hotUpdate({ file }) {
-          if (this.environment.name === 'client') received.add(basename(file))
-        },
-      },
     ],
   })
   try {
-    await listenForEdits(dev, routes, 'a.tsx', 'b.tsx')
-    await vi.waitFor(() => expect(scanning).toBe(true))
-    writeFileSync(join(routes, 'a.tsx'), withLayout('new'))
-    unlinkSync(join(routes, 'b.tsx'))
-    writeFileSync(join(routes, 'c.tsx'), withLayout('new'))
-    await vi.waitFor(
-      () => {
-        for (const name of ['a.tsx', 'b.tsx', 'c.tsx']) expect(received.has(name)).toBe(true)
-      },
-      { timeout: 5000 },
-    )
-    release()
-    await vi.waitFor(() => expect(generated()).toContain('routes/z.mdx'), { timeout: 5000 })
-    const checks = generated()
-    expect(checks).toMatch(/routes\/a\.tsx\s+Layout<typeof import\("\.\/new"\)/)
-    expect(checks).not.toContain('routes/b.tsx')
-    expect(checks).toContain('routes/c.tsx')
+    const routes = join(app.root, 'app/routes')
+    await listenForEdits(dev, routes, 'topic.mdx')
+    const sent = vi.spyOn(dev.environments.client.hot, 'send')
+    const chain = async (inherited: boolean) => {
+      for (const env of [dev.environments.client, dev.environments.ssr!]) {
+        const view = await env.transformRequest('/app/routes/topic.mdx?fondu-view')
+        expect(view?.code.includes('/app/routes/_layout.tsx')).toBe(inherited)
+      }
+    }
+    await chain(true)
+    for (const title of ['# Print', '# Plain']) {
+      sent.mockClear()
+      writeFileSync(join(routes, 'topic.mdx'), title)
+      await vi.waitFor(() => expect(sent).toHaveBeenCalledWith({ type: 'full-reload' }), {
+        timeout: 5000,
+      })
+      await chain(title === '# Plain')
+    }
   } finally {
-    release()
     await dev.close()
     app.remove()
   }

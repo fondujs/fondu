@@ -1,6 +1,6 @@
-import { Fragment, Suspense } from 'react'
+import NotesLayout from '../notes-layout.js'
 
-export const layout = [Fragment, Suspense]
+export const layout = [NotesLayout]
 
 export default function Notes() {
   return <h1>Notes</h1>

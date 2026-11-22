@@ -114,7 +114,7 @@ export default function Layout({ children }: { children: ReactNode }) {
 - A layout stays mounted while pages change, so its state is kept. It has no loader: `share()` gives it props, and
   `usePage()` reads them. A `loader` or `action` exported from a layout (or `_error.tsx`) fails the build and the
   server's start.
-- A TSX/MDX page or `_layout.tsx` may export `const layout = [Site, Feature]` using imported components, outermost first. This replaces **all** inherited parents, root included. On a directory layout its own component still wraps its children. A print page can use `[]`: no layout provider, but still the document and the same Hono middleware. React preserves only the shared outer prefix. Commit `app/fondu.layouts.gen.ts` when generated: it checks the component props with `tsc`.
+- A TSX/MDX page or `_layout.tsx` may export `const layout = [Site, Feature]` using imported components, outermost first. This replaces **all** inherited parents, root included. On a directory layout its own component still wraps its children. A print page can use `[]`: no layout provider, but still the document and the same Hono middleware. React preserves only the shared outer prefix. A layout in a chain receives only `children`.
 - A layout is in the JavaScript of its pages only.
 
 ## Error page and middleware

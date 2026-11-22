@@ -4,7 +4,6 @@ import { every } from 'hono/combine'
 import { csrf } from 'hono/csrf'
 import { HTTPException } from 'hono/http-exception'
 import { NONCE, secureHeaders } from 'hono/secure-headers'
-import React from 'react'
 import { prerender, version } from 'virtual:fondu/assets'
 
 import { checkExportNames, isPageFile, isRouteFile, METHODS, pageId } from '../paths.js'
@@ -55,27 +54,8 @@ const CSP = {
 
 const ROOT = '/app/routes/'
 
-// Some built-ins are symbols, not callable components. Use the installed React's exports.
-const builtInLayouts = new Set<unknown>([
-  React.Fragment,
-  React.StrictMode,
-  React.Suspense,
-  React.Activity,
-  React.ViewTransition,
-])
-const reactWrappers = new Set([
-  Symbol.for('react.memo'),
-  Symbol.for('react.forward_ref'),
-  Symbol.for('react.lazy'),
-])
 const layoutComponent = (value: unknown) =>
-  typeof value === 'function' ||
-  (typeof value === 'symbol' && builtInLayouts.has(value)) ||
-  (value !== null &&
-    typeof value === 'object' &&
-    '$$typeof' in value &&
-    typeof value.$$typeof === 'symbol' &&
-    reactWrappers.has(value.$$typeof))
+  typeof value === 'function' || (typeof value === 'object' && value !== null)
 
 export function checkExports(file: string, mod: Record<string, unknown>) {
   checkExportNames(file, Object.keys(mod))

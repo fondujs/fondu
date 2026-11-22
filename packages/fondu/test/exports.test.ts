@@ -31,8 +31,11 @@ describe('a route file has one spelling per handler', () => {
       'fondu: routes/a.tsx exports `GET`. It exports its page (default), layout, loader, action or actions',
     )
   })
-  test('a page cannot select itself or a non-component; error pages keep their existing contract', () => {
-    for (const layout of [[Page], [42], ['aside'], [{}], [Symbol('not a component')], null])
+  test('a layout lists functions or non-null objects, but not the page itself', () => {
+    expect(() =>
+      checkExports('print.tsx', { default: Page, layout: [() => null, {}] }),
+    ).not.toThrow()
+    for (const layout of [[Page], [42], ['aside'], [null], [Symbol('not a component')], null, {}])
       expect(() => checkExports('print.tsx', { default: Page, layout })).toThrow(
         'routes/print.tsx: layout must list React components',
       )

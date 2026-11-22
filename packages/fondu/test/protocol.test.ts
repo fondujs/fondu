@@ -54,10 +54,10 @@ describe('pages', () => {
       props: { app: 'test', errors: {} },
     })
   })
-  test('React built-in layouts render on the server', async () => {
+  test('a memo layout renders the page as its children on the server', async () => {
     const res = await app.request('/notes', { headers: html })
     expect(res.status).toBe(200)
-    expect(await res.text()).toContain('<h1>Notes</h1>')
+    expect(await res.text()).toContain('<section><h1>Notes</h1></section>')
   })
   test('render(): the page of its own route file only', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {})

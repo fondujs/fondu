@@ -1,18 +1,15 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { relative, resolve } from 'node:path'
 
-import { normalizePath, parseAst, type DevEnvironment, type Plugin } from 'vite'
+import { normalizePath, parseAst, type Plugin } from 'vite'
 
 import { isPageFile, layoutsOf } from '../paths.js'
-import { layoutChecksPath, writeLayoutChecks } from './layout-checks.js'
 import { exportedNames, withoutLayout } from './strip.js'
-import { walk } from './typegen.js'
 
 export const VIEW_QUERY = '?fondu-view'
 const OUTER_QUERY = '?fondu-outer'
 const directoryLayout = /(?:^|\/)_layout\.tsx$/
-const MDX_LAYOUTS = 'fondu:mdx-layouts'
-export interface LayoutImport {
+interface LayoutImport {
   source: string
   name: string
 }
@@ -99,48 +96,16 @@ function canDeclareLayout(file: string) {
   )
 }
 
-async function readDeclarations(
-  root: string,
-  readMdx: (file: string) => Promise<LayoutImport[] | undefined>,
-  dev?: {
-    declarations: Map<string, LayoutImport[]>
-    edited: ReadonlySet<string>
-    onError: (file: string, error: unknown) => void
-  },
-) {
-  const declarations = dev?.declarations ?? new Map<string, LayoutImport[]>()
-  for (const file of walk(root).filter(canDeclareLayout)) {
-    if (dev?.edited.has(file)) continue
-    const path = resolve(root, file)
-    try {
-      const refs = file.endsWith('.mdx')
-        ? await readMdx(file)
-        : layoutImports(readFileSync(path, 'utf8'), file)
-      // An edit (including a deletion) owns this entry even if the initial MDX transform finishes last.
-      if (refs && !dev?.edited.has(file)) declarations.set(file, refs)
-    } catch (error) {
-      if (!dev) throw error
-      if (!dev.edited.has(file) && existsSync(path)) dev.onError(file, error)
-    }
-  }
-  return declarations
-}
-
-function mdxDeclarations(file: string, meta?: Record<string, unknown>): LayoutImport[] | undefined {
-  if (!meta || !(MDX_LAYOUTS in meta))
-    throw new Error(`fondu: routes/${file}: expected compiled MDX layout metadata from Vite`)
-  return (meta[MDX_LAYOUTS] as { refs?: LayoutImport[] }).refs
-}
-
 /** The dynamic entry of a page re-exports its component and exact layout chain. The document, client navigation
  * and Vite's preload manifest all use these same ESM edges. Importing a layout's component does not wrap it. */
 export function layoutChains(): Plugin {
   let root = ''
-  const declarations = new Map<string, LayoutImport[]>()
-  let startup: { edited: Set<string>; keepSnapshot: boolean } | undefined
-  const unreadable = new Set<string>()
-  const publish = () => {
-    if (!startup?.keepSnapshot && !unreadable.size) writeLayoutChecks(root, declarations)
+  // HMR compares only selections the client has actually used; ordinary edits keep Fast Refresh.
+  const selections = new Map<string, string | undefined>()
+  function rememberSelection(code: string, file: string) {
+    const refs = layoutImports(code, file)
+    selections.set(file, JSON.stringify(refs))
+    return refs
   }
   const edges = new Map<string, string[]>()
   function checkCycle(file: string, parents: string[] = [], checked = new Set<string>()) {
@@ -152,54 +117,11 @@ export function layoutChains(): Plugin {
     for (const parent of edges.get(file) ?? []) checkCycle(parent, [...parents, file], checked)
     checked.add(file)
   }
-  const record = (file: string, refs: LayoutImport[] | undefined) => {
-    if (refs) declarations.set(file, refs)
-    else declarations.delete(file)
-  }
-  const readDevMdx = async (env: DevEnvironment, file: string, invalidate = false) => {
-    const url = '/app/routes/' + file + VIEW_QUERY
-    if (invalidate) {
-      const mod = await env.moduleGraph.getModuleByUrl(url)
-      if (mod) env.moduleGraph.invalidateModule(mod)
-    }
-    await env.transformRequest(url)
-    return mdxDeclarations(file, (await env.moduleGraph.getModuleByUrl(url))?.info?.meta)
-  }
   return {
     name: 'fondu:layout-chains',
     enforce: 'pre', // after the app's MDX compiler, before JSX / Fast Refresh
     configResolved(c) {
       root = resolve(c.root, 'app/routes')
-    },
-    async generateBundle() {
-      if (this.environment.name !== 'client') return
-      // The client entry already loads all MDX views through the app's compiler.
-      const inventory = await readDeclarations(root, async (file) => {
-        const id = normalizePath(resolve(root, file)) + VIEW_QUERY
-        return mdxDeclarations(file, this.getModuleInfo(id)?.meta)
-      })
-      writeLayoutChecks(root, inventory)
-    },
-    configureServer(server) {
-      server.httpServer?.once('listening', () => {
-        const scan = { edited: new Set<string>(), keepSnapshot: existsSync(layoutChecksPath(root)) }
-        startup = scan
-        readDeclarations(root, (file) => readDevMdx(server.environments.client, file), {
-          declarations,
-          edited: scan.edited,
-          onError(file, error) {
-            // Keep the last usable file on disk. Other routes are still inventoried while this one is broken.
-            scan.keepSnapshot = true
-            unreadable.add(file)
-            server.config.logger.error(String(error))
-          },
-        })
-          .then(() => {
-            startup = undefined
-            publish()
-          })
-          .catch((error) => server.config.logger.error(String(error)))
-      })
     },
     async transform(code, id) {
       const [path, query] = id.split('?')
@@ -212,10 +134,13 @@ export function layoutChains(): Plugin {
         (query && query !== OUTER_QUERY.slice(1) && query !== VIEW_QUERY.slice(1))
       )
         return
-      const refs = error ? undefined : layoutImports(code, file)
+      const selection =
+        this.environment.mode === 'dev' && this.environment.name === 'client'
+          ? rememberSelection
+          : layoutImports
+      const refs = error ? undefined : selection(code, file)
       if (!refs) edges.delete(file)
       if (!query && refs === undefined) return error ? undefined : checkStarExports(code, file)
-      const meta = file.endsWith('.mdx') ? { [MDX_LAYOUTS]: { refs } } : undefined
       if (refs) {
         const parents: string[] = []
         for (const ref of refs) {
@@ -248,7 +173,6 @@ export function layoutChains(): Plugin {
         return {
           code: [...imports, list, ...(query === VIEW_QUERY.slice(1) ? [page] : [])].join('\n'),
           map: null,
-          meta,
         }
       }
       const imports: string[] = [],
@@ -259,7 +183,7 @@ export function layoutChains(): Plugin {
         const absolute = resolve(root, parent)
         if (!existsSync(absolute)) continue
         this.addWatchFile(absolute)
-        const boundary = layoutImports(readFileSync(absolute, 'utf8'), parent) !== undefined
+        const boundary = selection(readFileSync(absolute, 'utf8'), parent) !== undefined
         const name = `L${chain.length}`
         imports.unshift(`import ${name} from ${JSON.stringify('/app/routes/' + parent)};`)
         chain.unshift(name)
@@ -274,7 +198,6 @@ export function layoutChains(): Plugin {
       return {
         code: [...imports, `export const layout = [${chain.join(', ')}];`, page].join('\n'),
         map: null,
-        meta,
       }
     },
     async hotUpdate({ file, type, read, server, timestamp }) {
@@ -282,30 +205,17 @@ export function layoutChains(): Plugin {
       if (name.startsWith('../') || this.environment.name !== 'client') return
       const directory = directoryLayout.test(name)
       if (!canDeclareLayout(name)) return
-      startup?.edited.add(name)
-      const before = JSON.stringify(declarations.get(name))
+      const before = selections.get(name)
       if (type === 'delete') {
-        declarations.delete(name)
+        selections.delete(name)
         edges.delete(name)
-      } else {
-        try {
-          const refs = name.endsWith('.mdx')
-            ? await readDevMdx(server.environments.client, name, true)
-            : layoutImports(await read(), name)
-          record(name, refs)
-        } catch (error) {
-          unreadable.add(name)
-          throw error
-        }
+      } else if (selections.has(name)) {
+        // Read MDX after the app's compiler, just as on the first visit.
+        if (name.endsWith('.mdx'))
+          await this.environment.transformRequest('/app/routes/' + name + VIEW_QUERY)
+        else rememberSelection(await read(), name)
       }
-      const repaired = unreadable.delete(name)
-      if (
-        !repaired &&
-        before === JSON.stringify(declarations.get(name)) &&
-        !(directory && type !== 'update')
-      )
-        return
-      publish()
+      if (before === selections.get(name) && !(directory && type !== 'update')) return
       // Adding a layout has no old import edge. Invalidate the generated views on both sides before reloading.
       for (const env of Object.values(server.environments)) {
         for (const mod of env.moduleGraph.idToModuleMap.values()) {
