@@ -99,8 +99,10 @@ declare module 'fondu' {
 }
 ```
 
-`share()` and `flash()` then take only those, and `usePage()` returns them. A page prop named like a shared prop but
-of another type is an error, as it would hide the shared one from the layout.
+`share()` and `flash()` then take only those, and `usePage()` returns them. If `render()` overrides a shared prop, its
+value must fit both the page and the layout, even when the page accepts arbitrary keys. For a union, don't distinguish
+a branch by the absence of a shared key: middleware can add it. For example, if `mode` is shared as `'text' | 'count'`,
+use `mode: 'text'` and `mode: 'count'` on the two variants and pass the matching `mode` with their data.
 
 ## What crosses as JSON
 
