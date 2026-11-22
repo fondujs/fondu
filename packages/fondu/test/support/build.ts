@@ -18,7 +18,8 @@ export function tempApp(files: Record<string, string>) {
     mkdirSync(dirname(join(root, name)), { recursive: true })
     writeFileSync(join(root, name), text)
   }
-  return { root, remove: () => rmSync(root, { recursive: true, force: true }) }
+  // Windows can briefly report ENOTEMPTY after Vite shuts down its watcher.
+  return { root, remove: () => rmSync(root, { recursive: true, force: true, maxRetries: 5 }) }
 }
 
 /** the client build of the app at `root` (dist/client), as `vite build` makes it */
