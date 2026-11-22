@@ -102,13 +102,22 @@ function canDeclareLayout(file: string) {
 async function readDeclarations(
   root: string,
   readMdx: (file: string) => Promise<LayoutImport[] | undefined>,
+  declarations = new Map<string, LayoutImport[]>(),
+  edited?: ReadonlySet<string>,
 ) {
-  const declarations = new Map<string, LayoutImport[]>()
   for (const file of walk(root).filter(canDeclareLayout)) {
-    const refs = file.endsWith('.mdx')
-      ? await readMdx(file)
-      : layoutImports(readFileSync(resolve(root, file), 'utf8'), file)
-    if (refs) declarations.set(file, refs)
+    if (edited?.has(file)) continue
+    const path = resolve(root, file)
+    try {
+      const refs = file.endsWith('.mdx')
+        ? await readMdx(file)
+        : layoutImports(readFileSync(path, 'utf8'), file)
+      // An edit (including a deletion) owns this entry even if the initial MDX transform finishes last.
+      if (refs && !edited?.has(file)) declarations.set(file, refs)
+    } catch (error) {
+      if (edited && (edited.has(file) || !existsSync(path))) continue
+      throw error
+    }
   }
   return declarations
 }
@@ -123,7 +132,8 @@ function mdxDeclarations(file: string, meta?: Record<string, unknown>): LayoutIm
  * and Vite's preload manifest all use these same ESM edges. Importing a layout's component does not wrap it. */
 export function layoutChains(): Plugin {
   let root = ''
-  let declarations = new Map<string, LayoutImport[]>()
+  const declarations = new Map<string, LayoutImport[]>()
+  let startupEdits: Set<string> | undefined
   const edges = new Map<string, string[]>()
   function checkCycle(file: string, parents: string[] = [], checked = new Set<string>()) {
     if (checked.has(file)) return
@@ -164,12 +174,18 @@ export function layoutChains(): Plugin {
     },
     configureServer(server) {
       server.httpServer?.once('listening', () => {
-        readDeclarations(root, (file) => readDevMdx(server.environments.client, file))
-          .then((inventory) => {
-            declarations = inventory
-            writeLayoutChecks(root, inventory)
-          })
+        startupEdits = new Set()
+        readDeclarations(
+          root,
+          (file) => readDevMdx(server.environments.client, file),
+          declarations,
+          startupEdits,
+        )
+          .then(() => writeLayoutChecks(root, declarations))
           .catch((error) => server.config.logger.error(String(error)))
+          .finally(() => {
+            startupEdits = undefined
+          })
       })
     },
     async transform(code, id) {
@@ -253,6 +269,7 @@ export function layoutChains(): Plugin {
       if (name.startsWith('../') || this.environment.name !== 'client') return
       const directory = directoryLayout.test(name)
       if (!canDeclareLayout(name)) return
+      startupEdits?.add(name)
       const before = JSON.stringify(declarations.get(name))
       if (type === 'delete') {
         declarations.delete(name)
