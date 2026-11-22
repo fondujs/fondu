@@ -252,6 +252,12 @@ declare function Dictionary(props: Record<string, string>): null
 type ModeResult = { mode: 'text'; value: string } | { mode: 'count'; value: number }
 declare function SharedMode(props: ModeResult): null
 declare const sharedModeResult: ModeResult
+declare function Summary(
+  p:
+    | { kind: 'text-view'; mode: 'text'; body: string }
+    | { kind: 'summary'; mode: string; summary: number },
+): null
+declare function DetailedAuth(props: { auth: Auth & { team?: string } }): null
 declare function OptionalSharedMode(props: { mode?: 'text' } | { mode: 'count' }): null
 declare function InvalidSharedMode(props: ModeResult | { mode: 'other'; value: boolean }): null
 
@@ -270,6 +276,14 @@ typed(({ render }, c) => {
   render(c, SharedMode, { mode: 'text', value: 'Hello' })
   render(c, SharedMode, { mode: 'count', value: 2 }, { status: 202 })
   render(c, SharedMode, sharedModeResult)
+  render(c, Summary, { kind: 'summary', summary: 4 })
+  render(c, Summary, { kind: 'summary', mode: 'count', summary: 4 })
+  // @ts-expect-error the page accepts any string, but layouts accept only 'text' | 'count'
+  render(c, Summary, { kind: 'summary', mode: 'other', summary: 4 })
+  render(c, DetailedAuth, { auth: { user: null, team: 'Editors' } })
+  const wrongTeam = { user: null, team: 12 }
+  // @ts-expect-error the override must satisfy the page too, including optional fields it adds
+  render(c, DetailedAuth, { auth: wrongTeam })
   // @ts-expect-error middleware may provide either mode, not necessarily count
   render(c, SharedMode, { value: 2 })
   // @ts-expect-error the mode and value must agree
