@@ -3,7 +3,7 @@ import { readFileSync, unlinkSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { basename, join } from 'node:path'
 
-import { createLogger, createServer, type Plugin } from 'vite'
+import { createLogger, createServer, type Plugin, type ViteDevServer } from 'vite'
 import { expect, test, vi } from 'vitest'
 
 import fondu from '../src/vite/index.js'
@@ -13,6 +13,15 @@ import { buildClient, tempApp } from './support/build.js'
 const shell = (mark: string) =>
   `export default function Layout({children}) { return <section data-mark="${mark}">{children}</section> }`
 const page = 'export default function Page() { return <p>page</p> }'
+
+/** HTTP listening does not mean Vite has subscribed to changes under this directory yet. */
+async function listenForEdits(dev: ViteDevServer, dir: string, ...files: string[]) {
+  await dev.listen()
+  await vi.waitFor(
+    () => expect(dev.watcher.getWatched()[dir]).toEqual(expect.arrayContaining(files)),
+    { timeout: 5000 },
+  )
+}
 
 test.each([
   'export let layout = []',
@@ -122,8 +131,9 @@ test('the generated TS check includes a directory layout no page uses, in dev an
       plugins: plugins(),
     })
     try {
-      await dev.listen()
-      const topic = join(app.root, 'app/routes/topic.mdx')
+      const routes = join(app.root, 'app/routes')
+      await listenForEdits(dev, routes, 'topic.mdx')
+      const topic = join(routes, 'topic.mdx')
       const containsTopic = (expected: boolean) =>
         vi.waitFor(
           () => expect(readFileSync(generated, 'utf8').includes('routes/topic.mdx')).toBe(expected),
@@ -152,7 +162,7 @@ test('the generated TS check includes a directory layout no page uses, in dev an
   } finally {
     app.remove()
   }
-})
+}, 30_000)
 
 test('repairing a startup error publishes the complete inventory, including untouched routes', async () => {
   const selected = `import L from '../shell'; export const layout=[L]; ${page}`
@@ -188,7 +198,7 @@ test('repairing a startup error publishes the complete inventory, including unto
       ],
     })
     try {
-      await dev.listen()
+      await listenForEdits(dev, routes, 'a.tsx', 'b.tsx')
       await vi.waitFor(() =>
         expect(errors).toHaveBeenCalledWith(
           expect.stringContaining('routes/a.tsx: use export const layout'),
@@ -211,7 +221,7 @@ test('repairing a startup error publishes the complete inventory, including unto
   } finally {
     app.remove()
   }
-})
+}, 30_000)
 
 test('edits received while the initial MDX scan is in flight survive the scan', async () => {
   const withLayout = (name: string) =>
@@ -260,7 +270,7 @@ test('edits received while the initial MDX scan is in flight survive the scan', 
     ],
   })
   try {
-    await dev.listen()
+    await listenForEdits(dev, routes, 'a.tsx', 'b.tsx')
     await vi.waitFor(() => expect(scanning).toBe(true))
     writeFileSync(join(routes, 'a.tsx'), withLayout('new'))
     unlinkSync(join(routes, 'b.tsx'))
@@ -297,8 +307,9 @@ test('a running dev server tracks added, changed and deleted directory layouts i
     plugins: [fondu({ target: 'node' })],
   })
   try {
-    await dev.listen()
-    const file = join(app.root, 'app/routes/nested/_layout.tsx')
+    const nested = join(app.root, 'app/routes/nested')
+    await listenForEdits(dev, nested, 'post.tsx')
+    const file = join(nested, '_layout.tsx')
     async function chain(root: boolean, inner: boolean) {
       for (const env of [dev.environments.client, dev.environments.ssr!]) {
         const code = (await env.transformRequest('/app/routes/nested/post.tsx?fondu-view'))!.code
