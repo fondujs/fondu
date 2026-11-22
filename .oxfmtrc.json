@@ -33,7 +33,6 @@
   "ignorePatterns": [
     "**/worker-configuration.d.ts",
     "**/fondu.gen.d.ts",
-    "**/fondu.layouts.gen.ts",
     "**/migrations/**",
     "bun.lock"
   ]

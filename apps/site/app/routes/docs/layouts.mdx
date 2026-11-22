@@ -72,7 +72,7 @@ export const layout = [Site, Feature]
 # Annual review
 ```
 
-This article keeps `Site`, not the ordinary blog sidebar. The list is final: Fondu does not add a root or look up the components' own parents. An imported layout receives `children`; it cannot require extra props. When a chain uses components, Fondu’s Vite plugin writes `app/fondu.layouts.gen.ts` so the app's `tsc` checks their imports (including MDX). Commit it alongside the generated route types.
+This article keeps `Site`, not the ordinary blog sidebar. The list is final: Fondu does not add a root or look up the components' own parents. A layout in a chain receives only `children`.
 
 A directory `_layout.tsx` can declare `export const layout = [Workspace]` too: its pages get `Workspace → this directory's layout → page`. Nested layouts inherit that chain unless they replace it. A page with `export const layout = []` uses no route layouts at all. It still gets the HTML document, and all the same middleware, authorization, loaders and actions. A provider or stylesheet supplied only by an omitted shell is not a global guarantee.
 
