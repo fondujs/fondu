@@ -65,7 +65,9 @@ In VS Code, the recommended extensions (`.vscode/extensions.json`: oxc, Tailwind
 is saved, as the commit hook does.
 
 `bun run --filter create-fondu test` creates an app for each target (Bun, Cloudflare Workers, Node) with `packages/fondu` as
-built here, and runs it in development and production.
+built here, and runs it in development and production. In Cloudflare dev and preview, `XFAIL #298` means the Worker
+returned 413 but the client received 500: the local proxy hit `write EPIPE` forwarding that same upload. It is not a
+client pass. Remove the exception once [#298](https://github.com/fondujs/fondu/issues/298) is fixed upstream.
 
 The browser and create-fondu suites use fixed ports, so two runs on one machine collide. Move them with environment
 variables: `CONFORMANCE_PORT` (default 3100) for `apps/conformance`, and `CREATE_FONDU_DEV_PORT` (5173),

@@ -10,6 +10,8 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { stripVTControlCharacters } from 'node:util'
 
+import { bodyLimit, observeUploads } from './body-limit.mjs'
+
 const here = fileURLToPath(new URL('..', import.meta.url))
 const windows = process.platform === 'win32'
 const shell = windows // npm, bun and bunx are .cmd shims on Windows; node is a program
@@ -133,7 +135,8 @@ for (const target of Object.keys(production).filter(
     "import { defineHandler } from 'fondu'\n\nexport const POST = defineHandler((c) => c.text('received'))\n",
   )
   // Node / Bun: the app's .env is in process.env, in development and in production; a variable already set wins
-  if (target !== 'cloudflare') {
+  if (target === 'cloudflare') observeUploads(app)
+  else {
     writeFileSync(join(app, 'app/routes/env.ts'), ENV_ROUTE)
     writeFileSync(join(app, '.env'), 'FONDU_ENV_FILE=from-file\nFONDU_ENV_SET=from-file\n')
   }
@@ -153,7 +156,7 @@ for (const target of Object.keys(production).filter(
       !output().includes('optimized dependencies changed'),
       output(),
     )
-    await bodyLimit(base, output, target, 'dev')
+    await bodyLimit(base, output, target, 'dev', check)
     await streams(base, target, 'dev')
     if (target !== 'cloudflare') await dotenv(base, target, 'dev', 'from-file')
   })
@@ -239,7 +242,7 @@ for (const target of Object.keys(production).filter(
       `${target} ${script}: an unknown URL, the error page with 404`,
       missing.status === 404 && (await missing.text()).includes('"component":"_error"'),
     )
-    await bodyLimit(base, output, target, script)
+    await bodyLimit(base, output, target, script, check)
     await streams(base, target, script)
     const csp = home.headers.get('content-security-policy') ?? ''
     // a static page has no nonce: its policy comes from _headers (Cloudflare) or dist/server/prerender.json
@@ -463,41 +466,6 @@ function raw(url, path, headers) {
     req.on('error', reject)
     req.end()
   })
-}
-
-// a body over 10 MB is refused (createApp's bodyLimit), a small one is not. A route of its own (`upload.ts`, written
-// above) that takes a POST: the limit is in each route's chain, and a prerendered home (a static file on Cloudflare,
-// answered 405 to a POST) would hide the app
-async function bodyLimit(base, log, target, script) {
-  const json = { 'Content-Type': 'application/json' }
-  let status, error
-  try {
-    const big = await fetch(base + '/upload', {
-      method: 'POST',
-      headers: json,
-      body: 'a'.repeat(10 * 1024 * 1024 + 1),
-    })
-    await big.text()
-    status = big.status
-  } catch (e) {
-    error = e.message
-  }
-  // Cloudflare's local preview: the Worker answers 413 before the upload ends; the preview's proxy then fails the
-  // request it was still sending (500), which a deployed Worker's client does not see. So the Worker's answer is
-  // read from its log
-  let logged = false
-  if (target === 'cloudflare' && script === 'preview' && status !== 413)
-    for (let i = 0; i < 20 && !logged; i++) {
-      logged = /POST \/upload 413/.test(log())
-      if (!logged) await new Promise((r) => setTimeout(r, 100))
-    }
-  const small = await fetch(base + '/upload', { method: 'POST', headers: json, body: '{}' })
-  await small.text()
-  check(
-    `${target} ${script}: a request body over 10 MB is refused with 413, a small one is not`,
-    (status === 413 || logged) && small.status !== 413,
-    `over 10 MB: ${status ?? `no status (${error})`}, the Worker's log has its 413: ${logged}, small: ${small.status}`,
-  )
 }
 
 /** `bun run <script>` in the app until `test` is done, with what it printed */
