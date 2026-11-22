@@ -93,7 +93,9 @@ export default defineMiddleware(async (c, next) => {
 ```
 
 A shared value may be a function: it runs only when a page renders. Read them with `usePage().props` from
-`fondu/client`. A page prop named like a shared prop but of another type is a type error.
+`fondu/client`. An override in `render()` must fit both the page and the shared type, including on pages with an index
+signature. Don't use the absence of a shared key to select a union branch: middleware may supply it. Use explicit
+values (such as `mode: 'text'` and `mode: 'count'`) on those branches instead.
 
 ## Layouts
 

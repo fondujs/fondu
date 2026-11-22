@@ -258,11 +258,16 @@ declare function Summary(
     | { kind: 'summary'; mode: string; summary: number },
 ): null
 declare function DetailedAuth(props: { auth: Auth & { team?: string } }): null
+declare function ByPresence(props: { body: string } | { mode: 'count'; total: number }): null
 declare function OptionalSharedMode(props: { mode?: 'text' } | { mode: 'count' }): null
 declare function InvalidSharedMode(props: ModeResult | { mode: 'other'; value: boolean }): null
 
 typed(({ render }, c) => {
   render(c, IndexedResult, { kind: 'hit', title: 'Found', extra: 1 })
+  render(c, IndexedResult, { kind: 'hit', title: 'Found', mode: 'count' })
+  const badOverride = { kind: 'hit', title: 'Found', mode: 'other' } as const
+  // @ts-expect-error a page index signature cannot widen a named shared prop
+  render(c, IndexedResult, badOverride)
   render(c, IndexedResult, { kind: 'miss', reason: 'Gone' })
   // @ts-expect-error an index signature doesn't supply an explicitly required title
   render(c, IndexedResult, { kind: 'hit' })
@@ -272,6 +277,13 @@ typed(({ render }, c) => {
   render(c, IndexedResult)
   render(c, Dictionary)
   render(c, Dictionary, { section: 'news' })
+  render(c, Dictionary, { mode: 'text', section: 'news' })
+  // @ts-expect-error explicit dictionary entries must still be valid for layouts
+  render(c, Dictionary, { mode: 'other' })
+
+  render(c, ByPresence, { mode: 'count', total: 2 })
+  // @ts-expect-error middleware can supply mode: a presence check would read the missing total
+  render(c, ByPresence, { body: 'hello' })
 
   render(c, SharedMode, { mode: 'text', value: 'Hello' })
   render(c, SharedMode, { mode: 'count', value: 2 }, { status: 202 })

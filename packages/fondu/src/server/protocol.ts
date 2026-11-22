@@ -67,31 +67,23 @@ type PageComponent<P> =
   | ((props: P) => ReactNode | Promise<ReactNode>)
   | (new (props: P) => Component<P>)
 /** the props a page names: not an index signature (a page without props takes `Record<string, never>`) */
-type Named<P> = keyof {
-  [K in keyof P as string extends K ? never : number extends K ? never : K]: 0
-}
-/** An open dictionary doesn't promise that middleware supplies any particular key. */
-type SharedNames<P> = Exclude<Named<P> & Named<Shared> & keyof P & keyof Shared, 'errors'>
-/** Only omit a shared prop when any value from middleware fits this branch. */
-type FromShared<P> = {
-  [K in SharedNames<P>]: Shared[K] extends P[K] ? K : never
-}[SharedNames<P>]
-type NamedValue<P, K> = P extends unknown ? (K extends Named<P> & keyof P ? P[K] : never) : never
-type ClashError = 'fondu: this page prop has the name of a shared prop (share()); rename it'
-/** A shared prop can select a branch, but it must still be safe for layouts reading the shared value. */
-type SharedOverride<P, Whole, K extends keyof P & keyof Shared> =
-  Shared[K] extends NamedValue<Whole, K>
-    ? [P[K] & Shared[K]] extends [never]
-      ? ClashError
-      : P[K] & Shared[K]
-    : ClashError
+type Named<P> = keyof P &
+  keyof {
+    [K in keyof P as {} extends Record<K, unknown> ? never : K]: 0
+  }
+type SharedKey = Exclude<Named<Shared>, 'errors'>
+/** Shared keys named by at least one page variant (not just the keys common to every variant). */
+type UsedShared<P> = P extends unknown ? Named<P> & SharedKey : never
+/** An index constrains a field's value, not its presence. */
+type Field<P, K extends keyof P> = K extends Named<P> ? Pick<P, K> : Partial<Pick<P, K>>
+type NeedsOverride<P, Keys extends keyof P & SharedKey> = {
+  [K in Keys]: Pick<Shared, K> extends Field<P, K> ? never : K
+}[Keys]
+/** The explicit value must fit both readers, even if one is an untyped dictionary. */
+type Both<A, B> = unknown extends A ? B : unknown extends B ? A : A & B
 
-type OwnProps<P, Whole> = {
-  [K in keyof P as K extends 'errors' | SharedNames<P> ? never : K]: P[K]
-} & {
-  [K in FromShared<P>]?: P[K] & Shared[K]
-} & {
-  [K in Exclude<SharedNames<P>, FromShared<P>>]: SharedOverride<P, Whole, K>
+type OwnProps<P> = {
+  [K in keyof P as K extends 'errors' | SharedKey ? never : K]: P[K]
 }
 
 // ---- props as JSON delivers them: a page's prop types are what it receives; `render` takes what becomes that
@@ -142,21 +134,35 @@ type JsonInput<T> =
           : T
 type NotJsonError =
   'fondu: the page receives this prop as JSON (a Date as a string, a Map as {}): type it as such'
-/** a page's props as `render` takes them: what becomes each as JSON, or an error for a type JSON can't deliver */
+/** Only defer a value when the page can render without the override. */
+type PropInput<T, Optional extends boolean = false> =
+  Arrives<T> extends true
+    ?
+        | JsonInput<T>
+        | (Optional extends true ? DeferredProp<JsonInput<Exclude<T, undefined>>> : never)
+    : NotJsonError
 export type Delivered<P> = {
-  [K in keyof P]: Arrives<P[K]> extends true ? JsonInput<P[K]> | Deferrable<P, K> : NotJsonError
+  [K in keyof P]: PropInput<P[K], {} extends Pick<P, K> ? true : false>
 }
-/** `defer()` for a prop the page takes as optional: it renders without it */
-type Deferrable<P, K extends keyof P> =
-  {} extends Pick<P, K> ? DeferredProp<JsonInput<Exclude<P[K], undefined>>> : never
 
 export interface RenderOptions {
   status?: number
 }
-type RenderProps<P, Whole = P> = P extends unknown
-  ? keyof OwnProps<P, Whole> extends never
+/** Mark the override optional *after* checking its explicit JSON value (omitting it keeps the shared value). */
+type Overrides<P, Required extends keyof P & SharedKey> = {
+  [K in Required]: PropInput<Both<P[K], Shared[K]>>
+} & {
+  [K in Exclude<keyof P & SharedKey, Required>]?: PropInput<Both<P[K], Shared[K]>, true>
+}
+type RenderBranch<P, Keys extends keyof P & SharedKey> =
+  Exclude<keyof P, 'errors'> extends never
     ? Record<string, never>
-    : Delivered<OwnProps<P, Whole>>
+    : Delivered<OwnProps<P>> & Overrides<P, NeedsOverride<P, Keys>>
+/** Middleware can introduce any of these keys: their absence cannot distinguish the delivered branch. */
+type RenderProps<P, Keys extends SharedKey = UsedShared<P>> = P extends unknown
+  ? [Keys] extends [keyof P]
+    ? RenderBranch<P, Keys>
+    : never
   : never
 type RenderArgs<P> =
   {} extends RenderProps<P>
