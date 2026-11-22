@@ -3,7 +3,7 @@ import { readFileSync, unlinkSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { basename, join } from 'node:path'
 
-import { createServer, type Plugin } from 'vite'
+import { createLogger, createServer, type Plugin } from 'vite'
 import { expect, test, vi } from 'vitest'
 
 import fondu from '../src/vite/index.js'
@@ -149,6 +149,65 @@ test('the generated TS check includes a directory layout no page uses, in dev an
     )
     const good = check()
     expect(good.status, good.stdout + good.stderr).toBe(0)
+  } finally {
+    app.remove()
+  }
+})
+
+test('repairing a startup error publishes the complete inventory, including untouched routes', async () => {
+  const selected = `import L from '../shell'; export const layout=[L]; ${page}`
+  const app = tempApp({
+    'app/routes/a.tsx': selected,
+    'app/routes/b.tsx': page,
+    'app/routes/z.tsx': selected,
+    'app/shell.tsx': shell('site'),
+  })
+  const routes = join(app.root, 'app/routes')
+  const generated = () => readFileSync(join(app.root, 'app/fondu.layouts.gen.ts'), 'utf8')
+  const logger = createLogger('silent')
+  const errors = vi.spyOn(logger, 'error')
+  let editedB = false
+  try {
+    await buildClient(app.root)
+    const committed = generated()
+    writeFileSync(join(routes, 'a.tsx'), selected.replace('const layout', 'let layout'))
+    const dev = await createServer({
+      root: app.root,
+      configFile: false,
+      customLogger: logger,
+      server: { port: 0, host: '127.0.0.1' },
+      plugins: [
+        fondu({ target: 'node' }),
+        {
+          name: 'observe-b',
+          enforce: 'post',
+          hotUpdate({ file }) {
+            if (this.environment.name === 'client' && basename(file) === 'b.tsx') editedB = true
+          },
+        },
+      ],
+    })
+    try {
+      await dev.listen()
+      await vi.waitFor(() =>
+        expect(errors).toHaveBeenCalledWith(
+          expect.stringContaining('routes/a.tsx: use export const layout'),
+        ),
+      )
+      writeFileSync(join(routes, 'b.tsx'), selected)
+      await vi.waitFor(() => expect(editedB).toBe(true), { timeout: 5000 })
+      expect(generated()).toBe(committed)
+      // Returning to inheritance repairs the file without introducing a declaration of its own.
+      writeFileSync(join(routes, 'a.tsx'), page)
+      await vi.waitFor(() => expect(generated()).toContain('routes/b.tsx'), { timeout: 5000 })
+      expect(generated()).not.toContain('routes/a.tsx')
+      expect(generated()).toContain('routes/z.tsx')
+    } finally {
+      await dev.close()
+    }
+    const recovered = generated()
+    await buildClient(app.root)
+    expect(generated()).toBe(recovered)
   } finally {
     app.remove()
   }

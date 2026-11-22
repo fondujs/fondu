@@ -4,7 +4,7 @@ import { relative, resolve } from 'node:path'
 import { normalizePath, parseAst, type DevEnvironment, type Plugin } from 'vite'
 
 import { isPageFile, layoutsOf } from '../paths.js'
-import { writeLayoutChecks } from './layout-checks.js'
+import { layoutChecksPath, writeLayoutChecks } from './layout-checks.js'
 import { exportedNames, withoutLayout } from './strip.js'
 import { walk } from './typegen.js'
 
@@ -102,21 +102,25 @@ function canDeclareLayout(file: string) {
 async function readDeclarations(
   root: string,
   readMdx: (file: string) => Promise<LayoutImport[] | undefined>,
-  declarations = new Map<string, LayoutImport[]>(),
-  edited?: ReadonlySet<string>,
+  dev?: {
+    declarations: Map<string, LayoutImport[]>
+    edited: ReadonlySet<string>
+    onError: (file: string, error: unknown) => void
+  },
 ) {
+  const declarations = dev?.declarations ?? new Map<string, LayoutImport[]>()
   for (const file of walk(root).filter(canDeclareLayout)) {
-    if (edited?.has(file)) continue
+    if (dev?.edited.has(file)) continue
     const path = resolve(root, file)
     try {
       const refs = file.endsWith('.mdx')
         ? await readMdx(file)
         : layoutImports(readFileSync(path, 'utf8'), file)
       // An edit (including a deletion) owns this entry even if the initial MDX transform finishes last.
-      if (refs && !edited?.has(file)) declarations.set(file, refs)
+      if (refs && !dev?.edited.has(file)) declarations.set(file, refs)
     } catch (error) {
-      if (edited && (edited.has(file) || !existsSync(path))) continue
-      throw error
+      if (!dev) throw error
+      if (!dev.edited.has(file) && existsSync(path)) dev.onError(file, error)
     }
   }
   return declarations
@@ -133,7 +137,11 @@ function mdxDeclarations(file: string, meta?: Record<string, unknown>): LayoutIm
 export function layoutChains(): Plugin {
   let root = ''
   const declarations = new Map<string, LayoutImport[]>()
-  let startupEdits: Set<string> | undefined
+  let startup: { edited: Set<string>; keepSnapshot: boolean } | undefined
+  const unreadable = new Set<string>()
+  const publish = () => {
+    if (!startup?.keepSnapshot && !unreadable.size) writeLayoutChecks(root, declarations)
+  }
   const edges = new Map<string, string[]>()
   function checkCycle(file: string, parents: string[] = [], checked = new Set<string>()) {
     if (checked.has(file)) return
@@ -174,18 +182,23 @@ export function layoutChains(): Plugin {
     },
     configureServer(server) {
       server.httpServer?.once('listening', () => {
-        startupEdits = new Set()
-        readDeclarations(
-          root,
-          (file) => readDevMdx(server.environments.client, file),
+        const scan = { edited: new Set<string>(), keepSnapshot: existsSync(layoutChecksPath(root)) }
+        startup = scan
+        readDeclarations(root, (file) => readDevMdx(server.environments.client, file), {
           declarations,
-          startupEdits,
-        )
-          .then(() => writeLayoutChecks(root, declarations))
-          .catch((error) => server.config.logger.error(String(error)))
-          .finally(() => {
-            startupEdits = undefined
+          edited: scan.edited,
+          onError(file, error) {
+            // Keep the last usable file on disk. Other routes are still inventoried while this one is broken.
+            scan.keepSnapshot = true
+            unreadable.add(file)
+            server.config.logger.error(String(error))
+          },
+        })
+          .then(() => {
+            startup = undefined
+            publish()
           })
+          .catch((error) => server.config.logger.error(String(error)))
       })
     },
     async transform(code, id) {
@@ -269,20 +282,30 @@ export function layoutChains(): Plugin {
       if (name.startsWith('../') || this.environment.name !== 'client') return
       const directory = directoryLayout.test(name)
       if (!canDeclareLayout(name)) return
-      startupEdits?.add(name)
+      startup?.edited.add(name)
       const before = JSON.stringify(declarations.get(name))
       if (type === 'delete') {
         declarations.delete(name)
         edges.delete(name)
       } else {
-        const refs = name.endsWith('.mdx')
-          ? await readDevMdx(server.environments.client, name, true)
-          : layoutImports(await read(), name)
-        record(name, refs)
+        try {
+          const refs = name.endsWith('.mdx')
+            ? await readDevMdx(server.environments.client, name, true)
+            : layoutImports(await read(), name)
+          record(name, refs)
+        } catch (error) {
+          unreadable.add(name)
+          throw error
+        }
       }
-      if (before === JSON.stringify(declarations.get(name)) && !(directory && type !== 'update'))
+      const repaired = unreadable.delete(name)
+      if (
+        !repaired &&
+        before === JSON.stringify(declarations.get(name)) &&
+        !(directory && type !== 'update')
+      )
         return
-      writeLayoutChecks(root, declarations)
+      publish()
       // Adding a layout has no old import edge. Invalidate the generated views on both sides before reloading.
       for (const env of Object.values(server.environments)) {
         for (const mod of env.moduleGraph.idToModuleMap.values()) {
