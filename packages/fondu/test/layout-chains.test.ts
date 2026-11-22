@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process'
 import { readFileSync, unlinkSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
-import { join } from 'node:path'
+import { basename, join } from 'node:path'
 
 import { createServer, type Plugin } from 'vite'
 import { expect, test, vi } from 'vitest'
@@ -150,6 +150,77 @@ test('the generated TS check includes a directory layout no page uses, in dev an
     const good = check()
     expect(good.status, good.stdout + good.stderr).toBe(0)
   } finally {
+    app.remove()
+  }
+})
+
+test('edits received while the initial MDX scan is in flight survive the scan', async () => {
+  const withLayout = (name: string) =>
+    `import L from '../${name}'; export const layout=[L]; ${page}`
+  const app = tempApp({
+    'app/routes/a.tsx': withLayout('old'),
+    'app/routes/b.tsx': withLayout('old'),
+    'app/routes/z.mdx': '# Last page',
+    'app/old.tsx': shell('old'),
+    'app/new.tsx': shell('new'),
+  })
+  const routes = join(app.root, 'app/routes')
+  const generated = () => readFileSync(join(app.root, 'app/fondu.layouts.gen.ts'), 'utf8')
+  let release!: () => void
+  const gate = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  let scanning = false
+  const received = new Set<string>()
+  const dev = await createServer({
+    root: app.root,
+    configFile: false,
+    logLevel: 'silent',
+    server: { port: 0, host: '127.0.0.1' },
+    plugins: [
+      {
+        name: 'slow-mdx',
+        enforce: 'pre',
+        async transform(_code, id) {
+          if (!id.split('?')[0]?.endsWith('/z.mdx')) return
+          if (id.endsWith('?fondu-view')) {
+            scanning = true
+            await gate
+          }
+          return `import L from '../old'; export const layout=[L]; export default function Z(){return null}`
+        },
+      },
+      fondu({ target: 'node' }),
+      {
+        name: 'observe-edits',
+        enforce: 'post',
+        hotUpdate({ file }) {
+          if (this.environment.name === 'client') received.add(basename(file))
+        },
+      },
+    ],
+  })
+  try {
+    await dev.listen()
+    await vi.waitFor(() => expect(scanning).toBe(true))
+    writeFileSync(join(routes, 'a.tsx'), withLayout('new'))
+    unlinkSync(join(routes, 'b.tsx'))
+    writeFileSync(join(routes, 'c.tsx'), withLayout('new'))
+    await vi.waitFor(
+      () => {
+        for (const name of ['a.tsx', 'b.tsx', 'c.tsx']) expect(received.has(name)).toBe(true)
+      },
+      { timeout: 5000 },
+    )
+    release()
+    await vi.waitFor(() => expect(generated()).toContain('routes/z.mdx'), { timeout: 5000 })
+    const checks = generated()
+    expect(checks).toMatch(/routes\/a\.tsx\s+Layout<typeof import\("\.\/new"\)/)
+    expect(checks).not.toContain('routes/b.tsx')
+    expect(checks).toContain('routes/c.tsx')
+  } finally {
+    release()
+    await dev.close()
     app.remove()
   }
 })
