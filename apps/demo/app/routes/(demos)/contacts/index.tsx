@@ -1,5 +1,5 @@
 import { desc, eq } from 'drizzle-orm'
-import { back, defineHandler, flash, render } from 'fondu'
+import { back, defineHandler, flash, render, type AsJson } from 'fondu'
 import { href, useForm, useNavigation, usePage } from 'fondu/client'
 import { Trash2Icon } from 'lucide-react'
 import * as z from 'zod/mini'
@@ -50,7 +50,8 @@ export const actions = {
   ),
 }
 
-type Contact = { id: number; name: string; email: string }
+// the page's props are the row's type as JSON delivers it (a type only: the browser's copy keeps none of `contacts`)
+type Contact = AsJson<typeof contacts.$inferSelect>
 
 export default function Contacts({ contacts }: { contacts: Contact[] }) {
   const { auth } = usePage().props

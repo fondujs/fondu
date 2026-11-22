@@ -36,7 +36,8 @@ render(c, Show, { user }, { status: 201 }) // another status
 
 - `render()` is type-checked against the component: a missing prop, or one of the wrong type, is an error.
 - The props travel as JSON. A `Date` arrives as a string, so the page types it `string`. A `Map`, a `Set` or a
-  function can't be sent: typing a prop that way is an error. [Type safety](/docs/type-safety) has the details.
+  function can't be sent: typing a prop that way is an error. [Type safety](/docs/type-safety) has the details, and
+  `AsJson<Row>` to type a page's props from the data's own type ([Props from your data](/docs/type-safety#props-from-your-data)).
 - The props are written into the page's HTML and JSON: anyone who can see the page can read them. Send what the page
   shows (`{ name: user.name }`), not whole records.
 - A route file renders its own page only. To use another route's page, make it this file's default export too:

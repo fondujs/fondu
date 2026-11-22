@@ -1,5 +1,5 @@
 export { defineHandler, defineMiddleware } from './server/handler.js'
-export { defer, render, share, type RenderOptions } from './server/protocol.js'
+export { defer, render, share, type AsJson, type RenderOptions } from './server/protocol.js'
 export { back } from './server/http.js'
 export { flash } from './server/flash.js'
 export { ValidationError } from './server/validate.js'

@@ -21,6 +21,7 @@ import type { AnswerOf, ApiPath, RequestArgs } from '../src/client.js'
 import type { ProgressOptions as ClientProgressOptions } from '../src/client.js'
 // @ts-expect-error StandardSchemaV1 is not exported
 import type { StandardSchemaV1 } from '../src/index.js'
+import type { AsJson } from '../src/index.js'
 import type { flash } from '../src/server/flash.js'
 import {
   defineHandler as define,
@@ -771,4 +772,238 @@ test('FonduOptions: viewTransitions is true or false', () => {
     { target: 'node', viewTransitions: 'yes' },
   ]
   expect(options).toHaveLength(4)
+})
+
+// AsJson<T>: T as a page receives it. Two sides, tested together: the mapping (each rule of the issue, #301), and its
+// pairing with render(), the input side: what render() accepts for a prop of type AsJson<X> is X, and nothing whose
+// JSON is not AsJson<X>.
+const same = <A, B>(..._: Equal<A, B> extends true ? [] : [error: { got: A; want: B }]) => true
+
+const asJson = [
+  // Date, or anything with toJSON(): what it gives. JSON calls it once: the result's own toJSON() is not called
+  same<AsJson<Date>, string>(),
+  same<AsJson<{ at: Date; n: number }>, { at: string; n: number }>(),
+  same<AsJson<{ toJSON(): { at: Date; n: number } }>, { at: string; n: number }>(),
+  same<AsJson<{ toJSON(): Date }>, {}>(),
+  same<AsJson<{ toJSON(): undefined }>, undefined>(),
+  same<AsJson<{ toJSON(): { toJSON(): string } }>, {}>(),
+  same<AsJson<{ id: bigint; toJSON(): { id: string } }>, { id: string }>(),
+  same<AsJson<Date | null>, string | null>(),
+  // undefined properties are optional (nothing, if only undefined); undefined in an array is null
+  same<AsJson<{ a: string | undefined; b?: number; c: undefined }>, { a?: string; b?: number }>(),
+  same<AsJson<{ a?: Date }>, { a?: string }>(),
+  same<AsJson<(string | undefined)[]>, (string | null)[]>(),
+  same<AsJson<[string, undefined, Date]>, [string, null, string]>(),
+  same<AsJson<[string, number?]>, [string, (number | null)?]>(),
+  same<AsJson<readonly (Date | undefined)[]>, readonly (string | null)[]>(),
+  // functions and symbols: left out of an object (a symbol key too), null in an array
+  same<AsJson<{ a: 1; f: () => void; s: symbol; [k: symbol]: string }>, { a: 1 }>(),
+  same<AsJson<{ a: string | (() => void) }>, { a?: string }>(),
+  same<AsJson<{ save(x: Date): void }>, {}>(),
+  same<AsJson<(() => void)[]>, null[]>(),
+  same<AsJson<[symbol, string]>, [null, string]>(),
+  same<AsJson<(string | symbol)[]>, (string | null)[]>(),
+  // Map, Set and the rest with no own data: {}
+  same<AsJson<{ m: Map<string, Date>; s: Set<string> }>, { m: {}; s: {} }>(),
+  same<AsJson<WeakMap<object, number>>, {}>(),
+  same<AsJson<WeakSet<object>>, {}>(),
+  same<AsJson<RegExp>, {}>(),
+  same<AsJson<Promise<number>>, {}>(),
+  same<AsJson<Map<string, number>[]>, {}[]>(),
+  // unions, tuples, readonly arrays keep their shape
+  same<
+    AsJson<{ k: 'a'; at: Date } | { k: 'b'; n?: number }>,
+    { k: 'a'; at: string } | { k: 'b'; n?: number }
+  >(),
+  same<AsJson<string | number | null>, string | number | null>(),
+  same<AsJson<readonly string[]>, readonly string[]>(),
+  same<AsJson<[string, ...number[]]>, [string, ...number[]]>(),
+  same<AsJson<readonly [Date, number?]>, readonly [string, (number | null)?]>(),
+  same<AsJson<[]>, []>(),
+  same<AsJson<{ readonly a: Date; b?: Date }>, { readonly a: string; b?: string }>(),
+  // edge inputs: an index signature, never, {}, any, unknown, a brand, a recursive type
+  same<AsJson<Record<string, Date | undefined>>, { [k: string]: string }>(),
+  same<
+    AsJson<{ [k: `data-${string}`]: Date; id: number }>,
+    { [k: `data-${string}`]: string; id: number }
+  >(),
+  same<AsJson<never>, never>(),
+  same<AsJson<{ a: never }>, {}>(),
+  same<AsJson<{}>, {}>(),
+  // oxlint-disable-next-line no-explicit-any -- any stays any
+  same<AsJson<{ a: any }>, { a?: any }>(),
+  same<AsJson<{ a: unknown }>, { a?: unknown }>(),
+  same<AsJson<string & { __brand: 'id' }>, string & { __brand: 'id' }>(),
+  same<AsJson<Folder>['kids'][number]['kids'][number]['madeAt'], string>(),
+  // @ts-expect-error `same` has teeth: a Date is a string, not a number
+  same<AsJson<Date>, number>(),
+]
+type Folder = { name: string; madeAt: Date; kids: Folder[] }
+
+// bigint is an error, as JSON.stringify throws on one: anywhere in the value, but not where JSON doesn't get to it
+// @ts-expect-error a bigint
+type BigId = AsJson<bigint>
+// @ts-expect-error in an object
+type BigRow = AsJson<{ id: bigint; name: string }>
+// @ts-expect-error in a union, which a string would absorb if the error were a string
+type BigOrString = AsJson<string | bigint>
+// @ts-expect-error nested in an array in an object
+type BigNested = AsJson<{ rows: { total: bigint }[] }>
+// @ts-expect-error a bigint literal
+type BigLiteral = AsJson<{ big: 1n }>
+// @ts-expect-error toJSON() gives a bigint
+type BigFromJson = AsJson<{ toJSON(): bigint }>
+// toJSON() replaces it; a function is left out
+type BigIgnored = [AsJson<{ big: bigint; toJSON(): number }>, AsJson<{ f(n: bigint): void }>]
+
+// a row with a column of every kind, as a query returns it
+type Contact = {
+  id: number
+  name: string
+  email: string | null
+  createdAt: Date
+  seenAt?: Date
+  meta: { tags: string[]; visited: (Date | undefined)[] } | null
+}
+type ContactJson = {
+  id: number
+  name: string
+  email: string | null
+  createdAt: string
+  seenAt?: string
+  meta: { tags: string[]; visited: (string | null)[] } | null
+}
+declare const contact: Contact
+declare const contacts: Contact[]
+declare const readonlyContacts: readonly Contact[]
+declare function ContactList(props: { contacts: AsJson<Contact[]>; auth: Auth }): null
+declare function ContactCard(props: { contact: AsJson<Contact> | null }): null
+declare function LazyContacts(props: { contacts?: AsJson<Contact[]>; total: number }): null
+declare function ByQuery(props: { found: AsJson<Awaited<ReturnType<typeof listContacts>>> }): null
+declare const listContacts: () => Promise<
+  { id: number; createdAt: Date; note: string | undefined; run: () => void }[]
+>
+declare const listed: Awaited<ReturnType<typeof listContacts>>
+declare function Anything(props: {
+  m: AsJson<Map<string, Date>>
+  tuple: AsJson<[Date, undefined, () => void]>
+  chain: AsJson<{ toJSON(): { at: Date; gone: undefined } }>
+}): null
+declare const chain: { toJSON(): { at: Date; gone: undefined } }
+declare function Strict(props: { rows: AsJson<{ a: string }[]> }): null
+
+// render() accepts X for AsJson<X>: whole, from a query's own type, readonly, as an optional prop (deferred), with
+// the shared props given or left out, with options
+typed(({ render, defer }, c) => {
+  render(c, ContactList, { contacts })
+  render(c, ContactList, { contacts: readonlyContacts.slice() })
+  render(c, ContactList, { contacts: [], auth: { user: null } }, { status: 201 })
+  render(c, ContactCard, { contact })
+  render(c, ContactCard, { contact: null })
+  render(c, LazyContacts, { total: 1 })
+  render(c, LazyContacts, { total: 1, contacts })
+  render(c, LazyContacts, { total: 1, contacts: defer(() => contacts) })
+  render(c, LazyContacts, { total: 1, contacts: defer(async () => contacts) })
+  render(c, ByQuery, { found: listed })
+  render(c, Anything, {
+    m: new Map([['a', new Date()]]),
+    tuple: [new Date(), undefined, () => {}],
+    chain,
+  })
+  // the page's own type is the JSON one: the string a Date becomes is fine too
+  const received: ContactJson = JSON.parse('{}')
+  render(c, ContactList, { contacts: [received] })
+  // @ts-expect-error a prop of the wrong type
+  render(c, ContactList, { contacts: [{ ...contact, id: 'x' }] })
+  // @ts-expect-error a column missing
+  render(c, ContactList, { contacts: [{ ...contact, name: undefined }] })
+  // @ts-expect-error a bare Date is the column's: the list is not
+  render(c, ContactList, { contacts: contact.createdAt })
+  // @ts-expect-error a page that types the column as a Date still can't be written
+  render(c, DatedRow, { contact })
+})
+declare function DatedRow(props: { contact: Contact }): null
+
+// ... and nothing else: a value whose JSON is not AsJson<X> is an error
+typed(({ render }, c) => {
+  const slots: (string | undefined)[] = []
+  // @ts-expect-error undefined in an array arrives as null: the page types strings
+  render(c, Strict, { rows: [{ a: slots[0] }] })
+  const calls: { a: string | (() => void) }[] = []
+  // @ts-expect-error a function is left out: the page types a as required
+  render(c, Strict, { rows: calls })
+  const own: { a: string; toJSON(): { b: number } }[] = []
+  // @ts-expect-error toJSON() replaces the value: JSON is { b }, not { a }
+  render(c, Strict, { rows: own })
+  const tupled: [string | undefined][] = []
+  // @ts-expect-error a tuple is not the array
+  render(c, Strict, { rows: tupled })
+})
+
+// a form's values: the schema's type, which is also the action's body
+const newContact = z.object({ name: z.string(), email: z.email(), nick: z.optional(z.string()) })
+declare function EditContact(props: { values: z.infer<typeof newContact> }): null
+typed(({ render, defineHandler }, c) => {
+  render(c, EditContact, { values: { name: 'Ada', email: 'ada@example.com' } })
+  // @ts-expect-error the schema's type: name is a string
+  render(c, EditContact, { values: { name: 1, email: 'ada@example.com' } })
+  return defineHandler.withValidator({ body: newContact })((c, { body }) => {
+    exactly<z.infer<typeof newContact>>()(body)
+    return render(c, EditContact, { values: body })
+  })
+})
+
+// what a page declares as AsJson<X>, JSON delivers: the value, serialized, is the type (all of the bullets at once)
+type Wide = {
+  at: Date
+  day?: Date
+  maybe: string | undefined
+  gone: undefined
+  fn: () => void
+  sym: symbol
+  m: Map<string, number>
+  s: Set<string>
+  slots: (string | undefined | (() => void) | Date)[]
+  pair: [Date, undefined]
+  stamped: { toJSON(): { at: Date; gone: undefined } }
+  hollow: { save(): void }
+  note: string | null
+}
+const wide: Wide = {
+  at: new Date(0),
+  maybe: undefined,
+  gone: undefined,
+  fn: () => {},
+  sym: Symbol('x'),
+  m: new Map([['a', 1]]),
+  s: new Set(['a']),
+  slots: ['a', undefined, () => {}, new Date(1)],
+  pair: [new Date(2), undefined],
+  stamped: { toJSON: () => ({ at: new Date(3), gone: undefined }) },
+  hollow: { save() {} },
+  note: null,
+}
+const wire: AsJson<Wide> = {
+  at: '1970-01-01T00:00:00.000Z',
+  m: {},
+  s: {},
+  slots: ['a', null, null, '1970-01-01T00:00:00.001Z'],
+  pair: ['1970-01-01T00:00:00.002Z', null],
+  stamped: { at: '1970-01-01T00:00:00.003Z' },
+  hollow: {},
+  note: null,
+}
+
+test('AsJson is the type of the JSON a value becomes', () => {
+  expect(JSON.parse(JSON.stringify(wide))).toEqual(wire)
+  expect(JSON.stringify({ toJSON: () => new Date(0) })).toBe('{}')
+  expect(JSON.stringify({ a: [undefined, () => 1, Symbol('s')], [Symbol('k')]: 1 })).toBe(
+    '{"a":[null,null,null]}',
+  )
+  expect(() => JSON.stringify({ id: 1n })).toThrow(TypeError)
+  expect(asJson.every(Boolean)).toBe(true)
+  expect(asJson).toHaveLength(43)
+  const rest: [BigId, BigRow, BigOrString, BigNested, BigLiteral, BigFromJson, BigIgnored] | null =
+    null
+  expect(rest).toBeNull()
 })
