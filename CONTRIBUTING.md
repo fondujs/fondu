@@ -42,8 +42,8 @@ How a change is decided:
   Nothing that renders later may need to change them.
 - **What would answer the wrong way fails at startup**, with a message that says what to write instead. Nothing is
   ignored without a word.
-- **Fixes, not features, until the plan in #373 is decided.** A fix comes from real use (the starter) or from a bug that
-  affects apps, and says why the tests missed it; its test covers the class, not the one case. Two implementations of
+- **Fondu is in maintenance.** Defer new features. A fix comes from real use (the starter) or from a bug that affects
+  apps, and says why the tests missed it; its test covers the class, not the one case. Two implementations of
   one rule become one, not two kept in step.
 - **A proven design before a new one.** Inertia, Laravel and React Router have solved most of this: follow the one
   that fits, and say which.
