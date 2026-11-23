@@ -418,6 +418,14 @@ const validated = [
   ),
 ]
 
+declare const asyncSchema: {
+  '~standard': {
+    version: 1
+    vendor: string
+    validate: (value: unknown) => Promise<{ value: unknown; issues?: undefined }>
+  }
+}
+
 // the browser's hooks: a navigation that failed has a place to go, an idle one has none
 const navigation = [
   typed(({ useNavigation }) => {
@@ -441,6 +449,12 @@ const navigation = [
     const nav = useNavigation()
     if (nav.state === 'loading' || nav.state === 'submitting') return nav.to.length
   }),
+  // a schema is any Standard Schema: its type can't say whether it answers at once (an async one throws when the
+  // browser checks it)
+  typed(({ useForm }) => useForm(z.object({ name: z.string() }))),
+  typed(({ useForm }) => useForm(asyncSchema)),
+  // @ts-expect-error not a Standard Schema
+  typed(({ useForm }) => useForm({ parse: (value: unknown) => value })),
   typed(({ useForm }) => {
     const { failed, submitting } = useForm()
     const a: boolean = failed
@@ -722,7 +736,7 @@ test('the types above are checked by tsc', () => {
     ...navigation,
     ...reloads,
     ...navigations,
-  ]).toHaveLength(180)
+  ]).toHaveLength(183)
 })
 
 test('FonduOptions: the port is PORT, not an option; server rendering is turned off by withoutSsr()', () => {

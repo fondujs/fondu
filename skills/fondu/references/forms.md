@@ -102,7 +102,7 @@ export default function NewContact() {
 - With a schema, `form` sets `noValidate` on the `<form>`: the schema's messages replace the browser's own (`required`,
   `type="email"`). Without JavaScript the browser's checks stay.
 - Without a schema, `useForm()` gives the server's errors, `submitting` and `failed`.
-- An async schema's yes sends the form only if its fields are still what it checked (changed meanwhile, or a newer submit, visit or unmount came first: nothing is sent, submit again).
+- `useForm` checks synchronously. A schema that returns a promise (an async rule) throws `fondu: useForm checks synchronously; check an async rule on the server` at the first check: the form is then sent as it is. Check an async rule in the action's schema: the server keeps async schemas.
 - Without JavaScript, the form is sent as it is and the server's check answers.
 
 ## While it is sent
