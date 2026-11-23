@@ -12,6 +12,17 @@ type Entry = [string, FormDataEntryValue]
 // line breaks as CRLF, as the browser sends a <textarea>
 export const crlf = (text: string) => text.replace(/\r\n|\r|\n/g, '\r\n')
 
+// What a form sends: a file by its name (empty without a file) in a URL or a text/plain body, and in any query; only a
+// multipart body has the file
+export function sentFields(data: FormData, multipart: false): Array<[string, string]>
+export function sentFields(data: FormData, multipart: boolean): Entry[]
+export function sentFields(data: FormData, multipart: boolean): Entry[] {
+  return [...data].map(([k, v]) => [
+    crlf(k),
+    typeof v === 'string' ? crlf(v) : multipart ? v : crlf(v.name),
+  ])
+}
+
 /**
  * Form fields with PHP-style names (`notify[]`, `user[name]`) as one object. Throws `MalformedForm` for fields that can't be
  * one (`a=1&a[b]=2`) and past the depth and entry limits.

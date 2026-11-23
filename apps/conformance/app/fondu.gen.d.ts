@@ -4,6 +4,7 @@ declare module 'fondu' {
     routes: {
       "/boom": typeof import("./routes/boom")
       "/checked-async": typeof import("./routes/checked-async")
+      "/checked-file": typeof import("./routes/checked-file")
       "/checked-get": typeof import("./routes/checked-get")
       "/checked": typeof import("./routes/checked")
       "/counted": typeof import("./routes/counted")
