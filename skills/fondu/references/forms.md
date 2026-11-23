@@ -37,7 +37,7 @@ export default function NewContact({ errors }: { errors: Errors }) {
   a 404.
 - Use `href('/users/:id?rename', { id })` for a typed action URL.
 - After an action, redirect so a reload doesn't send the form again: `back(c)` (the page the form was on, updated in
-  place; `back(c, fallback?)`), or `c.redirect(url, 303)`.
+  place; `back(c, fallback?)`), or `c.redirect(url, 303)` (a `javascript:`, `data:` or `vbscript:` URL is refused: a 500, logged).
 - `flash(c, { message: 'Saved' })` before either: data for the next page only, in `usePage().flash`.
   Flash data and errors travel in a cookie that comes back from the client: not trusted (anyone can write it), and
   ignored unless `flash` is an object (any JSON inside) and `errors` strings. Keep values short: over about 4 KB Fondu sends the errors that fit

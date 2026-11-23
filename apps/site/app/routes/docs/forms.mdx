@@ -39,7 +39,8 @@ Without, it is an ordinary form post, with the same result.
 An action answers with a redirect, so that a reload doesn't send the form again:
 
 - `back(c)`: back to the page the form was on. With JavaScript, that page is updated in place.
-- `c.redirect(url, 303)`: to another page, a file or another site.
+- `c.redirect(url, 303)`: to another page, a file or another site. A URL with the scheme `javascript:`, `data:` or `vbscript:`
+  is refused: the request gets a 500, `fondu: a redirect to "javascript:" is refused`, and the error is logged.
 - `flash(c, { message: 'Saved' })` before either: data for the next page only, in `usePage().flash`, for a "Saved"
   message say.
 

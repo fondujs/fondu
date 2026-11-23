@@ -1,6 +1,10 @@
 import { defineHandler } from 'fondu'
 
-export const loader = defineHandler((c) => c.redirect('/', 302))
+export const loader = defineHandler((c) =>
+  c.req.query('script') === undefined
+    ? c.redirect('/', 302)
+    : c.redirect('javascript:alert(1)', 302),
+)
 
 export const actions = {
   away: defineHandler((c) => c.redirect('https://example.com/', 303)),
@@ -9,6 +13,11 @@ export const actions = {
   absolute: defineHandler((c) => c.redirect('https://example.com/notes', 303)),
   // an open redirect to a URL that runs: never turned into a document load
   script: defineHandler((c) => c.redirect('javascript:alert(1)', 303)),
+  data: defineHandler((c) => c.redirect('data:text/html,<script>alert(1)</script>', 303)),
+  vbscript: defineHandler((c) => c.redirect('vbscript:msgbox(1)', 303)),
+  padded: defineHandler((c) => c.redirect('\n JavaScript:alert(1)', 303)),
+  app: defineHandler((c) => c.redirect('myapp://callback?code=1', 303)),
+  mail: defineHandler((c) => c.redirect('mailto:a@b.c', 303)),
   nothing: defineHandler((c) => c.body(null)),
   // a stream that doesn't end (server-sent events)
   events: defineHandler((c) =>
