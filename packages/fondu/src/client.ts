@@ -124,9 +124,10 @@ export {
   Deferred,
   type Errors,
   type Navigation,
+  type Page,
 } from './client/app.js'
 export { useForm } from './client/form.js'
-export { closeShallow, loadDocument, navigate, type Page } from './client/navigation.js'
+export { closeShallow, loadDocument, navigate } from './client/navigation.js'
 
 // ---- request(): a typed call to the app's `.ts` routes (as Void's typed fetch, with Fondu's URL patterns)
 

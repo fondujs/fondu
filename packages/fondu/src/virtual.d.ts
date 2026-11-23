@@ -11,7 +11,7 @@ declare module 'virtual:fondu/ssr' {
   /** the server render of a page (null: `fondu({ ssr: false })`) */
   export const renderPage:
     | ((
-        page: import('./client/navigation.js').Page,
+        page: import('./client/navigation.js').PageObject,
         options: {
           nonce?: string
           /** the request's: React stops rendering when it aborts */

@@ -69,6 +69,8 @@ test('the type exports of each entry are the documented ones', async () => {
   for (const name of ['ApiPath', 'AnswerOf', 'RequestArgs', 'StandardSchemaV1'])
     for (const file of ['../src/index.ts', '../src/client.ts', '../src/vite/index.ts'])
       expect(typeExports(file)).not.toContain(name)
+  expect(typeExports('../src/client.ts')).toContain('Page')
+  expect(typeExports('../src/client.ts')).not.toContain('PageObject')
   // ProgressOptions is the plugin's option: fondu/vite's, not fondu/client's
   expect(typeExports('../src/client.ts')).not.toContain('ProgressOptions')
 })

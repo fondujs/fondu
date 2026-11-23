@@ -3,7 +3,7 @@ import type { Context, MiddlewareHandler } from 'hono'
 import type { Component, ReactNode } from 'react'
 import { version } from 'virtual:fondu/assets'
 
-import type { Page } from '../client/navigation.js'
+import type { PageObject } from '../client/navigation.js'
 import type { Shared } from '../types.js'
 import { renderDocument } from './document.js'
 import { flashCookie, takeCarried } from './flash.js'
@@ -309,7 +309,7 @@ export async function renderPage(
       )
   const only = askedFor(c, id)
   const deferred = Object.keys(props).filter((k) => props[k] instanceof DeferredProp)
-  let page: Page
+  let page: PageObject
   if (only) {
     // a partial request: what was asked for, and nothing the page already has (no shared props, no errors, no flash:
     // the cookie is the next page's)
