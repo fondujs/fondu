@@ -6,7 +6,14 @@ import { HTTPException } from 'hono/http-exception'
 import { NONCE, secureHeaders } from 'hono/secure-headers'
 import { prerender, version } from 'virtual:fondu/assets'
 
-import { checkExportNames, isPageFile, isRouteFile, METHODS, pageId } from '../paths.js'
+import {
+  checkExportNames,
+  checkRouteFiles,
+  isPageFile,
+  isRouteFile,
+  METHODS,
+  pageId,
+} from '../paths.js'
 import { settings, type DocumentTemplate } from './document.js'
 import { errorResponse } from './errors.js'
 import { csrfOrigin, trailingSlash } from './http.js'
@@ -113,13 +120,20 @@ export function createApp(options: CreateAppOptions = {}): Hono {
         [
           '/app/routes/**/*.{ts,tsx,jsx,mdx}', // a .jsx file is found to be refused (routeTable)
           '!/app/routes/**/*.d.ts',
-          '!/app/routes/**/*.{test,spec}.{ts,tsx,jsx}', // test files aren't the app's
+          '!/app/routes/**/*.{test,spec}.*', // test files aren't the app's
           '!/app/routes/**/_*/**', // nor what a directory keeps beside its routes
         ],
         { eager: true },
       ) as Record<string, RouteModule>,
     ).map(([path, mod]) => [path.slice(ROOT.length), mod]),
   )
+  // Vite's globs skip hidden paths; this one lists them (never imported) so that they can be refused
+  const hidden = Object.keys(
+    import.meta.glob(['/app/routes/**/.*.{ts,tsx,mdx}', '/app/routes/**/.*/**/*.{ts,tsx,mdx}'], {
+      exhaustive: true,
+    }),
+  ).map((path) => path.slice(ROOT.length))
+  checkRouteFiles([...hidden, ...Object.keys(modules)])
   for (const [file, mod] of Object.entries(modules)) {
     if (!isRouteFile(file) && !/(?:^|\/)_(?:middleware\.ts|layout\.tsx|error\.tsx)$/.test(file))
       continue // a file of a directory's own (`_badge.tsx`)

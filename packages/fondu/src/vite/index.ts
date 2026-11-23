@@ -83,7 +83,7 @@ const PAGES_GLOB = [
   '/app/routes/**/*.{tsx,mdx}',
   '!/app/routes/**/_*',
   '!/app/routes/**/_*/**',
-  '!/app/routes/**/*.{test,spec}.tsx',
+  '!/app/routes/**/*.{test,spec}.*',
 ]
 /** the error page (`_error.tsx`: a page, though its name says it is no URL) */
 const ERROR_GLOB = '/app/routes/_error.tsx'

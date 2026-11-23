@@ -2,7 +2,7 @@ import type { Handler, MiddlewareHandler } from 'hono'
 
 import {
   checkRouteName,
-  checkSpecialFiles,
+  checkRouteFiles,
   isRouteFile,
   middlewareFor,
   RESERVED_PREFIX,
@@ -67,7 +67,7 @@ export function routeTable(modules: Record<string, RouteModule>, append: boolean
     throw new Error(
       `fondu: routes/${jsx}: route files are TypeScript; rename it to ${jsx.replace(/\.jsx$/, '.tsx')}`,
     )
-  checkSpecialFiles(files)
+  checkRouteFiles(files)
   const nested = files.find((f) => f.endsWith('/_error.tsx'))
   if (nested)
     throw new Error(

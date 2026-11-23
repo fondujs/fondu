@@ -26,7 +26,10 @@ Docs: [routes](https://fondu.dev/docs/routes.md), [pages](https://fondu.dev/docs
   the app stops at startup. Rename the file (`[verb].ts`); the URLs don't change.
 - A name with any of `[ ] : * { } ?` must be one of the forms above (a param is letters, digits, `_`): `[user-id].tsx`,
   `[id]x.ts`, `:id.ts` and `a{b}.ts` stop the app at startup.
-- Not routes: files and directories starting with `_`, `*.d.ts`, `*.test.*`, `*.spec.*`.
+- Not routes: files and directories starting with `_`, `*.d.ts`, `*.test.*`, `*.spec.*` (any extension).
+- A `.ts`, `.tsx` or `.mdx` file in a path starting with `.` (`routes/.well-known/ping.ts`) stops the app at startup and fails
+  the build. Serve it from `public/` (`public/.well-known/ping`), or answer it in a catch-all route (`[...rest].ts`
+  matches `/.well-known/ping`; `href('/:rest*', { rest: '.well-known/ping' })`).
 - `_middleware.ts`, `_layout.tsx` and `_error.tsx` have those extensions only: `_middleware.tsx` or `_layout.ts` stops the
   app at startup and fails the build (it would never run).
 
