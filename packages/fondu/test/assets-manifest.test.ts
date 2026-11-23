@@ -16,6 +16,7 @@ const manifest = {
   },
   '_shared.js': { file: 'assets/shared-S.js', css: ['assets/shared-S.css'] },
   '_ui.js': { file: 'assets/ui-U.js' },
+  '_ui-alias.js': { file: 'assets/ui-U.js' },
   // the layouts and the page import the same chunks: the lists of a page repeat them
   'app/routes/_layout.tsx': {
     file: 'assets/layout-L.js',
@@ -24,7 +25,7 @@ const manifest = {
   },
   'app/routes/docs/_layout.tsx': {
     file: 'assets/docs-layout-D.js',
-    imports: ['_shared.js', '_ui.js'],
+    imports: ['_shared.js', '_ui-alias.js'],
   },
   'app/routes/docs/intro.tsx?fondu-view': {
     file: 'assets/docs-intro-I.js',
@@ -88,6 +89,17 @@ describe('the route manifest', () => {
         '<link rel="modulepreload" href="/assets/ui-U.js">',
         '<link rel="modulepreload" href="/assets/docs-layout-D.js">',
         '<script type="module" src="/assets/entry-E.js"></script>',
+      ].join(''),
+    )
+  })
+  test('a page absent from the manifest gets the entry tags with the script nonce', async () => {
+    const { module } = await load()
+    expect(module.assetTags('missing', 'test-nonce')).toBe(
+      [
+        '<link rel="stylesheet" href="/assets/shared-S.css">',
+        '<link rel="stylesheet" href="/assets/entry-E.css">',
+        '<link rel="modulepreload" href="/assets/shared-S.js" nonce="test-nonce">',
+        '<script type="module" src="/assets/entry-E.js" nonce="test-nonce"></script>',
       ].join(''),
     )
   })
