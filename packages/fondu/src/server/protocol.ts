@@ -408,6 +408,17 @@ function webUrl(c: Context, to: string): boolean {
   }
 }
 
+const SCRIPT_SCHEMES = ['javascript:', 'data:', 'vbscript:']
+
+function scriptScheme(c: Context, to: string): string | null {
+  try {
+    const { protocol } = new URL(to, c.req.url)
+    return SCRIPT_SCHEMES.includes(protocol) ? protocol : null
+  } catch {
+    return null
+  }
+}
+
 // ---- the protocol middleware (installed by createApp)
 
 /**
@@ -430,6 +441,16 @@ const versionCheck: MiddlewareHandler = async (c, next) => {
     })
   }
   await next()
+  const location = c.res.headers.get('location')
+  if (location && c.res.status >= 300 && c.res.status < 400) {
+    const scheme = scriptScheme(c, location)
+    if (scheme) {
+      // Hono keeps the headers of the response an error replaces: without its own, no `Location` stays
+      c.res = new Response(null, { status: 500 })
+      c.res.headers.delete('location')
+      throw new Error(`fondu: a redirect to "${scheme}" is refused`)
+    }
+  }
   // a URL answers a navigation and a document differently: caches keep them apart
   appendHeader(c, 'Vary', isPageRequest(c) ? NAVIGATION_VARY : 'X-Fondu')
   // an empty answer to a form (an action that returns nothing to show, `c.body(null)`): back to the page. Its body
