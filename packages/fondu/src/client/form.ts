@@ -1,7 +1,6 @@
 import {
   useCallback,
   useEffect,
-  useLayoutEffect,
   useRef,
   useState,
   type ChangeEvent,
@@ -35,7 +34,7 @@ function fieldsOf(form: HTMLFormElement, submitter?: HTMLElement | null): unknow
   return formObject(sentFields(new FormData(form, submitter ?? undefined), multipart))
 }
 
-function check(schema: Schema, value: () => unknown): Errors | Promise<Errors> {
+function check(schema: Schema, value: () => unknown): Errors {
   let fields: unknown
   try {
     fields = value()
@@ -44,28 +43,19 @@ function check(schema: Schema, value: () => unknown): Errors | Promise<Errors> {
     throw error
   }
   const result = schema['~standard'].validate(fields)
-  const errors = (r: StandardResult) => (r.issues ? issueErrors(r.issues) : {})
-  return result instanceof Promise ? result.then(errors) : errors(result)
-}
-
-function snapshot(form: HTMLFormElement, submitter?: HTMLElement | null): string | undefined {
-  try {
-    return JSON.stringify(
-      [...new FormData(form, submitter ?? undefined)].map(([k, v]) =>
-        typeof v === 'string' ? [k, v] : [k, v.name, v.size, v.lastModified, v.type],
-      ),
-    )
-  } catch {
-    return undefined // a submitter that is no longer in the form: not what was checked
-  }
+  // any thenable, not only a Promise: its answer would be taken for a pass
+  if ('then' in result)
+    throw new Error('fondu: useForm checks synchronously; check an async rule on the server')
+  return result.issues ? issueErrors(result.issues) : {}
 }
 
 const within = (key: string, errorKey: string) =>
   errorKey === key || (key !== '' && errorKey.startsWith(`${key}.`))
 
 /**
- * A plain `<form>`, checked in the browser by the schema the server checks it with (any Standard Schema). Spread `form` on
- * the `<form>` and `field(name)` on each field. Without JavaScript, the form is sent as it is and the server checks it.
+ * A plain `<form>`, checked in the browser by the schema the server checks it with (any Standard Schema, checked
+ * synchronously). Spread `form` on the `<form>` and `field(name)` on each field. Without JavaScript, the form is sent as
+ * it is and the server checks it.
  */
 export function useForm(schema?: Schema): {
   form: {
@@ -90,11 +80,6 @@ export function useForm(schema?: Schema): {
     for: server,
     own: {},
   })
-  // the server's errors on the screen, for a check that ends after a new answer
-  const latest = useRef(server)
-  useLayoutEffect(() => {
-    latest.current = server
-  }, [server])
   const own = checked.for === server ? checked.own : {}
   const errors: Errors = Object.create(null)
   // own keys only: a field may be named like what objects inherit (`toString`)
@@ -102,25 +87,17 @@ export function useForm(schema?: Schema): {
   for (const [k, m] of Object.entries(own)) if (m) errors[k] = m
   const errorOf = (key: string) => Object.keys(errors).find((k) => within(key, k))
   const dirty = useRef(new Set<string>())
-  const runs = useRef(new Map<string, number>())
-  const passed = useRef(false)
-  // which whole-form check may still send: each submit takes the next number, and so does what makes a pending one
-  // obsolete (a visit, the form leaving). The result of an older one is dropped
-  const generation = useRef(0)
-  // the checks of single fields that began before the whole form's result: that result is the newer word
-  const epoch = useRef(0)
 
-  const apply = (found: Errors, from: Errors, key?: string) => {
-    if (latest.current !== from) return // a new answer of the server since
+  const apply = (found: Errors, key?: string) => {
     setChecked((now) => {
-      const before = now.for === from ? now.own : {}
+      const before = now.for === server ? now.own : {}
       const next: Record<string, string | undefined> = { ...before }
       const covered = (k: string) => key === undefined || within(key, k)
       // a field's check settles the server's error too; the whole form's, what it can say (not a taken address)
-      for (const k of [...Object.keys(before), ...(key === undefined ? [] : Object.keys(from))])
+      for (const k of [...Object.keys(before), ...(key === undefined ? [] : Object.keys(server))])
         if (covered(k)) next[k] = undefined
       for (const [k, m] of Object.entries(found)) if (covered(k)) next[k] = m
-      return { for: from, own: next }
+      return { for: server, own: next }
     })
   }
   const focusFirst = (form: HTMLFormElement, found: Errors) => {
@@ -162,30 +139,12 @@ export function useForm(schema?: Schema): {
     if (element && Object.keys(server).length) focusFirst(element, server)
   }, [submitting, failed, server, element])
 
-  const visiting = navigation.state === 'loading' || navigation.state === 'submitting'
-  useEffect(() => {
-    if (visiting) generation.current++
-  }, [visiting])
-  useEffect(
-    () => () => {
-      generation.current++
-    },
-    [],
-  )
-
   const checkField = (form: HTMLFormElement, key: string) => {
     if (!schema) return
-    const run = (runs.current.get(key) ?? 0) + 1
-    runs.current.set(key, run)
-    const from = server
-    const began = epoch.current
-    const done = (found: Errors) => {
-      // not after a newer check of the field, nor after the whole form's result (it began with these values or later)
-      if (runs.current.get(key) === run && epoch.current === began) apply(found, from, key)
-    }
-    const found = check(schema, () => fieldsOf(form))
-    if (found instanceof Promise) void found.then(done)
-    else done(found)
+    apply(
+      check(schema, () => fieldsOf(form)),
+      key,
+    )
   }
 
   return {
@@ -193,41 +152,14 @@ export function useForm(schema?: Schema): {
       ref,
       onSubmit(event) {
         if (!schema) return
-        if (passed.current) {
-          passed.current = false // checked already: sent
-          return
-        }
         const form = event.currentTarget
         const submitter = (event.nativeEvent as SubmitEvent).submitter
-        const from = server
-        const mine = ++generation.current
-        const before = snapshot(form, submitter)
         const found = check(schema, () => fieldsOf(form, submitter))
-        const answer = (found: Errors) => {
-          apply(found, from)
-          if (Object.keys(found).length) focusFirst(form, found)
+        apply(found)
+        if (Object.keys(found).length) {
+          event.preventDefault()
+          focusFirst(form, found)
         }
-        if (!(found instanceof Promise)) {
-          if (Object.keys(found).length) event.preventDefault()
-          return answer(found)
-        }
-        // an async schema: sent again once it says yes
-        event.preventDefault()
-        void found.then((found) => {
-          // obsolete (a newer submit, a visit, the form gone) or about other values than the form has now
-          if (generation.current !== mine || snapshot(form, submitter) !== before) return
-          epoch.current++
-          answer(found)
-          if (Object.keys(found).length || latest.current !== from) return
-          passed.current = true
-          try {
-            form.requestSubmit(
-              submitter && 'form' in submitter ? (submitter as HTMLButtonElement) : null,
-            )
-          } finally {
-            passed.current = false // a submit that was cancelled has not used it up
-          }
-        })
       },
     },
     field: (name) => {

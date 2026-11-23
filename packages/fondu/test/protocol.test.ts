@@ -609,6 +609,31 @@ describe('withValidator', () => {
       expect([ran, res.status, Object.keys(await res.json())]).toEqual([false, 422, [name]])
     }
   })
+  test('an async schema: awaited, its issues are the errors (the server keeps what useForm cannot check)', async () => {
+    const taken = {
+      '~standard': {
+        version: 1 as const,
+        vendor: 'test',
+        validate: async (value: unknown) =>
+          (value as { email?: string }).email === 'ada@example.com'
+            ? { issues: [{ message: 'Taken', path: ['email'] }] }
+            : { value, issues: undefined },
+      },
+    }
+    const handlers = defineHandler.withValidator({ body: taken })((c) => c.text('ran'))
+    const api = new Hono()
+      .onError((error, c) => c.json((error as ValidationError).errors, 422))
+      .post('/', ...(handlers as [never]))
+    const send = (email: string) =>
+      api.request('/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      })
+    const refused = await send('ada@example.com')
+    expect([refused.status, await refused.json()]).toEqual([422, { email: 'Taken' }])
+    expect([(await send('new@example.com')).status]).toEqual([200])
+  })
   test('params and query, typed after the schema; params that do not fit: 404', async () => {
     expect(await (await app.request('/users/7?full=1')).json()).toEqual({ id: 7, full: '1' })
     expect((await app.request('/users/x')).status).toBe(404)

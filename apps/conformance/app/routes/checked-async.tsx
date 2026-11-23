@@ -1,28 +1,12 @@
 import { defineHandler, flash, render } from 'fondu'
 import { useForm, usePage } from 'fondu/client'
 
-// useForm with an async schema that answers when the test says so: each check waits in `window.checks`, and
-// `release()` gives its answer, for the values it was asked about (a name, please).
-type Check = { name: unknown; release: () => void }
-declare global {
-  interface Window {
-    checks: Check[]
-  }
-}
+// useForm with a schema whose answer is a promise: not supported (e2e/form-async.spec.ts)
 const schema = {
   '~standard': {
     version: 1 as const,
     vendor: 'conformance',
-    validate(value: unknown) {
-      const name = (value as { name?: unknown } | null)?.name
-      return new Promise<{ issues?: { message: string; path: PropertyKey[] }[] }>((resolve) => {
-        const answer =
-          typeof name === 'string' && name.trim() !== ''
-            ? {}
-            : { issues: [{ message: 'A name, please', path: ['name'] }] }
-        ;(window.checks ??= []).push({ name, release: () => resolve(answer) })
-      })
-    },
+    validate: (value: unknown) => Promise.resolve({ value, issues: undefined }),
   },
 }
 
