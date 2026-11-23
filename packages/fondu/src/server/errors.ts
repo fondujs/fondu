@@ -3,7 +3,7 @@ import { HTTPException } from 'hono/http-exception'
 import type { ContentfulStatusCode } from 'hono/utils/http-status'
 
 import { settings } from './document.js'
-import { nonceOf, wantsPage } from './http.js'
+import { nonceOf, varyAccept, wantsPage } from './http.js'
 import { renderPage } from './protocol.js'
 
 /** the error page's id: `app/routes/_error.tsx` */
@@ -15,6 +15,7 @@ const TEXT: Record<number, string> = {
   404: 'Not Found',
   405: 'Method Not Allowed',
   413: 'Content Too Large',
+  422: 'Unprocessable Content',
   419: 'Page Expired',
   429: 'Too Many Requests',
   503: 'Service Unavailable',
@@ -31,6 +32,10 @@ export async function errorResponse(
   status: number,
   error?: unknown,
 ): Promise<Response> {
+  return varyAccept(await answer(c, status, error))
+}
+
+async function answer(c: Context, status: number, error?: unknown): Promise<Response> {
   if (status >= 500) console.error(error)
   const code = status as ContentfulStatusCode
   const text = TEXT[status] ?? (status >= 500 ? 'Internal Server Error' : 'Error')

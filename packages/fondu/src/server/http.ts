@@ -7,6 +7,19 @@ export const isPageRequest = (c: Context) => c.req.header('x-fondu') === 'true'
 export const wantsPage = (c: Context) =>
   isPageRequest(c) || (c.req.header('accept') ?? '').includes('text/html')
 
+export function varyAccept(res: Response): Response {
+  if (/(?:^|,)\s*(?:accept|\*)\s*(?:,|$)/i.test(res.headers.get('vary') ?? '')) return res
+  try {
+    res.headers.append('Vary', 'Accept')
+    return res
+  } catch {
+    // headers that can't change (a `fetch()`'s): a copy
+    const copy = new Response(res.body, res)
+    copy.headers.append('Vary', 'Accept')
+    return copy
+  }
+}
+
 /** the request's Content Security Policy nonce (hono/secure-headers'), if it has one */
 export const nonceOf = (c: Context) =>
   (c.get as (key: string) => unknown)('secureHeadersNonce') as string | undefined

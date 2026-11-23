@@ -19,6 +19,9 @@ A method the route has no handler for (`DELETE` to a route with `GET` and `POST`
 gets the error page too, with `status` 405; a URL that matches no route stays a 404. A directory's `cors()` still
 answers a preflight, as its middleware runs first.
 
+A response that `Accept` chooses (the error page or plain text, a redirect back or a 422) has `Vary: Accept`, added to
+the `Vary` it has, so a shared cache keeps the forms apart.
+
 A request over the body limit (413) gets the error page too, with the shared props: the limit runs after the
 middleware of the route's directories. A CSRF refusal (403) is plain text, "Forbidden": Hono's CSRF protection answers it with its own response,
 before any middleware.
