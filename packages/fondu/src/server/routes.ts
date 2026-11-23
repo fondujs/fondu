@@ -52,7 +52,7 @@ const SEGMENT = /^[\w.~-]+$/
 // In the order Hono gets them: segment by segment, static, then a param with listed values, then a param, then a
 // catch-all. Throws at startup on what would answer the wrong way (two files for the same URLs, bad `params`, a `.jsx`
 // route file, a directory's own file with another extension).
-export function routeTable(modules: Record<string, RouteModule>, append: boolean): Route[] {
+export function routeTable(modules: Record<string, RouteModule>): Route[] {
   const files = Object.keys(modules)
   const jsx = files.find(
     (f) =>
@@ -101,7 +101,7 @@ export function routeTable(modules: Record<string, RouteModule>, append: boolean
           throw new Error(
             `fondu: routes/${file}: ${RESERVED_PREFIX}* is Fondu's (page data, the build's list of pages), not an app's URL; move the route`,
           )
-        return empty ? null : { path: withSlash(path, append), pattern: withSlash(pattern, append) }
+        return empty ? null : { path, pattern }
       })
       .filter((p) => p !== null)
     if (!paths.length)
@@ -149,7 +149,3 @@ function paramsOf(file: string, mod: RouteModule | undefined): Params {
       )
   return params as Params
 }
-
-// a catch-all takes the rest of the path: never a trailing slash
-const withSlash = (pattern: string, append: boolean) =>
-  append && pattern !== '/' && !/(?:\*|\{\.\+\})$/.test(pattern) ? pattern + '/' : pattern

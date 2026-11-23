@@ -64,16 +64,18 @@ export const back = (c: Context, fallback = '/') => {
 
 // The Location is relative, the path as asked (encoded): behind a proxy the request's URL has another scheme than the
 // browser's. One leading slash (`//evil.com/` is never another site).
-export const trailingSlash =
-  (append: boolean): MiddlewareHandler =>
-  async (c, next) => {
-    await next()
-    if (c.res.status !== 404 || (c.req.method !== 'GET' && c.req.method !== 'HEAD')) return
-    const url = new URL(c.req.url)
-    if (url.pathname === '/' || url.pathname.endsWith('/') === append) return
-    url.pathname = append ? `${url.pathname}/` : url.pathname.slice(0, -1)
-    c.res = c.redirect(pathAndQuery(url), 301)
-  }
+export const trailingSlash: MiddlewareHandler = async (c, next) => {
+  await next()
+  if (c.res.status !== 404) return
+  const url = new URL(c.req.url)
+  if (url.pathname === '/' || !url.pathname.endsWith('/')) return
+  url.pathname = url.pathname.slice(0, -1)
+  // 308 keeps a POST a POST
+  c.res = c.redirect(
+    pathAndQuery(url),
+    c.req.method === 'GET' || c.req.method === 'HEAD' ? 301 : 308,
+  )
+}
 
 // Hono compares the Origin with the request's URL, `http://` behind a proxy: this also accepts `https` when a proxy says
 // so.

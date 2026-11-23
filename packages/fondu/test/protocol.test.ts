@@ -197,13 +197,6 @@ describe('routes', () => {
     expect([res.status, res.headers.get('location')]).toEqual([301, '/items?x=1'])
     expect((await app.request('//evil.com/')).headers.get('location')).toBe('/evil.com')
   })
-  test("trailing slash: 'append'", async () => {
-    const appended = createApp({ trailingSlash: 'append' })
-    expect((await appended.request('/boom', { headers: html })).headers.get('location')).toBe(
-      '/boom/',
-    )
-    expect((await appended.request('/api/data/')).status).toBe(200)
-  })
   test('CSP: the default, scripts with the nonce; a directive of yours replaces that one; false: none', async () => {
     expect(
       (await app.request('/', { headers: html })).headers.get('content-security-policy'),
@@ -298,12 +291,6 @@ describe('behind a TLS-terminating proxy (Host: example.com, https in the browse
   test('the trailing-slash redirect is relative', async () => {
     const res = await app.request('/items/?x=1', { headers: { ...html, ...proxied } })
     expect([res.status, res.headers.get('location')]).toEqual([301, '/items?x=1'])
-    const appended = createApp({ trailingSlash: 'append' })
-    expect(
-      (await appended.request('/boom?x=1', { headers: { ...html, ...proxied } })).headers.get(
-        'location',
-      ),
-    ).toBe('/boom/?x=1')
   })
   test('X-Fondu-Location (a new build) is a path and query', async () => {
     const res = await app.request('/items?x=1', {
@@ -360,22 +347,17 @@ describe('behind a TLS-terminating proxy (Host: example.com, https in the browse
     ]).toEqual([303, 403])
   })
   test('the trailing-slash redirect never leaves this site', async () => {
-    const appended = createApp({ trailingSlash: 'append' })
-    // [asked, trimmed to, appended to (asked without its slash)]
+    // [asked, trimmed to]
     const cases = [
-      ['//evil.com/', '/evil.com', '/evil.com/'],
-      ['///evil.com/', '/evil.com', '/evil.com/'],
-      ['/\\evil.com/', '/evil.com', '/evil.com/'],
-      ['/%2Fevil.com/', '/%2Fevil.com', '/%2Fevil.com/'],
-      ['/%5Cevil.com/', '/%5Cevil.com', '/%5Cevil.com/'],
-      ['/%2f%2fevil.com/', '/%2f%2fevil.com', '/%2f%2fevil.com/'],
-      [
-        '//evil.com/?next=//other.example/',
-        '/evil.com?next=//other.example/',
-        '/evil.com/?next=//other.example/',
-      ],
+      ['//evil.com/', '/evil.com'],
+      ['///evil.com/', '/evil.com'],
+      ['/\\evil.com/', '/evil.com'],
+      ['/%2Fevil.com/', '/%2Fevil.com'],
+      ['/%5Cevil.com/', '/%5Cevil.com'],
+      ['/%2f%2fevil.com/', '/%2f%2fevil.com'],
+      ['//evil.com/?next=//other.example/', '/evil.com?next=//other.example/'],
     ] as const
-    for (const [asked, trimmed, withSlash] of cases) {
+    for (const [asked, trimmed] of cases) {
       for (const method of ['GET', 'HEAD']) {
         const res = await app.request(asked, { method, headers: html })
         expect([res.status, res.headers.get('location')], `${method} ${asked}`).toEqual([
@@ -383,18 +365,15 @@ describe('behind a TLS-terminating proxy (Host: example.com, https in the browse
           trimmed,
         ])
       }
-      const without = asked.replace(/\/(?=\?|$)/, '')
-      const res = await appended.request(without, { headers: html })
-      expect([res.status, res.headers.get('location')], without).toEqual([301, withSlash])
-      for (const location of [trimmed, withSlash])
-        expect(new URL(location, ORIGIN).origin, location).toBe(ORIGIN)
+      expect(new URL(trimmed, ORIGIN).origin, trimmed).toBe(ORIGIN)
     }
   })
-  test('the trailing-slash redirect: the root and other methods as before', async () => {
+  test('the trailing-slash redirect: the root untouched; 308 for a method that is not GET or HEAD, the query kept', async () => {
     expect((await app.request('/', { headers: html })).status).toBe(200)
-    expect(
-      (await app.request('/items/', { method: 'POST', headers: { Origin: ORIGIN } })).status,
-    ).toBe(404)
+    for (const method of ['POST', 'PUT', 'DELETE']) {
+      const res = await app.request('/items/?x=1', { method, headers: { Origin: ORIGIN } })
+      expect([res.status, res.headers.get('location')], method).toEqual([308, '/items?x=1'])
+    }
   })
 })
 

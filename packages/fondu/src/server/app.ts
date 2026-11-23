@@ -27,8 +27,6 @@ import { ValidationError, validationErrorResponse } from './validate.js'
 export interface CreateAppOptions {
   /** The HTML document around pages (default: a minimal one) */
   document?: DocumentTemplate
-  /** `/users/` → `/users` (`'trim'`, default) or the other way (`'append'`): a 301 to a relative URL */
-  trailingSlash?: 'trim' | 'append'
   /** `hono/csrf`'s options; `false`: off */
   csrf?: Parameters<typeof csrf>[0] | false
   /** Largest request body in bytes (default 10 MB), then 413; `false`: no limit. The body is read whole, in memory. */
@@ -161,7 +159,6 @@ export function createApp(options: CreateAppOptions = {}): Hono {
     document: options.document,
     errorPage: Boolean(modules['_error.tsx']),
   }
-  const append = options.trailingSlash === 'append'
   app.use(async (c, next) => {
     settings.set(c, own)
     await next()
@@ -180,7 +177,7 @@ export function createApp(options: CreateAppOptions = {}): Hono {
     app.use(csrf({ ...options.csrf, origin: options.csrf?.origin ?? csrfOrigin }))
   const prerendered: PrerenderRoute[] = []
   if (prerender) prerenderRoutes(app, () => prerendered, version)
-  app.use(trailingSlash(append), ...protocol)
+  app.use(trailingSlash, ...protocol)
   app.notFound((c) => errorResponse(c, 404))
   app.onError((error, c) => {
     // the client left (a body cut off mid-upload): nobody is there to answer, so no 500 is logged. Recognised by the request's
@@ -210,7 +207,7 @@ export function createApp(options: CreateAppOptions = {}): Hono {
         ]
 
   const unanswered: { pattern: string; mws: MiddlewareHandler[]; allow: string[] }[] = []
-  for (const { file, pattern, path, middleware } of routeTable(modules, append)) {
+  for (const { file, pattern, path, middleware } of routeTable(modules)) {
     const mod = modules[file]!
     const page = isPageFile(file) ? pageId(file) : undefined
     const mws = [

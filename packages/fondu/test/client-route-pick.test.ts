@@ -49,8 +49,7 @@ test('the client picks the page the server answers with', async () => {
     files.map((f) => [f, { GET: () => null }]),
   )
   const server = new Hono()
-  for (const route of routeTable(modules, false))
-    server.get(route.pattern, (c) => c.text(route.file))
+  for (const route of routeTable(modules)) server.get(route.pattern, (c) => c.text(route.file))
   __entry(
     Object.fromEntries(files.map((f) => [`/app/routes/${f}`, async () => ({})])),
     {},
