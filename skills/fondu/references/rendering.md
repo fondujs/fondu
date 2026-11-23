@@ -50,6 +50,11 @@ export const prerender = () => posts.map((post) => ({ slug: post.slug }))
 
 - Each page is written as a document (`docs/intro.html`) and as its page object (`_fondu/pages/docs/intro.json`) that
   navigations read. On Cloudflare, Workers Static Assets serve them; on Bun and Node, the built server does.
+- A `.ts` route with `GET` and `prerender` is a file, not a page: asked for once, its body written as it is at its URL
+  (`routes/feed.xml.ts` → `feed.xml`). The build stops, naming the route, when its URL has no extension (`feed.ts`: write
+  `feed.xml.ts`), when its extension has no known content type, when its `Content-Type` is not the extension's
+  (`application/rss+xml` for `.xml`), or when it does not answer 200. A `_middleware.ts`'s `prerender` covers pages
+  only: a `.ts` route is written by its own `export const prerender`.
 - `/_fondu/` is Fondu's one reserved prefix (`/_fondu/pages/*`, and `/_fondu/prerender` during the build): no route of
   the app goes under it (the app stops at startup if one does). In development, Fondu also serves `/@fondu/dev.css`
   (the CSS the layouts import, for the first paint).
