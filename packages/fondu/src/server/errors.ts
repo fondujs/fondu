@@ -13,6 +13,7 @@ const TEXT: Record<number, string> = {
   401: 'Unauthorized',
   403: 'Forbidden',
   404: 'Not Found',
+  405: 'Method Not Allowed',
   413: 'Content Too Large',
   419: 'Page Expired',
   429: 'Too Many Requests',

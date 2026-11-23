@@ -92,6 +92,9 @@ export default function Show({ user }: { user: User }) {
 - `action` answers POST: the page's one form.
 - `actions.name` answers `POST ?name`, a form each: `<form method="post" action="?rename">`. A file has `action` or
   `actions`, not both; with `actions`, a POST without one of their names is a 404.
+- A method the route has no handler for is a 405 with `Allow` (`DELETE` to a `.ts` file with `GET`, `POST` and `PUT`:
+  `Allow: GET, HEAD, POST, PUT`), after the directories' middleware, so a `cors()` there answers a preflight. With
+  `action`, a `?name` is ignored.
 - After an action, answer with a redirect: `back(c)` to the page the request came from, or `c.redirect(url, 303)`.
   The browser then shows that page.
 
