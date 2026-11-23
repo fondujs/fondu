@@ -194,44 +194,6 @@ test.describe('shallow navigation to another page URL', () => {
     expect(made.some((url) => url.includes('/shallow-items/7.json'))).toBe(true)
   })
 
-  test('deferred props crossing the shallow navigation do not cache the list at the item URL', async ({
-    page,
-  }) => {
-    let release = () => {}
-    const gate = new Promise<void>((resolve) => {
-      release = resolve
-    })
-    await page.route('**/_fondu/pages/shallow-list.json*', async (route) => {
-      if (route.request().headers()['x-fondu-only']) await gate
-      await route.continue()
-    })
-    try {
-      await page.goto('/shallow-list?defer=1')
-      await page.waitForFunction(() => history.state?.__fondu)
-      await expect(page.locator('#later')).toHaveText('pending')
-      await page.click('#open-7')
-      await dialog(page)
-      release()
-      await expect(page.locator('#later')).toHaveText('ready')
-      await page.click('#leave')
-      await expect(page.locator('#item-page')).toHaveText('Item 9')
-      await page.evaluate(() => {
-        const w = window as unknown as { listFlashed: boolean }
-        w.listFlashed = false
-        new MutationObserver(() => {
-          if (document.getElementById('cross-list')) w.listFlashed = true
-        }).observe(document.body, { childList: true, subtree: true })
-      })
-      await page.goBack()
-      await expect(page.locator('#item-page')).toHaveText('Item 7')
-      expect(
-        await page.evaluate(() => (window as unknown as { listFlashed: boolean }).listFlashed),
-      ).toBe(false)
-    } finally {
-      release()
-    }
-  })
-
   for (const documentReload of [false, true]) {
     test(`${documentReload ? 'a document reload' : 'reload()'} asks for the shallow URL and shows its own page`, async ({
       page,

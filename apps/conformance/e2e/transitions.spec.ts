@@ -167,49 +167,6 @@ test.describe('a newer navigation while a transition is pending', () => {
   })
 })
 
-test.describe('what the old page asks for while the new page waits for its transition', () => {
-  for (const kind of ['a deferred answer in flight', 'reload({ only }) clicked']) {
-    test(`${kind}: the new page still commits`, async ({ page }) => {
-      await install(page)
-      let open!: () => void
-      const gate = new Promise<void>((resolve) => (open = resolve))
-      page.on('close', () => open())
-      if (kind === 'a deferred answer in flight')
-        await page.route('**/_fondu/pages/deferred.json*', async (route) => {
-          if (route.request().headers()['x-fondu-only']) await gate
-          await route.continue().catch(() => {})
-        })
-      await page.goto('/deferred')
-      await hydrated(page)
-      test.skip(!(await hasApi(page)), 'no document.startViewTransition in this browser')
-      await page.evaluate(() => {
-        const a = document.createElement('a')
-        a.id = 'to-vt'
-        a.href = '/vt/a'
-        a.textContent = 'A'
-        document.body.append(a)
-        ;(window as unknown as W).__vt.hold = true
-      })
-      await press(page, '#to-vt')
-      await phaseIs(page, 'held')
-      if (kind === 'reload({ only }) clicked') await press(page, '#only')
-      await page.evaluate(() => new Promise<void>((resolve) => setTimeout(resolve, 700))) // the answer's time
-      open()
-      await page.evaluate(() => new Promise<void>((resolve) => setTimeout(resolve, 100)))
-      await page.evaluate(() => {
-        const vt = (window as unknown as W).__vt
-        vt.hold = false
-        vt.release?.()
-      })
-      await shows(page, 'a')
-      await quiet(page)
-      expect(await address(page)).toBe('/vt/a')
-      await expect(page.locator('#stats')).toHaveCount(0)
-      await expect(page.locator('#state')).toHaveText('idle')
-    })
-  }
-})
-
 test.describe('the scroll is at its target when the update returns', () => {
   test('the top, a restored position, a #fragment', async ({ page }) => {
     await start(page)

@@ -240,7 +240,6 @@ function start(settings: Parameters<typeof __entry>[2]) {
           const view =
             page.component === loaded.component ? loaded.view : await load(page.component)
           if (stale()) return
-          // built when it is committed: what the page on the screen asked for in between is in it
           return () => {
             loaded = { component: page.component, view }
             flushSync(() => set(newer(shownOf(page, view, fresh))))
@@ -301,33 +300,8 @@ export function useNavigation(): Navigation {
   )
 }
 
-/**
- * This page's props asked for again: the page keeps its state and the scroll position. `only`: those props alone,
- * deferred or not, quietly (no navigation state)
- */
-export function reload(options: { only?: string[] } = {}) {
+/** This page's props asked for again: the page keeps its state and the scroll position. */
+export function reload() {
   inBrowser('reload')
-  again(options.only)
-}
-
-/**
- * Children once the page has the props named by `data`; `fallback` while they are asked for; `failed` (default:
- * `fallback`) once they were asked for and are not there (the request failed, or the loader's function threw)
- */
-export function Deferred({
-  data,
-  fallback = null,
-  failed = fallback,
-  children,
-}: {
-  data: string | string[]
-  fallback?: ReactNode
-  failed?: ReactNode
-  children?: ReactNode
-}): ReactNode {
-  const page = useContext(PageContext)
-  if (!page) throw new Error('fondu: <Deferred> is for components of a page')
-  const names = [data].flat()
-  if (names.every((name) => Object.hasOwn(page.props, name))) return children
-  return names.some((name) => page.deferred?.includes(name)) ? fallback : failed
+  again()
 }

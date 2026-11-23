@@ -1,4 +1,4 @@
-import { defer, defineHandler, render } from 'fondu'
+import { defineHandler, render } from 'fondu'
 import { closeShallow, href, navigate, reload, usePage } from 'fondu/client'
 import { useState } from 'react'
 
@@ -6,24 +6,10 @@ export const loader = defineHandler((c) =>
   render(c, List, {
     items: ['7', '8'],
     label: 'list props',
-    later: c.req.query('defer')
-      ? defer(async () => {
-          await new Promise((resolve) => setTimeout(resolve, 600))
-          return 'ready'
-        })
-      : 'ready',
   }),
 )
 
-export default function List({
-  items,
-  label,
-  later,
-}: {
-  items: string[]
-  label: string
-  later?: string
-}) {
+export default function List({ items, label }: { items: string[]; label: string }) {
   const { component, url } = usePage()
   const id = new URL(url, 'http://localhost').pathname.split('/shallow-items/')[1]
   const [error, setError] = useState('')
@@ -40,7 +26,6 @@ export default function List({
       <output id="component">{component}</output>
       <output id="url">{url}</output>
       <output id="label">{label}</output>
-      <output id="later">{later ?? 'pending'}</output>
       <div style={{ position: 'fixed', top: 0, left: 0, background: 'white', zIndex: 1 }}>
         <input id="draft" />
         {items.map((id) => (

@@ -7,20 +7,16 @@ const scrollY = (page: Page) => page.evaluate(() => window.scrollY)
 const near = (y: number, expected: number) =>
   expect(Math.abs(y - expected), `scrollY ${y}`).toBeLessThanOrEqual(2)
 
-/** the requests the page makes from now on (an app's own: the document's modules are loaded already); a deferred prop's has ` only=` */
+/** the requests the page makes from now on (an app's own: the document's modules are loaded already) */
 const requests = (page: Page) => {
   const made: string[] = []
-  page.on('request', (request) => {
-    const only = request.headers()['x-fondu-only']
-    made.push(
-      request.url().replace(new URL(request.url()).origin, '') + (only ? ` only=${only}` : ''),
-    )
-  })
+  page.on('request', (request) =>
+    made.push(request.url().replace(new URL(request.url()).origin, '')),
+  )
   return made
 }
-/** the navigations among them: the page asked for, not its deferred props */
-const visits = (made: string[]) =>
-  made.filter((url) => url.includes('/_fondu/pages/shallow') && !url.includes(' only='))
+/** the navigations among them: the pages asked for */
+const visits = (made: string[]) => made.filter((url) => url.includes('/_fondu/pages/shallow'))
 const hydrated = (page: Page) => page.waitForFunction(() => history.state?.__fondu)
 const open = async (page: Page, url = '/shallow') => {
   await page.goto(url)
@@ -462,25 +458,6 @@ test.describe('server answers on shallow entries', () => {
     expect(visits(made)).toEqual(['/_fondu/pages/shallow.json'])
   })
 
-  test('reload({ only }): the prop asked at the entry’s URL, then Back to the list is a request', async ({
-    page,
-  }) => {
-    await open(page)
-    await page.click('#open-b')
-    await expect(item(page)).toHaveText('Beta')
-    await expect(text(page, 'loaded')).toHaveText('')
-    const before = await loads(page)
-    const made = requests(page)
-    await page.click('#reload-only')
-    await expect(text(page, 'loaded')).toHaveText('b') // the loader's answer for ?item=b
-    expect(await loads(page)).toBe(before) // the other props are not asked for
-    made.length = 0
-    await page.goBack()
-    await expect(page).toHaveURL(/\/shallow$/)
-    await expect(drawer(page)).toHaveCount(0)
-    await expect.poll(() => visits(made)).toEqual(['/_fondu/pages/shallow.json'])
-  })
-
   for (const fragment of [false, true]) {
     test(`a form’s answer shares its new props: closeShallow(), Back and Forward ask for nothing (fragment=${fragment})`, async ({
       page,
@@ -493,7 +470,6 @@ test.describe('server answers on shallow entries', () => {
       const before = await loads(page)
       await page.click('#note')
       await expect(text(page, 'flash')).toHaveText('Saved')
-      await expect(text(page, 'later')).not.toHaveText('pending')
       const answered = await loads(page)
       expect(answered).toBeGreaterThan(before)
       expect(await page.evaluate(() => history.state.__fondu)).toBe(overlay)
@@ -525,7 +501,6 @@ test.describe('server answers on shallow entries', () => {
       const target = fragment ? /\/shallow\?item=b#tab\/y$/ : /\/shallow\?item=b$/
       await expect(page).toHaveURL(target)
       await expect(text(page, 'loaded')).toHaveText('b')
-      await expect(text(page, 'later')).not.toHaveText('pending')
       const answered = await loads(page)
       const made = requests(page)
       for (const url of [/\/shallow\?item=a$/, /\/shallow$/]) {
@@ -609,31 +584,6 @@ test.describe('server answers on shallow entries', () => {
     expect(made).toEqual([])
     await page.goBack()
     await expect(drawer(page)).toHaveCount(0)
-    expect(made).toEqual([])
-  })
-
-  test('deferred props in flight across a shallow navigation: they arrive in the page, nothing else is asked', async ({
-    page,
-  }) => {
-    // the deferred request, held back: the click comes first
-    await page.route('**/shallow', async (route) => {
-      if (route.request().headers()['x-fondu-only'])
-        await new Promise((resolve) => setTimeout(resolve, 800))
-      await route.continue()
-    })
-    const asked = requests(page)
-    await open(page)
-    await expect(text(page, 'later')).toHaveText('pending')
-    await page.click('#open-a')
-    await expect(text(page, 'later')).toHaveText('none') // the answer for /shallow, merged into the page now at ?item=a
-    await expect(text(page, 'url')).toHaveText('/shallow?item=a')
-    expect(asked.filter((url) => url.includes(' only='))).toEqual([
-      '/_fondu/pages/shallow.json only=later',
-    ])
-    const made = requests(page)
-    await page.goBack()
-    await expect(drawer(page)).toHaveCount(0)
-    await expect(text(page, 'later')).toHaveText('none')
     expect(made).toEqual([])
   })
 })

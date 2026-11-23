@@ -1,4 +1,4 @@
-import { back, defer, defineHandler, flash, render, ValidationError } from 'fondu'
+import { back, defineHandler, flash, render, ValidationError } from 'fondu'
 import { closeShallow, navigate, reload, useNavigation, usePage } from 'fondu/client'
 import { HTTPException } from 'hono/http-exception'
 import { useState, useSyncExternalStore } from 'react'
@@ -33,16 +33,11 @@ export const actions = {
 
 export const loader = defineHandler((c) => {
   const search = new URL(c.req.url).search
-  // `item` is what the document at this URL needs; `loads` says which answer of the loader the page is, `later` for
-  // which query it was asked
+  // `item` is what the document at this URL needs; `loads` says which answer of the loader the page is
   return render(c, Shallow, {
     items,
     item: items.find((item) => item.id === new URLSearchParams(search).get('item')) ?? null,
     loads: ++loads,
-    later: defer(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 400))
-      return search || 'none'
-    }),
   })
 })
 
@@ -55,12 +50,10 @@ export default function Shallow({
   items,
   item: loaded,
   loads,
-  later,
 }: {
   items: Item[]
   item: Item | null
   loads: number
-  later?: string
 }) {
   const { url, component, flash, props } = usePage()
   const { state } = useNavigation()
@@ -94,7 +87,6 @@ export default function Shallow({
       <output id="url">{url}</output>
       <output id="component">{component}</output>
       <output id="nav">{state}</output>
-      <output id="later">{later ?? 'pending'}</output>
       <output id="loaded">{loaded?.id ?? ''}</output>
       <output id="flash">{(flash as { message?: string }).message ?? ''}</output>
       <output id="errors">{props.errors.name ?? ''}</output>
@@ -176,9 +168,6 @@ export default function Shallow({
         </button>
         <button id="reload" onClick={() => reload()}>
           reload()
-        </button>
-        <button id="reload-only" onClick={() => reload({ only: ['item'] })}>
-          reload({'{'} only {'}'})
         </button>
         <form method="post" action="?note">
           <button id="note">Note</button>

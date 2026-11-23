@@ -57,7 +57,7 @@ export const sections: Array<{ title: string; docs: Doc[] }> = [
         slug: 'pages',
         title: 'Pages and props',
         description:
-          'How a page is a React component fed by its loader: props, title and meta tags, shared props, deferred props and reading the page in a component.',
+          'How a page is a React component fed by its loader: props, title and meta tags, shared props and reading the page in a component.',
       },
       {
         slug: 'navigation',

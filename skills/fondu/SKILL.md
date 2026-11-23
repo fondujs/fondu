@@ -3,7 +3,7 @@ name: fondu
 description: >-
   Building or changing an app on Fondu (a small meta-framework for full-stack React apps, built on Hono and Vite):
   routes in app/routes/, pages, loaders, actions, forms and validation, links and navigation, layouts, middleware,
-  error pages, static pages, i18n (a URL per language), MDX pages, deferred props, shared props, typed URLs (href) and
+  error pages, static pages, i18n (a URL per language), MDX pages, shared props, typed URLs (href) and
   the typed request() for .ts routes, the document, createApp, the Vite plugin. Use it before writing any of these, and
   for the rules of where code runs.
 metadata:
@@ -72,7 +72,7 @@ export default function Show({ user }: { user: { name: string } }) {
   the app at startup with what to write instead. Code that isn't a route lives outside `app/routes/`, where
   the app's AGENTS.md says.
 - **The loader decides the answer.** Status, redirects and cookies are known before the first byte. Await what decides
-  them (does the record exist, may the visitor see it) in the loader; never defer it.
+  them (does the record exist, may the visitor see it) in the loader.
 - **Server code never reaches the browser.** `.ts` files of `app/routes/`, `app/server.ts` and `*.server.ts` are
   server-only; a page's `loader`, `action`, `actions`, `prerender`, `params` are cut from its browser copy, with the
   imports only they use. A page imports `fondu/client`; `fondu` is the server's (server code may import `href()` from `fondu/client`;
@@ -88,7 +88,7 @@ export default function Show({ user }: { user: { name: string } }) {
 - **URLs come from `href()`** (`fondu/client`), typed after `app/routes/`: `href('/users/:id', { id })`, with
   `{ query, hash }` too. Use it for links, form actions and redirects.
 - **Do not reach for** a client-side router, a client cache (React Query, SWR), or `request()` for a page's own data:
-  the loader and `defer()` are the page's data. `request()` from `fondu/client` is for effects and events, calling a
+  the loader is the page's data. `request()` from `fondu/client` is for effects and events, calling a
   `.ts` route. Sessions, auth and the data layer are the app's own (or another library's).
 - **Providers go in the root `_layout.tsx`**, which stays mounted across navigations. The document
   (`app/document.tsx`) is rendered once on the server and never hydrated: no state, context or effects there.
@@ -101,8 +101,8 @@ export default function Show({ user }: { user: { name: string } }) {
 | ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
 | [references/routes-and-pages.md](references/routes-and-pages.md) | file names and URLs, params, groups, optional and catch-all segments, `render()`, `share()`, layouts, `_error`, `_middleware` |
 | [references/forms.md](references/forms.md)                       | `<form>`, `withValidator`, `useForm`, `back()`, `flash()`, `?name` actions, uploads, body limit                               |
-| [references/navigation.md](references/navigation.md)             | `navigate()`, shallow navigation, `closeShallow()`, `reload({ only })`, `useNavigation()`, preloading, Back, scroll           |
-| [references/data.md](references/data.md)                         | `defer()` and `<Deferred>`, typed `request()` and `RequestError`, when to use which                                           |
+| [references/navigation.md](references/navigation.md)             | `navigate()`, shallow navigation, `closeShallow()`, `reload()`, `useNavigation()`, preloading, Back, scroll                   |
+| [references/data.md](references/data.md)                         | a slow prop, typed `request()` and `RequestError`, when to use which                                                          |
 | [references/rendering.md](references/rendering.md)               | streaming, Suspense, static pages (`prerender`), `withoutSsr()`, the document and its nonce                                   |
 | [references/server.md](references/server.md)                     | `createApp` options, the Vite plugin, middleware, `.ts` routes, Bun, Node and Workers                                         |
 | [references/i18n.md](references/i18n.md)                         | a URL per language, Paraglide JS and i18next, localized `href()`, switching language, `hreflang`                              |

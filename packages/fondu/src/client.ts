@@ -108,7 +108,6 @@ export {
   usePage,
   useNavigation,
   reload,
-  Deferred,
   type Errors,
   type Navigation,
   type Page,
@@ -122,7 +121,7 @@ type MethodsOf<P extends string> = Loose extends true
   : P extends Keys
     ? keyof Routes[P] & HttpMethod
     : never
-// A page's pattern is not one: its data is its props (loader, `defer()`); `request()` is for effects and events.
+// A page's pattern is not one: its data is its props (the loader); `request()` is for effects and events.
 type ApiPath = Loose extends true
   ? string
   : [Keys] extends [never]
@@ -205,7 +204,7 @@ export async function request<
 >(path: P, ...[options]: RequestArgs<P, M>): Promise<AnswerOf<P, M>> {
   if (typeof document === 'undefined')
     throw new Error(
-      "fondu: request() from fondu/client is for the browser (effects, events); a page's data comes from its loader or defer()",
+      "fondu: request() from fondu/client is for the browser (effects, events); a page's data comes from its loader",
     )
   const {
     method = 'GET',

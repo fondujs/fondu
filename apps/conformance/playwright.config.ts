@@ -21,8 +21,6 @@ export default defineConfig({
         '**/shallow.spec.ts',
         '**/shallow-path.spec.ts',
         '**/links.spec.ts',
-        '**/reloads.spec.ts',
-        '**/deferred.spec.ts',
         '**/static-query.spec.ts',
         '**/dialog.spec.ts',
         '**/search.spec.ts',
