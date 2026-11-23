@@ -78,6 +78,8 @@ export function startNavigation({
   // in memory only (gone on reload), the last 50; all forgotten once a form is sent (what it changed, a signed-out user's
   // pages)
   const kept = new Map<string, PageObject>()
+  // each form's newest request: an earlier one, cancelled, ends after the newer began, and must not clear its aria-busy
+  const latest = new WeakMap<HTMLFormElement, AbortController>()
   const keep = (page: PageObject) => {
     const key = scroll.key()
     if (!key) return
@@ -247,12 +249,15 @@ export function startNavigation({
     // interrupted, aborted, ends here)
     const shown = options.kept
     // aria-busy: for its submit buttons' pending state (CSS, or useNavigation()), and for assistive technology
-    form?.setAttribute('aria-busy', 'true')
+    if (form) {
+      form.setAttribute('aria-busy', 'true')
+      latest.set(form, controller)
+    }
     const to = url.pathname + url.search + url.hash
     pending(shown ? null : { to, form, post })
     let failed = false
     const done = () => {
-      form?.removeAttribute('aria-busy')
+      if (form && latest.get(form) === controller) form.removeAttribute('aria-busy')
       if (!shown && current === controller)
         pending(failed ? { to, form, post, failed: true } : null)
     }
