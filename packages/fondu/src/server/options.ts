@@ -1,10 +1,7 @@
+import { isObject, portHint, show } from '../option-checks.js'
 import type { CreateAppOptions } from './app.js'
 
 const KEYS = ['document', 'trailingSlash', 'csrf', 'bodyLimit', 'secureHeaders']
-
-const isObject = (v: unknown): v is Record<string, unknown> =>
-  typeof v === 'object' && v !== null && !Array.isArray(v)
-const show = (v: unknown) => (typeof v === 'string' ? `'${v}'` : String(v))
 
 export function checkAppOptions(options: unknown): asserts options is CreateAppOptions | undefined {
   const fail = (message: string): never => {
@@ -16,10 +13,7 @@ export function checkAppOptions(options: unknown): asserts options is CreateAppO
   const extra = Object.keys(options).filter((k) => !KEYS.includes(k))
   if (extra.length)
     fail(
-      `unknown option${extra.length > 1 ? 's' : ''} ${extra.map((k) => `\`${k}\``).join(', ')}. The options are ${KEYS.join(', ')}` +
-        (extra.includes('port')
-          ? '. There is no `port` option: the built server listens on the environment variable `PORT`, else 3000 (`PORT=8080 node dist/server/index.js`)'
-          : ''),
+      `unknown option${extra.length > 1 ? 's' : ''} ${extra.map((k) => `\`${k}\``).join(', ')}. The options are ${KEYS.join(', ')}${portHint(extra)}`,
     )
   const { document, trailingSlash, csrf, bodyLimit, secureHeaders } = options
   if (document !== undefined && typeof document !== 'function')
