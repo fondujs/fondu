@@ -7,6 +7,7 @@ const assign = vi.fn()
 const replace = vi.fn()
 
 beforeEach(() => {
+  vi.stubGlobal('window', {})
   vi.stubGlobal('location', {
     href: 'http://localhost/a',
     origin: 'http://localhost',

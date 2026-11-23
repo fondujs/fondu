@@ -17,7 +17,7 @@ import { createRoot, hydrateRoot } from 'react-dom/client'
 
 import { decoded, pageId, routePatterns } from '../paths.js'
 import type { Flash, Shared } from '../types.js'
-import { again, startNavigation, type PageObject } from './navigation.js'
+import { again, inBrowser, startNavigation, type PageObject } from './navigation.js'
 import { progressBar, type ProgressOptions } from './progress.js'
 
 type Layout = ComponentType<{ children: ReactNode }>
@@ -336,6 +336,7 @@ export function useNavigation(): Navigation {
  * deferred or not, quietly (no navigation state)
  */
 export function reload(options: { only?: string[] } = {}) {
+  inBrowser('reload')
   again(options.only)
 }
 
