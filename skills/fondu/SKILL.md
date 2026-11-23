@@ -3,8 +3,9 @@ name: fondu
 description: >-
   Building or changing an app on Fondu (a small meta-framework for full-stack React apps, built on Hono and Vite):
   routes in app/routes/, pages, loaders, actions, forms and validation, links and navigation, layouts, middleware,
-  error pages, static pages, deferred props, shared props, typed URLs (href) and the typed request() for .ts routes,
-  the document, createApp, the Vite plugin. Use it before writing any of these, and for the rules of where code runs.
+  error pages, static pages, i18n (a URL per language), MDX pages, deferred props, shared props, typed URLs (href) and
+  the typed request() for .ts routes, the document, createApp, the Vite plugin. Use it before writing any of these, and
+  for the rules of where code runs.
 metadata:
   type: core
   library: fondu
@@ -18,6 +19,8 @@ sources:
   - fondujs/fondu:apps/site/app/routes/docs/navigation.mdx
   - fondujs/fondu:apps/site/app/routes/docs/ssr.mdx
   - fondujs/fondu:apps/site/app/routes/docs/static-pages.mdx
+  - fondujs/fondu:apps/site/app/routes/docs/i18n.mdx
+  - fondujs/fondu:apps/site/app/routes/docs/mdx.mdx
   - fondujs/fondu:apps/site/app/routes/docs/document.mdx
   - fondujs/fondu:apps/site/app/routes/docs/server-and-client.mdx
   - fondujs/fondu:apps/site/app/routes/docs/type-safety.mdx
@@ -101,4 +104,6 @@ export default function Show({ user }: { user: { name: string } }) {
 | [references/data.md](references/data.md)                         | `defer()` and `<Deferred>`, typed `request()` and `RequestError`, when to use which                                           |
 | [references/rendering.md](references/rendering.md)               | streaming, Suspense, static pages (`prerender`), `withoutSsr()`, the document and its nonce                                   |
 | [references/server.md](references/server.md)                     | `createApp` options, the Vite plugin, middleware, `.ts` routes, Bun, Node and Workers                                         |
+| [references/i18n.md](references/i18n.md)                         | a URL per language, Paraglide JS and i18next, localized `href()`, switching language, `hreflang`                              |
+| [references/mdx.md](references/mdx.md)                           | MDX pages: setup, layouts, components, what an MDX page can export                                                            |
 | [references/types.md](references/types.md)                       | `fondu.gen.d.ts`, `Register`, typed `href`, `usePage`, what crosses as JSON, `AsJson`                                         |

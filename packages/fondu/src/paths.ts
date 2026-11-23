@@ -162,7 +162,7 @@ export function decoded(segment: string): string {
   }
 }
 
-// its static file would be its directory's (`index.html`), which is another page
+// a last segment of `index` (or `%69ndex`): its static file would be its directory's `index.html`, another page
 export const endsInIndex = (path: string) =>
   decoded(path.slice(path.lastIndexOf('/') + 1)) === 'index'
 
