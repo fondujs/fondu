@@ -229,7 +229,7 @@ export class RequestError extends Error {
  *     await request('/api/settings', { method: 'POST', body: { emails: false } })
  *
  * A non-2xx answer throws a `RequestError`. No retry, no cache. A page's data comes from its loader or `defer()`:
- * called during the server render, it throws. (Follows Void's typed fetch.)
+ * called during the server render, it throws.
  */
 export async function request<
   P extends ApiPath,

@@ -77,7 +77,7 @@ fails the build. Name a module `*.server.ts` when it must never reach the browse
 - Don't import a server module from a page for a helper it also uses: put what both share in a module of its own.
 - Env: on Bun and Node `process.env`, in server code only. In development Fondu loads `.env`, `.env.local`,
   `.env.development` and `.env.development.local` into it; a variable already set wins. In production the server
-  reads them itself: Node's `start` script has `--env-file-if-exists=.env` (`.env` alone, Node 22.9 or later), Bun reads
+  reads them itself: Node's `start` script has `--env-file-if-exists=.env` (`.env` alone, Node 22.12 or later), Bun reads
   `.env`, `.env.production` and `.env.local`. On Cloudflare `import { env } from 'cloudflare:workers'`
   (variables, secrets, bindings; typed by `cf-typegen`; `c.env` is untyped). `import.meta.env.VITE_*` goes into the
   browser's bundle: public values only.

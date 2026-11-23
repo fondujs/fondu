@@ -112,6 +112,9 @@ the server they throw.
 | `Navigation` | what `useNavigation()` returns: `{ state, to, form }`                                         |
 | `Page`       | the page object the server sends: `component`, `props`, `url`, `version`, `flash`, `deferred` |
 
+`fondu/client/internal` is the Vite plugin's entry, for the plugin only: an app does not import it, and it may change in
+any release.
+
 ## `fondu/vite`
 
 The Vite plugin: `fondu(options)`. The options are checked when the plugin is created: `target` is required, and an unknown option fails. There is

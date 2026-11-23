@@ -42,12 +42,13 @@
     "./vite": {
       "types": "./dist/vite/index.d.ts",
       "import": "./dist/vite/index.js"
-    }
+    },
+    "./package.json": "./package.json"
   },
   "scripts": {
     "build": "rm -rf dist && tsc -p tsconfig.build.json && cp src/virtual.d.ts dist/",
     "dev": "tsc -p tsconfig.build.json --watch",
-    "test": "vitest run",
+    "test": "bun run build && vitest run",
     "typecheck": "tsc -p tsconfig.json && tsc -p test/types-open-shared"
   },
   "dependencies": {
@@ -73,6 +74,6 @@
   },
   "engines": {
     "bun": ">=1.3.14",
-    "node": ">=20.19"
+    "node": "^20.19.0 || >=22.12.0"
   }
 }
