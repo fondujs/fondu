@@ -121,6 +121,26 @@ function.
 
 The browser gets a page's file without its server code: [Server and client code](/docs/server-and-client).
 
+## What the app refuses
+
+What would answer the wrong way stops the app, with a message that says what to write instead. Nothing is ignored.
+
+| Refused                                                                                    | Stops               | Instead                                                                        |
+| ------------------------------------------------------------------------------------------ | ------------------- | ------------------------------------------------------------------------------ |
+| a `.jsx` route, layout or error file                                                       | startup             | `.tsx`: route files are TypeScript                                             |
+| `_middleware`, `_layout` or `_error` with another extension (`_middleware.tsx`)            | startup, build      | `_middleware.ts`, `_layout.tsx`, `_error.tsx`                                  |
+| a path starting with `.` (`routes/.well-known/ping.ts`)                                    | startup, build      | [`public/`, or a catch-all](#files-and-urls)                                   |
+| a `_error.tsx` in a directory                                                              | startup             | one error page, `app/routes/_error.tsx`: [Errors](/docs/errors)                |
+| an export the kind of file does not have (`loader` in a `.ts` file, `prerender` in `.mdx`) | build, startup      | [what each file exports](#what-a-route-file-exports)                           |
+| an export of the wrong kind (`loader` that is not a handler, `prerender: 'yes'`)           | startup             | [what each file exports](#what-a-route-file-exports)                           |
+| `params` that no route it applies to has as `[name]` or `[[name]]`                         | startup             | [the values of a param](#the-values-of-a-param)                                |
+| `params` for a name that a route has as a catch-all (`[...name]`)                          | startup             | `params` lists the values of one segment                                       |
+| two files for the same URLs                                                                | startup             | [one file per URL](#one-file-per-url)                                          |
+| `layout` that is not `export const layout = [Site, Feature]` or `[]`, written in the file  | build, startup      | imported components, each once, never the file's own: [Layouts](/docs/layouts) |
+| `export * from` a module that has `layout`, or `export * as layout`                        | build, startup      | declare `layout` in the file itself                                            |
+| a redirect to `javascript:`, `data:` or `vbscript:`                                        | the request (a 500) | [After an action](/docs/forms#after-an-action)                                 |
+| an unknown or mistyped option of `createApp()` or `fondu()`                                | where it is called  | [API](/docs/api)                                                               |
+
 ## HTTP routes
 
 A route for API clients is a `.ts` file exporting handlers named after the methods: `GET`, `POST`, `PUT`, `PATCH`,
@@ -149,7 +169,10 @@ await request('/api/settings', { method: 'POST', body: { emails: false } })
 try {
   await request('/api/settings', { method: 'POST', body: { emails: 'no' } })
 } catch (error) {
-  if (error instanceof RequestError && error.status === 422) showErrors(error.data.errors)
+  if (error instanceof RequestError && error.status === 422) {
+    const data = error.data
+    if (typeof data === 'object' && data !== null && 'errors' in data) showErrors(data.errors)
+  }
 }
 ```
 
@@ -166,7 +189,7 @@ What is checked:
 - the answer is what the handler returns with `c.json()`, as JSON delivers it. A handler that answers otherwise (text, a
   redirect) gives `unknown`.
 
-A non-2xx answer throws a `RequestError`, with `status`, `data` (the parsed body: a 422's `{ errors }`) and `response`. A
+A non-2xx answer throws a `RequestError`, with `status`, `data` (the parsed body, typed `unknown`: narrow it before you read it; a 422's is `{ errors }`) and `response`. A
 network error is thrown as it is. There is no retry and no cache: use `use()`, an effect or a library of your own, and
 `AbortSignal.timeout()` for a timeout. `request()` is for the browser: during the server render it throws, as a page's data
 comes from its loader or `defer()`.

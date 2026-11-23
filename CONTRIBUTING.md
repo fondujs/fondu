@@ -180,5 +180,6 @@ Before a release, read what npm will show and what new apps get, as it can only 
 - `packages/create-fondu/README.md`: create-fondu's npm page
 - `packages/create-fondu/template/`: the new app's `README.md` and `AGENTS.md`
 - the docs (`apps/site`), for what the release changes
+- `skills/fondu/SKILL.md`: `library_version` is the version being released: set it, and commit, before `bun run release`
 
 After it: deploy fondu.dev and the demo, and create an app on each target with the published create-fondu.

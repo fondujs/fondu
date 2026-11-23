@@ -8,7 +8,7 @@ description: >-
 metadata:
   type: core
   library: fondu
-  library_version: '0.16.0'
+  library_version: '0.19.3'
 sources:
   - fondujs/fondu:apps/site/app/routes/docs/routes.mdx
   - fondujs/fondu:apps/site/app/routes/docs/pages.mdx

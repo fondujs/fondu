@@ -271,6 +271,10 @@ export function checkExportNames(file: string, names: readonly string[]): void {
     mdx ? [...HANDLERS, ...METHODS, ...CONFIG].includes(k as never) : !allowed.includes(k),
   )
   if (!extra.length) return
+  if (mdx && extra.includes('prerender'))
+    throw new Error(
+      `fondu: routes/${file}: an MDX page can't export prerender: put it in a .tsx route or a _middleware.ts`,
+    )
   const renamed = file.endsWith('.ts')
     ? extra.filter((k): k is keyof typeof INSTEAD => k in INSTEAD)
     : []

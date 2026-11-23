@@ -50,14 +50,14 @@ after a debounce. A navigation in flight is aborted by the next. Back, reload an
 `navigate()` and `loadDocument()` throw an `Error` for a `javascript:` URL. Other schemes (`mailto:`) and other sites
 are handed to the browser.
 
-| Export                                            | Does                                                                                    |
-| ------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| `navigate(url, { replace?, keep?, transition? })` | goes to `url` as a link would                                                           |
-| `navigate(url, { shallow: true })`                | changes this page's URL to a page URL of this app, asks for nothing, never a transition |
-| `closeShallow(to)`                                | closes what a shallow navigation opened, one step                                       |
-| `loadDocument(url)`                               | loads `url` as a document                                                               |
-| `reload()`                                        | asks for the page's props again; state and scroll stay                                  |
-| `reload({ only: ['stats'] })`                     | asks for those props alone, quietly (see [data.md](data.md))                            |
+| Export                                             | Does                                                                                    |
+| -------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| `navigate(href, { replace?, keep?, transition? })` | goes to `href` as a link would                                                          |
+| `navigate(href, { shallow: true })`                | changes this page's URL to a page URL of this app, asks for nothing, never a transition |
+| `closeShallow(to)`                                 | closes what a shallow navigation opened, one step                                       |
+| `loadDocument(url)`                                | loads `url` as a document                                                               |
+| `reload()`                                         | asks for the page's props again; state and scroll stay                                  |
+| `reload({ only: ['stats'] })`                      | asks for those props alone, quietly (see [data.md](data.md))                            |
 
 ## Forms
 

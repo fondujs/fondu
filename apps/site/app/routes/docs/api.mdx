@@ -30,6 +30,10 @@ createApp({
 
 `contentSecurityPolicy: false`: no policy.
 
+`secureHeaders` also sets `Referrer-Policy: same-origin` by default. `back()` relies on it: it reads the page the request came
+from in `Referer`, and a stricter policy (`no-referrer`) leaves it empty, so `back()` goes to its `fallback`. Change `referrerPolicy`
+only for a reason, and keep a policy that sends `Referer` to this site.
+
 ### Handlers
 
 | Export                                                 | Is                                                                      |
@@ -63,16 +67,17 @@ createApp({
 
 ### Route exports
 
-| Export                                             | Is                                                                                                                              |
-| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `default` (in a `.tsx` file)                       | the page, rendered by `render()`, or on GET without a loader                                                                    |
-| `loader` (in a `.tsx` file)                        | GET                                                                                                                             |
-| `action` (in a `.tsx` file)                        | POST                                                                                                                            |
-| `actions = { name }` (in a `.tsx` file)            | POST `?name` (`action` or `actions`, not both)                                                                                  |
-| `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS` | HTTP handlers (in a `.ts` file)                                                                                                 |
-| `prerender`                                        | `true`, `false` or a function listing params: a [static page](/docs/static-pages); any route exporting it turns prerendering on |
-| `params`                                           | `{ name: ['value', …] }`: the [values a param takes](/docs/routes#the-values-of-a-param)                                        |
-| `default` (in `_middleware.ts`)                    | the directory's middleware                                                                                                      |
+| Export                                             | Is                                                                                                                                    |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `default` (in a `.tsx` file)                       | the page, rendered by `render()`, or on GET without a loader                                                                          |
+| `layout`                                           | `[Site, Feature]`: the [layouts](/docs/layouts#choose-the-layouts-around-a-page-or-section) of a page, in place of the inherited ones |
+| `loader` (in a `.tsx` file)                        | GET                                                                                                                                   |
+| `action` (in a `.tsx` file)                        | POST                                                                                                                                  |
+| `actions = { name }` (in a `.tsx` file)            | POST `?name` (`action` or `actions`, not both)                                                                                        |
+| `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS` | HTTP handlers (in a `.ts` file)                                                                                                       |
+| `prerender`                                        | `true`, `false` or a function listing params: a [static page](/docs/static-pages); any route exporting it turns prerendering on       |
+| `params`                                           | `{ name: ['value', …] }`: the [values a param takes](/docs/routes#the-values-of-a-param)                                              |
+| `default` (in `_middleware.ts`)                    | the directory's middleware                                                                                                            |
 
 ### Route files
 
@@ -128,7 +133,7 @@ no `port` option: the built server (Bun and Node) listens on `PORT`, else 3000.
 | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `target`          | `'bun'`, `'cloudflare'` or `'node'`                                                                                                                         |
 | `ssr`             | `false`: pages render in the browser only                                                                                                                   |
-| `progress`        | the navigations' progress bar: `{ color, delay, forms }`, or `false`                                                                                        |
+| `progress`        | the navigations' progress bar: `{ color, delay, forms }` (default: the text color, 350 ms, forms included), or `false`                                      |
 | `viewTransitions` | `true`: every navigation runs inside the browser's view transition by default, and a link or call opts out; [navigation](/docs/navigation#view-transitions) |
 | `react`           | passed to [`@vitejs/plugin-react`](https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react) (its `include` has `.mdx` by default)       |
 
@@ -138,3 +143,33 @@ no `port` option: the built server (Bun and Node) listens on `PORT`, else 3000.
 | ----------------- | ------------------------------------------------------------ |
 | `FonduOptions`    | the options of `fondu()`, as the table above has them        |
 | `ProgressOptions` | the `progress` option's object: `{ color?, delay?, forms? }` |
+
+## For proxies, CDNs and tests
+
+What an app in front of a cache, or a test that is not a browser, can rely on. The header names, cookie names and `/_fondu/*`
+paths Fondu uses between its server and its client are internal: they may change in any release, and are not listed here
+except where a client has to know them.
+
+- `Vary`: a page answers a document and a navigation (a request with `X-Fondu: true`) differently, and says so:
+  [Caching](/docs/deploying#caching). A response that `Accept` chooses also has `Vary: Accept`: [Errors](/docs/errors).
+- A navigation from a client built from other assets is a 409 with an `X-Fondu-Location` header: the URL to load as a
+  document. A client of your own that sends `X-Fondu: true` gets it too, and can load that URL.
+
+The statuses Fondu answers itself, apart from the 404 and 500 of the [error page](/docs/errors):
+
+| Status | When                                                                                                        |
+| ------ | ----------------------------------------------------------------------------------------------------------- |
+| 303    | `back()`, and a form's `ValidationError`: back to the page                                                  |
+| 400    | a body or query `withValidator` can't read as one object                                                    |
+| 405    | a method the route has no handler for, with `Allow` ([Errors](/docs/errors))                                |
+| 409    | a navigation from an old build: see above. Also a redirect to another site, which a navigation can't follow |
+| 413    | a body over `bodyLimit`                                                                                     |
+| 415    | a body that is neither JSON nor form data, where a handler reads one                                        |
+| 422    | a `ValidationError` for an API client (`{ errors }`), and a GET whose query is invalid                      |
+| 499    | the client left before the answer: an empty response, nothing logged as an error                            |
+
+## Versioning
+
+Before 1.0, a minor release (0.20 to 0.21) may break an app, and a patch release (0.20.0 to 0.20.1) does not. Each
+breaking change is in the release notes, with what to change. A type that starts to reject code that already
+misbehaves at runtime is a fix, not a break.

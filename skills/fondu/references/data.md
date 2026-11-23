@@ -70,7 +70,10 @@ await request('/api/settings', { method: 'POST', body: { emails: false } })
 try {
   await request('/api/settings', { method: 'POST', body: { emails: 'no' } })
 } catch (error) {
-  if (error instanceof RequestError && error.status === 422) showErrors(error.data.errors)
+  if (error instanceof RequestError && error.status === 422) {
+    const data = error.data
+    if (typeof data === 'object' && data !== null && 'errors' in data) showErrors(data.errors)
+  }
 }
 ```
 
@@ -82,7 +85,7 @@ try {
 - `query` and `body` are typed by the handler's `withValidator` schemas; a body only for a method other than GET, sent
   as JSON. `headers` and `signal` pass through.
 - The answer is what the handler returns with `c.json()`, as JSON delivers it; any other answer is `unknown`.
-- A non-2xx answer throws `RequestError` with `status`, `data` (the parsed body: a 422's `{ errors }`) and `response`.
+- A non-2xx answer throws `RequestError` with `status`, `data` (the parsed body, typed `unknown`: narrow it; a 422's is `{ errors }`) and `response`.
   No retry, no cache: use an effect, `use()` or a library of your own.
 
 ```ts

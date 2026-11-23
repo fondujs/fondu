@@ -134,14 +134,14 @@ export default function Search({ q, results }: { q: string; results: string[] })
 so a fast typist sees only the last answer. Why not `request()` from an effect: the URL holds the search, so Back, a
 reload and a shared link all work, and the loader is the one place the results are computed.
 
-| Export                                            | Does                                                                                                                                                 |
-| ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `navigate(url, { replace?, keep?, transition? })` | goes to `url` as a link would; `keep`: the page keeps its state and scroll, as `reload()` does; `transition`: a [view transition](#view-transitions) |
-| `navigate(url, { shallow: true, ... })`           | changes this page's URL to a page URL of the app, with no request; `replace?`, no `keep`, no `transition` ([below](#shallow-navigation))             |
-| `closeShallow(to)`                                | closes what a shallow navigation opened, one step: Back, or `to` in place of this entry                                                              |
-| `loadDocument(url)`                               | loads `url` as a document (a full page load)                                                                                                         |
-| `reload()`                                        | asks for the current page's props again; state and scroll stay                                                                                       |
-| `reload({ only: ['stats'] })`                     | asks for those props alone, quietly: [deferred props](/docs/pages#deferred-props)                                                                    |
+| Export                                             | Does                                                                                                                                                  |
+| -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `navigate(href, { replace?, keep?, transition? })` | goes to `href` as a link would; `keep`: the page keeps its state and scroll, as `reload()` does; `transition`: a [view transition](#view-transitions) |
+| `navigate(href, { shallow: true, ... })`           | changes this page's URL to a page URL of the app, with no request; `replace?`, no `keep`, no `transition` ([below](#shallow-navigation))              |
+| `closeShallow(to)`                                 | closes what a shallow navigation opened, one step: Back, or `to` in place of this entry                                                               |
+| `loadDocument(url)`                                | loads `url` as a document (a full page load)                                                                                                          |
+| `reload()`                                         | asks for the current page's props again; state and scroll stay                                                                                        |
+| `reload({ only: ['stats'] })`                      | asks for those props alone, quietly: [deferred props](/docs/pages#deferred-props)                                                                     |
 
 ## Forms
 

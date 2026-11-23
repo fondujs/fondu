@@ -133,6 +133,8 @@ the data, use `AsJson<T>` from `fondu`. It is `T` after the JSON round trip, the
 - A `bigint` is a type error, as `JSON.stringify` throws on it.
 - Unions, tuples and readonly arrays keep their shape.
 
+These rules are what `AsJson` guarantees. The exact shape of the error for a `bigint` is not part of it: it may change.
+
 `render()` takes what becomes the page's type, so a page that declares `AsJson<Row>` gets a `Row` from the loader, with
 its `Date`. Nothing is converted by hand, and the page never types a `Date`.
 
