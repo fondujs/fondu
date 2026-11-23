@@ -6,10 +6,10 @@ import {
   FileCode,
   FolderTree,
   Languages,
+  MousePointerClick,
   Rocket,
   Server,
   TextCursorInput,
-  TriangleAlert,
   ArrowUpRight,
   type LucideIcon,
 } from 'lucide-react'
@@ -77,7 +77,7 @@ const features: Array<[icon: LucideIcon, title: string, slug: string, text: stri
     FolderTree,
     'Routes from files',
     'routes',
-    'The file path is the URL: params, optional segments, catch-alls, groups, and middleware for a directory.',
+    'The file path is the URL: params, optional segments, catch-alls, groups, and middleware and layouts for a directory.',
   ],
   [
     BadgeCheck,
@@ -110,10 +110,10 @@ const features: Array<[icon: LucideIcon, title: string, slug: string, text: stri
     '[[locale]] makes a segment optional, and a list of values keeps it to your languages.',
   ],
   [
-    TriangleAlert,
-    'Error pages',
-    'errors',
-    'Unknown URLs and thrown errors get your error page. In development, a thrown error shows its full report instead.',
+    MousePointerClick,
+    'Navigation without a router',
+    'navigation',
+    'Links and forms change the page in place, with view transitions, and a dialog can have its own URL.',
   ],
   [
     Rocket,
