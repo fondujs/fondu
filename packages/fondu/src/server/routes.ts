@@ -16,7 +16,7 @@ export type Handlers = Handler | MiddlewareHandler | ReadonlyArray<Handler | Mid
 export type Params = Record<string, readonly string[]>
 
 export interface RouteModule {
-  /** `fondu({ prerender: true })`: written as static files at build time (also in a `_middleware.ts`) */
+  /** written as static files at build time (also in a `_middleware.ts`); any route exporting it turns prerendering on */
   prerender?: Prerender
   /** the values its params take, `{ lang: ['de', 'fr'] }`, any other not its URL (also in a `_middleware.ts`) */
   params?: Params

@@ -107,7 +107,7 @@ export async function prerenderPaths(
 }
 
 /**
- * `fondu({ prerender: true })`: the page object of a page without a static file (`/_fondu/pages/x.json` → `/x`, as
+ * Some route exports `prerender`: the page object of a page without a static file (`/_fondu/pages/x.json` → `/x`, as
  * a navigation), and, while the build prerenders (`FONDU_PRERENDER` set), the paths to write.
  */
 export function prerenderRoutes(app: Hono, routes: () => PrerenderRoute[], version: string | null) {

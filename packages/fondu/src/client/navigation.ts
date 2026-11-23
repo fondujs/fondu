@@ -25,7 +25,7 @@ interface Options {
     fresh: boolean,
     stale: () => boolean,
   ) => Promise<(() => void) | undefined>
-  /** `fondu({ prerender: true })`: GET navigations read `/_fondu/pages/<path>.json` */
+  /** some route exports `prerender`: GET navigations read `/_fondu/pages/<path>.json` */
   prerender: boolean
   /** `fondu({ viewTransitions: true })`: a navigation transitions unless it opts out (it opts in on its own otherwise) */
   viewTransitions: boolean

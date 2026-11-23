@@ -5,7 +5,7 @@ import { join } from 'node:path'
 
 import { createApp } from 'fondu'
 import { Hono } from 'hono'
-// fondu({ prerender: true }): the files, the paths, the page objects of the pages without a file.
+// Routes that export prerender: the files, the paths, the page objects of the pages without a file.
 import { describe, expect, test } from 'vitest'
 
 import { htmlFile, pageDataPath, pathOfPageData, staticFiles } from '../src/paths.js'

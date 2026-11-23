@@ -171,14 +171,6 @@ for (const target of Object.keys(production).filter(
   })
 
   // the home page prerendered
-  const config = join(app, 'vite.config.ts')
-  writeFileSync(
-    config,
-    readFileSync(config, 'utf8').replace(
-      `target: '${target}' }`,
-      `target: '${target}', prerender: true }`,
-    ),
-  )
   writeFileSync(
     join(app, 'app/routes/index.tsx'),
     readFileSync(join(app, 'app/routes/index.tsx'), 'utf8') + 'export const prerender = true\n',

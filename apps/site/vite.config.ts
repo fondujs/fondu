@@ -53,7 +53,7 @@ export default defineConfig({
       }),
     },
     cloudflare({ viteEnvironment: { name: 'ssr' } }),
-    fondu({ target: 'cloudflare', prerender: true }),
+    fondu({ target: 'cloudflare' }),
     tailwindcss(),
     markdown(),
   ],

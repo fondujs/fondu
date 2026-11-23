@@ -21,7 +21,7 @@ import type { ProgressOptions } from '../client/progress.js'
 export type { ProgressOptions }
 import { isPageFile, pageId } from '../paths.js'
 import { nonceAttr, productionAssets } from './assets.js'
-import { checkRoutes } from './check.js'
+import { checkRoutes, routesPrerender } from './check.js'
 import { entryCode, SERVER } from './entry.js'
 import { hmr, PAGE_EXPORTS, PROPS_EVENT } from './hmr.js'
 import { HONO } from './hono.js'
@@ -48,11 +48,6 @@ export interface FonduOptions {
   /** `false`: pages render in the browser only, no server render is built (an admin app). Per route: `withoutSsr()` */
   ssr?: boolean
   react?: ReactOptions
-  /**
-   * Routes with `export const prerender` (or under a `_middleware.ts` with it) are written as static files at build
-   * time, and navigations read them; the server (the Worker) answers the other pages
-   */
-  prerender?: boolean
   /**
    * the bar at the top of the page while a navigation is on its way: its `delay` (ms), its `color`, and whether forms'
    * submissions show it (`forms`); `false`: none
@@ -156,18 +151,19 @@ function serverReactDomClient(): Plugin {
 
 export default function fondu(options: FonduOptions): PluginOption[] {
   checkOptions(options)
+  const prerendering = { on: false }
   const node = options.target !== 'cloudflare'
   return [
     // .mdx too: MDX pages and components get Fast Refresh (as MDX's own docs set it up)
     react({ include: /\.(?:[jt]sx?|mdx)$/, ...options.react }),
-    core(options),
+    core(options, prerendering),
     layoutChains(),
     stripRoutes(),
     hmr(),
     loadFailure(),
     typegen(),
     checkRoutes(),
-    ...(node ? runtimePlugins(options) : []),
+    ...(node ? runtimePlugins(options, prerendering) : []),
     serverReactDomClient(),
   ]
 }
@@ -186,10 +182,10 @@ function dependencies(root = ''): string[] {
  * on `PORT` (else 3000), saying where it listens, with a graceful shutdown on SIGTERM / SIGINT (10 s). Bun
  * serves the default export itself, on `PORT` (Bun reads it, else 3000), with the app's
  * `websocket`, if it has one.
- * With `prerender`, the pages the build wrote are served from their files first, with the headers it decided
+ * When routes export `prerender`, the pages the build wrote are served from their files first, with the headers it decided
  * (`prerender.json`, next to this entry).
  */
-function serverEntry(options: FonduOptions): Plugin {
+function serverEntry(options: FonduOptions, prerendering: Prerendering): Plugin {
   let root = process.cwd()
   let assetsDir = 'assets'
   return {
@@ -210,13 +206,13 @@ function serverEntry(options: FonduOptions): Plugin {
               .filter((e) => e.name !== '.vite')
               .map((e) => (e.isDirectory() ? `/${e.name}/*` : `/${e.name}`))
           : []
-        return entryCode(options, paths, assetsDir)
+        return entryCode(options, paths, assetsDir, prerendering.on)
       },
     },
   }
 }
 
-function runtimePlugins(options: FonduOptions): PluginOption[] {
+function runtimePlugins(options: FonduOptions, prerendering: Prerendering): PluginOption[] {
   return [
     {
       // dev: the app's .env files (in Vite's `envDir`: `.env`, `.env.local`, `.env.[mode]`, `.env.[mode].local`) are in `process.env`, as the
@@ -247,7 +243,7 @@ function runtimePlugins(options: FonduOptions): PluginOption[] {
       exclude: devServerDefaults.exclude,
       handleHotUpdate: () => {}, // fondu's plugin does it, for every target
     }),
-    serverEntry(options),
+    serverEntry(options, prerendering),
   ]
 }
 
@@ -290,7 +286,12 @@ function loadFailure(): Plugin {
   }
 }
 
-function core(options: FonduOptions): Plugin {
+/** whether any route exports `prerender`, in a build: known when the config is resolved, before the first build */
+interface Prerendering {
+  on: boolean
+}
+
+function core(options: FonduOptions, prerendering: Prerendering): Plugin {
   let config: ResolvedConfig
   let isBuild = false
   return {
@@ -333,7 +334,7 @@ function core(options: FonduOptions): Plugin {
                 if (env.name === 'client' || !env.config.build.rolldownOptions?.input) continue
                 await builder.build(env)
                 const wrangler = resolve(config.root, env.config.build.outDir, 'wrangler.json')
-                if (options.prerender && existsSync(wrangler)) {
+                if (prerendering.on && existsSync(wrangler)) {
                   const clientDir = resolve(config.root, client.config.build.outDir)
                   await prerender(worker(config.root, wrangler), clientDir, config.logger, {
                     headersFile: true,
@@ -377,7 +378,7 @@ function core(options: FonduOptions): Plugin {
           async buildApp(builder) {
             await builder.build(builder.environments.client!)
             await builder.build(builder.environments.ssr!)
-            if (options.prerender)
+            if (prerendering.on)
               await prerender(
                 nodeServer(config.root, target),
                 resolve(config.root, 'dist/client'),
@@ -431,6 +432,7 @@ function core(options: FonduOptions): Plugin {
     },
     configResolved(c) {
       config = c
+      prerendering.on = c.command === 'build' && routesPrerender(c.root)
     },
     // dev: the CSS the layouts import (the app's own: `import './styles/app.css'` in routes/_layout.tsx), as a
     // stylesheet in the document, so a server-rendered page is styled at first paint (Vite would add it only once the
@@ -533,7 +535,7 @@ function core(options: FonduOptions): Plugin {
       if (id === resolved(V.entry)) {
         const dev = this.environment.config.consumer === 'client' && !isBuild
         const settings = {
-          prerender: Boolean(options.prerender),
+          prerender: prerendering.on,
           progress: options.progress ?? {},
           viewTransitions: Boolean(options.viewTransitions),
         }
@@ -560,7 +562,7 @@ function core(options: FonduOptions): Plugin {
       if (id === resolved(V.assets))
         return (
           (isBuild ? productionAssets(config, options) : devAssets(config.base)) +
-          `\nexport const prerender = ${Boolean(options.prerender)}`
+          `\nexport const prerender = ${prerendering.on}`
         )
       // the server-only guard: browser code must never import server code
       if (this.environment.config.consumer === 'client' && isServerOnly(id, config.root)) {

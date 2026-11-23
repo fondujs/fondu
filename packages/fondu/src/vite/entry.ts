@@ -12,7 +12,12 @@ const staticModule = normalizePath(fileURLToPath(new URL('../server/static.js', 
  * `assetsDir` the client build's (hashed files, which never change: the only ones served as immutable, and only when
  * serveStatic found the file: an app's route under the same URL keeps its own Cache-Control)
  */
-export function entryCode(options: FonduOptions, paths: string[], assetsDir = 'assets'): string {
+export function entryCode(
+  options: FonduOptions,
+  paths: string[],
+  assetsDir = 'assets',
+  prerender = false,
+): string {
   const bun = options.target === 'bun'
   const hashed = assetsDir ? `/${assetsDir}/*` : undefined
   return [
@@ -27,7 +32,7 @@ export function entryCode(options: FonduOptions, paths: string[], assetsDir = 'a
     `const main = new Hono()`,
     // prerender: the pages the build wrote are files, with the headers it decided (prerender.json, written after
     // this server was built: not there while the build prerenders, so the app renders them then)
-    ...(options.prerender
+    ...(prerender
       ? [
           `const { existsSync, readFileSync } = await import('node:fs')`,
           `const { staticPages } = await import(${JSON.stringify(staticModule)})`,

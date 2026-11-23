@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync, statSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -6,8 +6,9 @@ import { createServer } from 'vite'
 import { afterEach, describe, expect, test } from 'vitest'
 
 import { checkExports } from '../src/server/app.js'
+import { routesPrerender } from '../src/vite/check.js'
 import fondu from '../src/vite/index.js'
-import { buildApp } from './build-app.js'
+import { buildApp, start } from './build-app.js'
 import { buildClient, tempApp } from './support/build.js'
 
 const page = 'export default function Page() { return <p>page</p> }\n'
@@ -336,5 +337,73 @@ describe('the server build checks the exports of every route file', () => {
         'export default async (c, next) => next()\nexport const prerender = true\n',
       'app/routes/docs/index.tsx': page,
     })
+  })
+})
+
+describe('prerendering follows the route exports', () => {
+  const home = 'export default function Home() { return <p>home</p> }\n'
+  const files = (extra: Record<string, string>) => ({ 'app/routes/index.tsx': home, ...extra })
+
+  test('routesPrerender reads the export names of routes and _middleware.ts', () => {
+    const cases: Array<[Record<string, string>, boolean]> = [
+      [files({}), false],
+      [files({ 'app/routes/index.tsx': `${home}export const prerender = true\n` }), true],
+      [files({ 'app/routes/index.tsx': `${home}export const prerender = false\n` }), true],
+      [files({ 'app/routes/api.ts': 'export const prerender = () => []\n' }), true],
+      [files({ 'app/routes/docs/_middleware.ts': 'export const prerender = true\n' }), true],
+      [files({ 'app/routes/index.tsx': `${home}const prerender = true\n` }), false],
+      [files({ 'app/routes/index.tsx': `${home}// export const prerender = true\n` }), false],
+      [files({ 'app/routes/_parts/x.ts': 'export const prerender = true\n' }), false],
+      [files({ 'app/routes/x.test.ts': 'export const prerender = true\n' }), false],
+      [files({ 'app/routes/other.ts': 'export { a as prerender } from "./a"\n' }), true],
+    ]
+    for (const [tree, expected] of cases) {
+      app = tempApp(tree)
+      expect(routesPrerender(app.root), JSON.stringify(Object.keys(tree))).toBe(expected)
+      app.remove()
+    }
+  })
+
+  test('a route that exports prerender is written, with no option', async () => {
+    const out = await buildApp(
+      files({ 'app/routes/index.tsx': `${home}export const prerender = true\n` }),
+    )
+    try {
+      expect(readFileSync(join(out.dir, 'dist/client/index.html'), 'utf8')).toContain(
+        '"component":"index"',
+      )
+      expect(existsSync(join(out.dir, 'dist/server/prerender.json'))).toBe(true)
+      expect(existsSync(join(out.dir, 'dist/client/_fondu/pages/index.json'))).toBe(true)
+    } finally {
+      out.remove()
+    }
+  })
+
+  test('a _middleware.ts that exports it prerenders the pages under it', async () => {
+    const out = await buildApp(
+      files({
+        'app/routes/docs/_middleware.ts': 'export const prerender = true\n',
+        'app/routes/docs/intro.tsx': home,
+      }),
+    )
+    try {
+      expect(existsSync(join(out.dir, 'dist/client/docs/intro.html'))).toBe(true)
+      expect(existsSync(join(out.dir, 'dist/client/index.html'))).toBe(false)
+    } finally {
+      out.remove()
+    }
+  })
+
+  test('no route exports it: no prerender step, and the server answers no page object', async () => {
+    const out = await buildApp(files({}))
+    const server = await start(out)
+    try {
+      expect(existsSync(join(out.dir, 'dist/client/index.html'))).toBe(false)
+      expect(existsSync(join(out.dir, 'dist/server/prerender.json'))).toBe(false)
+      expect((await fetch(`${server.url}/_fondu/pages/index.json`)).status).toBe(404)
+    } finally {
+      await server.stop()
+      out.remove()
+    }
   })
 })
