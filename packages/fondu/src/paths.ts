@@ -34,6 +34,23 @@ export function routePatterns(file: string): string[] {
   return optional.length ? [pattern(false), pattern(true)] : [pattern(true)]
 }
 
+const priority = (s: string) =>
+  s.endsWith('{.+}') ? 3 : s.includes('{') ? 1 : s.startsWith(':') ? 2 : 0
+
+// Hono's order: the specificity of each segment, from the first. A param's name decides only between patterns equally
+// specific at every segment, so renaming a param never changes which route answers
+export function compare(a: string, b: string): number {
+  const x = a.split('/')
+  const y = b.split('/')
+  for (let i = 0; i < Math.min(x.length, y.length); i++) {
+    const d = priority(x[i]!) - priority(y[i]!)
+    if (d) return d
+    // two static segments that differ: the routes are apart, any order is right (the alphabetical one is steady)
+    if (priority(x[i]!) === 0 && x[i] !== y[i]) return x[i]! < y[i]! ? -1 : 1
+  }
+  return x.length - y.length || (a < b ? -1 : a > b ? 1 : 0)
+}
+
 // Throws on a character of the route syntax (`[ ] : * { } ?`) that is none of its forms: it would be a literal URL, or a
 // param Hono reads. Not run in the client, which reads names that passed.
 export function checkRouteName(file: string): void {
