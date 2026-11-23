@@ -529,7 +529,7 @@ export function startNavigation({
       submitter?.getAttribute(own) ?? form.getAttribute(name) ?? ''
     const method = attr('method', 'formmethod').toLowerCase() || 'get'
     if ((method !== 'get' && method !== 'post') || elsewhere(attr('target', 'formtarget'))) return
-    const url = new URL(attr('action', 'formaction') || location.href, location.href)
+    const url = new URL(attr('action', 'formaction') || location.href, document.baseURI)
     if (url.origin !== location.origin || !isWebUrl(url.href)) return
     // a GET to a URL that is none of the app's pages (a `.ts` route): the browser's, as asking first would run its handler twice
     if (method === 'get' && !isPage(url.pathname)) return
