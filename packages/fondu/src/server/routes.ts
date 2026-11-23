@@ -3,6 +3,7 @@ import type { Handler, MiddlewareHandler } from 'hono'
 import {
   checkRouteName,
   checkRouteFiles,
+  compare,
   isRouteFile,
   middlewareFor,
   RESERVED_PREFIX,
@@ -152,20 +153,3 @@ function paramsOf(file: string, mod: RouteModule | undefined): Params {
 // a catch-all takes the rest of the path: never a trailing slash
 const withSlash = (pattern: string, append: boolean) =>
   append && pattern !== '/' && !/(?:\*|\{\.\+\})$/.test(pattern) ? pattern + '/' : pattern
-
-const priority = (s: string) =>
-  s.endsWith('{.+}') ? 3 : s.includes('{') ? 1 : s.startsWith(':') ? 2 : 0
-
-// Hono's order: the specificity of each segment, from the first. A param's name decides only between patterns equally
-// specific at every segment, so renaming a param never changes which route answers
-function compare(a: string, b: string): number {
-  const x = a.split('/')
-  const y = b.split('/')
-  for (let i = 0; i < Math.min(x.length, y.length); i++) {
-    const d = priority(x[i]!) - priority(y[i]!)
-    if (d) return d
-    // two static segments that differ: the routes are apart, any order is right (the alphabetical one is steady)
-    if (priority(x[i]!) === 0 && x[i] !== y[i]) return x[i]! < y[i]! ? -1 : 1
-  }
-  return x.length - y.length || (a < b ? -1 : a > b ? 1 : 0)
-}

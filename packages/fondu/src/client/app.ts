@@ -15,7 +15,7 @@ import {
 import { flushSync } from 'react-dom'
 import { createRoot, hydrateRoot } from 'react-dom/client'
 
-import { decoded, pageId, routePatterns } from '../paths.js'
+import { compare, decoded, pageId, routePatterns } from '../paths.js'
 import type { Flash, Shared } from '../types.js'
 import { again, inBrowser, startNavigation, type PageObject } from './navigation.js'
 import { progressBar, type ProgressOptions } from './progress.js'
@@ -28,7 +28,8 @@ const ROUTES = '/app/routes/'
 
 // set by the app's entry (the Vite plugin's): the pages and layouts of app/routes/, and the build's settings
 let pages = new Map<string, Loader>()
-let patterns: Array<{ id: string; segments: string[] }> = []
+// the pages in the server's order: segment by segment from the first
+let routes: Array<{ id: string; pattern: string; segments: string[] }> = []
 
 /** @internal The app's entry, written by the Vite plugin. In the browser it hydrates the server's page and starts navigating. */
 export function __entry(
@@ -39,9 +40,15 @@ export function __entry(
   pages = new Map(
     Object.entries(pageModules).map(([key, loader]) => [pageId(key.slice(ROUTES.length)), loader]),
   )
-  patterns = [...pages.keys()]
+  routes = [...pages.keys()]
     .filter((id) => !id.split('/').some((s) => s.startsWith('_')))
-    .flatMap((id) => routePatterns(id).map((p) => ({ id, segments: p.split('/').filter(Boolean) })))
+    .flatMap((id) =>
+      routePatterns(id).map((path) => {
+        const pattern = path.replace(/:(\w+)\*/g, ':$1{.+}')
+        return { id, pattern, segments: pattern.split('/').filter(Boolean) }
+      }),
+    )
+    .sort((a, b) => compare(a.pattern, b.pattern))
   if (typeof document !== 'undefined') start(settings, errorComponent)
 }
 
@@ -135,26 +142,15 @@ class Unfailing extends Component<{ children?: ReactNode }, { failed: boolean }>
   }
 }
 
-/** @internal The page a URL most likely is, by its route file's patterns. Only a guess (a param's listed values are the server's). */
+/** @internal The page a URL is, by the server's order: the first pattern that matches. Only a guess (a param's listed values are the server's). */
 export function pageAt(pathname: string): string | undefined {
   // decoded, as the server matches them (`/caf%C3%A9` is `café.tsx`)
   const parts = pathname.split('/').filter(Boolean).map(decoded)
-  let best: { id: string; score: number } | undefined
-  for (const { id, segments } of patterns) {
-    let score = 0
-    let i = 0
-    for (const s of segments) {
-      const part = parts[i]
-      if (part === undefined) score = -1
-      else if (s.endsWith('*')) score += 1
-      else if (s.startsWith(':')) score += 2
-      else score += s === part ? 3 : -Infinity
-      i = s.endsWith('*') ? parts.length : i + 1
-      if (score < 0) break
-    }
-    if (score >= 0 && i === parts.length && (!best || score > best.score)) best = { id, score }
-  }
-  return best?.id
+  return routes.find(({ segments }) => {
+    const rest = segments.at(-1)?.endsWith('{.+}')
+    if (rest ? parts.length < segments.length : parts.length !== segments.length) return false
+    return segments.every((s, i) => s.startsWith(':') || s === parts[i])
+  })?.id
 }
 
 export type Navigation =
