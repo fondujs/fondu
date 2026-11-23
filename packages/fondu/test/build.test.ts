@@ -1,9 +1,12 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
+import { createServer } from 'vite'
 import { afterEach, describe, expect, test } from 'vitest'
 
 import { checkExports } from '../src/server/app.js'
+import fondu from '../src/vite/index.js'
 import { buildClient, tempApp } from './support/build.js'
 
 const page = 'export default function Page() { return <p>page</p> }\n'
@@ -184,4 +187,109 @@ describe('the client bundle and the viewTransitions option', () => {
       // the setting of the entry: the default
       expect(code).toMatch(new RegExp(`viewTransitions:\\s*!${on ? '0' : '1'}\\b`))
     })
+})
+
+describe('a hidden path under routes/', () => {
+  const message =
+    'fondu: routes/.well-known/ping.ts: a path starting with "." is not a route; serve it from public/ or answer it in a catch-all route'
+  test('fails the build, as the server does at startup', async () => {
+    app = tempApp({
+      'app/routes/index.tsx': page,
+      'app/routes/.well-known/ping.ts': 'export const GET = (c) => c.text("pong")\n',
+    })
+    await expect(buildClient(app.root)).rejects.toThrow(message)
+  })
+  test('a dot file with no route extension, and public/.well-known, build', async () => {
+    app = tempApp({
+      'app/routes/index.tsx': page,
+      'app/routes/.gitkeep': '',
+      'public/.well-known/ping': 'pong\n',
+    })
+    await buildClient(app.root)
+  })
+  test('typegen does not list it, nor a test of any extension', async () => {
+    app = tempApp({
+      'app/routes/index.tsx': page,
+      'app/routes/about.tsx': page,
+      'app/routes/about.test.mdx': '# a test\n',
+      'app/routes/.well-known/ping.ts': 'export const GET = (c) => c.text("pong")\n',
+    })
+    const dev = await createServer({
+      root: app.root,
+      configFile: false,
+      logLevel: 'silent',
+      server: { middlewareMode: true },
+      plugins: [fondu({ target: 'node' })],
+    })
+    try {
+      await dev.pluginContainer.buildStart({})
+      const types = readFileSync(join(app.root, 'app/fondu.gen.d.ts'), 'utf8')
+      expect(types).toContain('"/about"')
+      expect(types).not.toContain('well-known')
+      expect(types).not.toContain('test')
+    } finally {
+      await dev.close()
+    }
+  })
+  test('the server refuses it at startup in development', async () => {
+    app = tempApp({
+      'app/routes/index.tsx': page,
+      'app/routes/.well-known/ping.ts': 'export const GET = (c) => c.text("pong")\n',
+      'app/server.ts': `import { createApp } from 'fondu'\nexport default createApp()\n`,
+    })
+    const dev = await createServer({
+      root: app.root,
+      configFile: false,
+      logLevel: 'silent',
+      server: { middlewareMode: true },
+      resolve: {
+        alias: [
+          ['fondu/client/internal', 'client/internal.ts'],
+          ['fondu/client', 'client.ts'],
+          ['fondu', 'index.ts'],
+        ].map(([find, file]) => ({
+          find: new RegExp(`^${find}$`),
+          replacement: fileURLToPath(new URL(`../src/${file}`, import.meta.url)),
+        })),
+      },
+      plugins: [fondu({ target: 'node' })],
+    })
+    try {
+      await expect(dev.ssrLoadModule('/app/server.ts')).rejects.toThrow(message)
+    } finally {
+      await dev.close()
+    }
+  })
+  test('a test of any extension is no route at startup', async () => {
+    app = tempApp({
+      'app/routes/index.tsx': page,
+      'app/routes/about.test.mdx': '# a test\n',
+      'app/routes/about.spec.mdx': '# a test\n',
+      'app/server.ts': `import { createApp } from 'fondu'\nexport default createApp()\n`,
+    })
+    const dev = await createServer({
+      root: app.root,
+      configFile: false,
+      logLevel: 'silent',
+      server: { middlewareMode: true },
+      resolve: {
+        alias: [
+          ['fondu/client/internal', 'client/internal.ts'],
+          ['fondu/client', 'client.ts'],
+          ['fondu', 'index.ts'],
+        ].map(([find, file]) => ({
+          find: new RegExp(`^${find}$`),
+          replacement: fileURLToPath(new URL(`../src/${file}`, import.meta.url)),
+        })),
+      },
+      plugins: [fondu({ target: 'node' })],
+    })
+    try {
+      const { default: server } = await dev.ssrLoadModule('/app/server.ts')
+      for (const path of ['/about.test', '/about.spec'])
+        expect((await server.request(path)).status, path).toBe(404)
+    } finally {
+      await dev.close()
+    }
+  })
 })

@@ -73,18 +73,19 @@ const RESERVED: Record<string, string | undefined> = Object.assign(Object.create
 
 const ROUTE_EXTENSION = /\.(?:tsx?|mdx)$/
 
+const isTest = (file: string) => /\.(?:test|spec)\./.test(file.slice(file.lastIndexOf('/') + 1))
+
+const isOwn = (segment: string) => segment.startsWith('_')
+
+const isRouteLike = (file: string) =>
+  ROUTE_EXTENSION.test(file) && !file.endsWith('.d.ts') && !isTest(file)
+
 /**
- * a path inside `routes/` that is a route file: `.ts` (server code: handlers) or `.tsx`, `.mdx` (a page), but
- * tests and declarations, and neither its name nor a directory on its path starting with `_` (`_middleware.ts`,
- * `_layout.tsx`, `_parts/badge.tsx`)
+ * a path inside `routes/` that is a route file: `.ts` (server code: handlers) or `.tsx`, `.mdx` (a page), but not a
+ * test (`*.test.*`, `*.spec.*`), a declaration, or a path with a segment starting with `_` or `.`
  */
 export function isRouteFile(file: string): boolean {
-  return (
-    ROUTE_EXTENSION.test(file) &&
-    !file.endsWith('.d.ts') &&
-    !/\.(?:test|spec)\.tsx?$/.test(file) &&
-    !file.split('/').some((s) => s.startsWith('_'))
-  )
+  return isRouteLike(file) && !file.split('/').some((s) => isOwn(s) || s.startsWith('.'))
 }
 
 const SPECIAL = {
@@ -93,12 +94,21 @@ const SPECIAL = {
   _error: { extension: 'tsx', is: 'the error page' },
 } as const
 
-/** Throws for `_middleware`, `_layout` or `_error` with another extension: nothing would load it. */
-export function checkSpecialFiles(files: readonly string[]): void {
+/**
+ * Throws for a file of `routes/` that would answer the wrong way: a path starting with `.` (Vite's globs skip it), or
+ * `_middleware`, `_layout`, `_error` with another extension (nothing loads it). The server passes the files Vite
+ * lists, the build every file of the directory.
+ */
+export function checkRouteFiles(files: readonly string[]): void {
   for (const file of files) {
     const parts = file.split('/')
+    if (parts.slice(0, -1).some(isOwn)) continue
+    if (isRouteLike(file) && !isOwn(parts.at(-1)!) && parts.some((s) => s.startsWith('.')))
+      throw new Error(
+        `fondu: routes/${file}: a path starting with "." is not a route; serve it from public/ or answer it in a catch-all route`,
+      )
     const match = /^(_middleware|_layout|_error)\.([^.]+)$/.exec(parts.at(-1)!)
-    if (!match || parts.slice(0, -1).some((s) => s.startsWith('_'))) continue
+    if (!match) continue
     const { extension, is } = SPECIAL[match[1] as keyof typeof SPECIAL]
     if (match[2] !== extension)
       throw new Error(`fondu: routes/${file}: ${is} is ${match[1]}.${extension}`)

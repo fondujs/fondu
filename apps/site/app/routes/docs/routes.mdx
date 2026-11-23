@@ -3,7 +3,7 @@
 Every file in `app/routes/` is a route: a page (`.tsx`, `.mdx`) or server code only (`.ts`). Files and directories
 starting with `_` are not routes (`_middleware.ts`, `_layout.tsx` and `_error.tsx` are what their names say, with
 those extensions: `_middleware.tsx` stops the app at startup and fails the build), nor are declarations (`*.d.ts`) and
-tests (`*.test.ts`, `*.spec.ts`). A route's path is its URL:
+tests (`*.test.*`, `*.spec.*`, any extension). A route's path is its URL:
 
 | File                      | URL                                     |
 | ------------------------- | --------------------------------------- |
@@ -25,6 +25,10 @@ A param can't be named `query`, `hash`, `method`, `body`, `headers` or `signal`:
 A catch-all's key is `/files/:path*`, in `href()`, `request()` and the generated types: `href('/files/:path*', { path: 'a/b' })`
 is `/files/a/b`, its slashes kept. There is no optional catch-all: `[[...path]].ts` stops the app at startup; `index.ts` and
 `[...path].ts` are its two files.
+
+A path starting with `.` is not a route: `routes/.well-known/ping.ts` stops the app at startup and fails the build. Put a file
+of `/.well-known/` in `public/` (`public/.well-known/security.txt`), or answer it in a catch-all route: `[...rest].ts` matches
+`/.well-known/ping`, and `href('/:rest*', { rest: '.well-known/ping' })` is its URL.
 
 ## Optional segments
 

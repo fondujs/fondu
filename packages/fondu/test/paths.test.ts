@@ -5,6 +5,7 @@ import { describe, expect, test } from 'vitest'
 import { href } from '../src/client.js'
 import { formObject } from '../src/form.js'
 import {
+  checkRouteFiles,
   checkRouteName,
   fillPattern,
   isRouteFile,
@@ -103,6 +104,40 @@ describe('routes/ files', () => {
     expect(isRouteFile('docs/intro.mdx')).toBe(true)
     expect(isRouteFile('users/form.test.tsx')).toBe(false)
     expect(isRouteFile('users/form.jsx')).toBe(false) // route files are TypeScript
+  })
+  test('a hidden path and a test of any extension are no route', () => {
+    for (const file of ['.well-known/ping.ts', 'a/.hidden.ts', '.x/y/z.tsx', '.a.mdx'])
+      expect(isRouteFile(file), file).toBe(false)
+    for (const file of ['x.test.mdx', 'x.spec.mdx', 'a/b.test.tsx', 'b.spec.ts'])
+      expect(isRouteFile(file), file).toBe(false)
+    for (const file of ['latest.ts', 'spec.tsx', 'test/index.ts', 'a.tester.ts'])
+      expect(isRouteFile(file), file).toBe(true)
+  })
+  test('checkRouteFiles refuses a hidden path, with where to put it instead', () => {
+    for (const file of [
+      '.well-known/ping.ts',
+      'a/.well-known/ping.tsx',
+      '.hidden.ts',
+      '.a/b/c.mdx',
+    ])
+      expect(() => checkRouteFiles([file]), file).toThrow(
+        `fondu: routes/${file}: a path starting with "." is not a route; serve it from public/ or answer it in a catch-all route`,
+      )
+  })
+  test('checkRouteFiles leaves alone what is no route anyway', () => {
+    expect(() =>
+      checkRouteFiles([
+        'index.ts',
+        '.DS_Store',
+        '.gitkeep',
+        '.well-known/note.txt',
+        '.well-known/x.test.ts',
+        '.x/types.d.ts',
+        '_parts/.hidden.ts',
+        '_a/.b/c.ts',
+        'a.test.mdx',
+      ]),
+    ).not.toThrow()
   })
   test('middleware applies to its directory and below, outermost first', () => {
     const files = ['_middleware.ts', 'users/_middleware.ts', 'admin/_middleware.ts']
