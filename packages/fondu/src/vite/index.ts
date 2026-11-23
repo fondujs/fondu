@@ -35,8 +35,6 @@ import { typegen, walk as walkFiles } from './typegen.js'
 /** `vite.config.ts`: `plugins: [fondu({ target: 'node' })]` (or `'bun'`; for Cloudflare: `cloudflare()` and `fondu({ target: 'cloudflare' })`). */
 export interface FonduOptions {
   target: 'node' | 'bun' | 'cloudflare'
-  /** `false`: pages render in the browser only, no server render is built (an admin app). Per route: `withoutSsr()` */
-  ssr?: boolean
   react?: ReactOptions
   /** The bar at the top of the page while a navigation is on its way; `false`: none. */
   progress?: ProgressOptions | false
@@ -373,12 +371,7 @@ function core(options: FonduOptions, prerendering: Prerendering): Plugin {
       return {
         optimizeDeps: {
           exclude: ['fondu'],
-          include: [
-            ...HONO,
-            'react',
-            'react-dom',
-            ...(options.ssr === false ? [] : ['react-dom/server']),
-          ],
+          include: [...HONO, 'react', 'react-dom', 'react-dom/server'],
           entries: [SERVER.slice(2), 'app/routes/**/*.ts', ...pages],
           ...mdx,
           rolldownOptions: { plugins: [...mdx.rolldownOptions.plugins, serverReactDomClient()] },
@@ -489,15 +482,13 @@ function core(options: FonduOptions, prerendering: Prerendering): Plugin {
         ].join('\n')
       }
       if (id === resolved(V.ssr))
-        return options.ssr === false
-          ? `export const renderPage = null\nexport const renderMarkup = async (el) => (await import('react-dom/server')).renderToStaticMarkup(el)`
-          : [
-              `import '${V.entry}'`,
-              `import { renderToReadableStream, renderToStaticMarkup } from 'react-dom/server'`,
-              `import { renderPage as render } from 'fondu/client/internal'`,
-              `export const renderPage = (page, options) => render(page, (el) => renderToReadableStream(el, options))`,
-              `export { renderToStaticMarkup as renderMarkup }`,
-            ].join('\n')
+        return [
+          `import '${V.entry}'`,
+          `import { renderToReadableStream, renderToStaticMarkup } from 'react-dom/server'`,
+          `import { renderPage as render } from 'fondu/client/internal'`,
+          `export const renderPage = (page, options) => render(page, (el) => renderToReadableStream(el, options))`,
+          `export { renderToStaticMarkup as renderMarkup }`,
+        ].join('\n')
       if (id === resolved(V.assets))
         return (
           (isBuild ? productionAssets(config, options) : devAssets(config.base)) +

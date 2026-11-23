@@ -732,14 +732,16 @@ test('the types above are checked by tsc', () => {
   ]).toHaveLength(185)
 })
 
-test('FonduOptions: the port is PORT, not an option', () => {
+test('FonduOptions: the port is PORT, not an option; server rendering is turned off by withoutSsr()', () => {
   const options: FonduOptions[] = [
     { target: 'node' },
-    { target: 'bun', ssr: false },
+    { target: 'bun', viewTransitions: true },
     // @ts-expect-error `port` was removed: the server listens on PORT
     { target: 'node', port: 8080 },
+    // @ts-expect-error `ssr` was removed: `withoutSsr()` in the root _middleware.ts
+    { target: 'node', ssr: false },
   ]
-  expect(options).toHaveLength(3)
+  expect(options).toHaveLength(4)
 })
 
 test('ProgressOptions is the type of the progress option', () => {
