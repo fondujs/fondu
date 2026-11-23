@@ -231,6 +231,7 @@ export function createApp(options: CreateAppOptions = {}): Hono {
           }),
         ]
 
+  const unanswered: { pattern: string; mws: MiddlewareHandler[]; allow: string[] }[] = []
   for (const { file, pattern, path, middleware } of routeTable(modules, append)) {
     const mod = modules[file]!
     const page = isPageFile(file) ? pageId(file) : undefined
@@ -262,8 +263,11 @@ export function createApp(options: CreateAppOptions = {}): Hono {
       mod.loader ??
       mod.GET ??
       (page === undefined ? undefined : (c: Context) => renderPage(c, page, {}))
+    const allow: string[] = get ? ['GET', 'HEAD'] : []
+    unanswered.push({ pattern, mws, allow })
     if (get) add('GET', [...mws, ...chain(get)])
     if (mod.action || mod.actions || mod.POST) {
+      allow.push('POST')
       const defaultPost = mod.action ?? mod.POST
       const actions = mod.actions ?? {}
       add('POST', [
@@ -285,8 +289,21 @@ export function createApp(options: CreateAppOptions = {}): Hono {
     for (const method of METHODS) {
       if (method === 'GET' || method === 'POST') continue
       const h = mod[method]
+      if (h) allow.push(method)
       if (h) add(method, [...mws, ...(method === 'OPTIONS' ? [] : limit), ...chain(h)])
     }
   }
+  for (const { pattern, mws, allow } of unanswered)
+    app.all(
+      pattern,
+      ...([
+        ...mws,
+        (c, next) => {
+          if (allow.includes(c.req.method)) return next()
+          c.header('Allow', allow.join(', '))
+          return errorResponse(c, 405)
+        },
+      ] as [MiddlewareHandler]),
+    )
   return app
 }

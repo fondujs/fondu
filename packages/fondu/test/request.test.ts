@@ -151,6 +151,6 @@ describe('against the app', () => {
     expect(await call('/api/data', { method: 'POST', body: { n: 3 } })).toEqual({ n: 3 })
     expect(await call('/api/data')).toEqual({ ok: true })
     const missing = await call('/api/data', { method: 'PUT' }).catch((e) => e)
-    expect(missing.status).toBe(404)
+    expect(missing.status).toBe(405)
   })
 })

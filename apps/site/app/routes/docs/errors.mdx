@@ -14,6 +14,11 @@ export default function ErrorPage({ status }: { status: number }) {
 The shared props are what the root `_middleware.ts` shared before the error. If that middleware itself fails, the error
 page has only what it shared before it failed.
 
+A method the route has no handler for (`DELETE` to a route with `GET` and `POST`, `POST` to a page with only a
+`loader`) is a 405 with an `Allow` header listing the route's methods (`HEAD` with `GET`; `OPTIONS` is not added). It
+gets the error page too, with `status` 405; a URL that matches no route stays a 404. A directory's `cors()` still
+answers a preflight, as its middleware runs first.
+
 A request over the body limit (413) gets the error page too, with the shared props: the limit runs after the
 middleware of the route's directories. A CSRF refusal (403) is plain text, "Forbidden": Hono's CSRF protection answers it with its own response,
 before any middleware.
