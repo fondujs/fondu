@@ -268,23 +268,21 @@ export async function renderPage(
     : c.body(document, status, { 'Content-Type': 'text/html; charset=UTF-8' })
 }
 
-function webUrl(c: Context, to: string): boolean {
+function protocolOf(c: Context, to: string): string | null {
   try {
-    return /^https?:$/.test(new URL(to, c.req.url).protocol)
+    return new URL(to, c.req.url).protocol
   } catch {
-    return false
+    return null
   }
 }
+
+const webUrl = (c: Context, to: string) => /^https?:$/.test(protocolOf(c, to) ?? '')
 
 const SCRIPT_SCHEMES = ['javascript:', 'data:', 'vbscript:']
 
 function scriptScheme(c: Context, to: string): string | null {
-  try {
-    const { protocol } = new URL(to, c.req.url)
-    return SCRIPT_SCHEMES.includes(protocol) ? protocol : null
-  } catch {
-    return null
-  }
+  const protocol = protocolOf(c, to)
+  return protocol && SCRIPT_SCHEMES.includes(protocol) ? protocol : null
 }
 
 // every header that selects what a navigation answers
