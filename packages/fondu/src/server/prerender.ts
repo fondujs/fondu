@@ -21,17 +21,13 @@ export interface PrerenderRoute {
   /** the route's own setting, then its directories' (`_middleware.ts`), nearest first */
   settings: Array<Prerender | undefined>
   settingFiles?: string[]
-  /** it answers GET (`loader` / `GET`) */
   get: boolean
   /** the other methods it answers: a static file would answer them 405 */
   others: string[]
 }
 
-/**
- * A param's value becomes a file name (`/items/:id` → `items/<id>.html`): not a path of its own. A `/` or a `\`
- * in it (Windows' separator) would make a directory of it, or leave the build's directory (`../../x`); a catch-all
- * is the path of its segments, each of which is a name. Throws, naming the value.
- */
+// A param's value becomes a file name, not a path: a `/` or `\` (Windows) would make a directory or leave the build's
+// directory (`../../x`). A catch-all's segments are each a name. Throws, naming the value.
 function fileNames(pattern: string, params: Record<string, string | number>) {
   for (const [, name, catchAll] of pattern.matchAll(/:(\w+)(\*)?/g)) {
     const value = String(params[name!])
@@ -44,7 +40,6 @@ function fileNames(pattern: string, params: Record<string, string | number>) {
   }
 }
 
-/** The paths to prerender, and what stops a route from being prerendered (the build fails on those) */
 export async function prerenderPaths(
   routes: PrerenderRoute[],
 ): Promise<{ paths: string[]; problems: string[] }> {
@@ -106,14 +101,11 @@ export async function prerenderPaths(
   return { paths: [...paths].sort(), problems }
 }
 
-/**
- * Some route exports `prerender`: the page object of a page without a static file (`/_fondu/pages/x.json` → `/x`, as
- * a navigation), and, while the build prerenders (`FONDU_PRERENDER` set), the paths to write.
- */
+// the page object of a page without a static file (`/_fondu/pages/x.json` → `/x`), and while the build prerenders, the paths to write
 export function prerenderRoutes(app: Hono, routes: () => PrerenderRoute[], version: string | null) {
   app.get(`${PAGE_DATA}/*`, (c) => {
-    // a prefetch is for a static page's file only (served before the app, which is not reached): a page without
-    // one is asked for at the click, and no loader runs for a page that may not be visited
+    // a prefetch is for a static page's file only: a page without one is asked for at the click, so no loader runs for a page
+    // that may not be visited
     if (c.req.header('X-Fondu-Prefetch') === 'true')
       return c.body(null, 204, { 'Cache-Control': 'no-store' })
     const path = pathOfPageData(c.req.path)
@@ -130,7 +122,6 @@ export function prerenderRoutes(app: Hono, routes: () => PrerenderRoute[], versi
     return app.fetch(new Request(url, { headers }), c.env, ctx)
   })
   app.get(PRERENDER_LIST, async (c) => {
-    // set for the build only: a Worker binding, or the environment of `node` / `bun dist/server/index.js`
     if (!isPrerendering(c)) return c.notFound()
     return c.json({ version, ...(await prerenderPaths(routes())) })
   })

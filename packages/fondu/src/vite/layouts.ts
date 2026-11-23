@@ -14,7 +14,7 @@ interface LayoutImport {
   name: string
 }
 
-/** A declaration is a literal list of imports. Never run a route (or its loader's imports) to discover its UI. */
+// Never run a route (or its loader's imports) to discover its UI.
 export function layoutImports(code: string, file: string): LayoutImport[] | undefined {
   if (!code.includes('layout')) return
   const { body } = parseAst(code, { lang: 'tsx' })
@@ -101,8 +101,8 @@ function canDeclareLayout(file: string) {
   )
 }
 
-/** The dynamic entry of a page re-exports its component and exact layout chain. The document, client navigation
- * and Vite's preload manifest all use these same ESM edges. Importing a layout's component does not wrap it. */
+// The dynamic entry of a page re-exports its component and exact layout chain, which the document, client navigation and
+// Vite's preload manifest all use. Importing a layout's component does not wrap it.
 export function layoutChains(): Plugin {
   let root = ''
   // HMR compares only selections the client has actually used; ordinary edits keep Fast Refresh.
@@ -182,7 +182,6 @@ export function layoutChains(): Plugin {
       }
       const imports: string[] = [],
         chain: string[] = []
-      // Walk inwards to outwards; stop as soon as a directory declares its own parents.
       for (const dir of layoutsOf(file).reverse()) {
         const parent = (dir ? dir + '/' : '') + '_layout.tsx'
         const absolute = resolve(root, parent)
@@ -215,7 +214,6 @@ export function layoutChains(): Plugin {
         selections.delete(name)
         edges.delete(name)
       } else if (selections.has(name)) {
-        // Read MDX after the app's compiler, just as on the first visit.
         if (name.endsWith('.mdx'))
           await this.environment.transformRequest('/app/routes/' + name + VIEW_QUERY)
         else rememberSelection(await read(), name)

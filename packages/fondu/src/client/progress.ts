@@ -1,19 +1,15 @@
-/** `fondu({ progress })`: the bar at the top of the page while a navigation or a form's submission is on its way */
+/** `fondu({ progress })`: the bar at the top while a navigation or a form submission is on its way. */
 export interface ProgressOptions {
-  /** how long a navigation runs before the bar shows, in ms (a quick one shows none); default 350 */
+  /** Milliseconds before the bar shows; default 350. */
   delay?: number
-  /** the bar's color, any CSS color (`var(--brand)`); default the page's text color (`currentColor`) */
+  /** Any CSS color; default `currentColor`. */
   color?: string
-  /** for forms' submissions too; default true (`false`: their buttons show it, with the form's `aria-busy`) */
+  /** Also for form submissions; default true. */
   forms?: boolean
 }
 
-/**
- * The bar: shown once a navigation has run for `delay`, growing towards the end while it runs (one long CSS
- * transition, slower as it gets there), filled, then faded out, when it is done. Drawn with CSSOM styles (no
- * stylesheet, nothing for a Content Security Policy to refuse), above the page, out of the accessibility tree:
- * `useNavigation()` is the app's way to say it in its own words. With reduced motion, a still bar.
- */
+// Drawn with CSSOM styles: no stylesheet for a Content Security Policy to refuse. Out of the accessibility tree:
+// `useNavigation()` is the app's way to say it in words.
 export function progressBar(
   { delay = 350, color = 'currentColor' }: ProgressOptions,
   pending: () => boolean,
@@ -22,7 +18,7 @@ export function progressBar(
   let bar: HTMLDivElement | undefined
   let wait: ReturnType<typeof setTimeout> | undefined
   const bars = new Set<HTMLDivElement>() // on the screen, the one fading out included
-  // leaving the document: no bar kept in the back/forward cache, to be seen again on Back
+  // no bar kept in the back/forward cache, to be seen again on Back
   addEventListener('pagehide', () => {
     clearTimeout(wait)
     wait = bar = undefined
@@ -46,7 +42,7 @@ export function progressBar(
     el.setAttribute('aria-hidden', 'true')
     document.body.append(el)
     if (still.matches) return
-    el.getBoundingClientRect() // its start computed: the transition runs from 0
+    el.getBoundingClientRect() // its start is computed: the transition runs from 0
     el.style.transition = 'transform 10s cubic-bezier(0.05, 0.7, 0.1, 1)'
     el.style.transform = 'scaleX(0.95)'
   }

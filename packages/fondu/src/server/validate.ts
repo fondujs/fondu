@@ -21,9 +21,8 @@ type StandardResult<Output> =
 type InferOutput<S> = S extends StandardSchemaV1<unknown, infer O> ? O : never
 
 /**
- * Field errors (`{ email: 'Enter a valid email' }`). Thrown from an action, or by `withValidator`: navigations
- * and forms go back to the page they came from with the errors (its `errors` prop, as Laravel does); other
- * requests (an API client) get 422 `{ errors }`.
+ * Field errors (`{ email: 'Enter a valid email' }`), thrown from an action or by `withValidator`. Pages get them as
+ * `errors`; an API client gets 422 `{ errors }`.
  */
 export class ValidationError extends Error {
   readonly errors: Record<string, string>
@@ -44,22 +43,17 @@ export async function validationErrorResponse(
   return varyAccept(back(c))
 }
 
-/**
- * A request body as one object: JSON, or form fields as `formObject` reads them (the browser's `useForm` too). A body
- * that can't be one object (JSON or form data that doesn't parse, `a=1&a[b]=2`, names nested deeper than 32, more than 10,000
- * entries) is a 400. A body of another type (`text/plain`, none) is a 415; a request with no body is `{}`.
- */
+/** A request body as one object: JSON, or form fields. A body that can't be one is a 400, one of another type a 415. */
 export async function readBody(c: Context): Promise<unknown> {
   const type = (c.req.header('content-type') ?? '').toLowerCase()
-  // `application/json`, and any `application/*+json` (`merge-patch+json`, `vnd.api+json`), as the client reads an answer
+  // `application/json` and `application/*+json`, as the client reads an answer
   if (type.includes('application/json') || /^application\/[^;\s]+\+json\s*(?:;|$)/.test(type))
     return c.req.json().catch(() => Promise.reject(malformedBody('invalid JSON')))
   if (
     !type.includes('multipart/form-data') &&
     !type.includes('application/x-www-form-urlencoded')
   ) {
-    // a body is what Content-Length or Transfer-Encoding says (a request with neither has none): that of an unknown
-    // type is refused, not read as `{}`
+    // a body is what Content-Length or Transfer-Encoding says: one of an unknown type is refused, not read as `{}`
     const hasBody =
       Number(c.req.header('content-length')) > 0 || c.req.header('transfer-encoding') !== undefined
     if (hasBody)
@@ -77,7 +71,6 @@ export async function readBody(c: Context): Promise<unknown> {
 const malformedBody = (why: string) =>
   new HTTPException(400, { message: `Malformed request body: ${why}` })
 
-/** form fields as `formObject` reads them, a 400 for those that can't be one object */
 function fields(
   entries: Iterable<[string, FormDataEntryValue]>,
   malformed: (why: string) => Error,
@@ -89,7 +82,6 @@ function fields(
   }
 }
 
-/** the query, read as a body is (`tags[]=a&tags[]=b`, `user[name]=Ada`): a 400 for one that can't be one object */
 const readQuery = (c: Context) =>
   fields(
     new URL(c.req.url).searchParams.entries(),
@@ -106,10 +98,7 @@ export type Input<S extends Schemas> = {
   [K in keyof S]: S[K] extends StandardSchemaV1 ? InferOutput<S[K]> : never
 }
 
-/**
- * The validation step of `withValidator`: a middleware, and the validated input of its request. Params that don't
- * fit the schema are a 404 (`/users/abc` names no user); invalid body or query fields are a `ValidationError`.
- */
+// Params that don't fit are a 404 (`/users/abc` names no user); invalid body or query fields are a `ValidationError`.
 export function validator<S extends Schemas>(
   schemas: S,
 ): [MiddlewareHandler, (c: Context) => Input<S>] {

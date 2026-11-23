@@ -28,14 +28,9 @@ const ROUTES = '/app/routes/'
 
 // set by the app's entry (the Vite plugin's): the pages and layouts of app/routes/, and the build's settings
 let pages = new Map<string, Loader>()
-/** each page's URL patterns, segment by segment: for `pageAt` */
 let patterns: Array<{ id: string; segments: string[] }> = []
 
-/**
- * @internal the app's entry (the Vite plugin writes it), in the browser and for the server render: `import.meta.glob`
- * of the pages and layouts of `app/routes/`, and `fondu({ progress, viewTransitions })`. In the browser it starts the app:
- * it hydrates the server's page and starts navigating.
- */
+/** @internal The app's entry, written by the Vite plugin. In the browser it hydrates the server's page and starts navigating. */
 export function __entry(
   pageModules: Record<string, Loader>,
   settings: { prerender: boolean; progress: ProgressOptions | false; viewTransitions: boolean },
@@ -45,7 +40,7 @@ export function __entry(
     Object.entries(pageModules).map(([key, loader]) => [pageId(key.slice(ROUTES.length)), loader]),
   )
   patterns = [...pages.keys()]
-    .filter((id) => !id.split('/').some((s) => s.startsWith('_'))) // the error page is no URL
+    .filter((id) => !id.split('/').some((s) => s.startsWith('_')))
     .flatMap((id) => routePatterns(id).map((p) => ({ id, segments: p.split('/').filter(Boolean) })))
   if (typeof document !== 'undefined') start(settings, errorComponent)
 }
@@ -61,19 +56,14 @@ async function load(component: string): Promise<Shown['view']> {
   return { Component, layouts }
 }
 
-// ---- the page on screen, for usePage()
-
 const PageContext = createContext<PageObject | null>(null)
 type Shown = {
   page: PageObject
   view: { Component: PageComponent; layouts: Layout[] }
-  /** which mount of the page this is: its key, so a new one remounts it */
   mounts: number
-  /** the order the states were built in: the newer one wins */
   seq: number
 }
-// The browser's counters. A state is built whole, as a page is put on the screen, and nothing is computed from the
-// state it replaces: an update can't be rebased onto an older page
+// A state is built whole and nothing is computed from the one it replaces: an update can't be rebased onto an older page
 let mountCount = 0
 let seqCount = 0
 
@@ -86,7 +76,6 @@ export const shownOf = (page: PageObject, view: Shown['view'], fresh: boolean): 
 })
 /** @internal the update for a state: it keeps the newer one, whichever order they arrive in */
 export const newer = (next: Shown) => (now: Shown) => (now.seq > next.seq ? now : next)
-/** the browser's: called once the app is on the screen, with what puts another page there */
 let mounted: ((show: Dispatch<SetStateAction<Shown>>) => void) | undefined
 
 function App({ initial }: { initial: Shown }): ReactElement {
@@ -110,7 +99,6 @@ function App({ initial }: { initial: Shown }): ReactElement {
 /** the app's error page (routes/_error.tsx), loaded once the app starts: a failed render can't wait for it */
 let ErrorPage: ComponentType<{ status: number }> | undefined
 
-/** what failed to render, until another page (the layouts it is around are kept: no key) */
 class Failed extends Component<
   { children?: ReactNode; page: PageObject },
   { failed: boolean; page: PageObject }
@@ -132,11 +120,8 @@ class Failed extends Component<
 
 const PLAIN = 'Something went wrong'
 
-/**
- * The error page's own boundary: `Failed` renders the error page outside its own reach, so an error page that throws
- * would escape every boundary and React would unmount the app (a blank page). Plain text instead, and the error in
- * the console: the app's author must see it.
- */
+// `Failed` renders the error page outside its own reach: an error page that throws would escape every boundary and React
+// would unmount the app (a blank page). Plain text instead, and the error in the console.
 class Unfailing extends Component<{ children?: ReactNode }, { failed: boolean }> {
   override state = { failed: false }
   static getDerivedStateFromError() {
@@ -150,11 +135,7 @@ class Unfailing extends Component<{ children?: ReactNode }, { failed: boolean }>
   }
 }
 
-/**
- * @internal The page a URL most likely is, by its route file's patterns (static segments first): its modules load with its
- * data, and a link to a URL that is none (a file, an HTTP route) is left to the browser. Only a guess (a param's
- * listed values are the server's), so the page shown is the one the server says.
- */
+/** @internal The page a URL most likely is, by its route file's patterns. Only a guess (a param's listed values are the server's). */
 export function pageAt(pathname: string): string | undefined {
   // decoded, as the server matches them (`/caf%C3%A9` is `café.tsx`)
   const parts = pathname.split('/').filter(Boolean).map(decoded)
@@ -165,7 +146,7 @@ export function pageAt(pathname: string): string | undefined {
     for (const s of segments) {
       const part = parts[i]
       if (part === undefined) score = -1
-      else if (s.endsWith('*')) score += 1 // a catch-all: the rest
+      else if (s.endsWith('*')) score += 1
       else if (s.startsWith(':')) score += 2
       else score += s === part ? 3 : -Infinity
       i = s.endsWith('*') ? parts.length : i + 1
@@ -176,17 +157,12 @@ export function pageAt(pathname: string): string | undefined {
   return best?.id
 }
 
-// ---- pending navigations, for useNavigation()
-
-/** a navigation on its way, or none: `useNavigation()` */
 export type Navigation =
   | { state: 'idle'; to: null; form: null }
   | {
       /** `submitting`: a form's POST; `loading`: any other (a link, a GET form, `navigate()`, `reload()`) */
       state: 'loading' | 'submitting'
-      /** where to: a path, its query and fragment (`/users/7?tab=posts`) */
       to: string
-      /** the form being sent (a GET form's too), else null */
       form: HTMLFormElement | null
     }
   | {
@@ -216,9 +192,6 @@ function setNavigation(
   for (const l of listeners) l()
 }
 
-// ---- the app
-
-/** the browser's app: the server's page hydrated, then navigations */
 function start(settings: Parameters<typeof __entry>[1], errorComponent?: Loader) {
   const progress = settings.progress
   if (progress)
@@ -240,8 +213,7 @@ function start(settings: Parameters<typeof __entry>[1], errorComponent?: Loader)
     // dev: the stylesheet the server gave the page until its layouts brought their CSS (they have now)
     document.querySelector('[data-fondu-dev-css]')?.remove()
     const app = createElement(App, { initial: { page: initial, view, mounts: 0, seq: 0 } })
-    const hydrated = root.hasChildNodes() // rendered on the server
-    // navigations start once the page is on the screen (hydrated)
+    const hydrated = root.hasChildNodes()
     mounted = (set) => {
       mounted = undefined
       let loaded = { component: initial.component, view }
@@ -275,14 +247,11 @@ function start(settings: Parameters<typeof __entry>[1], errorComponent?: Loader)
   })
 }
 
-/** what `react-dom/server`'s `renderToReadableStream` gives: the bytes of the HTML, and when all of it is rendered */
 export type Rendered = ReadableStream<Uint8Array> & { allReady: Promise<void> }
 
 /**
- * @internal the server render of a page, streamed: the tags its components hoist (`<title>`…) first, then
- * `<div id="app">`, then what the Suspense boundaries that were not ready add. Rejects if the shell fails to render.
- * The tree is the browser's (`hydrateRoot(#app, <App/>)`): `<div id="app"><App/></div>` and nothing beside it, as
- * `useId()` is the position in the tree (a sibling of the page forks it: every id would differ).
+ * @internal The server render of a page, streamed. The tree is the browser's (`<div id="app"><App/></div>`, nothing beside
+ * it): `useId()` is the position in the tree, so a sibling of the page would make every id differ.
  */
 export async function renderPage(
   page: PageObject,
@@ -301,7 +270,6 @@ export async function renderPage(
 /** a form's field errors, as a page gets them (its `errors` prop): field name → message */
 export type Errors = Record<string, string>
 
-/** The page on screen, as `usePage()` returns it */
 export type Page<P = Shared> = {
   component: string
   props: P & { errors: Errors }
@@ -309,7 +277,6 @@ export type Page<P = Shared> = {
   flash: Partial<Flash>
 }
 
-/** The page on screen: `Page` */
 export function usePage<P = Shared>(): Page<P> {
   const page = useContext(PageContext)
   if (!page) throw new Error('fondu: usePage() is for components of a page')
@@ -317,11 +284,8 @@ export function usePage<P = Shared>(): Page<P> {
 }
 
 /**
- * The navigation on its way: `state` is `idle`, `loading` (a link, `navigate()`…) or `submitting` (a form's POST),
- * from the click or the submit until the next page is on the screen; `to`, where to; `form`, the form being sent.
- * `failed` is a form's POST that could not be sent, or whose answer could not be read (offline): the form stays, to
- * send again, and the state lasts until the next navigation starts. A GET that fails is loaded as a document instead,
- * where the browser says what is wrong.
+ * The navigation on its way: `state` is `idle`, `loading` or `submitting`, until the next page is on the screen. `failed`
+ * is a form's POST that could not be sent: the form stays, to send again. A GET that fails loads as a document instead.
  */
 export function useNavigation(): Navigation {
   return useSyncExternalStore(

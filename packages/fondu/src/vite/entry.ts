@@ -7,11 +7,8 @@ import type { FonduOptions } from './index.js'
 export const SERVER = './app/server.ts'
 const staticModule = normalizePath(fileURLToPath(new URL('../server/static.js', import.meta.url)))
 
-/**
- * the code of dist/server/index.js: `paths` are the client build's files and directories (`/robots.txt`, `/assets`),
- * `assetsDir` the client build's (hashed files, which never change: the only ones served as immutable, and only when
- * serveStatic found the file: an app's route under the same URL keeps its own Cache-Control)
- */
+// `paths`: the client build's files and directories. `assetsDir`: its hashed files, served as immutable only when
+// serveStatic found the file (an app's route under the same URL keeps its own Cache-Control).
 export function entryCode(
   options: FonduOptions,
   paths: string[],
@@ -21,8 +18,8 @@ export function entryCode(
   const bun = options.target === 'bun'
   const hashed = assetsDir ? `/${assetsDir}/*` : undefined
   return [
-    // NODE_ENV first, and the rest imported after it: static imports run before this line, and React picks its
-    // production or development build when it is first loaded
+    // NODE_ENV first, the rest imported after it: static imports run before this line, and React picks its build when first
+    // loaded
     `process.env.NODE_ENV ??= 'production'`,
     `const { Hono } = await import('hono')`,
     `const { serveStatic } = await import('${bun ? 'hono/bun' : '@hono/node-server/serve-static'}')`,
@@ -30,8 +27,7 @@ export function entryCode(
     `const { default: app } = await import('${SERVER.slice(1)}')`,
     `const clientRoot = fileURLToPath(new URL('../client', import.meta.url))`,
     `const main = new Hono()`,
-    // prerender: the pages the build wrote are files, with the headers it decided (prerender.json, written after
-    // this server was built: not there while the build prerenders, so the app renders them then)
+    // prerender.json is written after this server is built: absent while the build prerenders, so the app renders them then
     ...(prerender
       ? [
           `const { existsSync, readFileSync } = await import('node:fs')`,
@@ -51,7 +47,7 @@ export function entryCode(
     `main.all('*', (c) => app.fetch(c.req.raw, c.env))`,
     ...(bun
       ? [
-          // Bun serves the default export, on `PORT` (it reads it: BUN_PORT and NODE_PORT too), else 3000
+          // Bun reads PORT (BUN_PORT and NODE_PORT too), else 3000
           `export default app.websocket ? { fetch: main.fetch, websocket: app.websocket } : main`,
         ]
       : [

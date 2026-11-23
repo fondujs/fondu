@@ -1,12 +1,4 @@
-/**
- * Filled in by the generated `app/fondu.gen.d.ts` (written by the Vite plugin, committed with the app):
- * `routes`: URL pattern → its route module.
- *
- * And by the app, where it likes (`declare module 'fondu' { interface Register { … } }`): `shared`, the props
- * `share()` gives every page; `flash`, what `flash()` takes. `c.get()` / `c.set()` are typed by Hono's own
- * `ContextVariableMap`.
- */
-// empty here: augmented by the generated code, and by the app
+/** Filled in by the generated `fondu.gen.d.ts` (`routes`) and by the app (`shared`, `flash`) with `declare module 'fondu'`. */
 export interface Register {}
 
 export type Routes = Register extends { routes: infer R } ? R : Record<string, unknown>

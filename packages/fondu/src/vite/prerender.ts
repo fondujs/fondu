@@ -11,16 +11,11 @@ import type { Logger } from 'vite'
 import { PAGE_DATA, PRERENDER_LIST, staticFiles } from '../paths.js'
 import { runsAsScript } from '../script-type.js'
 
-/** the response headers a static document keeps: the security headers (hono/secure-headers' and the like) */
 const SECURITY_HEADERS =
   /^(content-security-policy(-report-only)?|strict-transport-security|referrer-policy|permissions-policy|reporting-endpoints|report-to|x-content-type-options|x-frame-options|x-xss-protection|x-dns-prefetch-control|x-download-options|x-permitted-cross-domain-policies|origin-agent-cluster|cross-origin-(opener|embedder|resource)-policy)$/i
 
-/**
- * A static document's own tags: those with the build's nonce (its Content Security Policy's). The policy of a static
- * document has no nonce: its inline scripts are allowed by their hashes instead, and only these tags may have had the
- * nonce: a `nonce` the document has otherwise (in a page's markup) is dropped. Then the hashes of these inline scripts,
- * those the browser runs: a data block (`application/ld+json`) needs none, and often differs from page to page.
- */
+// A static document's policy has no nonce, so its inline scripts are allowed by hash: only these tags may have had the
+// nonce, and any other `nonce` in the markup is dropped. A data block (`application/ld+json`) needs no hash.
 export function ownScripts(
   html: string,
   policy: string | undefined,
@@ -38,10 +33,7 @@ export function ownScripts(
   return { html: own, hashes: [...hashes] }
 }
 
-/**
- * A Content Security Policy for a static document: no nonce (one for every visitor is none); the scripts that had it
- * allowed by their hashes instead, and `'self'` scripts
- */
+// no nonce (one for every visitor is none): the scripts that had it are allowed by their hashes instead
 export function staticPolicy(policy: string, hashes: string[] = []): string {
   return policy
     .split(';')
@@ -57,11 +49,8 @@ export function staticPolicy(policy: string, hashes: string[] = []): string {
     .join('; ')
 }
 
-/**
- * `_headers` with Fondu's rules in it: the documents' security headers (`/*`), and the page objects' X-Fondu
- * (the client reads a page by it). A path the file has a rule for gets the headers it doesn't set there, so the app's own stay
- * (Workers keep one rule per path: a second `/*` would replace the first); any other, a rule at the end.
- */
+// A path the file has a rule for gets the headers it doesn't set there, so the app's own stay (Workers keep one rule per
+// path: a second `/*` would replace the first); any other, a rule at the end.
 export function withHeaderRules(file: string, headers: Record<string, string>): string {
   const lines = file.replace(/\n+$/, '').split('\n')
   const rules: Array<[string, Record<string, string>]> = [
@@ -72,7 +61,6 @@ export function withHeaderRules(file: string, headers: Record<string, string>): 
     const start = lines.findIndex((line) => line.trimEnd() === path)
     let end = start + 1
     while (start !== -1 && /^\s+\S/.test(lines[end] ?? '')) end++
-    // the names set or removed (`! name`) there
     const own = new Set(
       lines
         .slice(start + 1, end)
@@ -87,19 +75,14 @@ export function withHeaderRules(file: string, headers: Record<string, string>): 
   return `${lines.join('\n')}\n`
 }
 
-/** the built server, running for the prerender: fetch a path of it, stop it */
 interface Server {
   fetch(path: string, headers?: Record<string, string>): Promise<Response>
   dispose(): Promise<void>
 }
 
-/**
- * After the build: the built server (the Worker in wrangler, or `node` / `bun dist/server/index.js`), started with
- * `FONDU_PRERENDER` set, lists the pages to prerender (`/_fondu/prerender`); each is asked for as a document and as
- * a navigation, and both are written to the client build, with the security headers the build decided for them: one
- * set, in `_headers` (Cloudflare serves the files before the Worker) or in `prerender.json` next to the built server
- * (Node and Bun: its entry serves the files before the app).
- */
+// The built server is started with `FONDU_PRERENDER` set and lists the pages; each is asked for as a document and as a
+// navigation. Headers go in `_headers` (Cloudflare serves files before the Worker) or `prerender.json` (Node and Bun: the
+// built server's entry serves the files before the app).
 export async function prerender(
   start: () => Promise<Server>,
   clientDir: string,
@@ -125,17 +108,16 @@ export async function prerender(
     if (problems.length) return fail(problems)
     if (paths.length === 0) return
 
-    // every file to write, known before the first: all inside the client directory, none two pages' (or a directory)
+    // every file to write, known before the first: all inside the client directory, none two pages'
     const unsafe = outputProblems(paths, clientDir)
     if (unsafe.length) return fail(unsafe)
 
     let security: Record<string, string> | undefined
     const errors: string[] = []
     for (const path of paths) {
-      // Each body is read as its answer arrives, before the next request. An answer left unread while the next request
-      // is awaited can be cancelled (wrangler's `fetch`, i.e. miniflare's `dispatchFetch`: it wraps undici's Response in
-      // another that shares its body stream, `new Response(response.body, response)`; undici cancels the stream of a
-      // Response that is garbage collected and unread). Then the read fails with "Body is unusable".
+      // Each body is read as its answer arrives: wrangler's `fetch` (miniflare's `dispatchFetch`) wraps undici's Response in
+      // another that shares its body stream, and undici cancels the stream of a Response that is garbage collected and unread,
+      // so an answer left unread fails with "Body is unusable".
       const doc = await get(path, { Accept: 'text/html' })
       const docBody = await doc.text()
       const visit = await get(path, {
@@ -144,7 +126,6 @@ export async function prerender(
       })
       const visitBody = await visit.text()
       if (doc.status !== 200 || visit.status !== 200) {
-        // the request that failed: the document's, else the navigation's
         const [failed, as] = doc.status !== 200 ? [doc, 'a document'] : [visit, 'a navigation']
         const to = failed.headers.get('location')
         errors.push(
@@ -195,7 +176,6 @@ export async function prerender(
   }
 }
 
-/** Cloudflare: the built Worker, in the app's own wrangler (fondu does not depend on it) */
 export const worker = (root: string, workerConfig: string) => async (): Promise<Server> => {
   let wrangler: Wrangler
   try {
@@ -234,7 +214,6 @@ export const worker = (root: string, workerConfig: string) => async (): Promise<
   }
 }
 
-/** how long the built server may take to answer, in ms: to start (a wall-clock deadline), and each request, its body read included */
 export interface Deadlines {
   startup: number
   request: number
@@ -244,11 +223,7 @@ export interface Deadlines {
 const timedOut = (error: unknown) =>
   error instanceof DOMException && (error.name === 'TimeoutError' || error.name === 'AbortError')
 
-/**
- * Node / Bun: `node dist/server/index.js` (or `bun`), on a free port, until it answers. This function owns the child
- * until it returns the server: whatever fails before (no such executable, an exit, no answer by the deadline), the
- * child is stopped first. Each request has a deadline of its own, which a body read is within too (its signal).
- */
+// This function owns the child until it returns the server: whatever fails before, the child is stopped first.
 export const nodeServer =
   (
     root: string,
@@ -328,7 +303,6 @@ const freePort = () =>
     })
   })
 
-/** what is used of wrangler's API (the app's own wrangler: fondu does not depend on it) */
 interface Wrangler {
   unstable_startWorker(options: {
     config: string
@@ -341,7 +315,6 @@ interface Wrangler {
   }>
 }
 
-/** the files of these pages (decoded), all of which stay inside `dir`, each once and none a directory of another */
 export function outputProblems(paths: string[], dir: string): string[] {
   const problems: string[] = []
   const owner = new Map<string, string>()

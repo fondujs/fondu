@@ -1,4 +1,4 @@
-/** what fondu's server code imports from Hono (test/hono.test.ts keeps the list complete) */
+// what fondu's server imports from Hono; test/hono.test.ts keeps it complete
 export const HONO = [
   'hono',
   'hono/body-limit',

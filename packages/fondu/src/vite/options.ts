@@ -8,12 +8,8 @@ const isObject = (v: unknown): v is Record<string, unknown> =>
   typeof v === 'object' && v !== null && !Array.isArray(v)
 const show = (v: unknown) => (typeof v === 'string' ? `'${v}'` : String(v))
 
-/**
- * Checks the options of `fondu()` when the plugin is created, so that a wrong one fails at once, with the option's
- * name and what it may be (not as a TypeError, or never). The types say it for TypeScript; a `vite.config.js`, or a
- * cast, has no such check. `react` is the options of @vitejs/plugin-react: its keys as its types define them, and
- * the keys it may get later are its own to refuse.
- */
+// Fails at once with the option's name and what it may be: a `vite.config.js` or a cast has no type check. `react` is
+// @vitejs/plugin-react's: its keys as its types define them, and the keys it gets later are its own to refuse.
 export function checkOptions(options: unknown): asserts options is FonduOptions {
   const fail = (message: string): never => {
     throw new Error(`fondu(): ${message}`)

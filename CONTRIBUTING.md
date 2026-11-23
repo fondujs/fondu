@@ -132,6 +132,18 @@ updated when the API does.
 
 A pull request says which of these it checked.
 
+## Comments
+
+Keep a comment only when the code can't say it. A comment is one of:
+
+- a reason a reader can't see from the code (why this order, why not the obvious way), in one line where possible;
+- a dependence on another package's or the browser's behaviour, and what breaks if it changes;
+- a JSDoc line on a public export, as editors show it: what it is, in one or two sentences. Details belong in the docs;
+- a `@ts-expect-error`, a lint directive or a test label that says what it checks.
+
+Remove comments that restate the code, tell its history or the alternatives considered, name an issue or a pull
+request, say "(follows X)", or are a long JSDoc on something internal. Commented-out code goes too. Shorten what stays.
+
 ## The protocol
 
 A page is answered as a document, or as JSON to Fondu's client: the server side is `server/protocol.ts` (with

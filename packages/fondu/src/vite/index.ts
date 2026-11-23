@@ -33,62 +33,39 @@ import { nodeServer, prerender, worker } from './prerender.js'
 import { stripRoutes, stripServerCode } from './strip.js'
 import { typegen, walk as walkFiles } from './typegen.js'
 
-/**
- * `vite.config.ts`: `plugins: [fondu({ target: 'node' })]` (or `'bun'`; for Cloudflare: `cloudflare()` and
- * `fondu({ target: 'cloudflare' })`). Composes the packages that do the work:
- * - `@vitejs/plugin-react`
- * - Node / Bun: `@hono/vite-dev-server` (dev); the build is Vite's own, of two environments (`serverEntry()`)
- * - Cloudflare: `@cloudflare/vite-plugin` (yours: dev in workerd, the Worker's build)
- * and adds what none of them does: the app's entry (its pages and layouts, from `app/routes/`), the browser's copy of
- * a page's route file (its server code removed), the document's asset tags, the generated types, the server-only
- * guard. One `vite build` builds the client, then the server, then the pages to prerender.
- */
+/** `vite.config.ts`: `plugins: [fondu({ target: 'node' })]` (or `'bun'`; for Cloudflare: `cloudflare()` and `fondu({ target: 'cloudflare' })`). */
 export interface FonduOptions {
   target: 'node' | 'bun' | 'cloudflare'
   /** `false`: pages render in the browser only, no server render is built (an admin app). Per route: `withoutSsr()` */
   ssr?: boolean
   react?: ReactOptions
-  /**
-   * the bar at the top of the page while a navigation is on its way: its `delay` (ms), its `color`, and whether forms'
-   * submissions show it (`forms`); `false`: none
-   */
+  /** The bar at the top of the page while a navigation is on its way; `false`: none. */
   progress?: ProgressOptions | false
   /**
-   * `true`: a navigation that shows another page runs inside the browser's `document.startViewTransition`, typed
-   * `navigation-forward`, `navigation-back` or `navigation-replace`; the app styles them in CSS. That is a link, a
-   * form, `navigate()`, and Back and Forward. A page that stays does not: `navigate()` with `keep` (it opts in with
-   * `transition: true`) and `reload()`; nor a form's answer at its own URL, and never a shallow navigation. A link or a
-   * call opts out (`data-transition="false"`, `transition: false`). Off by default: a navigation then opts in on its
-   * own (`data-transition`, `navigate(href, { transition: true })`)
+   * `true`: a navigation that shows another page runs inside `document.startViewTransition`, typed `navigation-forward`,
+   * `navigation-back` or `navigation-replace`. Off by default: a navigation opts in with `data-transition`.
    */
   viewTransitions?: boolean
 }
 
 const DEV_CSS = '/@fondu/dev.css'
 const V = {
-  /** the app's entry: the browser's, and the server render's */
   entry: 'virtual:fondu/entry',
   assets: 'virtual:fondu/assets',
   ssr: 'virtual:fondu/ssr',
   serverEntry: 'virtual:fondu/server-entry',
 }
-/** fondu's own `server/static.js`, imported by the built server's entry (by its path: it is not an export of the package) */
 const resolved = (id: string) => '\0' + id
 
-/** the pages, for the app's entry: the route files of `app/routes/` that are React, but what isn't a route */
 const PAGES_GLOB = [
   '/app/routes/**/*.{tsx,mdx}',
   '!/app/routes/**/_*',
   '!/app/routes/**/_*/**',
   '!/app/routes/**/*.{test,spec}.*',
 ]
-/** the error page (`_error.tsx`: a page, though its name says it is no URL) */
 const ERROR_GLOB = '/app/routes/_error.tsx'
 
-/**
- * For the dependency scan: a page's route file as the browser gets it, its server code removed. The scan would find
- * the server's dependencies otherwise, and bundle them for the browser.
- */
+// The scan would find the server's dependencies otherwise, and bundle them for the browser.
 function scanRoutes(root: () => string): Plugin {
   return {
     name: 'fondu:scan-routes',
@@ -109,7 +86,6 @@ function scanRoutes(root: () => string): Plugin {
   }
 }
 
-/** For the dependency scan: an MDX page as the JavaScript @mdx-js/rollup makes of it (nothing without it) */
 function scanMdx(config: () => ResolvedConfig): Plugin {
   return {
     name: 'fondu:scan-mdx',
@@ -125,12 +101,8 @@ function scanMdx(config: () => ResolvedConfig): Plugin {
   }
 }
 
-/**
- * The server never mounts or hydrates a page (it renders with react-dom/server), but fondu/client imports
- * `react-dom/client` (createRoot, hydrateRoot) at its top: the whole of React's browser renderer, loaded at every
- * start (about a third of a Worker, and of its start in dev; about 59 ms of a Node server's). On every target, it is
- * a module that says so if called
- */
+// The server never mounts or hydrates a page, but fondu/client imports `react-dom/client` at its top: React's whole browser
+// renderer, about a third of a Worker and of its start. On every target it is a module that says so if called
 const REACT_DOM_CLIENT = '\0fondu:react-dom-client'
 function serverReactDomClient(): Plugin {
   return {
@@ -178,15 +150,9 @@ function dependencies(root = ''): string[] {
   return Object.keys(pkg.dependencies ?? {}).filter((d) => d !== 'fondu')
 }
 
-/**
- * Node / Bun: the server build's entry, dist/server/index.js. The client build's files first (found next to the
- * server bundle wherever it runs from; hashed files never change), then the app. Node: @hono/node-server's serve()
- * on `PORT` (else 3000), saying where it listens, with a graceful shutdown on SIGTERM / SIGINT (10 s). Bun
- * serves the default export itself, on `PORT` (Bun reads it, else 3000), with the app's
- * `websocket`, if it has one.
- * When routes export `prerender`, the pages the build wrote are served from their files first, with the headers it decided
- * (`prerender.json`, next to this entry).
- */
+// Node / Bun: dist/server/index.js. The client build's files first (found next to the server bundle wherever it runs
+// from), then the app. Node: serve() on `PORT` (else 3000) with a graceful shutdown on SIGTERM / SIGINT (10 s). Bun serves
+// the default export itself.
 function serverEntry(options: FonduOptions, prerendering: Prerendering): Plugin {
   let root = process.cwd()
   let assetsDir = 'assets'
@@ -217,10 +183,8 @@ function serverEntry(options: FonduOptions, prerendering: Prerendering): Plugin 
 function runtimePlugins(options: FonduOptions, prerendering: Prerendering): PluginOption[] {
   return [
     {
-      // dev: the app's .env files (in Vite's `envDir`: `.env`, `.env.local`, `.env.[mode]`, `.env.[mode].local`) are in `process.env`, as the
-      // server code reads them; a variable set already (the shell's, the host's) stays. Vite loads them for
-      // `import.meta.env` only, and for the `VITE_` ones. Cloudflare has its own, `.dev.vars`. The production server
-      // reads them itself (the template's `start` script)
+      // dev: the app's .env files (Vite's `envDir`) go into `process.env`, as server code reads them; a variable already set stays.
+      // Vite loads them for `import.meta.env` only, and only the `VITE_` ones. Cloudflare has its own, `.dev.vars`.
       name: 'fondu:env',
       apply: 'serve',
       configResolved(config) {
@@ -229,8 +193,8 @@ function runtimePlugins(options: FonduOptions, prerendering: Prerendering): Plug
       },
     },
     {
-      // dev: the same Request / Response globals as the production server (@hono/node-server's), which the dev
-      // server's requests are made with: middleware that re-creates the request (hono/body-limit) needs them
+      // dev: the same Request / Response globals as the production server's: middleware that re-creates the request
+      // (hono/body-limit) needs them
       name: 'fondu:node-globals',
       apply: 'serve',
       async configureServer() {
@@ -249,11 +213,8 @@ function runtimePlugins(options: FonduOptions, prerendering: Prerendering): Plug
   ]
 }
 
-/**
- * Dev: the app that fails to load (a route that throws as it is imported) is Vite's error page, which a navigation
- * can't show as a page: it loads the URL as a document instead (409), where Vite's overlay shows the error; the next
- * change reloads it.
- */
+// Dev: the app that fails to load is Vite's error page, which a navigation can't show as a page: it loads the URL as a
+// document instead (409), where Vite's overlay shows the error; the next change reloads it.
 function loadFailure(): Plugin {
   let failed = false
   return {
@@ -270,7 +231,6 @@ function loadFailure(): Plugin {
             next: (e: unknown) => void,
           ) => {
             const navigation = req.headers['x-fondu'] === 'true'
-            // a page failed (not a module of the browser's): the next change reloads it
             if (navigation || req.headers.accept?.includes('text/html')) failed = true
             if (!navigation) return next(error)
             res.writeHead(409, {
@@ -288,7 +248,6 @@ function loadFailure(): Plugin {
   }
 }
 
-/** whether any route exports `prerender`, in a build: known when the config is resolved, before the first build */
 interface Prerendering {
   on: boolean
 }
@@ -349,8 +308,7 @@ function core(options: FonduOptions, prerendering: Prerendering): Plugin {
           ssr: { noExternal: ['fondu'] },
         }
       }
-      // Node / Bun: the client into dist/client, then the server into dist/server (index.js: serverEntry()), then the
-      // pages to prerender. The server bundles all but the app's dependencies, and is minified
+      // Node / Bun: the client into dist/client, then the server into dist/server, then the pages to prerender
       const target = options.target
       const external = isBuild ? dependencies(user.root) : []
       return {
@@ -391,9 +349,8 @@ function core(options: FonduOptions, prerendering: Prerendering): Plugin {
         },
       }
     },
-    // dev: the dependencies are found before the first request (Vite scans index.html by default; an app has none),
-    // so the first page is not reloaded once they are optimized. The scan reads JavaScript: an MDX page is compiled
-    // for it by the app's @mdx-js/rollup; the browser's, a page's route file without its server code
+    // dev: the dependencies are found before the first request (Vite scans index.html by default; an app has none), so the
+    // first page is not reloaded once they are optimized. The scan reads JavaScript, so MDX pages are compiled for it.
     configEnvironment(name, env) {
       const pages = ['app/routes/**/*.{tsx,mdx}']
       const mdx = { extensions: ['.mdx'], rolldownOptions: { plugins: [scanMdx(() => config)] } }
@@ -401,9 +358,8 @@ function core(options: FonduOptions, prerendering: Prerendering): Plugin {
         return {
           optimizeDeps: {
             entries: pages,
-            // the app's entry (virtual:fondu/entry, not scanned) imports fondu/client/internal: both are pre-bundled in
-            // the one run, so they share the one module of the client (one React context, one navigation state).
-            // Only for an installed fondu: a linked one (the workspace's) stays as Vite treats linked packages
+            // both are pre-bundled in one run, so they share one module of the client (one React context, one navigation state);
+            // only for an installed fondu: a linked one stays as Vite treats linked packages
             ...(fonduInstalled() && { include: ['fondu/client', 'fondu/client/internal'] }),
             ...mdx,
             rolldownOptions: {
@@ -412,10 +368,9 @@ function core(options: FonduOptions, prerendering: Prerendering): Plugin {
           },
         }
       if (options.target !== 'cloudflare') return
-      // the Worker: fondu is not pre-bundled (its routes import it back: a bundle would hand them a half-loaded
-      // module), so the scan does not see what it imports (HONO, react, react-dom); nor react-dom/server, imported by
-      // the server render (virtual:fondu/ssr). Found late, they would restart the Worker in the middle of requests.
-      // The build is minified, as Workers start faster with less code to parse
+      // the Worker: fondu is not pre-bundled (its routes import it back: a bundle would hand them a half-loaded module), so the
+      // scan does not see what it imports (HONO, react, react-dom, react-dom/server). Found late, they would restart the Worker
+      // in the middle of requests. Minified, as Workers start faster with less code to parse
       return {
         optimizeDeps: {
           exclude: ['fondu'],
@@ -436,9 +391,8 @@ function core(options: FonduOptions, prerendering: Prerendering): Plugin {
       config = c
       prerendering.on = c.command === 'build' && routesPrerender(c.root)
     },
-    // dev: the CSS the layouts import (the app's own: `import './styles/app.css'` in routes/_layout.tsx), as a
-    // stylesheet in the document, so a server-rendered page is styled at first paint (Vite would add it only once the
-    // JS runs); removed by fondu/client once the page's modules (its layouts: their CSS) are loaded
+    // dev: the CSS the layouts import, as a stylesheet in the document, so a server-rendered page is styled at first paint
+    // (Vite would add it only once the JS runs); removed by fondu/client once the page's layouts are loaded
     configureServer(server) {
       server.middlewares.use(`${config.base}${DEV_CSS.slice(1)}`, async (req, res) => {
         const env = server.environments.client
@@ -450,7 +404,6 @@ function core(options: FonduOptions, prerendering: Prerendering): Plugin {
           )
           const seen = new Set<string>()
           async function visit(servedUrl: string) {
-            // Undo Vite's browser ID encoding, as its transform middleware does.
             const url = servedUrl
               .replace(/^\/@id\/(?:__x00__)?/, (prefix) => (prefix.endsWith('__x00__') ? '\0' : ''))
               .replace(/([?&])import(?=&|$)&?/, '$1')
@@ -531,9 +484,6 @@ function core(options: FonduOptions, prerendering: Prerendering): Plugin {
         )
     },
     load(id) {
-      // the app's entry, in the browser and for the server render: the pages and layouts, whether pages are
-      // prerendered (navigations read their page objects from the static files), the progress bar, whether navigations
-      // transition by default; in dev, the page's props asked for again when what its route depends on changed (hmr.ts)
       if (id === resolved(V.entry)) {
         const dev = this.environment.config.consumer === 'client' && !isBuild
         const settings = {
@@ -550,7 +500,6 @@ function core(options: FonduOptions, prerendering: Prerendering): Plugin {
           `__entry({ ...${glob(PAGES_GLOB)}, ...${glob(ERROR_GLOB)} }, ${JSON.stringify(settings)}, ${glob(ERROR_GLOB, false)}[${JSON.stringify(ERROR_GLOB)}])`,
         ].join('\n')
       }
-      // and React's static markup for a JSX document (react-dom/server: the server render's, or loaded for it)
       if (id === resolved(V.ssr))
         return options.ssr === false
           ? `export const renderPage = null\nexport const renderMarkup = async (el) => (await import('react-dom/server')).renderToStaticMarkup(el)`
@@ -572,7 +521,6 @@ function core(options: FonduOptions, prerendering: Prerendering): Plugin {
           `fondu: ${id.replace(config.root, '')} is server code (routes/*.ts, server.ts, *.server.ts) and cannot be imported by browser code`,
         )
       }
-      // and a page's route file as it is (`?raw`, `?url`…): the browser's copy is the page alone
       const [file, query] = id.split('?')
       if (
         this.environment.config.consumer === 'client' &&
@@ -602,9 +550,8 @@ const isServerOnly = (id: string, root: string) => {
 }
 
 /**
- * The built Worker's config: URLs ending in index go to the Worker first. Static assets would answer them with the
- * page of their directory (`/docs/index` → `docs/index.html`, redirected to `/docs/`), while a route (a param's value)
- * may be theirs. Added to the app's own `run_worker_first`, unless it is `true` (every request first) already.
+ * The built Worker's config: URLs ending in index go to the Worker first, as static assets would answer them with the page
+ * of their directory (`/docs/index` → `docs/index.html`). Added to the app's own `run_worker_first`, unless it is `true`.
  */
 function workerFirstForIndex(file: string) {
   const config = JSON.parse(readFileSync(file, 'utf8')) as {

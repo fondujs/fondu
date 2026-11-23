@@ -3,13 +3,9 @@ import { createRequire } from 'node:module'
 import { dirname, join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
-/**
- * The dev server's own `@hono/node-server`, as an ES module (its CommonJS build would be another class): found
- * through `@hono/vite-dev-server` (its dependency, not the app's), by the path of its main file (`dist/index.js`, a
- * directory below the package) and by the shape of its `exports` (`'.'`: `import`, a path or `{ default }`). That is
- * what this relies on: when it no longer holds, the error says so (test/node-globals.test.ts runs it on the
- * installed version).
- */
+// The dev server's own `@hono/node-server`, as an ES module (its CommonJS build would be another class), found through
+// `@hono/vite-dev-server` by the path of its main file and the shape of its `exports`. When that no longer holds the
+// error says so (test/node-globals.test.ts runs it on the installed version).
 export async function devServerNodeServer(
   devServer = createRequire(import.meta.url).resolve('@hono/vite-dev-server'),
 ): Promise<{ getRequestListener: (fetch: () => Response) => unknown }> {
@@ -24,7 +20,7 @@ export async function devServerNodeServer(
   }
   let dir = ''
   try {
-    dir = dirname(dirname(createRequire(devServer).resolve('@hono/node-server'))) // …/dist/index.js
+    dir = dirname(dirname(createRequire(devServer).resolve('@hono/node-server')))
   } catch (error) {
     return fail('it cannot be resolved', error)
   }
