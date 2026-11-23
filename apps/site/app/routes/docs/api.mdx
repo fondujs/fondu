@@ -67,17 +67,16 @@ only for a reason, and keep a policy that sends `Referer` to this site.
 
 ### Route exports
 
-| Export                                             | Is                                                                                                                                    |
-| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `default` (in a `.tsx` file)                       | the page, rendered by `render()`, or on GET without a loader                                                                          |
-| `layout`                                           | `[Site, Feature]`: the [layouts](/docs/layouts#choose-the-layouts-around-a-page-or-section) of a page, in place of the inherited ones |
-| `loader` (in a `.tsx` file)                        | GET                                                                                                                                   |
-| `action` (in a `.tsx` file)                        | POST                                                                                                                                  |
-| `actions = { name }` (in a `.tsx` file)            | POST `?name` (`action` or `actions`, not both)                                                                                        |
-| `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS` | HTTP handlers (in a `.ts` file)                                                                                                       |
-| `prerender`                                        | `true`, `false` or a function listing params: a [static page](/docs/static-pages); any route exporting it turns prerendering on       |
-| `params`                                           | `{ name: ['value', …] }`: the [values a param takes](/docs/routes#the-values-of-a-param)                                              |
-| `default` (in `_middleware.ts`)                    | the directory's middleware                                                                                                            |
+| Export                                             | Is                                                                                                                              |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `default` (in a `.tsx` file)                       | the page, rendered by `render()`, or on GET without a loader                                                                    |
+| `loader` (in a `.tsx` file)                        | GET                                                                                                                             |
+| `action` (in a `.tsx` file)                        | POST                                                                                                                            |
+| `actions = { name }` (in a `.tsx` file)            | POST `?name` (`action` or `actions`, not both)                                                                                  |
+| `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS` | HTTP handlers (in a `.ts` file)                                                                                                 |
+| `prerender`                                        | `true`, `false` or a function listing params: a [static page](/docs/static-pages); any route exporting it turns prerendering on |
+| `params`                                           | `{ name: ['value', …] }`: the [values a param takes](/docs/routes#the-values-of-a-param)                                        |
+| `default` (in `_middleware.ts`)                    | the directory's middleware                                                                                                      |
 
 ### Route files
 

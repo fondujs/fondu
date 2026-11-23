@@ -44,27 +44,24 @@ export const params = { lang: ['de', 'fr'] }
 
 ## What each file exports
 
-| File             | Exports                                                                              |
-| ---------------- | ------------------------------------------------------------------------------------ |
-| `.tsx`           | the page (default), `layout`, `loader`, `action` or `actions`, `prerender`, `params` |
-| `.ts`            | `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS`, `prerender`, `params`            |
-| `.mdx`           | its content and optional `layout`: no handlers; `share()` props are in `props`       |
-| `_middleware.ts` | its middleware (default), `prerender`, `params`                                      |
-| `_error.tsx`     | the component (default)                                                              |
-| `_layout.tsx`    | the component (default), optional `layout`                                           |
+| File                        | Exports                                                                    |
+| --------------------------- | -------------------------------------------------------------------------- |
+| `.tsx`                      | the page (default), `loader`, `action` or `actions`, `prerender`, `params` |
+| `.ts`                       | `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS`, `prerender`, `params`  |
+| `.mdx`                      | its content: no handlers; `share()` props are in `props`                   |
+| `_middleware.ts`            | its middleware (default), `prerender`, `params`                            |
+| `_layout.tsx`, `_error.tsx` | the component (default)                                                    |
 
 Any other export fails `vite build`. A value of the wrong kind stops the app at startup: `loader`, `action`, the values
 of `actions` (none is `undefined`) and the HTTP methods are handlers (`defineHandler(...)`), a `_middleware.ts`'s default is
-a middleware (a function), `prerender` is `true`, `false` or a function, and a `layout` lists each component once.
+a middleware (a function), `prerender` is `true`, `false` or a function.
 
 An MDX page can't export handlers, `prerender` or `params` (put `prerender` in a `.tsx` route or a `_middleware.ts`).
-`layout` is reserved in MDX (since 0.20.0); any other export is allowed, but Fondu may reserve new names in a minor
-release.
+Any other export is allowed, but Fondu may reserve new names in a minor release.
 
 What else stops the app: a `.jsx` route file, a `_error.tsx` in a directory (one error page: `routes/_error.tsx`),
 `params` that no route has as `[name]` or `[[name]]`, `params` for a catch-all's name, a route under `/_fondu/`
-(Fondu's one reserved prefix), `layout` that is not `export const layout = [Site, Feature]` or `[]` in the file itself
-(`export *` from a module with `layout` too). A redirect to `javascript:`, `data:` or `vbscript:` is a 500.
+(Fondu's one reserved prefix). A redirect to `javascript:`, `data:` or `vbscript:` is a 500.
 
 ## A page
 
@@ -134,7 +131,6 @@ export default function Layout({ children }: { children: ReactNode }) {
 - A layout stays mounted while pages change, so its state is kept. It has no loader: `share()` gives it props, and
   `usePage()` reads them. A `loader` or `action` exported from a layout (or `_error.tsx`) fails the build and the
   server's start.
-- A TSX/MDX page or `_layout.tsx` may export `const layout = [Site, Feature]` using imported components, outermost first. This replaces **all** inherited parents, root included. On a directory layout its own component still wraps its children. A print page can use `[]`: no layout provider, but still the document and the same Hono middleware. React preserves only the shared outer prefix. A layout in a chain receives only `children`.
 - A layout is in the JavaScript of its pages only.
 
 ## Error page and middleware

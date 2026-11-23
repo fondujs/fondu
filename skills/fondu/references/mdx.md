@@ -35,8 +35,7 @@ Some **Markdown**, and a component: <Counter />
 
 - It has no handlers. A `_middleware.ts` around it can `share()` props, which are in `props` (`{props.title}`), and set
   `prerender`.
-- It renders inside the `_layout.tsx` files above it. `export const layout = [Site]` chooses them (see
-  [routes-and-pages.md](routes-and-pages.md)).
+- It renders inside the `_layout.tsx` files above it.
 - To change what the Markdown becomes (links, tables), use MDX's `providerImportSource` with `@mdx-js/react`'s
   `MDXProvider` in a layout.
 - In development, an edit updates the page in place (React Fast Refresh).
@@ -44,5 +43,4 @@ Some **Markdown**, and a component: <Counter />
 ## Exports
 
 An MDX page can't export `loader`, `action`, `actions`, HTTP methods, `prerender` or `params`: the app stops at
-startup. Put `prerender` in a `.tsx` route or a `_middleware.ts`. `layout` is reserved (since 0.20.0). Any other export
-is allowed, but Fondu may reserve new names in a minor release.
+startup. Put `prerender` in a `.tsx` route or a `_middleware.ts`. Any other export is allowed, but Fondu may reserve new names in a minor release.

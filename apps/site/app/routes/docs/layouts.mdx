@@ -3,7 +3,7 @@ stays mounted while navigations move between the pages it wraps, so its state (a
 
 ## `_layout.tsx`
 
-By default, a `_layout.tsx` in a directory of `app/routes/` wraps every page below it. Its default export is a component that
+A `_layout.tsx` in a directory of `app/routes/` wraps every page below it. Its default export is a component that
 renders the page as `children`:
 
 ```tsx
@@ -22,7 +22,7 @@ export default function Layout({ children }: { children: ReactNode }) {
 }
 ```
 
-By default the root layout is around every page, the [error page](/docs/errors) too: the place to import the app's CSS. Layouts
+The root layout is around every page, the [error page](/docs/errors) too: the place to import the app's CSS. Layouts
 nest with the directories, outermost first:
 
 ```
@@ -59,28 +59,10 @@ app/routes/
 
 A part that should not sit inside a layout goes in a directory beside it: `admin/` is not in `(marketing)/`.
 
-## Choose the layouts around a page or section
-
-Omit `layout` to inherit. To choose the **entire** chain, export a static list of imported components, outermost first. The same declaration works in TSX and MDX:
-
-```mdx
-import Site from '../_layout.tsx'
-import { Feature } from './_feature.tsx'
-
-export const layout = [Site, Feature]
-
-# Annual review
-```
-
-This article keeps `Site`, not the ordinary blog sidebar. The list is final: Fondu does not add a root or look up the components' own parents. A component listed twice stops the app at startup and fails the build. A layout in a chain receives only `children`.
-
-A directory `_layout.tsx` can declare `export const layout = [Workspace]` too: its pages get `Workspace → this directory's layout → page`. Nested layouts inherit that chain unless they replace it. A page with `export const layout = []` uses no route layouts at all. It still gets the HTML document, and all the same middleware, authorization, loaders and actions. A provider or stylesheet supplied only by an omitted shell is not a global guarantee.
-
-React keeps the common outer components mounted. Going from `[Site, Blog]` to `[Site, Feature]` keeps a search field in `Site`; a field in `Blog` is unmounted, not cached for Back.
-
 ## Code-split with their pages
 
-A layout is in the JavaScript of its pages only: a visitor of the home page doesn't download the docs' sidebar. The client loads the page's selected layouts with it, whether inherited or explicitly imported.
+A layout is in the JavaScript of its pages only: a visitor of the home page doesn't download the docs' sidebar. The
+client loads a page's `_layout.tsx` files with it, found by the page's route file.
 
 ## Files that are not routes
 

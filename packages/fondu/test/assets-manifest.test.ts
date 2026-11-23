@@ -27,10 +27,10 @@ const manifest = {
     file: 'assets/docs-layout-D.js',
     imports: ['_shared.js', '_ui-alias.js'],
   },
-  'app/routes/docs/intro.tsx?fondu-view': {
+  'app/routes/docs/intro.tsx': {
     file: 'assets/docs-intro-I.js',
     css: ['assets/docs-intro-I.css'],
-    imports: ['app/routes/_layout.tsx', 'app/routes/docs/_layout.tsx', '_shared.js', '_ui.js'],
+    imports: ['_shared.js', '_ui.js'],
   },
 }
 
@@ -60,10 +60,10 @@ describe('the route manifest', () => {
     expect(byPage['docs/intro']).toEqual({
       css: ['assets/layout-L.css', 'assets/docs-intro-I.css'],
       js: [
-        'assets/docs-intro-I.js',
         'assets/layout-L.js',
         'assets/ui-U.js',
         'assets/docs-layout-D.js',
+        'assets/docs-intro-I.js',
       ],
     })
     for (const { css, js } of Object.values(byPage)) {
@@ -84,10 +84,10 @@ describe('the route manifest', () => {
         '<link rel="stylesheet" href="/assets/layout-L.css">',
         '<link rel="stylesheet" href="/assets/docs-intro-I.css">',
         '<link rel="modulepreload" href="/assets/shared-S.js">',
-        '<link rel="modulepreload" href="/assets/docs-intro-I.js">',
         '<link rel="modulepreload" href="/assets/layout-L.js">',
         '<link rel="modulepreload" href="/assets/ui-U.js">',
         '<link rel="modulepreload" href="/assets/docs-layout-D.js">',
+        '<link rel="modulepreload" href="/assets/docs-intro-I.js">',
         '<script type="module" src="/assets/entry-E.js"></script>',
       ].join(''),
     )

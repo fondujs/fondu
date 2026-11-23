@@ -59,9 +59,6 @@ const CSP = {
 
 const ROOT = '/app/routes/'
 
-const layoutComponent = (value: unknown) =>
-  typeof value === 'function' || (typeof value === 'object' && value !== null)
-
 const kind = (value: unknown) =>
   value === null ? 'null' : Array.isArray(value) ? 'a list' : typeof value
 
@@ -103,16 +100,6 @@ function checkValues(file: string, mod: Record<string, unknown>) {
 export function checkExports(file: string, mod: Record<string, unknown>) {
   checkExportNames(file, Object.keys(mod))
   checkValues(file, mod)
-  if (
-    'layout' in mod &&
-    (!Array.isArray(mod.layout) ||
-      mod.layout.some((parent: unknown) => parent === mod.default || !layoutComponent(parent)))
-  )
-    throw new Error(
-      `fondu: routes/${file}: layout must list React components other than the module's own default export`,
-    )
-  if ('layout' in mod && new Set(mod.layout as unknown[]).size !== (mod.layout as unknown[]).length)
-    throw new Error(`fondu: routes/${file}: layout lists the same component twice`)
   if (/\.(?:tsx|mdx)$/.test(file) && typeof mod.default !== 'function')
     throw new Error(
       `fondu: routes/${file} is a page: its default export is the component (code for the server only: a .ts file)`,

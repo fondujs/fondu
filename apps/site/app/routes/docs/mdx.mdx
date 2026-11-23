@@ -58,8 +58,7 @@ that layout.
 
 In development, an edit to an MDX page updates it in place (React Fast Refresh), as for a `.tsx` page. An MDX page
 can't export handlers (`loader`, `action`, `actions`, the HTTP methods), `prerender` or `params`: the app stops, and a
-`prerender` goes in a `.tsx` route or a `_middleware.ts`. `layout` is reserved (since 0.20.0): it chooses the page's
-[layouts](/docs/layouts#choose-the-layouts-around-a-page-or-section). Any other export is allowed (a table of contents
+`prerender` goes in a `.tsx` route or a `_middleware.ts`. Any other export is allowed (a table of contents
 a rehype plugin adds, say), but Fondu may reserve new export names in a minor release.
 
 Remark and rehype plugins go in `mdx()`'s options: this site uses `remark-gfm` for tables, `rehype-slug` for heading

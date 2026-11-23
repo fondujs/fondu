@@ -204,12 +204,8 @@ function exportsOf(file: string): { allowed: readonly string[]; hint: string } {
   const name = file.split('/').at(-1)!
   if (name === '_middleware.ts')
     return { allowed: ['default', ...CONFIG], hint: 'its middleware (default), prerender, params' }
-  if (name === '_error.tsx') return { allowed: ['default'], hint: 'its component (default)' }
-  if (name === '_layout.tsx')
-    return {
-      allowed: ['default', 'layout'],
-      hint: 'its component (default) and optional layout chain',
-    }
+  if (/^_(?:layout|error)\.tsx$/.test(name))
+    return { allowed: ['default'], hint: 'its component only (default)' }
   if (file.endsWith('.mdx'))
     return {
       allowed: [],
@@ -221,8 +217,8 @@ function exportsOf(file: string): { allowed: readonly string[]; hint: string } {
       hint: 'GET, POST, PUT, PATCH, DELETE, OPTIONS, prerender, params',
     }
   return {
-    allowed: ['default', 'layout', ...HANDLERS, ...CONFIG],
-    hint: 'its page (default), layout, loader, action or actions, prerender, params; the rest goes to a module of its own',
+    allowed: ['default', ...HANDLERS, ...CONFIG],
+    hint: 'its page (default), loader, action or actions, prerender, params; the rest goes to a module of its own',
   }
 }
 
@@ -234,6 +230,10 @@ const INSTEAD = {
 
 // The server checks the exports of the loaded module at startup, the build the names in the source: one message.
 export function checkExportNames(file: string, names: readonly string[]): void {
+  if (names.includes('layout') && /\.(?:tsx|mdx)$/.test(file) && !file.endsWith('_error.tsx'))
+    throw new Error(
+      `fondu: routes/${file} exports layout: layout chains were removed in 0.21; use directory _layout.tsx files and route groups (see https://fondu.dev/docs/layouts)`,
+    )
   const { allowed, hint } = exportsOf(file)
   const mdx = file.endsWith('.mdx')
   const extra = names.filter((k) =>

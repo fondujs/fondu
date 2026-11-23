@@ -15,7 +15,7 @@ import {
 import { flushSync } from 'react-dom'
 import { createRoot, hydrateRoot } from 'react-dom/client'
 
-import { compare, decoded, pageId, routePatterns } from '../paths.js'
+import { compare, decoded, layoutsOf, pageId, routePatterns } from '../paths.js'
 import type { Flash, Shared } from '../types.js'
 import { again, inBrowser, startNavigation, type PageObject } from './navigation.js'
 import { progressBar, type ProgressOptions } from './progress.js'
@@ -25,21 +25,24 @@ type PageComponent = ComponentType<Record<string, unknown>>
 type Loader = () => Promise<unknown>
 
 const ROUTES = '/app/routes/'
+const ERROR = '_error'
 
 // set by the app's entry (the Vite plugin's): the pages and layouts of app/routes/, and the build's settings
 let pages = new Map<string, Loader>()
+let layoutModules: Record<string, Loader> = {}
 // the pages in the server's order: segment by segment from the first
 let routes: Array<{ id: string; pattern: string; segments: string[] }> = []
 
 /** @internal The app's entry, written by the Vite plugin. In the browser it hydrates the server's page and starts navigating. */
 export function __entry(
   pageModules: Record<string, Loader>,
+  layouts: Record<string, Loader>,
   settings: { prerender: boolean; progress: ProgressOptions | false; viewTransitions: boolean },
-  errorComponent?: Loader,
 ) {
   pages = new Map(
     Object.entries(pageModules).map(([key, loader]) => [pageId(key.slice(ROUTES.length)), loader]),
   )
+  layoutModules = layouts
   routes = [...pages.keys()]
     .filter((id) => !id.split('/').some((s) => s.startsWith('_')))
     .flatMap((id) =>
@@ -49,17 +52,22 @@ export function __entry(
       }),
     )
     .sort((a, b) => compare(a.pattern, b.pattern))
-  if (typeof document !== 'undefined') start(settings, errorComponent)
+  if (typeof document !== 'undefined') start(settings)
 }
 
-/** Vite compiles inherited layouts into the same `layout` export as an explicit chain. */
+const defaultOf = async (loader: Loader) => ((await loader()) as { default: never }).default
+
+/** a page's component, and the `_layout.tsx` files of its directories it's drawn in, outermost first */
 async function load(component: string): Promise<Shown['view']> {
   const page = pages.get(component)
   if (!page) throw new Error(`fondu: there is no page "${component}" in app/routes/`)
-  const { default: Component, layout: layouts } = (await page()) as {
-    default: PageComponent
-    layout: Layout[]
-  }
+  const chain = layoutsOf(component)
+    .map((dir) => `${ROUTES}${dir ? `${dir}/` : ''}_layout.tsx`)
+    .filter((k) => k in layoutModules)
+  const [Component, ...layouts] = await Promise.all([
+    defaultOf(page) as Promise<PageComponent>,
+    ...chain.map((k) => defaultOf(layoutModules[k]!) as Promise<Layout>),
+  ])
   return { Component, layouts }
 }
 
@@ -188,7 +196,7 @@ function setNavigation(
   for (const l of listeners) l()
 }
 
-function start(settings: Parameters<typeof __entry>[1], errorComponent?: Loader) {
+function start(settings: Parameters<typeof __entry>[2]) {
   const progress = settings.progress
   if (progress)
     subscribe(
@@ -204,7 +212,9 @@ function start(settings: Parameters<typeof __entry>[1], errorComponent?: Loader)
   if (!data || !root)
     throw new Error('fondu: the document has no page (script[data-page="app"], #app)')
   const initial = JSON.parse(data) as PageObject
-  void errorComponent?.().then((m) => (ErrorPage = (m as { default: typeof ErrorPage }).default))
+  void pages
+    .get(ERROR)?.()
+    .then((m) => (ErrorPage = (m as { default: typeof ErrorPage }).default))
   void load(initial.component).then((view) => {
     // dev: the stylesheet the server gave the page until its layouts brought their CSS (they have now)
     document.querySelector('[data-fondu-dev-css]')?.remove()

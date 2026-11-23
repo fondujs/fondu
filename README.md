@@ -31,8 +31,6 @@ on Cloudflare Workers with D1 and Better Auth.
 
 ## Docs
 
-Pages inherit directory layouts by default. A page or directory layout can [select its outer layouts](https://fondu.dev/docs/layouts) with `export const layout = [Site, Feature]`, or `[]` for none.
-
 **[fondu.dev](https://fondu.dev/docs)**: routes, pages and props, navigation, layouts, forms and validation, errors,
 type safety, server and client code, server-side rendering, static pages, MDX pages, internationalization, deploying,
 and the API. Every page is also Markdown for coding agents ([llms.txt](https://fondu.dev/llms.txt)).

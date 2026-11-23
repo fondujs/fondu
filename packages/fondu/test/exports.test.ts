@@ -33,19 +33,22 @@ describe('a route file has one spelling per handler', () => {
   })
   test('a .tsx file with GET: a page has loader', () => {
     expect(() => checkExports('a.tsx', { default: Page, GET: handler })).toThrow(
-      'fondu: routes/a.tsx exports `GET`. It exports its page (default), layout, loader, action or actions',
+      'fondu: routes/a.tsx exports `GET`. It exports its page (default), loader, action or actions',
     )
   })
-  test('a layout lists functions or non-null objects, but not the page itself', () => {
-    expect(() =>
-      checkExports('print.tsx', { default: Page, layout: [() => null, {}] }),
-    ).not.toThrow()
-    for (const layout of [[Page], [42], ['aside'], [null], [Symbol('not a component')], null, {}])
-      expect(() => checkExports('print.tsx', { default: Page, layout })).toThrow(
-        'routes/print.tsx: layout must list React components',
-      )
+  test('layout chains were removed: a page, an MDX page and a _layout.tsx say what to use', () => {
+    const message = (file: string) =>
+      `fondu: routes/${file} exports layout: layout chains were removed in 0.21; use directory _layout.tsx files and route groups (see https://fondu.dev/docs/layouts)`
+    for (const file of ['print.tsx', 'blog/post.mdx', 'blog/_layout.tsx'])
+      for (const layout of [[], [Page], undefined])
+        expect(() => checkExports(file, { default: Page, layout })).toThrow(message(file))
+  })
+  test('layout in a .ts file or _error.tsx is any other extra export', () => {
+    expect(() => checkExports('a.ts', { layout: [] })).toThrow(
+      'fondu: routes/a.ts exports `layout`',
+    )
     expect(() => checkExports('_error.tsx', { default: Page, layout: [] })).toThrow(
-      'routes/_error.tsx exports `layout`',
+      'fondu: routes/_error.tsx exports `layout`',
     )
   })
   test('a .ts file with GET and POST, a .tsx file with loader and action: accepted', () => {
@@ -143,12 +146,5 @@ describe('the value of an export', () => {
         ).toThrow(`fondu: routes/${file}: prerender is true, false or a function`)
     for (const prerender of [true, false, () => [], async () => []])
       expect(() => checkExports('x.tsx', { default: Page, prerender })).not.toThrow()
-  })
-  test('a layout lists each component once', () => {
-    const Site = () => null
-    expect(() => checkExports('x.tsx', { default: Page, layout: [Site, Site] })).toThrow(
-      'fondu: routes/x.tsx: layout lists the same component twice',
-    )
-    expect(() => checkExports('x.tsx', { default: Page, layout: [Site, () => null] })).not.toThrow()
   })
 })
