@@ -54,9 +54,8 @@ export function productionAssets(config: ResolvedConfig, options: FonduOptions):
     // Layouts are static imports of the page, including its inherited chain.
     const page = tags(key)
     // each file once, without the entry's: assetTags() adds those to every page
-    const own = (files: string[], entryFiles: string[]) => [
-      ...new Set(files.filter((f) => !entryFiles.includes(f))),
-    ]
+    const own = (files: string[], entryFiles: string[]) =>
+      files.filter((f) => !entryFiles.includes(f))
     pages[pageId(file)] = {
       css: own(page.css, entry.css),
       js: own(page.js, entry.js),
@@ -69,8 +68,8 @@ const byPage = ${JSON.stringify(pages)}
 export const version = ${JSON.stringify(version)}
 export function assetTags(component, nonce) {
   const page = byPage[component] ?? { css: [], js: [] }
-  const css = [...new Set([...entry.css, ...page.css])]
-  const [main, ...preload] = new Set([...entry.js, ...page.js])
+  const css = [...entry.css, ...page.css]
+  const [main, ...preload] = [...entry.js, ...page.js]
   return css.map((f) => \`<link rel="stylesheet" href="\${base}\${f}">\`).join('')
     + preload.map((f) => \`<link rel="modulepreload" href="\${base}\${f}"${nonceAttr}>\`).join('')
     + \`<script type="module" src="\${base}\${main}"${nonceAttr}></script>\`
