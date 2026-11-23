@@ -78,7 +78,7 @@ test('a wildcard exporting layout is diagnosed, not silently treated as inherita
   }
 })
 
-test.for(Array.from({ length: 30 }, (_, i) => i))('DIAG editing %i', { timeout: 60000 }, async (n) => {
+test.for(Array.from({ length: 100 }, (_, i) => i))('DIAG editing %i', { timeout: 60000 }, async (n) => {
   const t0 = performance.now()
   const lap = (m: string) => console.log(`DIAG ${n} ${m} +${Math.round(performance.now() - t0)}ms`)
   const app = tempApp({
@@ -104,10 +104,20 @@ test.for(Array.from({ length: 30 }, (_, i) => i))('DIAG editing %i', { timeout: 
         },
       },
       fondu({ target: 'node' }),
+      {
+        name: 'diag-hot',
+        hotUpdate({ file, type }) {
+          if (file.endsWith('topic.mdx'))
+            lap(`hotUpdate ${this.environment.name} ${type} content=${JSON.stringify(readFileSync(file, 'utf8'))}`)
+        },
+      },
     ],
   })
   try {
     const routes = join(app.root, 'app/routes')
+    dev.watcher.on('all', (ev, f) => {
+      if (f.endsWith('topic.mdx')) lap(`watcher ${ev}`)
+    })
     lap('created')
     await listenForEdits(dev, routes, 'topic.mdx')
     lap('listening and watched')
