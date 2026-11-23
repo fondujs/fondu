@@ -2,6 +2,7 @@ import { MDXProvider } from '@mdx-js/react'
 import { usePage } from 'fondu/client'
 import { ChevronDown, ChevronLeft, ChevronRight, Menu } from 'lucide-react'
 import { useEffect, useState, type ComponentProps, type ReactNode } from 'react'
+import dates from 'virtual:doc-dates'
 
 import { CodeTabs, Pre } from '#/components/code.tsx'
 import { CopyPrompt } from '#/components/copy-prompt.tsx'
@@ -64,6 +65,7 @@ export default function DocsLayout({ children }: { children: ReactNode }) {
   const i = docs.indexOf(doc)
   const [prev, next] = [docs[i - 1], docs[i + 1]]
   const current = useCurrentHeading(props.toc)
+  const modified = dates[docUrl(doc)]?.modified
   return (
     <>
       <div className="sticky top-0 z-30 flex h-12 items-center justify-between gap-2 border-b bg-background/88 px-4 backdrop-blur-md sm:px-6 lg:hidden">
@@ -120,6 +122,17 @@ export default function DocsLayout({ children }: { children: ReactNode }) {
             <MarkdownActions url={markdownUrl(doc)} />
             <MDXProvider components={components}>{children}</MDXProvider>
           </article>
+          {modified && (
+            <p className="mt-10 text-sm text-muted-foreground" data-pagefind-ignore>
+              Last updated{' '}
+              <time dateTime={modified}>
+                {new Date(modified).toLocaleDateString('en-US', {
+                  dateStyle: 'long',
+                  timeZone: 'UTC',
+                })}
+              </time>
+            </p>
+          )}
           <nav
             aria-label="Previous and next"
             className="mt-14 grid gap-3 border-t pt-6 sm:grid-cols-2"

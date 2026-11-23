@@ -16,3 +16,5 @@ bun run preview    # the production build, locally
 ## Deploy (by hand)
 
 With the fondu.dev zone on the same Cloudflare account: `bunx wrangler login` once, then `bun run deploy`.
+
+The pages' dates (`Last updated`, `dateModified`, the sitemap's `lastmod`) come from git: build with the full history, as a shallow clone leaves them out (the build says so).
