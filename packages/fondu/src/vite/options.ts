@@ -1,12 +1,9 @@
+import { isObject, portHint, show } from '../option-checks.js'
 import type { FonduOptions } from './index.js'
 
 const TARGETS = ['node', 'bun', 'cloudflare']
 const KEYS = ['target', 'react', 'progress', 'viewTransitions']
 const PROGRESS_KEYS = ['delay', 'color', 'forms']
-
-const isObject = (v: unknown): v is Record<string, unknown> =>
-  typeof v === 'object' && v !== null && !Array.isArray(v)
-const show = (v: unknown) => (typeof v === 'string' ? `'${v}'` : String(v))
 
 // Fails at once with the option's name and what it may be: a `vite.config.js` or a cast has no type check. `react` is
 // @vitejs/plugin-react's: its keys as its types define them, and the keys it gets later are its own to refuse.
@@ -21,10 +18,7 @@ export function checkOptions(options: unknown): asserts options is FonduOptions 
     const extra = keys.filter((k) => !allowed.includes(k))
     if (extra.length)
       fail(
-        `unknown option${extra.length > 1 ? 's' : ''} ${extra.map((k) => `\`${prefix}${k}\``).join(', ')}. The options are ${allowed.join(', ')}` +
-          (!prefix && extra.includes('port')
-            ? '. There is no `port` option: the built server listens on the environment variable `PORT`, else 3000 (`PORT=8080 node dist/server/index.js`)'
-            : ''),
+        `unknown option${extra.length > 1 ? 's' : ''} ${extra.map((k) => `\`${prefix}${k}\``).join(', ')}. The options are ${allowed.join(', ')}${prefix ? '' : portHint(extra)}`,
       )
   }
   if ('prerender' in options)
