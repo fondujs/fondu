@@ -32,6 +32,9 @@ Returns the Hono app made of `app/routes/`. It has CSRF protection, security hea
 The options are checked when `createApp()` is called: an unknown option (there is no `port`), a wrong type, or a
 `bodyLimit` that is not a positive number or `false` throws `fondu: createApp(): …`.
 
+`secureHeaders` sets `Referrer-Policy: same-origin` by default, and `back()` relies on it: with a policy that sends no
+`Referer` to this site, `back()` goes to its fallback.
+
 `bodyLimit` reads the body in memory: raise it only a little. A limit by path: [forms.md](forms.md#files-and-nested-fields).
 
 The default Content Security Policy: `default-src 'self'`; scripts of the site or with the request's nonce; inline
@@ -59,12 +62,13 @@ replace Fondu's.
 `fondu(options)` from `fondu/vite`: The options are checked when the plugin is created: `target` is required, and an unknown option fails. There is
 no `port` option: the built server (Bun and Node) listens on `PORT`, else 3000.
 
-| Option     | Is                                                                                                                                                  |
-| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `target`   | `'bun'`, `'cloudflare'` or `'node'`                                                                                                                 |
-| `ssr`      | `false`: pages render in the browser only                                                                                                           |
-| `progress` | the progress bar: `{ color, delay, forms }`, or `false`                                                                                             |
-| `react`    | passed to `@vitejs/plugin-react` (its `include` has `.mdx` by default): https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react |
+| Option            | Is                                                                                                                                                  |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `target`          | `'bun'`, `'cloudflare'` or `'node'`                                                                                                                 |
+| `ssr`             | `false`: pages render in the browser only                                                                                                           |
+| `progress`        | the progress bar: `{ color, delay, forms }` (default: the text color, 350 ms, forms included), or `false`                                           |
+| `viewTransitions` | `true`: every navigation runs inside the browser's view transition by default, and a link or call opts out: [navigation.md](navigation.md)          |
+| `react`           | passed to `@vitejs/plugin-react` (its `include` has `.mdx` by default): https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react |
 
 On Cloudflare, the Cloudflare plugin comes first:
 `plugins: [cloudflare({ viteEnvironment: { name: 'ssr' } }), fondu({ target: 'cloudflare' })]`.
@@ -123,3 +127,17 @@ export const GET = defineHandler((c) => c.json({ ok: true }))
 - Built assets in `/assets/` are cached for a year; pages are `Cache-Control: private, no-cache`.
   A document is `Vary: X-Fondu`; a navigation also varies on `X-Fondu-Version`, `X-Fondu-Only` and `X-Fondu-Component`.
   Some CDNs ignore custom `Vary` headers: check yours before caching pages publicly.
+
+## For proxies, CDNs and tests
+
+Header names, cookie names and `/_fondu/*` paths between Fondu's server and client are internal and may change in any
+release. What can be relied on: `Vary` as above, and `Vary: Accept` on a response that `Accept` chooses; a navigation
+(`X-Fondu: true`) from an old build is a 409 with `X-Fondu-Location`, the URL to load as a document. Statuses Fondu
+answers itself: 303 (`back()`, a form's `ValidationError`), 400 (a body or query that is not one object), 405 (with
+`Allow`), 409, 413 (over `bodyLimit`), 415 (a body that is neither JSON nor form data), 422 (`ValidationError` for an API
+client, a GET with an invalid query), 499 (the client left).
+
+## Versioning
+
+Before 1.0, a minor release may break an app and a patch release does not. A type that starts to reject code that
+already misbehaves at runtime is a fix, not a break.

@@ -57,6 +57,15 @@ Any other export fails `vite build`. A value of the wrong kind stops the app at 
 of `actions` and the HTTP methods are handlers (`defineHandler(...)`), `prerender` is `true`, `false` or a function, and a
 `layout` lists each component once.
 
+An MDX page can't export handlers, `prerender` or `params` (put `prerender` in a `.tsx` route or a `_middleware.ts`).
+`layout` is reserved in MDX (since 0.20.0); any other export is allowed, but Fondu may reserve new names in a minor
+release.
+
+What else stops the app: a `.jsx` route file, a `_error.tsx` in a directory (one error page: `routes/_error.tsx`),
+`params` that no route has as `[name]` or `[[name]]`, `params` for a catch-all's name, `layout` that is not
+`export const layout = [Site, Feature]` or `[]` in the file itself (`export *` from a module with `layout` too). A
+redirect to `javascript:`, `data:` or `vbscript:` is a 500.
+
 ## A page
 
 ```tsx

@@ -97,6 +97,8 @@ receives it.
 - A `bigint` is a type error, as `JSON.stringify` throws on it.
 - Unions, tuples and readonly arrays keep their shape.
 
+These rules are guaranteed; the exact shape of the `bigint` error is not.
+
 `render()` takes what becomes the page's type: a page that declares `AsJson<Row>` gets a `Row` (with its `Date`) from the
 loader. Don't rewrite the row's type by hand (`Omit<Row, 'createdAt'> & { createdAt: string }`).
 

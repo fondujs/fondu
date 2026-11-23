@@ -26,6 +26,11 @@ describe('a route file has one spelling per handler', () => {
       /`loader`, `action`.*`loader`: in a \.ts file it is `GET`; `action`: in a \.ts file it is `POST`/,
     )
   })
+  test('an MDX page with prerender: put it in a .tsx route or a _middleware.ts', () => {
+    expect(() => checkExports('a.mdx', { default: Page, prerender: true })).toThrow(
+      "fondu: routes/a.mdx: an MDX page can't export prerender: put it in a .tsx route or a _middleware.ts",
+    )
+  })
   test('a .tsx file with GET: a page has loader', () => {
     expect(() => checkExports('a.tsx', { default: Page, GET: handler })).toThrow(
       'fondu: routes/a.tsx exports `GET`. It exports its page (default), layout, loader, action or actions',
