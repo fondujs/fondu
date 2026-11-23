@@ -102,6 +102,22 @@ test.describe('a visit on its way, and a traversal between #fragment entries', (
         return `DIAG ${step} scrollY=${scrollY} oneTop=${one} twoTop=${two} dpr=${devicePixelRatio} hash=${location.hash} state=${JSON.stringify(history.state)} saved=${JSON.stringify(saved)}`
       }, step)
     const log = async (step: string) => console.log(await probe(step))
+    await page.addInitScript(() => {
+      const t0 = performance.now()
+      const trail: string[] = ((window as any).__trail = [])
+      const note = (m: string) =>
+        trail.push(`${Math.round(performance.now() - t0)}ms ${m} y=${scrollY}`)
+      const orig = window.scrollTo.bind(window)
+      window.scrollTo = ((...a: any[]) => {
+        note(`scrollTo(${JSON.stringify(a)}) before`)
+        const r = (orig as any)(...a)
+        note('scrollTo after')
+        return r
+      }) as any
+      addEventListener('scroll', () => note('scroll'))
+      addEventListener('popstate', () => note('popstate ' + location.hash))
+      addEventListener('hashchange', () => note('hashchange ' + location.hash))
+    })
     await page.goto('/traverse')
     await hydrated(page)
     await log('loaded')
@@ -115,6 +131,7 @@ test.describe('a visit on its way, and a traversal between #fragment entries', (
     await log('right after back')
     await page.waitForTimeout(500)
     await log('500ms after back')
+    console.log('DIAG trail ' + (await page.evaluate(() => (window as any).__trail.join(' | '))))
     await expect.poll(() => page.evaluate(() => scrollY)).toBe(one)
   })
 })
