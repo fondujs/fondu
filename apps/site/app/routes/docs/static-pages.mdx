@@ -18,7 +18,7 @@ export const prerender = false
 export const prerender = () => posts.map((post) => ({ slug: post.slug }))
 ```
 
-`app/routes/_middleware.ts` with `export const prerender = true` makes every page static.
+`app/routes/_middleware.ts` with `export const prerender = true` makes every page static. Only pages are prerendered: a `.ts` route under it is still answered by the server, and one that exports `prerender` itself fails the build.
 
 ## How it works
 
@@ -57,28 +57,6 @@ props included, and every [deferred prop](/docs/pages#deferred-props) is evaluat
   refuses them on every target;
 - has a URL ending in `index`: see [Limits](#limits);
 - lists a param value that is not a file name: one with a `/` or `\` in it, or `.` / `..` (each segment of a catch-all is one name); or two pages that would be the same file.
-
-## A file from a `.ts` route
-
-A `.ts` route with `GET` may export `prerender` too. It is not a page: the build asks for it once, and writes its body as
-it is, at its URL. No `.html`, no page object.
-
-```ts
-// app/routes/feed.xml.ts: written to dist/client/feed.xml
-import { defineHandler } from 'fondu'
-
-export const GET = defineHandler((c) => c.body(rss(), 200, { 'Content-Type': 'application/xml' }))
-export const prerender = true
-```
-
-A static file is served by its extension, so the build stops, naming the route, when:
-
-- its URL has no extension (`routes/feed.ts` at `/feed`: name it `feed.xml.ts`);
-- its extension has no known content type (`x.abc.ts`);
-- its `Content-Type` is not the extension's (`application/rss+xml` for `.xml`: the file would be served as `application/xml`);
-- it answers a status other than 200.
-
-A `_middleware.ts`'s `prerender` covers the pages below it only: a `.ts` route is written only by its own `export const prerender`.
 
 ## Headers
 

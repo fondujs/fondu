@@ -175,8 +175,6 @@ export function pathOfPageData(pathname: string): string | null {
 export const htmlFile = (decodedPath: string) =>
   (decodedPath.endsWith('/') ? `${decodedPath}index.html` : `${decodedPath}.html`).slice(1)
 
-export const staticFile = (path: string) => decodeURIComponent(path).slice(1)
-
 export function staticFiles(path: string): { html: string; json: string } {
   return {
     html: htmlFile(decodeURIComponent(path)),

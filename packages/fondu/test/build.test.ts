@@ -422,41 +422,6 @@ describe('prerendering follows the route exports', () => {
     }
   })
 
-  test('a .ts route that exports prerender is written as the file it answers, and the built server serves it', async () => {
-    const out = await buildApp(
-      files({
-        'app/routes/index.tsx': `${home}export const prerender = true\n`,
-        'app/routes/feed.xml.ts': `export const GET = () => new Response('<rss/>', { headers: { 'Content-Type': 'application/xml; charset=utf-8' } })\nexport const prerender = true\n`,
-        'app/routes/data.json.ts': `export const GET = (c) => c.json({ n: 1 })\nexport const prerender = true\n`,
-      }),
-    )
-    const server = await start(out)
-    try {
-      const client = join(out.dir, 'dist/client')
-      expect(readFileSync(join(client, 'feed.xml'), 'utf8')).toBe('<rss/>')
-      expect(readFileSync(join(client, 'data.json'), 'utf8')).toBe('{"n":1}')
-      for (const file of ['feed.xml.html', 'data.json.html', '_fondu/pages/feed.xml.json'])
-        expect(existsSync(join(client, file)), file).toBe(false)
-      expect(existsSync(join(client, 'index.html'))).toBe(true)
-      expect(
-        JSON.parse(readFileSync(join(out.dir, 'dist/server/prerender.json'), 'utf8')).files,
-      ).toEqual(['/data.json', '/feed.xml'])
-      for (const [path, type, body] of [
-        ['/feed.xml', 'application/xml', '<rss/>'],
-        ['/data.json', 'application/json', '{"n":1}'],
-      ] as const) {
-        const res = await fetch(server.url + path)
-        expect(res.status, path).toBe(200)
-        expect(res.headers.get('content-type'), path).toContain(type)
-        expect(await res.text(), path).toBe(body)
-        expect(res.headers.get('x-frame-options'), path).toBe('SAMEORIGIN')
-      }
-    } finally {
-      await server.stop()
-      out.remove()
-    }
-  })
-
   for (const [file, text, message] of [
     [
       'app/routes/admin/_middleware.ts',
@@ -498,38 +463,15 @@ describe('prerendering follows the route exports', () => {
     }
   })
 
-  test('a .ts route whose extension has no known content type fails the build', async () => {
+  test('a .ts route that exports prerender fails the build', async () => {
     await expect(
       buildApp(
         files({
-          'app/routes/x.abc.ts': `export const GET = () => new Response('x')\nexport const prerender = true\n`,
+          'app/routes/index.tsx': `${home}export const prerender = true\n`,
+          'app/routes/feed.xml.ts': `export const GET = () => new Response('<rss/>')\nexport const prerender = true\n`,
         }),
       ),
-    ).rejects.toThrow('routes/x.abc.ts: no content type is known for .abc')
-  })
-
-  test('a .ts route whose URL has no extension fails the build, naming the route', async () => {
-    await expect(
-      buildApp(
-        files({
-          'app/routes/feed.ts': `export const GET = () => new Response('<rss/>')\nexport const prerender = true\n`,
-        }),
-      ),
-    ).rejects.toThrow(
-      'prerendering failed (routes/feed.ts: a prerendered .ts route writes a file: its URL needs an extension (feed.xml.ts))',
-    )
-  })
-
-  test("a .ts route whose Content-Type is not its extension's fails the build, saying both", async () => {
-    await expect(
-      buildApp(
-        files({
-          'app/routes/feed.xml.ts': `export const GET = () => new Response('<rss/>', { headers: { 'Content-Type': 'application/rss+xml' } })\nexport const prerender = true\n`,
-        }),
-      ),
-    ).rejects.toThrow(
-      '/feed.xml: it answers application/rss+xml, but a static file ending in .xml is served as application/xml',
-    )
+    ).rejects.toThrow('routes/feed.xml.ts: only pages are prerendered, not a .ts route')
   })
 
   test('no route exports it: no prerender step, and the server answers no page object', async () => {

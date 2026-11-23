@@ -155,10 +155,6 @@ for (const target of targets) {
   rmSync(join(app, 'dist'), { recursive: true, force: true })
   writeFileSync(join(app, 'app/routes/slow.tsx'), SLOW)
   writeFileSync(join(app, 'app/routes/slow-static.tsx'), SLOW + 'export const prerender = true\n')
-  writeFileSync(
-    join(app, 'app/routes/feed.xml.ts'),
-    "import { defineHandler } from 'fondu'\n\nexport const GET = defineHandler((c) => c.body('<rss/>', 200, { 'Content-Type': 'application/xml; charset=utf-8' }))\nexport const prerender = true\n",
-  )
   // a route that takes a body: the body limit is in the routes' chains, so a URL of no route is never read
   writeFileSync(
     join(app, 'app/routes/upload.ts'),
@@ -200,13 +196,6 @@ for (const target of targets) {
     ? readFileSync(join(dist, 'index.html'), 'utf8')
     : ''
   check(`${target} build: the home page prerendered, its file`, staticHome.includes(greeting))
-  check(
-    `${target} build: a prerendered .ts route is the file it answers, no page`,
-    existsSync(join(dist, 'feed.xml')) &&
-      readFileSync(join(dist, 'feed.xml'), 'utf8') === '<rss/>' &&
-      !existsSync(join(dist, 'feed.xml.html')) &&
-      !existsSync(join(dist, '_fondu/pages/feed.xml.json')),
-  )
   const staticSlow = existsSync(join(dist, 'slow-static.html'))
     ? readFileSync(join(dist, 'slow-static.html'), 'utf8')
     : ''
@@ -271,14 +260,6 @@ for (const target of targets) {
     )
     await bodyLimit(base, output, target, script, check)
     await streams(base, target, script)
-    const feed = await fetch(`${base}/feed.xml`)
-    check(
-      `${target} ${script}: a prerendered .ts route is served as its file, as application/xml`,
-      feed.status === 200 &&
-        (feed.headers.get('content-type') ?? '').startsWith('application/xml') &&
-        (await feed.text()) === '<rss/>',
-      `${feed.status} ${feed.headers.get('content-type')}`,
-    )
     const csp = home.headers.get('content-security-policy') ?? ''
     // a static page has no nonce: its policy comes from _headers (Cloudflare) or dist/server/prerender.json
     check(
