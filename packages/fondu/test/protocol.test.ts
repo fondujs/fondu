@@ -41,7 +41,9 @@ describe('pages', () => {
     expect(body).toMatch(
       /<script data-page="app" type="application\/json">.*<\/script><div id="app"><\/div>/,
     )
-    expect(body).toMatch(/<div id="app"><\/div><script nonce="[^"]+">try\{var k=history\.state/)
+    expect(body).toMatch(
+      /<div id="app"><\/div><script nonce="[^"]+" id="_R_">try\{var k=history\.state/,
+    )
     expect(res.headers.get('vary')).toContain('X-Fondu')
     expect(res.headers.get('cache-control')).toBe('private, no-cache')
     expect(res.headers.get('referrer-policy')).toBe('same-origin')

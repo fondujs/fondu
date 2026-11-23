@@ -592,7 +592,7 @@ ok(
   ok(
     'SSR: then a script that puts a reloaded page back where it was scrolled, with the nonce',
     // React may put its own timing script between the shell and our restore script.
-    /<\/div>(?:<script nonce="[^"]+">requestAnimationFrame\(function\(\)\{\$RT=performance\.now\(\)\}\);<\/script>)?<script nonce="[^"]+">try\{var k=history\.state&&history\.state\["__fondu"\]/.test(
+    /<\/div>(?:<script nonce="[^"]+">requestAnimationFrame\(function\(\)\{\$RT=performance\.now\(\)\}\);<\/script>)?<script nonce="[^"]+" id="_R_">try\{var k=history\.state&&history\.state\["__fondu"\]/.test(
       ssr,
     ),
   )
