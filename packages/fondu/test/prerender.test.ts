@@ -5,7 +5,6 @@ import { join } from 'node:path'
 
 import { createApp } from 'fondu'
 import { Hono } from 'hono'
-// Routes that export prerender: the files, the paths, the page objects of the pages without a file.
 import { describe, expect, test } from 'vitest'
 
 import { htmlFile, pageDataPath, pathOfPageData, staticFiles } from '../src/paths.js'
@@ -39,7 +38,6 @@ describe('files', () => {
       html: 'docs/index.html',
       json: '_fondu/pages/docs/index.json',
     })
-    // a param's value named index: a page of its own, not its directory's
     expect(staticFiles('/items/index').json).toBe('_fondu/pages/items/~index.json')
     expect(staticFiles('/docs/caf%C3%A9')).toEqual({
       html: 'docs/café.html',
@@ -55,7 +53,6 @@ describe('files', () => {
     expect(htmlFile('/%2e%2e/secret')).toBe('%2e%2e/secret.html')
   })
   test('the page object URL, both ways', () => {
-    // one for one, slash or not (trailingSlash: 'append' has both: a catch-all takes none), index or not
     for (const path of [
       '/',
       '/docs/intro',
@@ -70,7 +67,6 @@ describe('files', () => {
       '/a%20b',
     ])
       expect(pathOfPageData(pageDataPath(path)), path).toBe(path)
-    // index written encoded is index all the same (the server reads the path decoded)
     expect(pageDataPath('/items/%69ndex')).toBe('/_fondu/pages/items/~index.json')
     expect(pageDataPath('/items/%7Eindex')).toBe('/_fondu/pages/items/~~index.json')
     expect(pageDataPath('/items/%7einDEX')).toBe('/_fondu/pages/items/%7einDEX.json')
@@ -120,7 +116,7 @@ describe('headers', () => {
       '<script nonce="abc">a()</script><div><script>evil()</script><link href="/y"></div>',
     )
     expect(own.hashes).toEqual([`'sha256-${createHash('sha256').update('a()').digest('base64')}'`])
-    expect(ownScripts(html, "script-src 'self'")).toEqual({ html, hashes: [] }) // no nonce: nothing is replaced
+    expect(ownScripts(html, "script-src 'self'")).toEqual({ html, hashes: [] })
   })
   test('the reporting headers are security headers too (kept with the document)', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'fondu-headers-'))
@@ -158,7 +154,6 @@ describe('headers', () => {
       '/*\n  Cache-Control: no-store\n  Referrer-Policy: no-referrer\n  ! X-Frame-Options\n  x-content-type-options: nosniff\n\n/api/*\n  X-Robots-Tag: noindex\n\n/_fondu/pages/*\n  X-Fondu: true\n',
     )
     expect(out.match(/^\/\*$/gm)).toHaveLength(1)
-    // built again on the result: nothing more
     expect(withHeaderRules(out, { 'x-content-type-options': 'nosniff' })).toBe(out)
   })
 })
@@ -170,7 +165,7 @@ describe('paths', () => {
       route('about.ts', '/about', [false, true]),
       route('blog/[slug].ts', '/blog/:slug', [() => [{ slug: 'a' }, { slug: 'b c' }], undefined]),
       route('admin/index.ts', '/admin', [undefined, false, true]),
-      route('api.ts', '/api', [undefined, true], { get: false, others: ['POST'] }), // no page: not prerendered
+      route('api.ts', '/api', [undefined, true], { get: false, others: ['POST'] }),
     ])
     expect(paths).toEqual(['/', '/blog/a', '/blog/b%20c'])
     expect(problems).toEqual([])
@@ -256,7 +251,6 @@ describe('paths: a param is one file name', () => {
 
 const logger = { error() {}, warn() {}, info() {} } as never
 
-/** a built server that answers each path with its document and its page object */
 const serverOf = (pages: Record<string, { doc: Response; visit: Response }>) => async () => ({
   fetch: async (path: string, headers: Record<string, string> = {}) =>
     path === '/_fondu/prerender'
@@ -266,7 +260,6 @@ const serverOf = (pages: Record<string, { doc: Response; visit: Response }>) => 
         : pages[path]!.doc.clone(),
   dispose: async () => {},
 })
-/** a page with an inline script that has the build's nonce, and these headers besides */
 const pageOf = (_path: string, more: Record<string, string> = {}) => ({
   doc: new Response('<script nonce="abc">a()</script>', {
     headers: {
@@ -280,7 +273,6 @@ const pageOf = (_path: string, more: Record<string, string> = {}) => ({
 })
 
 describe('the build', () => {
-  // a built server that lists one page, and answers it as given
   const build = (doc: Response, visit: Response) =>
     prerender(
       async () => ({
@@ -387,7 +379,6 @@ describe('the build', () => {
         await expect(run).rejects.toThrow('prerendering failed')
         expect(written(dir)).toEqual([])
       })
-      // a file that would also be a directory
       await inTemp(['/a', '/a.html/b'], async (dir, run) => {
         await expect(run).rejects.toThrow('prerendering failed')
         expect(written(dir)).toEqual([])

@@ -1,4 +1,3 @@
-// The form fields as one object, the server's and the browser's (useForm) reading: the same code
 import { defineHandler } from 'fondu'
 import { Hono } from 'hono'
 import { describe, expect, test, vi } from 'vitest'
@@ -51,7 +50,6 @@ describe('the number of fields is bounded (#220)', () => {
   test('10,000 entries are read, 10,001 are a MalformedForm', () => {
     expect(Object.keys(formObject(fields(10_000)))).toHaveLength(10_000)
     expect(() => formObject(fields(10_001))).toThrow(MalformedForm)
-    // repeated names count too
     expect(() => formObject(fields(10_001, () => 'a'))).toThrow(MalformedForm)
   })
   test('files and empty file inputs count', () => {
@@ -61,7 +59,6 @@ describe('the number of fields is bounded (#220)', () => {
       Array.from({ length: 10_001 }, () => ['f', entry] as [string, File])
     expect(() => formObject(many(empty))).toThrow(MalformedForm)
     expect(() => formObject(many(file))).toThrow(MalformedForm)
-    // 10,000 empty file inputs are left out, as before
     expect(formObject(many(empty).slice(1))).toEqual({})
   })
   test('over HTTP: 10,000 fields are 200, 10,001 are a 400 (URL-encoded and multipart)', async () => {
@@ -81,7 +78,6 @@ describe('the number of fields is bounded (#220)', () => {
       }
   })
   test('a name nested too deep is refused without splitting all of it', () => {
-    // 32 levels are read, 33 are not
     expect(formObject([[`a${'[b]'.repeat(31)}`, 'x']])).toBeTruthy()
     expect(() => formObject([[`a${'[b]'.repeat(32)}`, 'x']])).toThrow(MalformedForm)
     // a huge name: the work is the depth's, not the name's
@@ -91,7 +87,6 @@ describe('the number of fields is bounded (#220)', () => {
     try {
       expect(() => formObject([[key, 'x']])).toThrow(MalformedForm)
       expect(performance.now() - start).toBeLessThan(500)
-      // every split of the name has a limit
       expect(split.mock.calls.length).toBeGreaterThan(0)
       for (const [, limit] of split.mock.calls) expect(limit).toBeLessThanOrEqual(33)
     } finally {

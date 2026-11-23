@@ -1,9 +1,8 @@
 import { createApp } from 'fondu'
 import { expect, test } from 'vitest'
 
-// The recipe of the forms docs: a limit by path. `bodyLimit: false`, and Hono's bodyLimit in the root
-// `_middleware.ts` (test/app/routes/_middleware.ts: /upload takes 1000 bytes, the rest 10 MB), its 413 an
-// HTTPException, so it renders the error page.
+// the recipe of the forms docs: test/app/routes/_middleware.ts takes /upload to 1000 bytes, the rest 10 MB; its 413 is an
+// HTTPException, so it renders the error page
 const app = createApp({ bodyLimit: false })
 const form = { Origin: 'http://localhost', 'Content-Type': 'application/x-www-form-urlencoded' }
 const post = (path: string, size: number, headers: Record<string, string> = {}) =>

@@ -1,11 +1,9 @@
-// The built Node server's Cache-Control of the client build's files: the immutable one only on a file served
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 
 import { type BuiltApp, buildApp, type Running, start } from './build-app.js'
 
 const files = (dir: string) => ({
   'app/routes/index.tsx': `export default function Home() { return <h1>Home</h1> }\n`,
-  // an app route under the assets directory, with a Cache-Control of its own
   [`app/routes/${dir}/[id].ts`]: `import { defineHandler } from 'fondu'
 export const GET = defineHandler((c) => {
   c.header('Cache-Control', 'no-store')

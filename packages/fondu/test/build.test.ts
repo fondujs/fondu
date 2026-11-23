@@ -25,7 +25,6 @@ describe('server exports of a layout or an error page', () => {
         })
         const message = `fondu: routes/${file} exports \`${name}\`. It exports its component (default)${file === '_layout.tsx' ? ' and optional layout chain' : ''}`
         await expect(buildClient(app.root)).rejects.toThrow(message)
-        // the server's own check, at startup, says the same
         expect(() => checkExports(file, { default: () => null, [name]: () => ({}) })).toThrow(
           message,
         )
@@ -98,7 +97,6 @@ describe('source maps of the client build', () => {
         if (statSync(join(dist, f)).isDirectory()) continue
         expect(readFileSync(join(dist, f), 'utf8').includes(canary), f).toBe(false)
       }
-      // still valid, and still maps the client code
       const sources: string[] = []
       for (const f of maps) {
         const map = JSON.parse(readFileSync(join(dist, f), 'utf8')) as {
@@ -110,8 +108,7 @@ describe('source maps of the client build', () => {
         expect(map.mappings).not.toBe('')
         sources.push(...map.sources)
         map.sources.forEach((s, i) => {
-          // the source of a page's route file is its browser's copy: the loader and its import are gone, the
-          // page and the lines of the rest stay
+          // the source of a page's route file is its browser's copy: the loader and its import are gone
           if (s.endsWith('app/routes/index.tsx')) {
             const text = map.sourcesContent[i]!
             expect(text.split('\n')).toHaveLength(route.split('\n').length)
@@ -120,7 +117,6 @@ describe('source maps of the client build', () => {
             expect(text).not.toContain('loader')
             expect(text).not.toContain('db.server')
           }
-          // a file the strip did not change keeps its source
           if (s.endsWith('app/routes/about.tsx'))
             expect(map.sourcesContent[i]).toContain('ABOUT_PAGE')
           if (s.endsWith('app/routes/_layout.tsx'))
@@ -186,7 +182,6 @@ describe('the client bundle and the viewTransitions option', () => {
       for (const mark of [...MARKS, '__fondu_transition'])
         expect(code.includes(mark), mark).toBe(true)
       expect(code).not.toContain('__FONDU_VIEW_TRANSITIONS__')
-      // the setting of the entry: the default
       expect(code).toMatch(new RegExp(`viewTransitions:\\s*!${on ? '0' : '1'}\\b`))
     })
 })

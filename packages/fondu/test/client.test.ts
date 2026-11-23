@@ -1,4 +1,3 @@
-// The server render of fondu/client's app: the page in its directories' layouts, the tags it renders hoisted out of #app
 import { createElement as h, useId, type ReactNode } from 'react'
 import { renderToReadableStream, renderToString } from 'react-dom/server'
 import { expect, test } from 'vitest'
@@ -51,7 +50,6 @@ __entry(
   { prerender: false, progress: false, viewTransitions: false },
 )
 
-// the page's stream, read whole: the tags it hoists (before `<div id="app"`) and the page
 const render = async (component: string, props = {}, deferred?: string[]) => {
   const stream = await renderPage({ ...page(component, props), deferred }, (el) =>
     renderToReadableStream(el),
@@ -110,11 +108,9 @@ test("a URL's page, guessed to load its modules with its data: static segments f
   expect(pageAt('/files/a/b')).toBe('files/[...path]')
   expect(pageAt('/files')).toBeUndefined()
   expect(pageAt('/nope/nope')).toBeUndefined()
-  // none of the pages: a file, a route without a page, a URL of nothing (their links are the browser's)
   expect(pageAt('/llms.txt')).toBeUndefined()
   expect(pageAt('/api/health')).toBeUndefined()
   expect(pageAt('/users/7/edit')).toBeUndefined()
-  // a segment as the browser writes it, encoded: the page the server matches; one that doesn't decode is none
   expect(pageAt('/caf%C3%A9')).toBe('café')
   expect(pageAt('/café')).toBe('café')
   expect(pageAt('/%E0%A4%A')).toBeUndefined()
@@ -128,14 +124,13 @@ test("useId(): the server's tree is the browser's (#app and the page, nothing be
   expect(id(body)).toBe(id(renderToString(h(Labeled))))
 })
 
-// a page put on the screen is a state of its own, built whole: an update that arrives late can't bring an older page back
 test('an older state that arrives after a newer one does not replace it', () => {
   const view = { Component: Plain, layouts: [] }
   const first = shownOf(page('board'), view, true)
   const second = shownOf(page('labeled'), view, true)
   expect(second.seq).toBeGreaterThan(first.seq)
-  expect(newer(first)(second)).toBe(second) // the older one arrives last
-  expect(newer(second)(first)).toBe(second) // in order
+  expect(newer(first)(second)).toBe(second)
+  expect(newer(second)(first)).toBe(second)
   expect(newer(second)(second)).toBe(second)
 })
 
@@ -148,7 +143,6 @@ test('a state is absolute: its mounts count the fresh pages, whatever state it r
   expect(kept.mounts).toBe(base.mounts)
   expect(fresh.mounts).toBe(base.mounts + 1)
   expect(after.mounts).toBe(fresh.mounts)
-  // applied in either order, the newer state stands, with its own mounts
   expect(newer(fresh)(after)).toBe(after)
   expect(newer(after)(fresh)).toBe(after)
 })

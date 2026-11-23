@@ -24,7 +24,6 @@ describe('pages in routes/', () => {
   })
 })
 
-// the browser's copy of a page's route file: as the compiled JSX is, plain JavaScript
 const strip = (code: string) =>
   stripServerCode(code, parseAst(code) as never, 'users/[id].tsx')
     .replace(/\n+/g, '\n')
@@ -87,7 +86,6 @@ export default function Page() { return null }
     expect(out.split('\n')).toEqual(['', '', '', '', 'export default function P() {}', ''])
   })
   test("a name the page declares for itself is not the import's", () => {
-    // as `const { flash } = usePage()` in a page, and `flash` imported (from 'fondu') for its action
     const out = strip(`
 import { flash, a, b, c, d, e, f, g } from 'fondu'
 export const action = () => [flash, a, b, c, d, e, f, g]
@@ -116,7 +114,6 @@ export default function Page() {
   })
   test("a default parameter's expression sees the outer scope, not the body's", () => {
     const names = (head: string) => strip(head).split('\n')[0]
-    // an import used in a default, and shadowed by a body declaration of the same name
     for (const body of ['const a = 1', 'let a = 1', 'var a = 1', 'function a() {}', 'class a {}'])
       expect(
         names(`
@@ -125,13 +122,11 @@ export const loader = () => 1
 export default function Page(p = a) { ${body}; return p }
 `),
       ).toBe("import { a } from 'x'")
-    // an outer constant
     expect(
       strip(
         `const t = 'outer'\nexport const loader = () => t\nexport default (v = t) => { const t = 1; return v }`,
       ),
     ).toContain("const t = 'outer'")
-    // a destructuring default, in an arrow, a method and a function expression
     for (const fn of [
       '({ x = t } = {}) => { var t; return x }',
       'function ({ x = t }) { let t; return x }',
@@ -153,7 +148,6 @@ export default function Page(p = a) { ${body}; return p }
     expect(
       strip(`const t = 1\nexport const loader = () => t\nexport default (t, v = t) => [t, v]`),
     ).toBe('export default (t, v = t) => [t, v]')
-    // a later parameter sees an earlier one; a nested function's parameters and body are its own
     expect(
       strip(
         `const t = 1\nexport const loader = () => t\nexport default (a, b = a) => (c = a) => { var t; return c }`,
@@ -195,7 +189,6 @@ export default function Page(p = a) { ${body}; return p }
   })
 })
 
-// the browser's copy, from the source: TSX, before any transform
 const tsx = (code: string, file = 'users/[id].tsx') =>
   stripServerCode(code, parseAst(code, { lang: 'tsx' }) as never, file)
 const lines = (code: string) =>
@@ -271,7 +264,6 @@ namespace A.B { export const x = 1; export function f() { return x + y } }
 export const loader = () => A.B.f()
 export default function Page() { return <p>{x}</p> }
 `)
-    // A.B's own x is not the import's; its y is
     expect(out).toEqual([
       "import { x } from 'x';",
       'export default function Page() { return <p>{x}</p> }',
@@ -293,7 +285,6 @@ export default function Page() { return <p>{Status.Gone}</p> }
       'enum Status { Ok = limit, Gone = Ok * 2 }',
       'export default function Page() { return <p>{Status.Gone}</p> }',
     ])
-    // an exported enum is an export of the page: it stays
     expect(
       lines(`export enum Color { Red }\nexport const loader = () => 1\nexport default () => null`),
     ).toEqual(['export enum Color { Red }', 'export default () => null'])
@@ -319,7 +310,6 @@ export default function Page({ data }: Props) {
       '  return <p>{schema.parse(rows)}</p>',
       '}',
     ])
-    // an `as`'s value is a reference
     expect(lines(`import { v } from 'x'\nexport default () => v as string`)[0]).toBe(
       "import { v } from 'x'",
     )
@@ -342,7 +332,6 @@ export default function Page(p: { db: Db; row: Row }) { return <p>{keep(p)}</p> 
       'export default function Page(p: { db: Db; row: Row }) { return <p>{keep(p)}</p> }',
     ])
     expect(out.join('\n')).not.toContain('.server')
-    // a value import that a type alone uses goes too
     expect(lines(`import { Db } from '#/db.server'\nexport default (p: Db) => null`)).toEqual([
       'export default (p: Db) => null',
     ])

@@ -1,5 +1,3 @@
-// The built server's NODE_ENV: production when it is unset (React picks its build when it is first loaded), and
-// what the app set is kept
 import { spawnSync } from 'node:child_process'
 
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
@@ -21,7 +19,6 @@ export default function Env() {
 }
 `
 
-// the props the loader gave (the page is rendered in the browser: its document carries them)
 const seen = async (url: string) => {
   const html = await (await fetch(url, { headers: { accept: 'text/html' } })).text()
   const json = /<script data-page="app" type="application\/json">(.*?)<\/script>/.exec(html)![1]!

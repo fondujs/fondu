@@ -17,7 +17,7 @@ export default [
     share(c, { app: 'test', lazy: async () => 'computed' } as never)
     await next()
   }),
-  // the recipe of the forms docs (a limit chosen by path), for `createApp({ bodyLimit: false })`: /upload takes 1000
-  // bytes, the rest 10 MB (what createApp has by default, so the other tests see no change)
+  // the recipe of the forms docs for `createApp({ bodyLimit: false })`: /upload takes 1000 bytes, the rest 10 MB (createApp's
+  // default)
   defineMiddleware((c, next) => (c.req.path === '/upload' ? upload : rest)(c, next)),
 ]

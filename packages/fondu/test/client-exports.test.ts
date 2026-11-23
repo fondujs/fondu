@@ -9,7 +9,6 @@ import * as internal from '../src/client/internal.js'
 
 const read = (path: string) => readFileSync(fileURLToPath(new URL(path, import.meta.url)), 'utf8')
 
-// the rows of a section's tables of the API page: the name of each export. `types`: the rows under `### Types`
 function documented(entry: string, types = false): string[] {
   const text = read('../../../apps/site/app/routes/docs/api.mdx')
   const section = new RegExp(`^## \`${entry}\`\\n([\\s\\S]*?)(?=^## |$(?![\\s\\S]))`, 'm').exec(
@@ -60,7 +59,6 @@ test('the type exports of each entry are the documented ones', async () => {
     ['fondu/vite', '../src/vite/index.ts'],
   ] as const)
     expect(typeExports(file), entry).toEqual(documented(entry, true).sort())
-  // AsJson is a type only: documented with the types, exported with `type`, and no value of that name
   expect(typeExports('../src/index.ts')).toContain('AsJson')
   expect(documented('fondu', true)).toContain('AsJson')
   expect(documented('fondu')).not.toContain('AsJson')
@@ -71,7 +69,6 @@ test('the type exports of each entry are the documented ones', async () => {
       expect(typeExports(file)).not.toContain(name)
   expect(typeExports('../src/client.ts')).toContain('Page')
   expect(typeExports('../src/client.ts')).not.toContain('PageObject')
-  // ProgressOptions is the plugin's option: fondu/vite's, not fondu/client's
   expect(typeExports('../src/client.ts')).not.toContain('ProgressOptions')
 })
 

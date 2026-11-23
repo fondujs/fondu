@@ -21,7 +21,6 @@ const check = (name: string, conclusion: string | null = 'success', status = 'co
 })
 const green = [check('check'), check('windows'), check('conformance (webkit)'), check('size')]
 
-// Each poll gets one state. Unknown endpoints fail rather than touching the network.
 function respond(...states: Array<{ runs?: (typeof ci)[]; checks?: ReturnType<typeof check>[] }>) {
   let poll = 0
   let state = states[0]

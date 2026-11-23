@@ -1,4 +1,3 @@
-// The server the prerender starts (Node / Bun): it fails in bounded time, and no child is left behind.
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -14,7 +13,6 @@ afterEach(() => {
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true })
 })
 
-/** an app root whose dist/server/index.js is this fake server (it writes its pid to `pid`) */
 const fake = (script: string) => {
   const root = mkdtempSync(join(tmpdir(), 'fondu-child-'))
   roots.push(root)
@@ -57,7 +55,6 @@ const deadlineFailure = async (run: () => Promise<unknown>) => {
   expect(error).toBe(signal?.reason)
 }
 
-// a server that takes the connection and never answers
 const mute = `require('net').createServer(() => {}).listen(process.env.PORT, '127.0.0.1')`
 // answers the readiness request, then a page's headers and half its body, and no more
 const stalls = `require('http').createServer((req, res) => {

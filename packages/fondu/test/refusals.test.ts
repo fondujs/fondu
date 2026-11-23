@@ -1,7 +1,6 @@
 import { createApp } from 'fondu'
 import { describe, expect, test, vi } from 'vitest'
 
-// #181: what Fondu itself refuses (413 body limit, 403 CSRF) and the error page's shared props
 const small = createApp({ bodyLimit: 100 })
 const ORIGIN = 'http://localhost'
 const form = { Origin: ORIGIN, 'Content-Type': 'application/x-www-form-urlencoded' }

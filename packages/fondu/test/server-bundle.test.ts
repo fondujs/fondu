@@ -1,5 +1,5 @@
-// The built Node server's bundle: fondu/client imports react-dom/client for the browser's sake, and the server
-// never mounts a page: a stub (that says so if called) takes its place, as on Cloudflare
+// fondu/client imports react-dom/client for the browser's sake and the server never mounts a page: a stub (that says so if
+// called) takes its place, as on Cloudflare
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
@@ -22,7 +22,6 @@ describe.each([['node'], ['bun']] as const)('the built %s server', (target) => {
     expect(files).toContain('index.js')
     // an import (the stub's own message names the module): `from"react-dom/client"`, `import("react-dom/client")`
     const imports = /(?:from|import)\s*\(?\s*["'`]react-dom\/client/
-    // (the names of the files, not their code: a failure would print the whole bundle)
     expect(files.filter((f) => imports.test(readFileSync(join(app.server, f), 'utf8')))).toEqual([])
   })
   test('carries the stub, which says what it is if called', () => {

@@ -3,8 +3,6 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
 import { calls } from './app/routes/_deferred/calls.js'
 
-// Deferred props (`defer()`): left out of a document and a navigation, asked for by a partial request
-// (X-Fondu-Only, X-Fondu-Component), on test/app/routes/deferred.tsx with `app.request()`
 const app = createApp()
 const nav = (extra: Record<string, string> = {}) => ({
   'X-Fondu': 'true',
@@ -178,7 +176,6 @@ describe('deferred props', () => {
     ).text()
     expect(html).toContain('the prop &#34;late&#34; of &#34;deferred&#34; is a promise')
     expect(html).toContain('pass defer(() =&#62; ...)')
-    // any thenable
     const res = await app.request('/deferred?promise=thenable', { headers: nav() })
     expect(res.status).toBe(500)
   })

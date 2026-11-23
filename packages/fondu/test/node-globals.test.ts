@@ -6,9 +6,6 @@ import { afterEach, describe, expect, test } from 'vitest'
 
 import { devServerNodeServer } from '../src/vite/node-server.js'
 
-// fondu:node-globals takes @hono/node-server from @hono/vite-dev-server's own dependencies, by path and by the shape
-// of its `exports`: the lookup is tested on the installed version, and on what it says when the assumption fails
-
 describe('the dev server’s @hono/node-server, as installed', () => {
   test('is found, and is the ES module with getRequestListener', async () => {
     const { getRequestListener } = await devServerNodeServer()
@@ -21,7 +18,6 @@ describe('the dev server’s @hono/node-server, as installed', () => {
 describe('when the assumption fails', () => {
   let dir = ''
   afterEach(() => rmSync(dir, { recursive: true, force: true }))
-  // a dev server (a file) with a @hono/node-server beside it, as node_modules has them
   const fake = (pkg: unknown, files: Record<string, string> = {}) => {
     dir = mkdtempSync(join(tmpdir(), 'fondu-node-server-'))
     const base = join(dir, 'node_modules/@hono')

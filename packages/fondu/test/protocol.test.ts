@@ -1,7 +1,6 @@
 import { createApp, defineHandler, ValidationError } from 'fondu'
 import { Hono } from 'hono'
 import { createElement as h } from 'react'
-// Fondu's protocol and the app conventions, on test/app/ with `app.request()`
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import * as z from 'zod/mini'
 
@@ -42,7 +41,6 @@ describe('pages', () => {
     expect(body).toMatch(
       /<script data-page="app" type="application\/json">.*<\/script><div id="app"><\/div>/,
     )
-    // server-rendered: the scroll position to put back before the page is in, right after it
     expect(body).toMatch(/<div id="app"><\/div><script nonce="[^"]+">try\{var k=history\.state/)
     expect(res.headers.get('vary')).toContain('X-Fondu')
     expect(res.headers.get('cache-control')).toBe('private, no-cache')
@@ -114,7 +112,7 @@ describe('pages', () => {
       'X-Fondu',
       navigation,
       'X-Fondu',
-      navigation, // the 409: it answers the version asked from
+      navigation,
     ])
   })
   test('Vary: a partial answer names X-Fondu-Component, as the full page of another component is not the same', async () => {
@@ -153,7 +151,7 @@ describe('routes', () => {
       method: 'POST',
       headers: { Origin: ORIGIN },
     })
-    expect(api.status).toBe(200) // not a navigation: as it is
+    expect(api.status).toBe(200)
   })
   test("a stream, to a navigation: answered at once (its body isn't read to tell if it is empty)", async () => {
     const res = await Promise.race([
@@ -175,7 +173,6 @@ describe('routes', () => {
     expect(
       (await app.request('/redirect?away', { method: 'POST', headers: { Origin: ORIGIN } })).status,
     ).toBe(303)
-    // this site's: followed by fetch()
     const here = await app.request('/redirect?home', {
       method: 'POST',
       headers: { ...fondu(), Origin: ORIGIN },
@@ -347,7 +344,6 @@ describe('behind a TLS-terminating proxy (Host: example.com, https in the browse
     ])
       expect((await post({ ...proxied, Origin: origin })).status, origin).toBe(403)
     expect((await post({ 'X-Forwarded-Proto': 'https' })).status).toBe(403) // no Origin
-    // Sec-Fetch-Site is handled as Hono does
     expect((await post({ 'Sec-Fetch-Site': 'same-origin' })).status).toBe(303)
     expect((await post({ ...proxied, 'Sec-Fetch-Site': 'cross-site' })).status).toBe(303)
     expect(
@@ -448,14 +444,12 @@ describe('the flash cookie', () => {
   test('over the limit: the flash data first, then the errors that fit, in their order; one warning', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const error = vi.spyOn(console, 'error').mockImplementation(() => {})
-    // the flash data alone is too much
     const flashOnly = await send({
       flash: { message: big + big + big },
       errors: { name: 'Too short' },
     })
     expect(sent(flashOnly)).toEqual({ errors: { name: 'Too short' } })
     expect(warn).toHaveBeenCalledTimes(1)
-    // the errors are too much too: those that fit, as they came
     warn.mockClear()
     const errors = {
       a: 'first',
@@ -497,7 +491,6 @@ describe('the flash cookie', () => {
         JSON.stringify(value),
       ).toEqual([{}, {}])
     }
-    // flash data of an app can be any JSON
     const nested = {
       error: { title: 'Failed', description: 'Try again' },
       count: 3,
@@ -567,7 +560,7 @@ describe('withValidator', () => {
       })
       expect([res.status, await res.json()], type).toEqual([201, { n: 3 }])
     }
-    // not JSON, and not a form: a body of it is a 415 (#243); with no body, there are no fields
+    // not JSON, and not a form: a body of it is a 415; with no body, there are no fields
     for (const type of ['text/plain', 'application/xml', 'text/foo+json']) {
       const res = await app.request('/api/data', {
         method: 'POST',
@@ -651,7 +644,6 @@ describe('an error page that fails', () => {
   test('a document: plain text with the status (not sent to render in the browser), the failure logged', async () => {
     const log = vi.spyOn(console, 'error').mockImplementation(() => {})
     const res = await app.request('/teapot', { headers: html })
-    // a 418 has no text of its own: the fallback's
     expect([res.status, await res.text()]).toEqual([418, 'Error'])
     expect(log.mock.calls.map(([m]) => String(m))).toContain(
       '[fondu] the error page failed to render:',

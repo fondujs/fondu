@@ -55,7 +55,7 @@ describe('.env in development', () => {
       expect(body).toEqual({
         plain: 'from-env',
         set: 'from-shell',
-        local: 'from-local', // .env.local over .env, as Vite's own
+        local: 'from-local',
         mode: 'development',
         production: null,
       })

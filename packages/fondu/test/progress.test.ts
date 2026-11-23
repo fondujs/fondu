@@ -45,14 +45,12 @@ describe('the progress bar', () => {
     vi.advanceTimersByTime(1)
     const bar = body[0]!
     expect(bar.style.background).toBe('red')
-    // one long transition from 0 (computed before it is set) towards the end
     expect([bar.style.transform, bar.style.transition]).toEqual([
       'scaleX(0.95)',
       'transform 10s cubic-bezier(0.05, 0.7, 0.1, 1)',
     ])
     pending = false
     update()
-    // filled, then faded out
     expect([bar.style.transform, bar.style.opacity]).toEqual(['scaleX(1)', '0'])
     expect(bar.style.transition).toBe('transform 200ms ease-out, opacity 200ms 200ms')
     vi.advanceTimersByTime(449)

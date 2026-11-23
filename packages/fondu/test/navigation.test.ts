@@ -1,4 +1,3 @@
-// navigate() and loadDocument() before the app has started (no document): what they hand to `location`
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 
 import { loadDocument, navigate } from '../src/client/navigation.js'

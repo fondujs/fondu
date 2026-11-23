@@ -21,7 +21,6 @@ const modules = { 'fondu/client': client, 'fondu/client/internal': internal } as
   Record<string, unknown>
 >
 
-/** [module, names] of each `import { names } from 'fondu/…'` of the generated code */
 function imports(code: string) {
   return [...code.matchAll(/^import \{ ([^}]*) \} from '(fondu\/[\w/]+)'$/gm)].map((m) => ({
     from: m[2]!,
@@ -44,7 +43,6 @@ test('the generated entries import only what fondu/client and fondu/client/inter
   const code = (loaded: typeof entry) =>
     typeof loaded === 'string' ? loaded : (loaded?.code ?? '')
   const found = [...imports(code(entry)), ...imports(code(ssr))]
-  // the entry (dev: with `reload`) and the server render's
   expect(found.map((i) => `${i.from}: ${i.names.join(', ')}`).sort()).toEqual([
     'fondu/client/internal: __entry',
     'fondu/client/internal: renderPage',
@@ -65,7 +63,7 @@ test('fondu/client is pre-bundled for an installed fondu only, not a linked one'
   expect(isInstalled('C:\\app\\node_modules\\fondu\\dist\\vite\\index.js')).toBe(true)
   expect(isInstalled('/repo/packages/fondu/dist/vite/index.js')).toBe(false)
   expect(isInstalled('/repo/node_modules_old/fondu/dist/vite/index.js')).toBe(false)
-  expect(fonduInstalled()).toBe(false) // this file's: src/vite/installed.ts
+  expect(fonduInstalled()).toBe(false)
 })
 
 // `viewTransitions` reaches the browser as a setting of the entry (the default of each navigation), not as a build-time

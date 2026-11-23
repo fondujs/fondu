@@ -1,4 +1,3 @@
-// The built server's entry (dist/server/index.js): the port, on Bun and on Node.
 import { type ChildProcess, spawn, spawnSync } from 'node:child_process'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:net'
@@ -22,7 +21,6 @@ describe('the generated entry: port', () => {
   })
   test('Node: PORT, else 3000', () => {
     expect(entryCode({ target: 'node' }, [])).toContain('port: Number(process.env.PORT) || 3000')
-    // an option that is no more is not read
     expect(entryCode({ target: 'node', port: 4567 } as never, [])).not.toContain('4567')
     expect(entryCode({ target: 'bun', port: 4567 } as never, [])).not.toContain('4567')
   })
@@ -39,7 +37,6 @@ const freePort = () =>
   })
 
 describe.skipIf(!hasBun)('the generated entry, run by Bun', { timeout: 30_000 }, () => {
-  // the entry beside a stub app, inside the package (its node_modules: hono): answers on `expected`
   const check = async (env: Record<string, string>, websocket: boolean, expected: number) => {
     const dir = mkdtempSync(join(dirname(fileURLToPath(import.meta.url)), '.entry-'))
     let child: ChildProcess | undefined
