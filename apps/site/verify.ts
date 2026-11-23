@@ -1,5 +1,3 @@
-// What the site's build must have written (`bun run build` ends with it; `bun run verify` runs it again): the
-// descriptions' length (app/docs.ts), and, in dist/client, what each page's head and the Markdown copies must have.
 import { execFileSync } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
 
@@ -16,7 +14,6 @@ const dist = new URL('./dist/client/', import.meta.url)
 const read = (file: string) => readFileSync(new URL(file, dist), 'utf8')
 const tag = (html: string, pattern: RegExp) => pattern.exec(html)?.[0]
 
-/** the JSON-LD blocks of a page, parsed: a block is a script of `application/ld+json`, its text no raw `<` */
 function jsonLd(page: string, html: string): Array<Record<string, unknown>> {
   const blocks = [
     ...html.matchAll(/<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/g),
@@ -36,7 +33,6 @@ function jsonLd(page: string, html: string): Array<Record<string, unknown>> {
   })
 }
 
-/** the types of a page's JSON-LD must each have the properties it is read for */
 function checkTypes(
   page: string,
   graph: Array<Record<string, unknown>>,
@@ -111,7 +107,6 @@ if (existsSync(new URL('index.html', dist))) {
     if (crumbs?.map((c) => c.name).join(' > ') !== names.join(' > ') || crumbs.some((c) => !c.item))
       problems.push(`${page}: its breadcrumbs are not ${names.join(' > ')}, each a page`)
 
-    // the Markdown copy names its page, under its title
     const copy = read(markdownUrl(doc).slice(1))
     if (!copy.startsWith(`# ${doc.title}\n\nhttps://fondu.dev${page}\n\n`))
       problems.push(`${markdownUrl(doc)}: its URL is not under its title`)

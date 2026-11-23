@@ -8,17 +8,16 @@ import { Alert, AlertDescription, AlertTitle } from '#/components/ui/alert.tsx'
 import { callAuth, safeNext } from '#/modules/auth/auth.server.ts'
 
 export const loader = defineHandler(async (c) => {
-  // Better Auth's own errors (onAPIError.errorURL) arrive as ?error=: shown once, as a toast
   const error = c.req.query('error')
   if (error) {
     flash(c, { error: `Sign-in failed: ${error.replaceAll('_', ' ').toLowerCase()}` })
     return c.redirect('/login', 303)
   }
-  if (c.get('user')) return c.redirect('/account', 303) // already signed in
+  if (c.get('user')) return c.redirect('/account', 303)
   return render(c, Login, { next: safeNext(c, c.req.query('next')) })
 })
 
-// Better Auth checks the password and starts the session; a wrong one: one message that doesn't say which part
+// A wrong password gets one message that doesn't say which part
 export const action = defineHandler.withValidator({
   body: z.object({
     email: z.email('Enter a valid email'),
@@ -37,7 +36,6 @@ export const action = defineHandler.withValidator({
 })
 
 export default function Login({ next }: { next: string }) {
-  // the server's errors on its fields, the first to fix focused
   const { form, field, errors, submitting } = useForm()
   return (
     <div className="max-w-sm">
@@ -53,7 +51,6 @@ export default function Login({ next }: { next: string }) {
           </p>
         </AlertDescription>
       </Alert>
-      {/* wrong credentials: back to this page with the errors, what was typed kept */}
       <form action={href('/login')} method="post" className="grid gap-4" {...form}>
         <input type="hidden" name="next" value={next} />
         <TextField

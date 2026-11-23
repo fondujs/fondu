@@ -12,12 +12,9 @@ import {
 import { Skeleton } from '#/components/ui/skeleton.tsx'
 import { cn } from '#/lib/utils.ts'
 
-// A dialog the URL opens, over any page: `#settings/profile`, `#settings/account`, `#settings/usage`: a shallow
-// navigation (no request, the page stays as it is). The account menu's link is `data-shallow`, a history entry; the
-// tabs switch with `replace`, so one Back (or one close) returns to the page under the dialog; the fragment is read as
-// an external store. Closing is closeShallow(): Back, or, when the document was loaded with the fragment (a reload, a
-// shared link), the page's URL in its place. Its form posts to /settings/name, and the answer comes back to the same
-// page with the fragment still on it.
+// A dialog the URL opens over any page (`#settings/profile`, `/account`, `/usage`): a shallow navigation. The tabs
+// switch with `replace`, so one Back returns to the page under it. Closing is closeShallow(): Back, or, when the
+// document was loaded with the fragment, the page's URL in its place.
 const PREFIX = '#settings/'
 const TABS = { profile: 'Profile', account: 'Account', usage: 'Usage' } as const
 // Match the text's line boxes while loading, with room after the longest label (Member since).
@@ -36,7 +33,6 @@ const useHash = () =>
     () => '',
   )
 
-/** The dialog, for a signed-in user (the account menu opens it) */
 export function SettingsDialog() {
   const { props, url } = usePage()
   const { user } = props.auth
@@ -48,7 +44,6 @@ export function SettingsDialog() {
   const [tab, setTab] = useState<Tab>('profile')
   if (open && name !== tab) setTab(name)
   useEffect(() => {
-    // nothing to show a guest (signed out with it open)
     if (!user && hash.startsWith(PREFIX)) closeShallow(url)
   }, [user, hash, url])
   if (!user) return null
@@ -137,8 +132,7 @@ function AccountFacts() {
   )
 }
 
-// request() from fondu/client: a call to a .ts route (app/routes/api/usage.ts), typed by it, as the dialog opens
-// this tab (an effect: a page's data would come from its loader). A non-2xx answer is a RequestError.
+// Called in an effect as the dialog opens this tab: a page's data would come from its loader.
 function Usage() {
   const [state, setState] = useState<
     | { status: 'loading' }

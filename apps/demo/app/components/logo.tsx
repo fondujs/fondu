@@ -1,4 +1,3 @@
-/** Fondu's mark: a slab of cheese melting, an f on it */
 export function Logo({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 32 32" aria-hidden="true" className={className}>

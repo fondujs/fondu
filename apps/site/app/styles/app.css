@@ -3,8 +3,7 @@
 @import '@fontsource-variable/geist-mono';
 @import '@fontsource/instrument-serif/400-italic.css';
 
-/* coss ui's `dark:`: the dark theme chosen, or the system's while none is (<html class="system">). And its
-   `not-dark:`, which Tailwind can't derive from a variant of two rules. */
+/* coss ui's `dark:` and `not-dark:`, which Tailwind can't derive from a variant of two rules */
 @custom-variant dark {
   &:is(.dark *) {
     @slot;
@@ -26,8 +25,6 @@
   }
 }
 
-/* coss ui's tokens (neutral), each light-dark(): the theme is the color-scheme, the system's or the one chosen.
-   One more color, molten-cheese gold (--brand), for the logo, the progress bar, where you are and links. */
 :root {
   color-scheme: light dark;
   --background: light-dark(
@@ -69,9 +66,8 @@
   --ring: light-dark(var(--color-neutral-400), var(--color-neutral-500));
   --brand: light-dark(oklch(76% 0.16 78), oklch(80% 0.16 85));
   --brand-foreground: light-dark(oklch(55% 0.13 70), var(--brand)); /* text: 4.9:1 on white */
-  /* code in a sentence: the gold, darker on light (5.6:1 on its tint), lighter on dark */
-  /* the home page's opening paragraph: between the muted grey and the text */
   --hero-text: color-mix(in srgb, var(--muted-foreground) 65%, var(--foreground));
+  /* code in a sentence: 5.6:1 on its tint on light */
   --code: light-dark(oklch(49% 0.11 66), oklch(86% 0.12 86));
   --code-background: light-dark(oklch(76% 0.16 78 / 12%), oklch(80% 0.16 85 / 11%));
   --radius: 0.625rem;
@@ -210,7 +206,6 @@
   h1 {
     @apply mb-2 font-heading text-2xl font-semibold tracking-tight;
   }
-  /* a link in a sentence: one without classes of its own */
   a:not([class]) {
     @apply text-brand-foreground underline decoration-brand-foreground/40 underline-offset-4 hover:decoration-brand-foreground;
   }
@@ -223,12 +218,10 @@
   }
 }
 
-/* A page's opening paragraph, under its <h1> */
 @utility lede {
   @apply mb-8 text-[15px]/relaxed text-muted-foreground;
 }
 
-/* The docs' Markdown (layouts/docs.tsx) */
 @utility prose {
   @apply text-[15px]/7;
   & :where(h2) {
@@ -269,7 +262,6 @@
   }
 }
 
-/* a heading of the docs links to itself: a # in the margin on hover */
 .heading-anchor {
   @apply relative;
   &:hover::before {
@@ -278,8 +270,7 @@
   }
 }
 
-/* Code highlighted at build time (Shiki, vite.config.ts): both themes' colors, the one of the color-scheme shown.
-   A layer below the utilities, which can change it. */
+/* A layer below the utilities, which can change it */
 @layer components {
   pre.shiki {
     @apply overflow-x-auto rounded-xl border bg-muted px-4 py-3.5 font-mono text-[13.5px]/6;
@@ -289,21 +280,18 @@
     & span {
       color: light-dark(var(--shiki-light), var(--shiki-dark));
     }
-    /* ```text wrap: long lines wrapped, not scrolled (a prompt) */
     &[data-wrap] {
       @apply whitespace-pre-wrap;
     }
     .code-tabs & {
       @apply rounded-none border-0;
     }
-    /* ```ts /name/: the name highlighted, in the brand's gold */
     & .highlighted-word {
       @apply rounded-sm bg-brand/16 px-0.5 ring-1 ring-brand/40;
     }
   }
 }
 
-/* The home page's code (pages/index.tsx): on a field of the brand's gold, grained, its corners cut in squares */
 .mosaic {
   --cell: 0.875rem;
   background:

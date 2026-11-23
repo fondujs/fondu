@@ -8,12 +8,10 @@ export const loader = defineHandler((c) =>
 )
 
 export const actions = {
-  // 303 back to the page the form was on, with a flash message
   back: defineHandler((c) => {
     flash(c, { message: 'Redirected back with a flash message' })
     return back(c)
   }),
-  // 303 to another page of this app: a navigation, no page load
   props: defineHandler((c) => {
     flash(c, { message: 'Redirected from /redirects' })
     return c.redirect('/props', 303)

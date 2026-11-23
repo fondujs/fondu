@@ -1,4 +1,4 @@
-// The dashboard's settings overlay shares the POST answer with the entry below it (#288).
+// The dashboard's settings overlay shares the POST answer with the entry below it.
 export async function checkSettingsHistory({ page, ok }) {
   const dialog = '[data-testid=settings]'
   const original = await page.$eval('[data-testid=user]', (e) => e.getAttribute('aria-label'))

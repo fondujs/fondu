@@ -4,7 +4,6 @@ import { href } from 'fondu/client'
 import { DemoCard, SubmitButton, Title } from '#/components/demo.tsx'
 
 export const actions = {
-  // POST /errors?fail
   fail: defineHandler(() => {
     throw new Error('The action failed: the payment service did not answer')
   }),

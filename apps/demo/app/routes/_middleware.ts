@@ -4,8 +4,6 @@ import { logger } from 'hono/logger'
 import { themeOf } from '#/lib/theme.server.ts'
 import { auth, type User } from '#/modules/auth/auth.server.ts'
 
-// What this middleware sets, typed where it is set: `c.get('user')` (Hono's ContextVariableMap) and the shared
-// props and flash data of every page (Fondu's Register: `usePage().props` in the browser too).
 declare module 'hono' {
   interface ContextVariableMap {
     user: User | null
@@ -21,7 +19,6 @@ declare module 'fondu' {
   }
 }
 
-// Every request (404s too): who is signed in, the theme
 const visitor = defineMiddleware(async (c, next) => {
   const session = await auth.api.getSession({ headers: c.req.raw.headers })
   const user = session?.user ?? null
@@ -40,9 +37,4 @@ const visitor = defineMiddleware(async (c, next) => {
   await next()
 })
 
-export default [
-  // Development: each request and its status in the terminal (production has Workers observability; tests have their
-  // own report)
-  ...(import.meta.env.MODE === 'development' ? [logger()] : []),
-  visitor,
-]
+export default [...(import.meta.env.MODE === 'development' ? [logger()] : []), visitor]

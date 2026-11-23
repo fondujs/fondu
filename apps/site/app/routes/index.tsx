@@ -32,7 +32,6 @@ import {
 import Code from '#/landing/code.mdx'
 import { cn } from '#/lib/utils.ts'
 
-// the package managers, as the quick start's tabs name them (their choice is shared: `group="pm"`)
 const managers = {
   npm: [Npm, 'npm create fondu@latest', 'text-[#CB3837]'],
   pnpm: [Pnpm, 'pnpm create fondu@latest', 'text-[#F69220]'],
@@ -163,7 +162,6 @@ export default function Home() {
           </div>
           <CreateCommand />
         </div>
-        {/* the one thing to see: a route file, its loader and its page, the props they share highlighted */}
         <Mosaic>
           <div aria-label="A route file" role="group" className="hero-code">
             <Code
@@ -260,7 +258,6 @@ export default function Home() {
   )
 }
 
-/** The hero's single code example: browser-style chrome, without the docs' interactive tabs. */
 function BrowserCode({ children }: { children: ReactNode }) {
   return (
     <div className="code-tabs overflow-hidden rounded-xl">
@@ -274,7 +271,6 @@ function BrowserCode({ children }: { children: ReactNode }) {
   )
 }
 
-/** a project named in a sentence: its mark and name, in its color */
 function Chip({
   mark,
   className,
@@ -297,7 +293,6 @@ function Chip({
   )
 }
 
-/** the hero's code, on a field of the brand's gold, its corners cut in squares */
 function Mosaic({ children }: { children: ReactNode }) {
   return (
     <div className="mosaic relative min-w-0 p-8 sm:p-10">
@@ -311,7 +306,6 @@ function Mosaic({ children }: { children: ReactNode }) {
   )
 }
 
-/** `npm create fondu@latest`, for the package manager chosen (the quick start's too), copied on a click */
 function CreateCommand() {
   const [chosen, choose] = useGroup('pm')
   const manager: Manager = chosen && chosen in managers ? (chosen as Manager) : 'npm'

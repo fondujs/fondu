@@ -15,7 +15,6 @@ import {
   setLocale,
 } from '#/paraglide/runtime.js'
 
-// One file, a URL per language (routes/[[locale]]/): the messages, the formats and the flash in the URL's language
 export const loader = defineHandler((c) => {
   const locale = getLocale()
   const url = (to: Locale) => new URL(localizeHref('/i18n', { locale: to }), c.req.url).href
@@ -25,7 +24,6 @@ export const loader = defineHandler((c) => {
       Date.UTC(2026, 9, 16),
     ),
     price: new Intl.NumberFormat(locale, { style: 'currency', currency: 'EUR' }).format(1234.5),
-    // the page in each language, for search engines: <link rel="alternate" hreflang>
     alternates: {
       ...Object.fromEntries(locales.map((l) => [l, url(l)])),
       'x-default': url(baseLocale),
@@ -50,7 +48,6 @@ interface Props {
   alternates: Record<string, string>
 }
 
-// each language in its own words
 const names: Record<Locale, string> = { en: 'English', de: 'Deutsch', zh: '中文' }
 
 // another language: remembered (setLocale's cookie), then the page in its URL, loaded as a document (its <html lang>)
@@ -61,11 +58,10 @@ const pick = (locale: Locale) => {
 
 export default function I18n({ rendered, date, price, alternates }: Props) {
   const { form, field, errors, submitting } = useForm()
-  const locale = getLocale() // the URL's, in the browser as on the server
+  const locale = getLocale()
   return (
     <>
       <Title>Languages</Title>
-      {/* React puts them in <head> */}
       {Object.entries(alternates).map(([lang, url]) => (
         <link key={lang} rel="alternate" hrefLang={lang} href={url} />
       ))}

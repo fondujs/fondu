@@ -1,4 +1,3 @@
-// Snapshot geometry and image decoding only; no dialog or application history controller.
 export async function checkGallerySnapshots({ browser, base, ok, watchProblems }) {
   const page = await browser.newPage()
   watchProblems(page)

@@ -3,8 +3,6 @@ import * as z from 'zod/mini'
 
 import { callAuth, requireUser } from '#/modules/auth/auth.server.ts'
 
-// POST /settings/name: the settings dialog's form (components/settings-dialog.tsx). The answer goes back to the page
-// it was sent from, whose #settings/profile stays on the screen: the dialog is open with the errors, or the new name
 export const POST = defineHandler.withValidator({
   body: z.object({
     name: z

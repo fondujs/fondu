@@ -15,7 +15,6 @@ import {
   DrawerTitle,
 } from '#/components/ui/drawer.tsx'
 
-// the overview and the links out, then the demos by group (components/demos.ts, as on the overview)
 const sections: Array<[group: string | null, links: Array<[url: string, label: string]>]> = [
   [
     null,
@@ -31,8 +30,6 @@ const sections: Array<[group: string | null, links: Array<[url: string, label: s
   ]),
 ]
 
-// The demos' layout (routes/(demos)/: a group, no URL segment): it stays mounted while pages change. Below md the menu is a drawer from the
-// left, as on fondu.dev's docs.
 export default function DemosLayout({ children }: { children: ReactNode }) {
   const { url, component } = usePage()
   const [open, setOpen] = useState(false)
@@ -96,7 +93,6 @@ const Home = () => (
   </a>
 )
 
-/** The demos, by group; where you are: a bar of the brand's gold */
 function Nav({
   id,
   active,

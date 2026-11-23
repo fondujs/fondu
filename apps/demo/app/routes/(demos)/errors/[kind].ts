@@ -1,8 +1,6 @@
 import { defineHandler } from 'fondu'
 import { HTTPException } from 'hono/http-exception'
 
-// what a proxy in front of the app sends when the app doesn't answer: a page of its own, not the app's (so its
-// styles are its own too, here in the demo's colors)
 const proxyPage = `<!doctype html>
 <html lang="en">
 <meta charset="utf-8">
@@ -28,7 +26,6 @@ const proxyPage = `<!doctype html>
 </main>
 </html>`
 
-// GET /errors/:kind — each one fails in its own way
 export const GET = defineHandler((c) => {
   switch (c.req.param('kind')) {
     case 'loader':
@@ -42,7 +39,6 @@ export const GET = defineHandler((c) => {
   }
 })
 
-// POST /errors/proxy — the proxy's page after a form
 export const POST = defineHandler((c) => {
   if (c.req.param('kind') !== 'proxy') throw new HTTPException(404)
   return c.html(proxyPage, 502)

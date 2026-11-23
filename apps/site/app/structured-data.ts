@@ -2,9 +2,6 @@ import pkg from '../../../packages/fondu/package.json'
 import { docs, docUrl } from './docs.ts'
 import { SITE, SUMMARY } from './site.ts'
 
-// Structured data (JSON-LD, schema.org) for the document's <head>: the home page describes the site and the code,
-// a doc page its article and where it sits in the docs. Only what the repository says: its URL and license are
-// packages/fondu/package.json's.
 const repository = pkg.repository.url.replace(/^git\+/, '').replace(/\.git$/, '')
 
 const context = 'https://schema.org'
@@ -24,7 +21,6 @@ const home = [
 
 export type DocDates = Record<string, { modified?: string; published?: string }>
 
-/** the structured data of the page at `path`, or none (the error page, a path that is no page) */
 export function structuredData(path: string, dates: DocDates = {}): object | undefined {
   if (path === '/') return { '@context': context, '@graph': home }
   const doc = docs.find((d) => docUrl(d) === path)
@@ -53,9 +49,5 @@ export function structuredData(path: string, dates: DocDates = {}): object | und
   }
 }
 
-/**
- * The data as a script's text: `<` escaped, so nothing in it is `</script>` or `<!--`, as the document's page data
- * (fondu's server/document.ts). A data block (`application/ld+json`) is never run, so the CSP neither blocks nor
- * reports it.
- */
+// `<` escaped, so nothing in it is `</script>` or `<!--`. A data block is never run, so the CSP leaves it alone.
 export const jsonLd = (data: object) => JSON.stringify(data).replace(/</g, '\\u003c')

@@ -19,8 +19,6 @@ import {
 import { Menu as Dropdown, MenuItem, MenuPopup, MenuTrigger } from '#/components/ui/menu.tsx'
 import { docOf, docs, docUrl, markdownUrl, sections, type Doc, type TocItem } from '#/docs.ts'
 
-// What the Markdown becomes: links within the site are navigations, others open in a new tab; headings link to
-// themselves; code blocks get a copy button, and <CodeTabs> groups them; <CopyPrompt> is the home page's button
 const heading =
   (Tag: 'h2' | 'h3') =>
   ({ id, children }: ComponentProps<'h2'>) => (
@@ -44,8 +42,6 @@ const components = {
   CopyPrompt,
 }
 
-// A page of the docs, inside the site's layout. Large screens: the sidebar, the page, its headings. Small ones: a bar
-// that stays at the top, with the sidebar in a drawer and the headings in a menu.
 export default function DocsLayout({ children }: { children: ReactNode }) {
   const { component, props } = usePage<{ toc: TocItem[] }>()
   const [open, setOpen] = useState(false)
@@ -188,7 +184,6 @@ export default function DocsLayout({ children }: { children: ReactNode }) {
   )
 }
 
-/** the heading the reader is at: the last one above the top of the window (below the header) */
 function useCurrentHeading(toc: TocItem[]) {
   const [current, setCurrent] = useState<string>()
   useEffect(() => {

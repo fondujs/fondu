@@ -14,7 +14,6 @@ import {
   MenuTrigger,
 } from '#/components/ui/menu.tsx'
 
-/** The theme, and who is signed in (a shared prop: in the server-rendered HTML, never loading) or the way in */
 export function AccountMenu() {
   const { user } = usePage().props.auth
   const signOut = useRef<HTMLFormElement>(null)
@@ -46,14 +45,12 @@ export function AccountMenu() {
               <span className="truncate text-xs text-muted-foreground">{user.email}</span>
             </div>
             <MenuSeparator />
-            {/* a shallow link to a #fragment of this page: the settings dialog (components/settings-dialog.tsx) opens */}
             <MenuLinkItem
               render={<a href="#settings/profile" data-shallow />}
               data-testid="settings-link"
             >
               <Settings /> Settings
             </MenuLinkItem>
-            {/* POST /logout: the form below, sent by the menu item */}
             <MenuItem onClick={() => signOut.current?.requestSubmit()} data-testid="sign-out">
               <LogOut /> Sign out
             </MenuItem>

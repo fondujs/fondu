@@ -2,8 +2,7 @@
 @import 'allo-font/friendly';
 @import '@fontsource-variable/geist-mono';
 
-/* coss ui's `dark:`: the dark theme chosen, or the system's while none is (<html class="system">). And its
-   `not-dark:`, which Tailwind can't derive from a variant of two rules. */
+/* coss ui's `dark:` and `not-dark:`, which Tailwind can't derive from a variant of two rules */
 @custom-variant dark {
   &:is(.dark *) {
     @slot;
@@ -25,8 +24,6 @@
   }
 }
 
-/* coss ui's tokens (neutral), each light-dark(): the theme is the color-scheme, the system's or the one chosen.
-   One more color, molten-cheese gold (--brand), for the logo, the progress bar, where you are and links. */
 :root {
   color-scheme: light dark;
   --background: light-dark(
@@ -68,7 +65,7 @@
   --ring: light-dark(var(--color-neutral-400), var(--color-neutral-500));
   --brand: light-dark(oklch(76% 0.16 78), oklch(80% 0.16 85));
   --brand-foreground: light-dark(oklch(55% 0.13 70), var(--brand)); /* text: 4.9:1 on white */
-  /* code in a sentence: the gold, darker on light (5.6:1 on its tint), lighter on dark (as on fondu.dev) */
+  /* code in a sentence: 5.6:1 on its tint on light */
   --code: light-dark(oklch(49% 0.11 66), oklch(86% 0.12 86));
   --code-background: light-dark(oklch(76% 0.16 78 / 12%), oklch(80% 0.16 85 / 11%));
   --radius: 0.625rem;
@@ -206,7 +203,6 @@
   h1 {
     @apply mb-2 font-heading text-2xl font-semibold tracking-tight;
   }
-  /* a link in a sentence: one without classes of its own */
   a:not([class]) {
     @apply text-brand-foreground underline decoration-brand-foreground/40 underline-offset-4 hover:decoration-brand-foreground;
   }
@@ -222,14 +218,11 @@
   }
 }
 
-/* A page's opening paragraph, under its <h1> */
 @utility lede {
   @apply mb-8 text-[15px]/relaxed text-muted-foreground;
 }
 
-/* The gallery (routes/(demos)/transitions/), for the links with data-transition. The photo of an item has its own
-   view-transition-name (inline, on both pages), so it moves from card to page. The page's content, named gallery-page,
-   slides by direction; the sidebar around it stays. */
+/* Only links with data-transition animate. A photo's view-transition-name is inline, on both pages. */
 @media (prefers-reduced-motion: no-preference) {
   .gallery-page {
     view-transition-name: gallery-page;
@@ -305,7 +298,7 @@
   }
 }
 
-/* Local dialog motion, including Back/Forward, not a page transition. Browser-owned swipes settle at once. */
+/* Browser-owned swipes settle at once */
 html[data-gallery-dialog] {
   overflow: hidden;
   scrollbar-gutter: stable;

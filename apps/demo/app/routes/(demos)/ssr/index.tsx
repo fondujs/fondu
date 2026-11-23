@@ -14,7 +14,6 @@ const code = (lines: string[]) => (
 )
 
 const noop = () => () => {}
-/** the server's snapshot while it renders and hydrates (no window there), the browser's once mounted */
 function Mounted() {
   const width = useSyncExternalStore(
     noop,
@@ -28,7 +27,6 @@ function Mounted() {
   )
 }
 
-/** what is slow, on the server only: a client navigation has no wait (`wait` is undefined) */
 function Late({ wait }: { wait?: Promise<unknown> }) {
   if (wait) use(wait)
   return <p data-testid="streamed">This part came after the shell, in the same response.</p>

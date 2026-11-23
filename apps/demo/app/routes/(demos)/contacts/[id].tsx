@@ -13,16 +13,13 @@ import { contactSchema } from '#/modules/contacts/schemas.ts'
 
 const params = z.object({ id: z.coerce.number().check(z.int()) })
 
-// GET /contacts/:id — `params.id` is a number; /contacts/abc is a 404
 export const loader = defineHandler.withValidator({ params })(async (c, { params }) => {
   const [contact] = await db.select().from(contacts).where(eq(contacts.id, params.id))
   if (!contact) throw new HTTPException(404)
   return render(c, Show, { contact })
 })
 
-// the changes are for signed-in users, like adding and deleting
 export const actions = {
-  // POST /contacts/:id?rename
   rename: defineHandler.withValidator({
     params,
     body: z.object({
@@ -33,7 +30,6 @@ export const actions = {
     flash(c, { message: 'Renamed' })
     return back(c)
   }),
-  // POST /contacts/:id?email
   email: defineHandler.withValidator({
     params,
     body: z.object({ email: contactSchema.shape.email }),
@@ -51,7 +47,6 @@ export default function Show({
   contact: { id: number; name: string; email: string }
 }) {
   const { user } = usePage().props.auth
-  // a form each: each shows the errors of its own fields, and is busy on its own
   const rename = useForm()
   const email = useForm()
   return (
@@ -65,7 +60,6 @@ export default function Show({
         Two forms on one page, each posting to an action of its own (<code>?rename</code>,{' '}
         <code>?email</code>): each shows the errors of its own fields.
       </p>
-      {/* the changes are for signed-in users (the actions use requireUser) */}
       {user ? (
         <div className="grid gap-4 sm:grid-cols-2">
           <DemoCard title="Rename" tag="actions.rename">

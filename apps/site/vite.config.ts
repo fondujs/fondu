@@ -13,10 +13,6 @@ import { defineConfig } from 'vite'
 
 import { markdown } from './markdown.ts'
 
-// fondu.dev: the docs are MDX pages (app/routes/docs/), highlighted at build time (Shiki, both themes: app.css picks
-// one), each page exporting its headings (`toc`). Every page is static (routes/_middleware.ts); `bun run build`
-// then indexes them for the search (Pagefind). Each page is also Markdown (markdown.ts).
-/** ```sh title="npm": the block's title, for <CodeTabs> (components/code.tsx). ```text wrap: lines wrapped (app.css) */
 const title: ShikiTransformer = {
   pre(node) {
     const title = /title="([^"]+)"/.exec(this.options.meta?.__raw ?? '')?.[1]

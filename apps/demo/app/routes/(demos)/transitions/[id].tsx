@@ -6,7 +6,6 @@ import { Title } from '#/components/demo.tsx'
 import { photos, type Photo } from '#/modules/gallery/photos.ts'
 import { usePhotoSrc } from '#/modules/gallery/use-photo-src.ts'
 
-// GET /transitions/:id — an id that is not a photo's is a 404
 export const loader = defineHandler((c) => {
   const photo = photos.find((p) => p.id === c.req.param('id'))
   if (!photo) throw new HTTPException(404)

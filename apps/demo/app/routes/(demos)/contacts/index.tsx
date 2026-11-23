@@ -28,9 +28,7 @@ export const loader = defineHandler(async (c) =>
   }),
 )
 
-// two forms, an action each (`actions`: posted to ?create, ?delete)
 export const actions = {
-  // POST /contacts?create — signed in only; invalid: 303 back with the errors
   create: defineHandler.withValidator({ body: newContactSchema })(
     requireUser,
     async (c, { body }) => {
@@ -39,7 +37,6 @@ export const actions = {
       return back(c)
     },
   ),
-  // POST /contacts?delete — signed in only
   delete: defineHandler.withValidator({ body: z.object({ id: z.coerce.number().check(z.int()) }) })(
     requireUser,
     async (c, { body }) => {
@@ -55,10 +52,7 @@ type Contact = AsJson<typeof contacts.$inferSelect>
 
 export default function Contacts({ contacts }: { contacts: Contact[] }) {
   const { auth } = usePage().props
-  // the action's schema, in the browser too: an invalid form isn't sent; the server checks again (and what only it
-  // can, an address already taken)
   const { form, field, errors, submitting } = useForm(contactSchema)
-  // a contact being deleted: the form being sent is its form, the trash button shows it
   const { form: sent, state } = useNavigation()
   const sending = state === 'failed' ? null : sent
   return (
@@ -70,7 +64,6 @@ export default function Contacts({ contacts }: { contacts: Contact[] }) {
         on the server: invalid input there is answered with a 303 back to this page and the errors
         in its <code>errors</code> prop, what was typed still there. Contacts are stored in D1.
       </p>
-      {/* adding, changing and deleting are for signed-in users (the actions use requireUser) */}
       {auth.user ? (
         <div className="mb-4 sm:max-w-md">
           <DemoCard title="Add a contact" tag="one schema, browser and server">
@@ -108,7 +101,6 @@ export default function Contacts({ contacts }: { contacts: Contact[] }) {
                 {contact.name}
               </a>
               <span className="truncate text-muted-foreground">{contact.email}</span>
-              {/* POST /contacts?delete once confirmed. Without JavaScript, the button deletes at once. */}
               {auth.user && (
                 <form
                   id={`delete-${contact.id}`}

@@ -16,9 +16,7 @@ const code = (lines: string[]) => (
   </pre>
 )
 
-// Both sections use the same URLs. A shallow click keeps this page; the photo's route serves ordinary visits.
-// Ordinary Back/Forward animate too. A scoped listener reads only the browser's native-animation flag so Safari's
-// swipe is not followed by a second animation. It never changes history, predicts a target or restores scroll.
+// A scoped listener reads only the browser's native-animation flag, so Safari's swipe is not followed by a second animation.
 export default function Gallery() {
   const { url } = usePage()
   const path = new URL(url, 'http://localhost').pathname
@@ -70,7 +68,6 @@ export default function Gallery() {
                     alt=""
                     width={640}
                     height={480}
-                    // the first row is on the screen at once
                     loading={i < 3 ? undefined : 'lazy'}
                     // An independently captured image needs its own corners, not only the card's clipping.
                     className="aspect-4/3 w-full rounded-t-[calc(var(--radius-2xl)-1px)] object-cover"

@@ -7,13 +7,11 @@ import { DemoCard, SubmitButton, TextField, Title } from '#/components/demo.tsx'
 import { Badge } from '#/components/ui/badge.tsx'
 import { Button } from '#/components/ui/button.tsx'
 
-// ?slow: answered a second later, to watch useNavigation()
 export const loader = defineHandler(async (c) => {
   if (c.req.query('slow') !== undefined) await new Promise((r) => setTimeout(r, 1000))
   return render(c, Navigation, { servedAt: new Date().toISOString().slice(11, 23) })
 })
 
-// POST /navigation?note — flashes the note back, shown as a toast
 export const actions = {
   note: defineHandler.withValidator({ body: z.object({ note: z.string() }) })((c, { body }) => {
     flash(c, { message: `Sent: ${body.note}` })

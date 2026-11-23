@@ -14,10 +14,7 @@ const load = (url: string) => {
   return fetched.get(url)!
 }
 
-/**
- * Copy as Markdown | View as Markdown: the page as /docs/<slug>.md (markdown.ts), for a coding agent or a chat. The
- * copy waits for the fetch: ClipboardItem takes the promise, so Safari keeps the click's permission.
- */
+// The copy waits for the fetch: ClipboardItem takes the promise, so Safari keeps the click's permission.
 export function MarkdownActions({ url }: { url: string }) {
   const [state, setState] = useState<'idle' | 'copying' | 'copied' | 'failed'>('idle')
   const copy = async () => {

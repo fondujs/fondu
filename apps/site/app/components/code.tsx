@@ -14,7 +14,6 @@ import {
 
 import { cn } from '#/lib/utils.ts'
 
-/** A button that copies `text()` and says so for a moment */
 export function CopyButton({
   text,
   className,
@@ -49,7 +48,6 @@ export function CopyButton({
   )
 }
 
-/** A code block (Shiki's <pre>), with a copy button on hover */
 export function Pre({ className, ...props }: ComponentProps<'pre'>) {
   const ref = useRef<HTMLPreElement>(null)
   return (
@@ -64,8 +62,6 @@ export function Pre({ className, ...props }: ComponentProps<'pre'>) {
   )
 }
 
-// The tab chosen in each group (`group="pm"`: the package manager), the same in every block of the group (and the
-// home page's command), kept for the next visit
 const listeners = new Set<() => void>()
 const KEY = 'code-tabs:'
 export function useGroup(group: string | undefined) {
@@ -89,10 +85,6 @@ export function useGroup(group: string | undefined) {
   return [chosen, choose] as const
 }
 
-/**
- * Code blocks as tabs, one per block, named by its title (```sh title="npm"). Blocks of the same `group` switch
- * together.
- */
 export function CodeTabs({ group, children }: { group?: string; children: ReactNode }) {
   // each block: a <pre>, inside a fragment as Shiki's rehype plugin writes it
   const blocks = Children.toArray(children)

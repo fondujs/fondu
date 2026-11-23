@@ -9,8 +9,7 @@ const ANALYTICS = {
   report: 'https://cloudflareinsights.com',
 }
 
-// The site's Worker. Its pages are static files (routes/_middleware.ts), served without it; it answers the rest (a
-// 404). The search (Pagefind) runs WebAssembly.
+// The search (Pagefind) runs WebAssembly.
 const app = createApp({
   document: Document,
   secureHeaders: {

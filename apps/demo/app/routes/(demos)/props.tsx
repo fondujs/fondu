@@ -3,8 +3,6 @@ import { usePage } from 'fondu/client'
 
 import { DemoCard, Json, Title } from '#/components/demo.tsx'
 
-// Props are checked against the page component's own props (below): a missing or misspelled prop is a
-// type error here, as is one JSON can't deliver as the page types it (a Date is fine for a string).
 export const loader = defineHandler((c) =>
   render(c, PropsDemo, {
     text: 'Hello from Hono',

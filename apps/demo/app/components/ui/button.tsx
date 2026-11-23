@@ -81,7 +81,6 @@ export function Button({
     ),
     className: cn(
       buttonVariants({ className, size, variant }),
-      // its content hidden behind the spinner: the text (transparent) and its elements (a dot, an icon), its size kept
       loading &&
         'select-none text-transparent [&>*:not([data-slot=button-loading-indicator])]:invisible',
     ),

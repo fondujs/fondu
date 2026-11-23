@@ -20,8 +20,6 @@ const links: Array<[label: string, url: string]> = [
   ['npm', 'https://www.npmjs.com/package/fondu'],
 ]
 
-// routes/_layout.tsx, around every page: the header (at the top on large screens; on small ones, the docs keep their own
-// bar there), the page, the footer. The header's last button: the docs, or in the docs their search.
 export default function SiteLayout({ children }: { children: ReactNode }) {
   const { url } = usePage()
   const inDocs = url.startsWith('/docs')
