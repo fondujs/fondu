@@ -132,11 +132,14 @@ export default function Dashboard({ user, stats }: { user: User; stats?: Stats }
 
 `usePage()` from `fondu/client` returns the page on the screen, in any component:
 
-| Field   | Is                                                               |
-| ------- | ---------------------------------------------------------------- |
-| `props` | the page's props, with the shared props and `errors`             |
-| `url`   | the page's URL (path and query)                                  |
-| `flash` | the data an action left for this page with `flash()`, shown once |
+| Field       | Is                                                                                          |
+| ----------- | ------------------------------------------------------------------------------------------- |
+| `component` | the page's id: its route file's path in `app/routes/`, without the extension (`users/[id]`) |
+| `props`     | the page's props, with the shared props and `errors`                                        |
+| `url`       | the page's URL (path and query)                                                             |
+| `flash`     | the data an action left for this page with `flash()`, shown once                            |
+
+Its type is `Page` (`Page<Props>` for the props you give it: `usePage<Props>()`).
 
 ```tsx
 import { usePage } from 'fondu/client'

@@ -69,8 +69,9 @@ declare module 'fondu' {
 
 ## `usePage()`
 
-From `fondu/client`, in any component: `props` (the page's props with the shared props and `errors`), `url` (path and
-query), `flash` (what an action left with `flash()`, shown once), `component`.
+From `fondu/client`, in any component: `component` (the page's id: its route file's path in `app/routes/`, without the
+extension, `users/[id]`), `props` (the page's props with the shared props and `errors`), `url` (path and query), `flash`
+(what an action left with `flash()`, shown once). Its type is `Page`; `usePage<P>()` returns `Page<P>`.
 
 ```tsx
 const { props, url, flash } = usePage()

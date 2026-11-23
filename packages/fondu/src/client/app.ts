@@ -17,7 +17,7 @@ import { createRoot, hydrateRoot } from 'react-dom/client'
 
 import { decoded, pageId, routePatterns } from '../paths.js'
 import type { Flash, Shared } from '../types.js'
-import { again, startNavigation, type Page } from './navigation.js'
+import { again, startNavigation, type PageObject } from './navigation.js'
 import { progressBar, type ProgressOptions } from './progress.js'
 
 type Layout = ComponentType<{ children: ReactNode }>
@@ -63,9 +63,9 @@ async function load(component: string): Promise<Shown['view']> {
 
 // ---- the page on screen, for usePage()
 
-const PageContext = createContext<Page | null>(null)
+const PageContext = createContext<PageObject | null>(null)
 type Shown = {
-  page: Page
+  page: PageObject
   view: { Component: PageComponent; layouts: Layout[] }
   /** which mount of the page this is: its key, so a new one remounts it */
   mounts: number
@@ -78,7 +78,7 @@ let mountCount = 0
 let seqCount = 0
 
 /** @internal the state that puts a page on the screen: mounted anew (`fresh`), or keeping its state */
-export const shownOf = (page: Page, view: Shown['view'], fresh: boolean): Shown => ({
+export const shownOf = (page: PageObject, view: Shown['view'], fresh: boolean): Shown => ({
   page,
   view,
   mounts: (mountCount += Number(fresh)),
@@ -112,14 +112,14 @@ let ErrorPage: ComponentType<{ status: number }> | undefined
 
 /** what failed to render, until another page (the layouts it is around are kept: no key) */
 class Failed extends Component<
-  { children?: ReactNode; page: Page },
-  { failed: boolean; page: Page }
+  { children?: ReactNode; page: PageObject },
+  { failed: boolean; page: PageObject }
 > {
   override state = { failed: false, page: this.props.page }
   static getDerivedStateFromError() {
     return { failed: true }
   }
-  static getDerivedStateFromProps(props: { page: Page }, state: { page: Page }) {
+  static getDerivedStateFromProps(props: { page: PageObject }, state: { page: PageObject }) {
     return props.page === state.page ? null : { failed: false, page: props.page }
   }
   override render() {
@@ -234,7 +234,7 @@ function start(settings: Parameters<typeof __entry>[1], errorComponent?: Loader)
   const root = document.getElementById('app')
   if (!data || !root)
     throw new Error('fondu: the document has no page (script[data-page="app"], #app)')
-  const initial = JSON.parse(data) as Page
+  const initial = JSON.parse(data) as PageObject
   void errorComponent?.().then((m) => (ErrorPage = (m as { default: typeof ErrorPage }).default))
   void load(initial.component).then((view) => {
     // dev: the stylesheet the server gave the page until its layouts brought their CSS (they have now)
@@ -285,7 +285,7 @@ export type Rendered = ReadableStream<Uint8Array> & { allReady: Promise<void> }
  * `useId()` is the position in the tree (a sibling of the page forks it: every id would differ).
  */
 export async function renderPage(
-  page: Page,
+  page: PageObject,
   render: (element: ReactElement) => Promise<Rendered>,
 ): Promise<Rendered> {
   const view = await load(page.component)
@@ -301,16 +301,16 @@ export async function renderPage(
 /** a form's field errors, as a page gets them (its `errors` prop): field name → message */
 export type Errors = Record<string, string>
 
-/**
- * The page on screen: its props (the shared ones, `errors`), its URL (path and query: it follows a shallow
- * navigation, and the props do not), its flash data
- */
-export function usePage<P = Shared>(): {
+/** The page on screen, as `usePage()` returns it */
+export type Page<P = Shared> = {
   component: string
   props: P & { errors: Errors }
   url: string
   flash: Partial<Flash>
-} {
+}
+
+/** The page on screen: `Page` */
+export function usePage<P = Shared>(): Page<P> {
   const page = useContext(PageContext)
   if (!page) throw new Error('fondu: usePage() is for components of a page')
   return page as never

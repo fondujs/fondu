@@ -4,7 +4,7 @@ import type { ReactElement } from 'react'
 import { assetTags } from 'virtual:fondu/assets'
 import { renderMarkup, renderPage } from 'virtual:fondu/ssr'
 
-import type { Page } from '../client/navigation.js'
+import type { PageObject } from '../client/navigation.js'
 import { SCROLL_KEY, SCROLL_STORAGE } from '../paths.js'
 import { runsAsScript } from '../script-type.js'
 import { nonceOf } from './http.js'
@@ -107,7 +107,7 @@ function shellEndLost() {
  */
 export async function renderDocument(
   c: Context,
-  page: Page,
+  page: PageObject,
   whole = false,
 ): Promise<string | ReadableStream<Uint8Array>> {
   const nonce = nonceOf(c)

@@ -11,6 +11,7 @@ import type {
   request,
   href,
   navigate,
+  Page,
   useForm,
   useNavigation,
   usePage,
@@ -30,6 +31,7 @@ import {
 } from '../src/server/handler.js'
 import { back } from '../src/server/http.js'
 import type { defer, render, share } from '../src/server/protocol.js'
+import type { Shared } from '../src/types.js'
 import type { FonduOptions, ProgressOptions } from '../src/vite/index.js'
 
 type Auth = { user: string | null }
@@ -729,6 +731,10 @@ test('a page prop that clashes with a shared prop names the cause', () => {
   expect(clashes).toHaveLength(9)
 })
 
+test('Page<P> is what usePage<P>() returns', () => {
+  expect(pageTypes).toHaveLength(7)
+})
+
 test('the types above are checked by tsc', () => {
   expect([
     ...renders,
@@ -807,6 +813,27 @@ const clashes = [
   typed(({ render }, c) => render(c, ClashOptional, { auth: 'Ada' })),
   // @ts-expect-error
   typed(({ render }, c) => render(c, ClashBranch, { mode: 'other', body: 'x' })),
+]
+
+type Own = { title: string; count?: number }
+const pageTypes = [
+  same<ReturnType<typeof usePage<Shared>>, Page>(),
+  same<ReturnType<typeof usePage<Own>>, Page<Own>>(),
+  same<ReturnType<typeof usePage<{}>>, Page<{}>>(),
+  same<
+    Page<Own>,
+    {
+      component: string
+      props: Own & { errors: Record<string, string> }
+      url: string
+      flash: { message?: string }
+    }
+  >(),
+  same<Page['props']['auth'], Auth>(),
+  // @ts-expect-error
+  typed(({ usePage }) => usePage().version),
+  // @ts-expect-error
+  typed(({ usePage }) => usePage().deferred),
 ]
 
 const asJson = [

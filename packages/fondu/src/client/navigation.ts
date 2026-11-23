@@ -3,7 +3,7 @@ import { pageDataPath, SCROLL_KEY, SCROLL_STORAGE } from '../paths.js'
 import { canTransition, instantly, optIn, skipActive, transition } from './transitions.js'
 
 /** what the server sends for a page: its id (its route file, `users/[id]`), its props, its URL, the build's version */
-export interface Page {
+export interface PageObject {
   component: string
   props: Record<string, unknown>
   url: string
@@ -14,13 +14,17 @@ export interface Page {
 }
 
 interface Options {
-  initial: Page
+  initial: PageObject
   /**
    * loads the page's modules, and gives what puts it on the screen, in the DOM once it has run (the page is built then,
    * not before: what the page on the screen asked for in between is in it); `fresh`: mounted anew, else it keeps its
    * state (a form back with its errors, reload()); nothing once `stale()` (superseded while its modules loaded)
    */
-  show: (page: Page, fresh: boolean, stale: () => boolean) => Promise<(() => void) | undefined>
+  show: (
+    page: PageObject,
+    fresh: boolean,
+    stale: () => boolean,
+  ) => Promise<(() => void) | undefined>
   /** `fondu({ prerender: true })`: GET navigations read `/_fondu/pages/<path>.json` */
   prerender: boolean
   /** `fondu({ viewTransitions: true })`: a navigation transitions unless it opts out (it opts in on its own otherwise) */
@@ -55,7 +59,7 @@ interface Visit {
   /** reload(), navigate(…, { keep }): the page keeps its state and the scroll, if the same component answers */
   keep?: boolean
   /** Back and Forward: the page the entry showed, put on the screen at once, then the server's in its place */
-  kept?: Page
+  kept?: PageObject
   /**
    * The navigation's own choice of a view transition, over the default (`fondu({ viewTransitions })`): `false`, opted
    * out; else opted in, with these custom types (a link's or form's `data-transition`, `navigate()`'s `transition`; for
@@ -98,8 +102,8 @@ export function startNavigation({
   let current: AbortController | undefined
   // the page each entry showed, for Back and Forward: in memory only (gone on reload), the last 50; all of them
   // forgotten once a form is sent (what it changed, a signed-out user's pages), its flash data not shown again
-  const kept = new Map<string, Page>()
-  const keep = (page: Page) => {
+  const kept = new Map<string, PageObject>()
+  const keep = (page: PageObject) => {
     const key = scroll.key()
     if (!key) return
     kept.delete(key)
@@ -127,7 +131,7 @@ export function startNavigation({
   let requests = 0
   let answers = new Map<string, number>()
   /** the page on the screen, at once: its modules loaded, then committed (the DOM has it when this resolves) */
-  const showNow = async (page: Page, fresh: boolean, stale: () => boolean) =>
+  const showNow = async (page: PageObject, fresh: boolean, stale: () => boolean) =>
     (await show(page, fresh, stale))?.()
   /**
    * The page put on the screen, and what follows it (`tail`: keep it, announce it, scroll). With `types` (a view
@@ -135,7 +139,7 @@ export function startNavigation({
    * when the browser has captured the old page; a visit superseded by then commits nothing (`update` runs on a skip too)
    */
   const put = async (
-    page: Page,
+    page: PageObject,
     fresh: boolean,
     stale: () => boolean,
     tail: () => void,
@@ -236,7 +240,9 @@ export function startNavigation({
         signal: controller.signal,
       })
       const answer =
-        response.ok && response.headers.has('X-Fondu') ? ((await response.json()) as Page) : null
+        response.ok && response.headers.has('X-Fondu')
+          ? ((await response.json()) as PageObject)
+          : null
       if (answer?.component === page.component) got = answer.props
     } catch {} // offline, aborted
     asking.delete(controller)
@@ -246,7 +252,7 @@ export function startNavigation({
     // the props of this answer that no newer request has answered already
     const take = names.filter((n) => got && Object.hasOwn(got, n) && id > (answers.get(n) ?? 0))
     for (const n of take) answers.set(n, id)
-    const next: Page = {
+    const next: PageObject = {
       ...on,
       props: { ...on.props, ...Object.fromEntries(take.map((n) => [n, got![n]])) },
       deferred: on.deferred?.filter((n) => !names.includes(n)),
@@ -378,7 +384,7 @@ export function startNavigation({
           addEventListener('popstate', () => location.reload())
           return
         }
-        const page = (await response.json()) as Page
+        const page = (await response.json()) as PageObject
         if (signal.aborted) return
         // A prerendered page's file is made without a query. Its answer, not redirected, is for the URL asked: the
         // visitor's query stays (as at a document load); a redirect, which the server made, is its target's

@@ -91,7 +91,7 @@ the server they throw.
 | Export                                             | Is                                                                                                                                                                                                                                                                                                  |
 | -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `href(path, params?)`                              | a URL of `app/routes/`, typed: `href('/users/:id', { id: 7, query?, hash? })` ([Type safety](/docs/type-safety#urls))                                                                                                                                                                               |
-| `usePage()`                                        | the page on screen: `component`, `props`, `url` (path and query), `flash`                                                                                                                                                                                                                           |
+| `usePage()`                                        | the page on screen, a `Page`: `component` (its id: its route file's path), `props`, `url` (path and query), `flash`                                                                                                                                                                                 |
 | `useNavigation()`                                  | the navigation on its way: `{ state, to, form }`, `state` `'idle'`, `'loading'`, `'submitting'` or `'failed'` (a form not sent)                                                                                                                                                                     |
 | `useForm(schema?)`                                 | a form checked in the browser by its action's schema: `{ form, field, errors, submitting, failed }` ([Forms](/docs/forms#the-same-schema-in-the-browser))                                                                                                                                           |
 | `reload({ only? })`                                | the page's props again, its state and scroll position kept; `only: ['stats']`: those props alone, quietly                                                                                                                                                                                           |
@@ -105,12 +105,12 @@ the server they throw.
 
 ### Types
 
-| Export       | Is                                                                                            |
-| ------------ | --------------------------------------------------------------------------------------------- |
-| `Errors`     | the type of a page's `errors` prop: field name to message                                     |
-| `Href`       | the URLs `href()` takes: each route's pattern, and `pattern?action` for its actions           |
-| `Navigation` | what `useNavigation()` returns: `{ state, to, form }`                                         |
-| `Page`       | the page object the server sends: `component`, `props`, `url`, `version`, `flash`, `deferred` |
+| Export       | Is                                                                                                        |
+| ------------ | --------------------------------------------------------------------------------------------------------- |
+| `Errors`     | the type of a page's `errors` prop: field name to message                                                 |
+| `Href`       | the URLs `href()` takes: each route's pattern, and `pattern?action` for its actions                       |
+| `Navigation` | what `useNavigation()` returns: `{ state, to, form }`                                                     |
+| `Page`       | what `usePage()` returns: `{ component, props, url, flash }`; `Page<P>` types `props` as `P` and `errors` |
 
 ## `fondu/vite`
 
