@@ -3,8 +3,8 @@ import { afterEach, expect, test } from 'vitest'
 
 import * as client from '../src/client.js'
 import * as internal from '../src/client/internal.js'
+import { isInstalled } from '../src/vite/assets.js'
 import fondu from '../src/vite/index.js'
-import { fonduInstalled, isInstalled } from '../src/vite/installed.js'
 import { tempApp } from './support/build.js'
 
 // The plugin's generated entries import `fondu/client/internal` (the internals) and `fondu/client` (`reload`, in dev):
@@ -63,7 +63,6 @@ test('fondu/client is pre-bundled for an installed fondu only, not a linked one'
   expect(isInstalled('C:\\app\\node_modules\\fondu\\dist\\vite\\index.js')).toBe(true)
   expect(isInstalled('/repo/packages/fondu/dist/vite/index.js')).toBe(false)
   expect(isInstalled('/repo/node_modules_old/fondu/dist/vite/index.js')).toBe(false)
-  expect(fonduInstalled()).toBe(false)
 })
 
 // `viewTransitions` reaches the browser as a setting of the entry (the default of each navigation), not as a build-time

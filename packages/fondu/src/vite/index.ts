@@ -2,6 +2,7 @@ import { appendFileSync, existsSync, readdirSync, readFileSync, writeFileSync } 
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { builtinModules } from 'node:module'
 import { relative, resolve, sep } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 import devServer, { defaultOptions as devServerDefaults } from '@hono/vite-dev-server'
 import react, { type Options as ReactOptions } from '@vitejs/plugin-react'
@@ -20,12 +21,11 @@ import type { ProgressOptions } from '../client/progress.js'
 
 export type { ProgressOptions }
 import { isPageFile, layoutsOf, pageId } from '../paths.js'
-import { nonceAttr, productionAssets } from './assets.js'
+import { isInstalled, nonceAttr, productionAssets } from './assets.js'
 import { checkRoutes, routesPrerender } from './check.js'
 import { entryCode, SERVER } from './entry.js'
 import { hmr, PAGE_EXPORTS, PROPS_EVENT } from './hmr.js'
 import { HONO } from './hono.js'
-import { fonduInstalled } from './installed.js'
 import { devServerNodeServer } from './node-server.js'
 import { checkOptions } from './options.js'
 import { nodeServer, prerender, worker } from './prerender.js'
@@ -355,9 +355,12 @@ function core(options: FonduOptions, prerendering: Prerendering): Plugin {
         return {
           optimizeDeps: {
             entries: pages,
-            // both are pre-bundled in one run, so they share one module of the client (one React context, one navigation state);
-            // only for an installed fondu: a linked one stays as Vite treats linked packages
-            ...(fonduInstalled() && { include: ['fondu/client', 'fondu/client/internal'] }),
+            // both are pre-bundled in one run, so they share one module of the client (one React context, one navigation state).
+            // Vite pre-bundles an installed package but serves a linked one as source, so edits reach the browser: only for an
+            // installed fondu
+            ...(isInstalled(fileURLToPath(import.meta.url)) && {
+              include: ['fondu/client', 'fondu/client/internal'],
+            }),
             ...mdx,
             rolldownOptions: {
               plugins: [...mdx.rolldownOptions.plugins, scanRoutes(() => config.root)],
