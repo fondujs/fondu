@@ -90,13 +90,31 @@ test.describe('a visit on its way, and a traversal between #fragment entries', (
   })
 
   test('a #fragment entry’s scroll position is still restored', async ({ page }) => {
+    const probe = (step: string) =>
+      page.evaluate((step) => {
+        const saved: Record<string, string | null> = {}
+        for (let i = 0; i < sessionStorage.length; i++) {
+          const k = sessionStorage.key(i)!
+          saved[k.replace('fondu-scroll:', '')] = sessionStorage.getItem(k)
+        }
+        const one = document.querySelector('#one')!.getBoundingClientRect().top + scrollY
+        const two = document.querySelector('#two')!.getBoundingClientRect().top + scrollY
+        return `DIAG ${step} scrollY=${scrollY} oneTop=${one} twoTop=${two} dpr=${devicePixelRatio} hash=${location.hash} state=${JSON.stringify(history.state)} saved=${JSON.stringify(saved)}`
+      }, step)
+    const log = async (step: string) => console.log(await probe(step))
     await page.goto('/traverse')
     await hydrated(page)
+    await log('loaded')
     await press(page, '#one-link')
+    await log('after #one click')
     const one = await page.evaluate(() => scrollY)
     await press(page, '#two-link')
+    await log('after #two click')
     expect(await page.evaluate(() => scrollY)).toBeGreaterThan(one)
     await page.goBack()
+    await log('right after back')
+    await page.waitForTimeout(500)
+    await log('500ms after back')
     await expect.poll(() => page.evaluate(() => scrollY)).toBe(one)
   })
 })
