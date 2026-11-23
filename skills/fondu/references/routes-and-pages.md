@@ -54,8 +54,8 @@ export const params = { lang: ['de', 'fr'] }
 | `_layout.tsx`    | the component (default), optional `layout`                                           |
 
 Any other export fails `vite build`. A value of the wrong kind stops the app at startup: `loader`, `action`, the values
-of `actions` and the HTTP methods are handlers (`defineHandler(...)`), `prerender` is `true`, `false` or a function, and a
-`layout` lists each component once.
+of `actions` (none is `undefined`) and the HTTP methods are handlers (`defineHandler(...)`), a `_middleware.ts`'s default is
+a middleware (a function), `prerender` is `true`, `false` or a function, and a `layout` lists each component once.
 
 An MDX page can't export handlers, `prerender` or `params` (put `prerender` in a `.tsx` route or a `_middleware.ts`).
 `layout` is reserved in MDX (since 0.20.0); any other export is allowed, but Fondu may reserve new names in a minor
