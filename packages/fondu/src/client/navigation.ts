@@ -981,11 +981,17 @@ function fileName(disposition: string): string {
   return m?.[1] ?? m?.[2] ?? ''
 }
 
+export function inBrowser(name: string) {
+  if (typeof window === 'undefined')
+    throw new Error(`fondu: ${name}() runs in the browser, not on the server`)
+}
+
 /**
  * `href` loaded as a document. Every other navigation is the client's, links and forms: this is for what a page
  * can't change in place (`<html lang>`: another language).
  */
 export function loadDocument(href: string) {
+  inBrowser('loadDocument')
   refuseScript(new URL(href, location.href))
   location.assign(href)
 }
@@ -1012,6 +1018,7 @@ export function navigate(
     | { replace?: boolean; keep?: boolean; shallow?: false; transition?: boolean | string[] }
     | { replace?: boolean; keep?: never; shallow: true; transition?: never } = {},
 ) {
+  inBrowser('navigate')
   const {
     replace = false,
     keep = false,
@@ -1064,6 +1071,7 @@ export function navigate(
  * the first one's Back has landed does nothing: a double click closes one level.
  */
 export function closeShallow(to: string) {
+  inBrowser('closeShallow')
   if (closing) return
   if ((history.state as Record<string, unknown> | null)?.[SHALLOW] === true) {
     closing = true
