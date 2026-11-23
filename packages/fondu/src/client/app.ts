@@ -17,7 +17,13 @@ import { createRoot, hydrateRoot } from 'react-dom/client'
 
 import { compare, decoded, layoutsOf, pageId, routePatterns } from '../paths.js'
 import type { Flash, Shared } from '../types.js'
-import { again, inBrowser, startNavigation, type PageObject } from './navigation.js'
+import {
+  again,
+  inBrowser,
+  startNavigation,
+  type PageObject,
+  type PendingNavigation,
+} from './navigation.js'
 import { progressBar, type ProgressOptions } from './progress.js'
 
 type Layout = ComponentType<{ children: ReactNode }>
@@ -183,9 +189,7 @@ const subscribe = (listener: () => void) => {
   listeners.add(listener)
   return () => listeners.delete(listener)
 }
-function setNavigation(
-  next: { to: string; form: HTMLFormElement | null; post: boolean; failed?: boolean } | null,
-) {
+function setNavigation(next: PendingNavigation | null) {
   navigation = next
     ? {
         state: next.failed ? 'failed' : next.post ? 'submitting' : 'loading',
