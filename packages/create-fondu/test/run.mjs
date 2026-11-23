@@ -119,6 +119,11 @@ for (const target of Object.keys(production).filter(
   const greeting = target === 'cloudflare' ? 'Hello from Cloudflare' : 'Hello from Fondu' // a Worker variable
   const pkg = JSON.parse(readFileSync(join(app, 'package.json'), 'utf8'))
   check(
+    `${target}: engines.node is >=22.12.0 for Node, none for the others`,
+    target === 'node' ? pkg.engines?.node === '>=22.12.0' : pkg.engines === undefined,
+    JSON.stringify(pkg.engines),
+  )
+  check(
     `${target}: the package named after its folder`,
     pkg.name === `my_app-.${target}-2.0`,
     pkg.name,
@@ -126,6 +131,10 @@ for (const target of Object.keys(production).filter(
   pkg.dependencies.fondu = `file:${tarball}`
   writeFileSync(join(app, 'package.json'), JSON.stringify(pkg, null, 2))
   sh('bun', ['install'], app)
+  check(
+    `${target}: fondu's package.json is in the package`,
+    existsSync(join(app, 'node_modules/fondu/package.json')),
+  )
   // a page with a Suspense boundary that is slow on the server: streamed; and a copy of it that is prerendered
   writeFileSync(join(app, 'app/routes/slow.tsx'), SLOW)
   writeFileSync(join(app, 'app/routes/slow-static.tsx'), SLOW + 'export const prerender = true\n')
