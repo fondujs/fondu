@@ -56,6 +56,22 @@ describe("a directory's own file with another extension", () => {
   })
 })
 
+describe('what the browser copy of a page does not follow', () => {
+  for (const [what, code] of [
+    ['an enum', 'enum Status { Ok }'],
+    ['a namespace', 'namespace Queries { export const q = 1 }'],
+    ['`import x = …`', "import q = require('x')"],
+    ['a class with a parameter property', 'class C { constructor(private a = 1) {} }'],
+    ['a class with a decorator', '@d class C {}'],
+  ])
+    test(`${what} in a page fails the build`, async () => {
+      app = tempApp({ 'app/routes/index.tsx': `${code}\n${page}` })
+      await expect(buildClient(app.root)).rejects.toThrow(
+        `fondu: routes/index.tsx: ${what} is not allowed in a route file: move it to another module`,
+      )
+    })
+})
+
 describe('a layout that exports layout', () => {
   test('fails the build, as the server does at startup', async () => {
     app = tempApp({
@@ -145,9 +161,9 @@ describe('source maps of the client build', () => {
 })
 
 describe('what only a loader uses is not in the client build', () => {
-  const canaries = ['NS_CANARY_a1', 'ENUM_CANARY_b2', 'ROWS_c3', 'LOADER_CANARY_d4']
+  const canaries = ['ROWS_c3', 'LOADER_CANARY_d4']
   for (const verbatim of [false, true])
-    test(`a namespace, an enum, type-only imports of a server module (verbatimModuleSyntax: ${verbatim})`, async () => {
+    test(`type-only imports of a server module (verbatimModuleSyntax: ${verbatim})`, async () => {
       app = tempApp({
         'tsconfig.json': JSON.stringify({
           compilerOptions: { jsx: 'react-jsx', verbatimModuleSyntax: verbatim },
@@ -156,10 +172,8 @@ describe('what only a loader uses is not in the client build', () => {
           `import { type Row } from '../rows.server'`,
           `import type { Db } from '../rows.server'`,
           `import { Badge } from '../badge'`,
-          `namespace Queries { export const q = () => 'NS_CANARY_a1' }`,
-          `enum Secret { A = 'ENUM_CANARY_b2' }`,
           `export type Data = Awaited<ReturnType<typeof loader>>`,
-          `export async function loader(): Promise<{ r: Row; d: Db }> { return { r: Queries.q() + Secret.A, d: 'LOADER_CANARY_d4' as never } }`,
+          `export async function loader(): Promise<{ r: Row; d: Db }> { return { r: 'row', d: 'LOADER_CANARY_d4' as never } }`,
           `export default function Page(p: { data: Data }) { return <Badge /> }`,
           ``,
         ].join('\n'),
