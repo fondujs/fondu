@@ -49,7 +49,7 @@
     "build": "rm -rf dist && tsc -p tsconfig.build.json && cp src/virtual.d.ts dist/",
     "dev": "tsc -p tsconfig.build.json --watch",
     "test": "bun run build && vitest run",
-    "typecheck": "tsc -p tsconfig.json && tsc -p test/types-open-shared"
+    "typecheck": "tsc -p tsconfig.json && tsc -p test/types-open-shared && tsc -p test/types-no-routes && tsc -p test/types-opt-out && tsc -p test/types-empty-routes"
   },
   "dependencies": {
     "@hono/vite-dev-server": "^0.26.1",

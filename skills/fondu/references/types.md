@@ -14,7 +14,11 @@ Each type has one source; nothing is declared twice.
 | declarations next to your middleware  | `share()`, `flash()`, `usePage()`, `c.get()`                          |
 
 `app/fondu.gen.d.ts` is written by the dev server and the build as the route files change. Commit it, so a fresh clone
-or CI has the types before the first build. Don't edit it. No setup beyond `tsconfig.json`.
+or CI has the types before the first build. A new app ships it. Don't edit it. No setup beyond `tsconfig.json`.
+
+With no `routes` registered (no file), `href()` and `request()` fail to type-check with `Run vite dev or vite build to
+generate app/fondu.gen.d.ts`; so does an app with no routes. A library or package with no app opts out with
+`declare module 'fondu' { interface Register { routes: string } }`: any string is then a path.
 
 ## `href()`
 
