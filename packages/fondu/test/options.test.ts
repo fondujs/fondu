@@ -11,7 +11,7 @@ describe('fondu() options', () => {
       { target: 'node' },
       { target: 'bun' },
       { target: 'cloudflare' },
-      { target: 'node', ssr: false, prerender: true },
+      { target: 'node', ssr: false },
       { target: 'node', ssr: undefined, react: undefined, progress: undefined },
       { target: 'node', progress: false },
       { target: 'node', viewTransitions: true },
@@ -46,7 +46,7 @@ describe('fondu() options', () => {
   test('port is no option: it says to set PORT', () => {
     for (const target of ['node', 'bun', 'cloudflare'])
       expect(make({ target, port: 3000 }), target).toThrow(
-        'fondu(): unknown option `port`. The options are target, ssr, react, prerender, progress, viewTransitions. There is no `port` option: the built server listens on the environment variable `PORT`, else 3000',
+        'fondu(): unknown option `port`. The options are target, ssr, react, progress, viewTransitions. There is no `port` option: the built server listens on the environment variable `PORT`, else 3000',
       )
     expect(make({ target: 'node', port: 3000, a: 1 })).toThrow('unknown options `port`, `a`')
     expect(make({ target: 'node', progress: { port: 1 } })).not.toThrow('PORT')
@@ -54,16 +54,20 @@ describe('fondu() options', () => {
 
   test('unknown keys', () => {
     expect(make({ target: 'node', prot: 3000 })).toThrow(
-      'fondu(): unknown option `prot`. The options are target, ssr, react, prerender, progress',
+      'fondu(): unknown option `prot`. The options are target, ssr, react, progress',
     )
     expect(make({ target: 'node', a: 1, b: 2 })).toThrow('unknown options `a`, `b`')
   })
 
-  test('ssr and prerender are booleans', () => {
+  test('ssr is a boolean', () => {
     expect(make({ target: 'node', ssr: 'no' })).toThrow('fondu(): `ssr` must be true or false')
-    expect(make({ target: 'node', prerender: 1 })).toThrow(
-      'fondu(): `prerender` must be true or false',
-    )
+  })
+
+  test('prerender is no option: a route exports it', () => {
+    for (const prerender of [true, false, 1])
+      expect(make({ target: 'node', prerender })).toThrow(
+        "fondu: the prerender option is gone: a route's export const prerender turns prerendering on",
+      )
   })
 
   test('viewTransitions is a boolean', () => {

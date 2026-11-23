@@ -33,7 +33,7 @@ let patterns: Array<{ id: string; segments: string[] }> = []
 
 /**
  * @internal the app's entry (the Vite plugin writes it), in the browser and for the server render: `import.meta.glob`
- * of the pages and layouts of `app/routes/`, and `fondu({ prerender, progress, viewTransitions })`. In the browser it starts the app:
+ * of the pages and layouts of `app/routes/`, and `fondu({ progress, viewTransitions })`. In the browser it starts the app:
  * it hydrates the server's page and starts navigating.
  */
 export function __entry(

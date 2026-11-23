@@ -123,10 +123,7 @@ export async function prerender(
       problems: string[]
     }
     if (problems.length) return fail(problems)
-    if (paths.length === 0) {
-      logger.warn('fondu: prerender is on, and no route has `export const prerender`')
-      return
-    }
+    if (paths.length === 0) return
 
     // every file to write, known before the first: all inside the client directory, none two pages' (or a directory)
     const unsafe = outputProblems(paths, clientDir)

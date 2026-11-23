@@ -11,7 +11,6 @@ export default defineConfig({
     { enforce: 'pre', ...mdx() },
     fondu({
       target: 'node',
-      prerender: true,
       progress: false,
       viewTransitions: process.env.FONDU_VIEW_TRANSITIONS === '1',
     }),

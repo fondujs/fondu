@@ -33,13 +33,9 @@ handler: `defineHandler(withoutSsr(), (c) => render(c, Dashboard))`. Such a page
 
 ## Static pages
 
-```ts
-// vite.config.ts
-fondu({ target: 'node', prerender: true }) // or 'bun', 'cloudflare'
-```
-
 A route opts in with `export const prerender`; a `_middleware.ts` sets it for its directory and below, and the nearest
-setting wins:
+setting wins. The build prerenders when any route or `_middleware.ts` exports `prerender`; there is no plugin option
+(`fondu({ prerender: true })` fails the build):
 
 ```ts
 // app/routes/(marketing)/_middleware.ts: every page below

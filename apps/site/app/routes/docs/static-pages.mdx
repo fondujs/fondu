@@ -1,15 +1,11 @@
 Fondu can write pages as static files at build time: static site generation (SSG). They are served without rendering
 them again, and navigations keep working. On Bun, Cloudflare Workers and Node; this site is built that way.
 
-```ts
-// vite.config.ts
-fondu({ target: 'node', prerender: true }) // or 'bun', 'cloudflare'
-```
-
 ## Choosing the pages
 
 A route opts in with `export const prerender`; a `_middleware.ts` sets it for its directory and below. The nearest
-setting wins:
+setting wins. The build prerenders when any route or `_middleware.ts` exports `prerender` (even as `false`), and not
+otherwise: there is no option in `vite.config.ts`, and `fondu({ prerender: true })` fails with a message saying so.
 
 ```ts
 // app/routes/(marketing)/_middleware.ts: every page below

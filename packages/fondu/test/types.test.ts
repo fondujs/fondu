@@ -751,7 +751,7 @@ test('the types above are checked by tsc', () => {
 test('FonduOptions: the port is PORT, not an option', () => {
   const options: FonduOptions[] = [
     { target: 'node' },
-    { target: 'bun', ssr: false, prerender: true },
+    { target: 'bun', ssr: false },
     // @ts-expect-error `port` was removed: the server listens on PORT
     { target: 'node', port: 8080 },
   ]
@@ -777,7 +777,7 @@ test('FonduOptions: viewTransitions is true or false', () => {
   const options: FonduOptions[] = [
     { target: 'node' },
     { target: 'node', viewTransitions: true },
-    { target: 'cloudflare', viewTransitions: false, prerender: true, progress: false },
+    { target: 'cloudflare', viewTransitions: false, progress: false },
     // @ts-expect-error a boolean, not a string
     { target: 'node', viewTransitions: 'yes' },
   ]
