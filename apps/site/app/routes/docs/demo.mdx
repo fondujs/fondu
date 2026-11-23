@@ -8,10 +8,11 @@ Its menu is grouped by what you would be doing:
 
 - **Routing**: routes and actions, redirects, a page in three languages, the error pages.
 - **Forms & requests**: forms with validation, file uploads, flash data, HTTP routes for API clients.
-- **Data loading**: props, shared props.
-- **Navigation**: links and forms in place, Back, pending state, asset versioning.
+- **Data loading**: props, shared props, deferred props.
+- **Navigation**: links and forms in place, Back, pending state, view transitions, a gallery whose dialog has its own URL
+  (shallow navigation), asset versioning.
 - **Rendering**: server-side rendering, and pages rendered in the browser only.
-- **Auth**: an account, and an admin area.
+- **Auth**: an account, with a settings dialog that calls a route with `request()`, and an admin area.
 
 Each page says what it demonstrates, which part is Fondu's or Hono's, and which API it uses, so the demo
 doubles as a set of working examples.

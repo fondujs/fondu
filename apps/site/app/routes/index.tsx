@@ -101,7 +101,7 @@ const features: Array<[icon: LucideIcon, title: string, slug: string, text: stri
     FileCode,
     'Static pages',
     'static-pages',
-    'Any route can be written to a file at build time, and served with the same headers as the rest.',
+    'A page that is the same for everyone can be written to a file at build time, and served with the same headers as the rest.',
   ],
   [
     Languages,
@@ -113,7 +113,7 @@ const features: Array<[icon: LucideIcon, title: string, slug: string, text: stri
     TriangleAlert,
     'Error pages',
     'errors',
-    'Unknown URLs and thrown errors get your error page. In development, the full report instead.',
+    'Unknown URLs and thrown errors get your error page. In development, a thrown error shows its full report instead.',
   ],
   [
     Rocket,

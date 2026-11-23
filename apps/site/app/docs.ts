@@ -18,7 +18,7 @@ export const sections: Array<{ title: string; docs: Doc[] }> = [
         slug: '',
         title: 'Introduction',
         description:
-          'Fondu is a small meta-framework for full-stack React apps on Hono and Vite: how its routes, pages and client fit together.',
+          'Fondu is a small meta-framework for full-stack React apps, built on Hono and Vite: how its routes, pages and client fit together.',
       },
       {
         slug: 'quick-start',
@@ -65,13 +65,13 @@ export const sections: Array<{ title: string; docs: Doc[] }> = [
         slug: 'navigation',
         title: 'Navigation',
         description:
-          'How links and forms change pages in place with no router: prefetching, navigate() in code, search as you type and full page loads.',
+          'How links and forms change pages in place with no router: navigate(), shallow navigation, view transitions, pending state and full page loads.',
       },
       {
         slug: 'layouts',
         title: 'Layouts',
         description:
-          'How a _layout.tsx wraps the pages below it and stays mounted between them: nesting, route groups, code splitting and files that are not routes.',
+          'How a _layout.tsx wraps the pages below it and stays mounted: nesting, route groups, choosing the layouts of a page, code splitting and non-route files.',
       },
       {
         slug: 'forms',
@@ -83,7 +83,7 @@ export const sections: Array<{ title: string; docs: Doc[] }> = [
         slug: 'errors',
         title: 'Errors',
         description:
-          'How Fondu answers unknown URLs and thrown errors: the error page, plain text for API clients, development reports and your own error handler.',
+          'How Fondu answers unknown URLs, wrong methods and thrown errors: the error page, plain text for API clients, development reports and your own handler.',
       },
       {
         slug: 'server-and-client',
@@ -95,7 +95,7 @@ export const sections: Array<{ title: string; docs: Doc[] }> = [
         slug: 'type-safety',
         title: 'Type safety',
         description:
-          'How Fondu types page props, URLs and handler input from your own files, so a renamed prop or a moved route fails at compile time.',
+          'How Fondu types page props, URLs, handler input and request() calls from your own files, so a renamed prop or a moved route fails at compile time.',
       },
     ],
   },

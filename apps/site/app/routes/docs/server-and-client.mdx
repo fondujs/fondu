@@ -116,6 +116,7 @@ user row with its password hash.
   typed by `cf-typegen`.
 - On Bun and Node: `process.env`, in server code. In development, Fondu loads `.env`, `.env.local`, `.env.development`
   and `.env.development.local` into it; a variable already set (by the shell, the host) is not replaced. In production
-  the server reads them: a Node app's `start` script has `--env-file-if-exists=.env` (`.env` alone; Node 22.12 or
-  later, which Vite 8 needs too), and Bun reads `.env`, `.env.production` and `.env.local` itself.
+  the server reads them: a Node app's `start` script has `--env-file-if-exists=.env` (`.env` alone; the flag needs
+  Node 22.9 or later, and a new Node app's `engines` says 22.12), and Bun reads `.env`, `.env.production` and `.env.local`
+  itself.
 - `import.meta.env.VITE_*` is written into the browser's bundle by Vite: only for values that are public anyway.

@@ -62,9 +62,9 @@ An MDX page can't export handlers, `prerender` or `params` (put `prerender` in a
 release.
 
 What else stops the app: a `.jsx` route file, a `_error.tsx` in a directory (one error page: `routes/_error.tsx`),
-`params` that no route has as `[name]` or `[[name]]`, `params` for a catch-all's name, `layout` that is not
-`export const layout = [Site, Feature]` or `[]` in the file itself (`export *` from a module with `layout` too). A
-redirect to `javascript:`, `data:` or `vbscript:` is a 500.
+`params` that no route has as `[name]` or `[[name]]`, `params` for a catch-all's name, a route under `/_fondu/`
+(Fondu's one reserved prefix), `layout` that is not `export const layout = [Site, Feature]` or `[]` in the file itself
+(`export *` from a module with `layout` too). A redirect to `javascript:`, `data:` or `vbscript:` is a 500.
 
 ## A page
 
@@ -146,11 +146,13 @@ export default function ErrorPage({ status }: { status: number }) {
 }
 ```
 
-Without it, plain text, as for an error page that fails to render (the failure is logged). API clients get plain text or the `HTTPException`'s own response. A page that throws in the
-browser gets the error page with 500; a layout that throws, the error page alone. The shared props are what the root
-`_middleware.ts` shared before the error (if it fails itself, only what it shared before). A method the route has no handler for
-is a 405 with `Allow` (`HEAD` with `GET`; `OPTIONS` is not added) and gets the error page with `status` 405; an unmatched
-URL is a 404. A body over the limit (413) gets the error page with the shared props; a CSRF refusal (403) is plain text, "Forbidden".
+Without it, plain text, as for an error page that fails to render (the failure is logged). API clients get plain text or
+the `HTTPException`'s own response: a page request is a navigation of Fondu's client or a request that accepts
+`text/html`, and any other (`curl`, a `fetch()` call) is an API client's. A page that throws in the browser gets the
+error page with 500; a layout that throws, the error page alone. The shared props are what the middleware shared before
+the error (the root's, and the route's directories' if the error came after them; if one fails itself, only what was
+shared before). A method the route has no handler for is a 405 with `Allow` (`HEAD` with `GET`; `OPTIONS` is not added)
+and gets the error page with `status` 405; an unmatched URL is a 404. A body over the limit (413) gets the error page with the shared props; a CSRF refusal (403) is plain text, "Forbidden".
 
 ```ts
 // app/routes/admin/_middleware.ts: for admin/ and below, outermost first

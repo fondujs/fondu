@@ -62,13 +62,13 @@ replace Fondu's.
 `fondu(options)` from `fondu/vite`: The options are checked when the plugin is created: `target` is required, and an unknown option fails. There is
 no `port` option: the built server (Bun and Node) listens on `PORT`, else 3000.
 
-| Option            | Is                                                                                                                                                  |
-| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `target`          | `'bun'`, `'cloudflare'` or `'node'`                                                                                                                 |
-| `ssr`             | `false`: pages render in the browser only                                                                                                           |
-| `progress`        | the progress bar: `{ color, delay, forms }` (default: the text color, 350 ms, forms included), or `false`                                           |
-| `viewTransitions` | `true`: every navigation runs inside the browser's view transition by default, and a link or call opts out: [navigation.md](navigation.md)          |
-| `react`           | passed to `@vitejs/plugin-react` (its `include` has `.mdx` by default): https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react |
+| Option            | Is                                                                                                                                                        |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `target`          | `'bun'`, `'cloudflare'` or `'node'`                                                                                                                       |
+| `ssr`             | `false`: pages render in the browser only                                                                                                                 |
+| `progress`        | the progress bar: `{ color, delay, forms }` (default: the text color, 350 ms, forms included), or `false`                                                 |
+| `viewTransitions` | `true`: a navigation to another page has a view transition by default (not `keep` or `reload()`); a link or call opts out: [navigation.md](navigation.md) |
+| `react`           | passed to `@vitejs/plugin-react` (its `include` has `.mdx` by default): https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react       |
 
 On Cloudflare, the Cloudflare plugin comes first:
 `plugins: [cloudflare({ viteEnvironment: { name: 'ssr' } }), fondu({ target: 'cloudflare' })]`.
@@ -83,7 +83,7 @@ fails the build. Name a module `*.server.ts` when it must never reach the browse
 - Don't import a server module from a page for a helper it also uses: put what both share in a module of its own.
 - Env: on Bun and Node `process.env`, in server code only. In development Fondu loads `.env`, `.env.local`,
   `.env.development` and `.env.development.local` into it; a variable already set wins. In production the server
-  reads them itself: Node's `start` script has `--env-file-if-exists=.env` (`.env` alone, Node 22.12 or later), Bun reads
+  reads them itself: Node's `start` script has `--env-file-if-exists=.env` (`.env` alone; the flag needs Node 22.9 or later, a new Node app's `engines` says 22.12), Bun reads
   `.env`, `.env.production` and `.env.local`. On Cloudflare `import { env } from 'cloudflare:workers'`
   (variables, secrets, bindings; typed by `cf-typegen`; `c.env` is untyped). `import.meta.env.VITE_*` goes into the
   browser's bundle: public values only.

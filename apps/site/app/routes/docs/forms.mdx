@@ -117,6 +117,8 @@ export default function NewContact() {
 - An async schema's yes sends the form only if the fields are still what it checked. If they changed while it was
   working, or a newer submit, another visit or the form leaving the page came first, nothing is sent: submit again.
 - `errors` has the server's keys: a field's path, joined with dots (`user[name]` is `user.name`).
+- With a schema, `form` sets `noValidate` on the `<form>`: the schema's messages replace the browser's own (`required`,
+  `type="email"`). Without JavaScript the browser's checks stay.
 - Your own handlers go next to it: `onChange={(e) => { field('email').onChange(e); … }}`.
 - Without JavaScript, the form is sent as it is, and the server's check answers.
 
