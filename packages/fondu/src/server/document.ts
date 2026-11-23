@@ -67,15 +67,6 @@ async function shell(
   )
 }
 
-let shellEndReported = false
-function shellEndLost() {
-  if (shellEndReported) return
-  shellEndReported = true
-  console.error(
-    "[fondu] the end of the page's shell was not found in react-dom's output (bootstrapScriptContent): the document was sent whole, without its scroll script. Is react-dom a version Fondu supports?",
-  )
-}
-
 // `whole`: wait for every boundary first (a prerendered page has no React scripts in the file). A string for a page not
 // rendered here (`withoutSsr`, a shell that failed to render, a HEAD).
 export async function renderDocument(
@@ -95,8 +86,6 @@ export async function renderDocument(
   // the page once as JSON: the document's data, and what the render gets a fresh copy of
   const json = JSON.stringify(page)
   let ssr: ReadableStream<string> | null = null
-  // per request: nothing the page renders can be it
-  const marker = crypto.randomUUID()
   // what fails in a boundary is for the browser to render, and is logged. React reports the shell's failure to `onError`
   // too, so it is held until the shell is known to be there, and logged below, once
   const pending: unknown[] = []
@@ -119,9 +108,10 @@ export async function renderDocument(
         nonce,
         signal,
         onError: (error) => (live ? late(error) : void pending.push(error)),
-        // React writes this as a script right after the shell, before what the boundaries add: where `restoreScroll` goes. Not
-        // as React's own script (it adds an `id`), and not as a sibling of the page (the page alone is the browser's tree: `useId()`)
-        bootstrapScriptContent: marker,
+        // React writes it as an inline script (with the nonce) right after the shell, before what the boundaries add: the
+        // position back for a page rendered here. Not as a sibling of the page: the page alone is the browser's tree (`useId()`)
+        // relies on React writing this script right after the shell (stream.test.ts checks it)
+        bootstrapScriptContent: restoreScroll,
       })
       if (whole) await stream.allReady
       ssr = stream.pipeThrough(new TextDecoderStream() as ReadableWritablePair<string, Uint8Array>)
@@ -152,51 +142,23 @@ export async function renderDocument(
     css && charset.test(before) ? before.replace(charset, (meta) => meta + css) : before + css
   const start = top + tags.replace(/<link rel="stylesheet"[^>]*>/g, '')
   if (!ssr) return start + between + data + '<div id="app"></div>' + after
-  // React's own: the tags the page hoists, the page (`<div id="app"`), and the script of `marker`, the end of the shell
-  // (React writes the shell in many chunks, so no chunk is its end): found across chunks. This relies on React writing
-  // `bootstrapScriptContent` as one inline `<script>` right after the shell. A React that writes it differently is reported
-  // (`shellEndLost`). Only what is new is searched, less the marker's length (a marker cut between chunks): linear, not quadratic
+  // React's own: the tags the page hoists, then the page (`<div id="app"`): the page data goes before it, found across chunks
   const reader = ssr.getReader()
-  const closing = '</script>'
+  const app = '<div id="app"'
   let text = ''
-  let searchedTo = 0
-  let open = -1
-  let close = -1
-  for (;;) {
+  let at = -1
+  while (at < 0) {
     const { done, value } = await reader.read()
     if (done) break
+    const from = Math.max(0, text.length - app.length)
     text += value
-    let from = Math.max(0, searchedTo - marker.length)
-    let hit = text.indexOf(marker, from)
-    while (hit >= 0) {
-      const tagAt = text.lastIndexOf('<script', hit)
-      if (tagAt >= 0 && /^<script[^>]*>$/.test(text.slice(tagAt, hit))) {
-        const markerEnd = hit + marker.length
-        if (text.length < markerEnd + closing.length) break
-        if (text.startsWith(closing, markerEnd)) {
-          open = tagAt
-          close = markerEnd + closing.length
-        }
-      }
-      if (close >= 0) break
-      from = hit + marker.length
-      hit = text.indexOf(marker, from)
-    }
-    if (close >= 0) break
-    searchedTo = hit >= 0 ? hit : text.length
+    at = text.indexOf(app, from)
   }
-  if (close < 0) shellEndLost()
-  const at = Math.max(text.indexOf('<div id="app"'), 0)
-  const script = `<script${nonce ? ` nonce="${nonce}"` : ''}>${restoreScroll}</script>`
-  // the position back for a page rendered here (one rendered in the browser has nothing to scroll yet): in the
-  // shell, right after the page, before what the boundaries add
-  const streamed = close < 0 ? text : text.slice(0, open) + script + text.slice(close)
+  at = Math.max(at, 0)
   const out = new TextEncoder()
   return new ReadableStream<Uint8Array>({
     start(controller) {
-      controller.enqueue(
-        out.encode(start + streamed.slice(0, at) + between + data + streamed.slice(at)),
-      )
+      controller.enqueue(out.encode(start + text.slice(0, at) + between + data + text.slice(at)))
     },
     async pull(controller) {
       const { done, value } = await reader.read()
