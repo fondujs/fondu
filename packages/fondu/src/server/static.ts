@@ -13,15 +13,13 @@ const withHeaders = (res: Response, headers: Record<string, string>) => {
   for (const [name, value] of Object.entries(headers)) res.headers.set(name, value)
 }
 
-// Prerendered pages and files as files, before the app. A URL ending in `index` is never a document file, and a path with an
+// Prerendered pages as files, before the app. A URL ending in `index` is never a document file, and a path with an
 // escaped reserved character (`%2F`) after decoding is refused by serveStatic and left to the app.
 export function staticPages(
   serveStatic: ServeStatic,
   clientRoot: string,
   headers: Record<string, string>,
-  files: string[] = [],
 ): MiddlewareHandler {
-  const named = new Set(files)
   const pageObject = serveStatic({ root: clientRoot })
   const document = serveStatic({ root: clientRoot, rewriteRequestPath: htmlFile })
   const serve =
@@ -33,12 +31,10 @@ export function staticPages(
     }
   const pages = serve(pageObject, { 'Cache-Control': 'private, no-cache', 'X-Fondu': 'true' })
   const documents = serve(document, { 'Cache-Control': 'private, no-cache' })
-  const file = serve(pageObject, { 'Cache-Control': 'private, no-cache' })
   return (c, next) => {
     if ((c.req.method !== 'GET' && c.req.method !== 'HEAD') || c.req.path.includes('\0'))
       return next()
     if (c.req.path.startsWith(`${PAGE_DATA}/`)) return pages(c, next)
-    if (named.has(c.req.path)) return file(c, next)
     if (
       isPageRequest(c) ||
       !(c.req.header('accept') ?? '').includes('text/html') ||

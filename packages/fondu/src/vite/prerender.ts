@@ -6,10 +6,9 @@ import { createServer } from 'node:net'
 import { dirname, join, resolve, sep } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
-import { getMimeType } from 'hono/utils/mime'
 import type { Logger } from 'vite'
 
-import { PAGE_DATA, PRERENDER_LIST, staticFile, staticFiles } from '../paths.js'
+import { PAGE_DATA, PRERENDER_LIST, staticFiles } from '../paths.js'
 import { runsAsScript } from '../script-type.js'
 
 const SECURITY_HEADERS =
@@ -81,8 +80,8 @@ interface Server {
   dispose(): Promise<void>
 }
 
-// The built server is started with `FONDU_PRERENDER` set and lists the pages and the files of its `.ts` routes; each page
-// is asked for as a document and as a navigation, each file once. Headers go in `_headers` (Cloudflare serves files before the Worker) or `prerender.json` (Node and Bun: the
+// The built server is started with `FONDU_PRERENDER` set and lists the pages; each is asked for as a document and as a
+// navigation. Headers go in `_headers` (Cloudflare serves files before the Worker) or `prerender.json` (Node and Bun: the
 // built server's entry serves the files before the app).
 export async function prerender(
   start: () => Promise<Server>,
@@ -101,17 +100,16 @@ export async function prerender(
     const get = server.fetch
     const listing = await get(PRERENDER_LIST)
     if (!listing.ok) return fail([`the server did not list the pages (${listing.status})`])
-    const { version, paths, files, problems } = (await listing.json()) as {
+    const { version, paths, problems } = (await listing.json()) as {
       version: string | null
       paths: string[]
-      files: string[]
       problems: string[]
     }
     if (problems.length) return fail(problems)
-    if (paths.length === 0 && files.length === 0) return
+    if (paths.length === 0) return
 
     // every file to write, known before the first: all inside the client directory, none two pages'
-    const unsafe = outputProblems(paths, clientDir, files)
+    const unsafe = outputProblems(paths, clientDir)
     if (unsafe.length) return fail(unsafe)
 
     let security: Record<string, string> | undefined
@@ -160,30 +158,9 @@ export async function prerender(
       write(clientDir, files.json, JSON.stringify(page))
       logger.info(`fondu: prerendered ${path}`)
     }
-    for (const path of files) {
-      const res = await get(path)
-      const body = await res.arrayBuffer()
-      if (res.status !== 200) {
-        const to = res.headers.get('location')
-        errors.push(
-          `${path}: ${res.status}${to ? ` → ${to}` : ''} (a prerendered file must answer 200 to anyone)`,
-        )
-        continue
-      }
-      const expected = getMimeType(path)?.split(';')[0]
-      const given = res.headers.get('content-type')?.split(';')[0]?.trim().toLowerCase()
-      if (expected && given !== expected) {
-        errors.push(
-          `${path}: it answers ${given ?? 'no Content-Type'}, but a static file ending in .${path.split('.').at(-1)} is served as ${expected}`,
-        )
-        continue
-      }
-      write(clientDir, staticFile(path), Buffer.from(body))
-      logger.info(`fondu: prerendered ${path}`)
-    }
     if (errors.length) return fail(errors)
     if ('serverDir' in where) {
-      write(where.serverDir, 'prerender.json', JSON.stringify({ headers: security ?? {}, files }))
+      write(where.serverDir, 'prerender.json', JSON.stringify({ headers: security ?? {} }))
     } else {
       const file = join(clientDir, '_headers')
       const own = existsSync(file) ? readFileSync(file, 'utf8') : ''
@@ -338,17 +315,13 @@ interface Wrangler {
   }>
 }
 
-export function outputProblems(paths: string[], dir: string, named: string[] = []): string[] {
+export function outputProblems(paths: string[], dir: string): string[] {
   const problems: string[] = []
   const owner = new Map<string, string>()
-  const all = [
-    ...paths.map((path) => [path, () => Object.values(staticFiles(path))] as const),
-    ...named.map((path) => [path, () => [staticFile(path)]] as const),
-  ]
-  for (const [path, filesOf] of all) {
+  for (const path of paths) {
     let files: string[]
     try {
-      files = filesOf()
+      files = Object.values(staticFiles(path))
     } catch {
       problems.push(`${path}: not a valid URL path (it does not decode)`)
       continue
@@ -380,7 +353,7 @@ const inside = (dir: string, file: string) => {
   return to.startsWith(resolve(dir) + sep)
 }
 
-function write(dir: string, file: string, content: string | Uint8Array) {
+function write(dir: string, file: string, content: string) {
   if (!inside(dir, file)) throw new Error(`fondu: ${JSON.stringify(file)} is not inside ${dir}`)
   const to = join(dir, file)
   mkdirSync(dirname(to), { recursive: true })

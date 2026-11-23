@@ -8,5 +8,4 @@ export const HONO = [
   'hono/factory',
   'hono/http-exception',
   'hono/secure-headers',
-  'hono/utils/mime',
 ]

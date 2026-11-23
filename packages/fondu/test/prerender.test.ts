@@ -23,7 +23,6 @@ const route = (
   pattern,
   settings,
   get: true,
-  page: true,
   others: [],
   ...more,
 })
@@ -197,66 +196,6 @@ describe('paths', () => {
   })
 })
 
-describe('paths: a .ts route is a file', () => {
-  test('its URL is listed as a file, a page as a page', async () => {
-    const { paths, files, problems } = await prerenderPaths([
-      route('index.tsx', '/', [true]),
-      route('feed.xml.ts', '/feed.xml', [true], { page: false }),
-      route('data/[id].json.ts', '/data/:id.json', [() => [{ id: 'a b' }, { id: 2 }]], {
-        page: false,
-      }),
-      route('off.xml.ts', '/off.xml', [false], { page: false }),
-    ])
-    expect(paths).toEqual(['/'])
-    expect(files).toEqual(['/data/2.json', '/data/a%20b.json', '/feed.xml'])
-    expect(problems).toEqual([])
-  })
-  test('a URL without an extension fails the build, naming the route', async () => {
-    const { paths, files, problems } = await prerenderPaths([
-      route('feed.ts', '/feed', [true], { page: false }),
-      route('dir/index.ts', '/dir/', [true], { page: false }),
-      route('[name].ts', '/:name', [() => [{ name: 'a.xml' }, { name: 'b' }]], { page: false }),
-      route('dot.ts', '/.json', [true], { page: false }),
-    ])
-    expect(paths).toEqual([])
-    expect(files).toEqual(['/a.xml'])
-    expect(problems).toEqual([
-      'routes/feed.ts: a prerendered .ts route writes a file: its URL needs an extension (feed.xml.ts)',
-      'routes/dir/index.ts: a prerendered .ts route writes a file: its URL needs an extension (feed.xml.ts)',
-      'routes/[name].ts: a prerendered .ts route writes a file: its URL needs an extension (feed.xml.ts)',
-      'routes/dot.ts: a prerendered .ts route writes a file: its URL needs an extension (feed.xml.ts)',
-    ])
-  })
-  test('an extension with no known content type fails the build, naming the route', async () => {
-    const { files, problems } = await prerenderPaths([
-      route('x.abc.ts', '/x.abc', [true], { page: false }),
-      route('y.json.ts', '/y.json', [true], { page: false }),
-    ])
-    expect(files).toEqual(['/y.json'])
-    expect(problems).toEqual(['routes/x.abc.ts: no content type is known for .abc'])
-  })
-  test("a directory's setting is for its pages: a .ts route needs its own export", async () => {
-    const { paths, files, problems } = await prerenderPaths([
-      route('docs/intro.tsx', '/docs/intro', [undefined, true]),
-      route('docs/api/health.ts', '/docs/api/health', [undefined, true], { page: false }),
-      route('docs/feed.xml.ts', '/docs/feed.xml', [undefined, true], { page: false }),
-      route('docs/off.xml.ts', '/docs/off.xml', [false, true], { page: false }),
-      route('docs/on.xml.ts', '/docs/on.xml', [true, false], { page: false }),
-    ])
-    expect(paths).toEqual(['/docs/intro'])
-    expect(files).toEqual(['/docs/on.xml'])
-    expect(problems).toEqual([])
-  })
-  test('a page may still end in a dot name or in index', async () => {
-    const { paths, problems } = await prerenderPaths([
-      route('v1.2.tsx', '/v1.2', [true]),
-      route('feed.tsx', '/feed', [true]),
-    ])
-    expect(paths).toEqual(['/feed', '/v1.2'])
-    expect(problems).toEqual([])
-  })
-})
-
 describe('paths: prerender itself fails', () => {
   test('a function that throws: the file of the export, and the export', async () => {
     const { problems } = await prerenderPaths([
@@ -312,27 +251,15 @@ describe('paths: a param is one file name', () => {
 
 const logger = { error() {}, warn() {}, info() {} } as never
 
-const serverOf =
-  (
-    pages: Record<string, { doc: Response; visit: Response }>,
-    files: Record<string, Response> = {},
-  ) =>
-  async () => ({
-    fetch: async (path: string, headers: Record<string, string> = {}) =>
-      path === '/_fondu/prerender'
-        ? Response.json({
-            version: 'v1',
-            paths: Object.keys(pages),
-            files: Object.keys(files),
-            problems: [],
-          })
-        : path in files
-          ? files[path]!.clone()
-          : 'X-Fondu' in headers
-            ? pages[path]!.visit.clone()
-            : pages[path]!.doc.clone(),
-    dispose: async () => {},
-  })
+const serverOf = (pages: Record<string, { doc: Response; visit: Response }>) => async () => ({
+  fetch: async (path: string, headers: Record<string, string> = {}) =>
+    path === '/_fondu/prerender'
+      ? Response.json({ version: 'v1', paths: Object.keys(pages), problems: [] })
+      : 'X-Fondu' in headers
+        ? pages[path]!.visit.clone()
+        : pages[path]!.doc.clone(),
+  dispose: async () => {},
+})
 const pageOf = (_path: string, more: Record<string, string> = {}) => ({
   doc: new Response('<script nonce="abc">a()</script>', {
     headers: {
@@ -351,7 +278,7 @@ describe('the build', () => {
       async () => ({
         fetch: async (path, headers = {}) =>
           path === '/_fondu/prerender'
-            ? Response.json({ version: 'v1', paths: ['/x'], files: [], problems: [] })
+            ? Response.json({ version: 'v1', paths: ['/x'], problems: [] })
             : 'X-Fondu' in headers
               ? visit
               : doc,
@@ -386,7 +313,7 @@ describe('the build', () => {
             if (unread && !unread.bodyUsed && !unread.body!.locked)
               await unread.body!.cancel('Response object has been garbage collected')
             if (path === '/_fondu/prerender')
-              return Response.json({ version: 'v1', paths: ['/x', '/y'], files: [], problems: [] })
+              return Response.json({ version: 'v1', paths: ['/x', '/y'], problems: [] })
             return (unread =
               'X-Fondu' in headers
                 ? Response.json({ component: path })
@@ -462,148 +389,6 @@ describe('the build', () => {
         await run
         for (const file of ['café.html', 'a b.html', 'docs/x/y.html', '_fondu/pages/café.json'])
           expect(existsSync(join(dir, 'client', file))).toBe(true)
-      })
-    })
-  })
-  describe('a .ts route is a file', () => {
-    const inTemp = async (
-      pages: Record<string, { doc: Response; visit: Response }>,
-      files: Record<string, Response>,
-      check: (dir: string, run: Promise<void>) => Promise<void>,
-    ) => {
-      const dir = mkdtempSync(join(tmpdir(), 'fondu-build-'))
-      try {
-        await check(
-          dir,
-          prerender(serverOf(pages, files), join(dir, 'client'), logger, {
-            serverDir: join(dir, 'server'),
-          }),
-        )
-      } finally {
-        rmSync(dir, { recursive: true })
-      }
-    }
-    const xml = (body: string, type = 'application/xml; charset=utf-8') =>
-      new Response(body, { headers: { 'content-type': type } })
-    test('its body is written as it is, at its path: no .html, no page object, no header of a page', async () => {
-      const bytes = new Uint8Array([0, 255, 128, 10])
-      await inTemp(
-        {},
-        {
-          '/feed.xml': xml('<rss/>'),
-          '/a%20b/data.json': new Response('{"a":1}', {
-            headers: { 'content-type': 'application/json' },
-          }),
-          '/logo.png': new Response(bytes, { headers: { 'content-type': 'image/png' } }),
-        },
-        async (dir, run) => {
-          await run
-          expect(readFileSync(join(dir, 'client/feed.xml'), 'utf8')).toBe('<rss/>')
-          expect(readFileSync(join(dir, 'client/a b/data.json'), 'utf8')).toBe('{"a":1}')
-          expect([...readFileSync(join(dir, 'client/logo.png'))]).toEqual([...bytes])
-          expect(
-            readdirSync(join(dir, 'client'), { recursive: true, encoding: 'utf8' })
-              .map((f) => f.replaceAll('\\', '/'))
-              .sort(),
-          ).toEqual(['a b', 'a b/data.json', 'feed.xml', 'logo.png'])
-          expect(JSON.parse(readFileSync(join(dir, 'server/prerender.json'), 'utf8'))).toEqual({
-            headers: {},
-            files: ['/feed.xml', '/a%20b/data.json', '/logo.png'],
-          })
-        },
-      )
-    })
-    test('pages and files together: pages as before', async () => {
-      await inTemp({ '/x': pageOf('/x') }, { '/feed.xml': xml('<rss/>') }, async (dir, run) => {
-        await run
-        expect(existsSync(join(dir, 'client/x.html'))).toBe(true)
-        expect(existsSync(join(dir, 'client/_fondu/pages/x.json'))).toBe(true)
-        expect(readFileSync(join(dir, 'client/feed.xml'), 'utf8')).toBe('<rss/>')
-      })
-    })
-    test('Cloudflare: the file goes to the client directory, and _headers is written', async () => {
-      const dir = mkdtempSync(join(tmpdir(), 'fondu-build-'))
-      try {
-        await prerender(serverOf({}, { '/feed.xml': xml('<rss/>') }), join(dir, 'client'), logger, {
-          headersFile: true,
-        })
-        expect(readFileSync(join(dir, 'client/feed.xml'), 'utf8')).toBe('<rss/>')
-        expect(existsSync(join(dir, 'client/_headers'))).toBe(true)
-      } finally {
-        rmSync(dir, { recursive: true })
-      }
-    })
-    test("a Content-Type that is not the extension's fails the build, saying both", async () => {
-      await inTemp(
-        {},
-        { '/feed.xml': xml('<rss/>', 'application/rss+xml'), '/a.json': xml('x', 'text/html') },
-        async (dir, run) => {
-          const error = await run.then(
-            () => undefined,
-            (e: Error) => e,
-          )
-          expect(error?.message).toContain('prerendering failed')
-          expect(existsSync(join(dir, 'client/feed.xml'))).toBe(false)
-        },
-      )
-      const messages: string[] = []
-      await expect(
-        prerender(
-          serverOf({}, { '/feed.xml': xml('<rss/>', 'application/rss+xml') }),
-          '/nowhere',
-          { error: (m: string) => messages.push(m), warn() {}, info() {} } as never,
-          { serverDir: '/nowhere' },
-        ),
-      ).rejects.toThrow('prerendering failed')
-      expect(messages).toEqual([
-        'fondu: /feed.xml: it answers application/rss+xml, but a static file ending in .xml is served as application/xml',
-      ])
-    })
-    test('no Content-Type at all fails too; a charset or case is not a difference', async () => {
-      await inTemp(
-        {},
-        { '/a.json': new Response('{}', { headers: { 'content-type': '' } }) },
-        async (_dir, run) => {
-          await expect(run).rejects.toThrow('prerendering failed')
-        },
-      )
-      await inTemp(
-        {},
-        { '/a.xml': xml('<a/>', 'Application/XML;charset=utf-8') },
-        async (dir, run) => {
-          await run
-          expect(existsSync(join(dir, 'client/a.xml'))).toBe(true)
-        },
-      )
-    })
-    test('a file that is not a 200 fails the build, nothing written', async () => {
-      await inTemp(
-        {},
-        { '/feed.xml': new Response(null, { status: 302, headers: { Location: '/login' } }) },
-        async (dir, run) => {
-          await expect(run).rejects.toThrow('prerendering failed')
-          expect(existsSync(join(dir, 'client/feed.xml'))).toBe(false)
-        },
-      )
-    })
-    test('a file that is a page’s file or its directory fails the build', async () => {
-      await inTemp(
-        { '/a': pageOf('/a') },
-        { '/a.html': xml('x', 'text/html') },
-        async (dir, run) => {
-          await expect(run).rejects.toThrow('prerendering failed')
-          expect(existsSync(join(dir, 'client'))).toBe(false)
-        },
-      )
-      await inTemp({ '/a.xml/b': pageOf('/a.xml/b') }, { '/a.xml': xml('x') }, async (dir, run) => {
-        await expect(run).rejects.toThrow('prerendering failed')
-        expect(existsSync(join(dir, 'client'))).toBe(false)
-      })
-    })
-    test('a path that leaves the client directory fails before anything is written', async () => {
-      await inTemp({}, { '/..%2Foutside.xml': xml('x') }, async (dir, run) => {
-        await expect(run).rejects.toThrow('prerendering failed')
-        expect(existsSync(join(dir, 'client'))).toBe(false)
       })
     })
   })
@@ -694,11 +479,7 @@ describe('the app', () => {
     expect(await res.json()).toEqual({
       version: 'v1',
       paths: ['/'],
-      files: [],
-      problems: [
-        'routes/users/[id].ts: a prerendered .ts route writes a file: its URL needs an extension (feed.xml.ts)',
-        'routes/users/[id].ts: a prerendered .ts route writes a file: its URL needs an extension (feed.xml.ts)',
-      ],
+      problems: [],
     })
   })
   test('the page object of a page without a file: the page, as a navigation', async () => {
@@ -862,23 +643,6 @@ describe('static pages, served by the built server (Node / Bun)', () => {
   test('the path is decoded once: what serveStatic gives is a name, not decoded again', async () => {
     await get('/%252e%252e/secret')
     expect(seen).toEqual(['/client:%2e%2e/secret.html'])
-  })
-  test("a prerendered file: served by its path, whatever Accept says, with the build's headers", async () => {
-    const withFile = new Hono()
-    files['feed.xml'] = '<rss/>'
-    withFile.use('*', staticPages(fake, '/client', headers, ['/feed.xml']))
-    withFile.all('*', (c) => c.text('app', 404))
-    for (const accept of ['application/xml', 'text/html', '*/*']) {
-      seen.length = 0
-      const res = await withFile.request('/feed.xml', { headers: { Accept: accept } })
-      expect(await res.text(), accept).toBe('<rss/>')
-      expect(seen).toEqual(['/client:feed.xml'])
-      expect(res.headers.get('x-frame-options')).toBe('DENY')
-      expect(res.headers.get('x-fondu')).toBe(null)
-    }
-    expect((await withFile.request('/feed.xml', { method: 'POST' })).status).toBe(404)
-    expect(await (await withFile.request('/other.xml')).text()).toBe('app')
-    delete files['feed.xml']
   })
   test("what serveStatic did not serve gets no headers (the app's response)", async () => {
     const res = await get('/items')
