@@ -23,17 +23,17 @@ interface Options {
   ) => Promise<(() => void) | undefined>
   prerender: boolean
   viewTransitions: boolean
-  pending: (
-    navigation: {
-      to: string
-      form: HTMLFormElement | null
-      post: boolean
-      failed?: boolean
-    } | null,
-  ) => void
+  pending: (navigation: PendingNavigation | null) => void
   preload: (pathname: string) => void
   isPage: (pathname: string) => boolean
   hydrated: boolean
+}
+
+export interface PendingNavigation {
+  to: string
+  form: HTMLFormElement | null
+  post: boolean
+  failed?: boolean
 }
 
 interface Visit {
