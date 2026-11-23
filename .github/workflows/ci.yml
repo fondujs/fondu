@@ -63,8 +63,14 @@ jobs:
         with:
           node-version: 24
       - run: bun install --frozen-lockfile
-      - run: bun run test -- layout-chains.test.ts -t "DIAG editing" --silent=false
+      - run: bun run test -- --silent=false
         working-directory: packages/fondu
+      - run: bun run test -- --silent=false
+        working-directory: packages/fondu
+        if: always()
+      - run: bun run test -- --silent=false
+        working-directory: packages/fondu
+        if: always()
       - run: node test/run.mjs node
         working-directory: packages/create-fondu
         if: false
