@@ -14,6 +14,10 @@ The server's API, for `app/server.ts`, routes and middleware.
 | `bodyLimit`     | the largest request body in bytes (default 10 MB, then 413: `hono/body-limit`), or `false`             |
 | `secureHeaders` | `hono/secure-headers`' options, or `false`                                                             |
 
+The options are checked when `createApp()` is called: an unknown option (there is no `port`: the built server
+listens on `PORT`), a wrong type, or a `bodyLimit` that is not a positive number or `false` throws
+`fondu: createApp(): …`.
+
 The Content Security Policy by default: `default-src 'self'`; scripts of the site or with the request's nonce (a JSX
 document's scripts have it); inline styles (React's style attributes); `data:` images and fonts;
 `object-src 'none'`; `base-uri 'self'`. A directive of yours replaces that one only:
