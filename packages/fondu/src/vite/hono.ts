@@ -9,4 +9,5 @@ export const HONO = [
   'hono/http-exception',
   'hono/secure-headers',
   'hono/utils/mime',
+  'hono/utils/url',
 ]
