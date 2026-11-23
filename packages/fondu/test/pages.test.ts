@@ -242,53 +242,6 @@ export default function Page() { return <p title={a} {...b}>{c}</p> }
 `)
     expect(out[0]).toBe("import { a, b, c } from 'x';")
   })
-  test('a namespace only a loader uses goes, with what it imports; one the page uses stays', () => {
-    const out = lines(`
-import { db } from '#/db.server'
-import { label } from '#/label'
-namespace Queries { export const user = () => db.get() }
-namespace Labels { export const name = label }
-export const loader = () => Queries.user()
-export default function Page() { return <p>{Labels.name}</p> }
-`)
-    expect(out).toEqual([
-      "import { label } from '#/label'",
-      'namespace Labels { export const name = label }',
-      'export default function Page() { return <p>{Labels.name}</p> }',
-    ])
-  })
-  test('a namespace: its own names are its own, a nested one and A.B too', () => {
-    const out = lines(`
-import { x, y } from 'x'
-namespace A.B { export const x = 1; export function f() { return x + y } }
-export const loader = () => A.B.f()
-export default function Page() { return <p>{x}</p> }
-`)
-    expect(out).toEqual([
-      "import { x } from 'x';",
-      'export default function Page() { return <p>{x}</p> }',
-    ])
-    expect(
-      lines(`const k = 1\nnamespace A.B { export const v = k }\nexport default () => A.B.v`),
-    ).toEqual(['const k = 1', 'namespace A.B { export const v = k }', 'export default () => A.B.v'])
-  })
-  test('an enum: only a loader’s goes; a page’s stays, with the names its values use', () => {
-    const out = lines(`
-import { limit, other } from 'x'
-enum Status { Ok = limit, Gone = Ok * 2 }
-enum Secret { A = other }
-export const loader = () => Secret.A
-export default function Page() { return <p>{Status.Gone}</p> }
-`)
-    expect(out).toEqual([
-      "import { limit } from 'x';",
-      'enum Status { Ok = limit, Gone = Ok * 2 }',
-      'export default function Page() { return <p>{Status.Gone}</p> }',
-    ])
-    expect(
-      lines(`export enum Color { Red }\nexport const loader = () => 1\nexport default () => null`),
-    ).toEqual(['export enum Color { Red }', 'export default () => null'])
-  })
   test('a type is no reference: `typeof loader` in a type, an `as`, a generic', () => {
     const out = lines(`
 import { db, helper } from '#/db.server'
@@ -336,17 +289,32 @@ export default function Page(p: { db: Db; row: Row }) { return <p>{keep(p)}</p> 
       'export default (p: Db) => null',
     ])
   })
-  test('`import x = A.B` refers to A; a parameter property and a decorator’s name are references', () => {
-    expect(lines(`import { A } from 'x'\nimport q = A.B\nexport default () => q`)).toEqual([
-      "import { A } from 'x'",
-      'import q = A.B',
-      'export default () => q',
-    ])
-    expect(
-      lines(
-        `import { d, T } from 'x'\nclass C { constructor(private a: T = d) {} }\nexport default C`,
-      )[0],
-    ).toBe("import { d } from 'x';")
+  test.each([
+    ['an enum', 'enum Status { Ok }'],
+    ['an enum', 'export const enum Color { Red }'],
+    ['an enum', 'export const loader = () => { enum Secret { A } }'],
+    ['a namespace', 'namespace A.B { export const x = 1 }'],
+    ['a namespace', 'module M { export const x = 1 }'],
+    ['`import x = …`', "import { A } from 'x'\nimport q = A.B"],
+    ['`import x = …`', "import r = require('x')"],
+    ['a class with a parameter property', 'class C { constructor(private a = 1) {} }'],
+    ['a class with a decorator', '@d class C {}'],
+    ['a class with a decorator', 'class C { @d m() {} }'],
+    ['a class with a decorator', 'class C { m(@d a: number) {} }'],
+  ])('%s: an error that names the file and says to move it', (what, code) => {
+    expect(() => tsx(`${code}\nexport default () => null`)).toThrow(
+      `fondu: routes/users/[id].tsx: ${what} is not allowed in a route file: move it to another module`,
+    )
+  })
+  test('what has no code stays: ambient declarations, type-only imports', () => {
+    const code = `declare enum E { A }
+declare namespace N { const x: number }
+declare global { interface Window { a: 1 } }
+declare module 'x' { export const a: number }
+declare class D { constructor(private a: number) }
+import type q = require('y')
+export default () => null`
+    expect(tsx(code)).toBe(code)
   })
   test('the server exports of a TypeScript file go as they do of a JavaScript one', () => {
     const out = lines(`

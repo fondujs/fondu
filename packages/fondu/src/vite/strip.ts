@@ -31,19 +31,7 @@ function bound(node: Node | null | undefined, out: string[] = []): string[] {
     case 'FunctionDeclaration':
     case 'TSDeclareFunction':
     case 'ClassDeclaration':
-    case 'TSEnumDeclaration':
-    case 'TSImportEqualsDeclaration':
-      if (!node.declare && node.importKind !== 'type') bound(node.id as Node, out)
-      break
-    case 'TSModuleDeclaration': {
-      // a namespace (`namespace A.B {}` declares A); `declare module 'x'` and `declare global` declare no name
-      let id = node.id as Node
-      while (id.type === 'TSQualifiedName') id = id.left as Node
-      if (!node.declare && id.type === 'Identifier') out.push(id.name as string)
-      break
-    }
-    case 'TSParameterProperty':
-      bound(node.parameter as Node, out)
+      if (!node.declare) bound(node.id as Node, out)
       break
     case 'ObjectPattern':
       for (const p of node.properties as Node[])
@@ -65,7 +53,7 @@ function bound(node: Node | null | undefined, out: string[] = []): string[] {
 type Scope = Set<string>
 
 // Errs on the side of a name referred to, never the other way. It reads TSX: a JSX element's name (`<Card>`, not `<div>`)
-// is a reference; a type is not (gone once compiled), what runs is (an enum's values, a namespace's body, `x as T`'s x).
+// is a reference; a type is not (gone once compiled), what runs is (`x as T`'s x).
 function references(node: unknown, out = new Set<string>(), scopes: Scope[] = []): Set<string> {
   const visit = (n: unknown, inner: Scope[] = scopes) => references(n, out, inner)
   if (Array.isArray(node)) {
@@ -118,34 +106,7 @@ function references(node: unknown, out = new Set<string>(), scopes: Scope[] = []
     case 'TSTypeAssertion':
     case 'TSInstantiationExpression':
     case 'TSExportAssignment':
-    case 'TSParameterProperty':
       visit(n.expression)
-      visit(n.parameter)
-      visit(n.decorators)
-      return out
-    case 'TSEnumDeclaration': {
-      if (n.declare) return out
-      const members = ((n.body as Node | undefined)?.members ?? n.members) as Node[]
-      const own: Scope = new Set(bound(n.id as Node))
-      for (const m of members) if (!m.computed) own.add(nameOf(m.id as Name))
-      for (const m of members) {
-        if (m.computed) visit(m.id, [...scopes, own])
-        visit(m.initializer, [...scopes, own])
-      }
-      return out
-    }
-    case 'TSImportEqualsDeclaration': {
-      let root = n.moduleReference as Node
-      while (root.type === 'TSQualifiedName') root = root.left as Node
-      if (n.importKind !== 'type') visit(root)
-      return out
-    }
-    case 'TSModuleDeclaration':
-      // a namespace's body runs; `declare namespace` and `declare module 'x'` do not
-      if (!n.declare) visit(n.body)
-      return out
-    case 'TSModuleBlock':
-      visit(n.body, [...scopes, lexical(n.body as Node[])])
       return out
     case 'FunctionDeclaration':
     case 'FunctionExpression':
@@ -164,7 +125,6 @@ function references(node: unknown, out = new Set<string>(), scopes: Scope[] = []
     case 'ClassDeclaration':
     case 'ClassExpression': {
       visit(n.superClass)
-      visit(n.decorators)
       visit(n.body, [...scopes, new Set(bound(n.id as Node))])
       return out
     }
@@ -219,24 +179,38 @@ function lexical(statements: Node[], scope: Scope = new Set()): Scope {
     if (
       (s.type === 'VariableDeclaration' && s.kind !== 'var') ||
       s.type === 'FunctionDeclaration' ||
-      s.type === 'ClassDeclaration' ||
-      s.type === 'TSEnumDeclaration' ||
-      s.type === 'TSModuleDeclaration' ||
-      s.type === 'TSImportEqualsDeclaration'
+      s.type === 'ClassDeclaration'
     )
       bound(s).forEach((x) => scope.add(x))
   }
   return scope
 }
 
-const DECLARATIONS = [
-  'VariableDeclaration',
-  'FunctionDeclaration',
-  'ClassDeclaration',
-  'TSEnumDeclaration',
-  'TSModuleDeclaration',
-  'TSImportEqualsDeclaration',
-]
+const DECLARATIONS = ['VariableDeclaration', 'FunctionDeclaration', 'ClassDeclaration']
+
+// What the stripper does not follow: a name these declare, or one they read, could keep server code in the browser.
+// An ambient declaration (`declare enum`, `declare global`) has no code: it stays.
+function unsupported(node: unknown): string | undefined {
+  if (!node || typeof node !== 'object') return
+  if (Array.isArray(node)) {
+    for (const n of node) {
+      const found = unsupported(n)
+      if (found) return found
+    }
+    return
+  }
+  const n = node as Node
+  if (typeof n.type !== 'string' || n.declare) return
+  if ((n.decorators as unknown[] | undefined)?.length) return 'a class with a decorator'
+  if (n.type === 'TSParameterProperty') return 'a class with a parameter property'
+  if (n.type === 'TSEnumDeclaration') return 'an enum'
+  if (n.type === 'TSModuleDeclaration') return 'a namespace'
+  if (n.type === 'TSImportEqualsDeclaration' && n.importKind !== 'type') return '`import x = …`'
+  for (const key in n) {
+    const found = key === 'type' ? undefined : unsupported(n[key])
+    if (found) return found
+  }
+}
 
 interface Part {
   node: Node
@@ -253,6 +227,8 @@ export function stripServerCode(code: string, program: { body: Node[] }, file: s
   const fail = (why: string): never => {
     throw new Error(`fondu: routes/${file}: ${why}`)
   }
+  const refused = unsupported(program.body)
+  if (refused) fail(`${refused} is not allowed in a route file: move it to another module`)
   // the server exports removed, by name: code left that names one would keep it in the browser, or fail there
   const removed = new Set<string>()
   const parts: Part[] = program.body.map((node) => ({

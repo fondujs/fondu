@@ -61,7 +61,8 @@ Any other export is allowed, but Fondu may reserve new names in a minor release.
 
 What else stops the app: a `.jsx` route file, a `_error.tsx` in a directory (one error page: `routes/_error.tsx`),
 `params` that no route has as `[name]` or `[[name]]`, `params` for a catch-all's name, a route under `/_fondu/`
-(Fondu's one reserved prefix). A redirect to `javascript:`, `data:` or `vbscript:` is a 500.
+(Fondu's one reserved prefix). A redirect to `javascript:`, `data:` or `vbscript:` is a 500. In a page's route file, an
+`enum`, a `namespace`, `import x = …`, a parameter property or a decorator fails `vite build`: they go to another module.
 
 ## A page
 

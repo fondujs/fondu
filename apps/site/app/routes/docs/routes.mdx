@@ -141,6 +141,7 @@ What would answer the wrong way stops the app, with a message that says what to 
 | `[[...path]]`, or two `[[optional]]` segments in one path                                  | startup             | [files and URLs](#files-and-urls), [optional segments](#optional-segments) |
 | a param named `query`, `hash`, `method`, `body`, `headers` or `signal`                     | startup             | rename it: `[verb].ts`                                                     |
 | a route under `/_fondu/`, by its file or by a value listed in `params`                     | startup             | [`/_fondu/` is Fondu's](/docs/static-pages#how-it-works): move the route   |
+| an `enum`, `namespace`, `import x = …`, decorator or parameter property in a page          | build               | another module: [Server and client code](/docs/server-and-client)          |
 | a redirect to `javascript:`, `data:` or `vbscript:`                                        | the request (a 500) | [After an action](/docs/forms#after-an-action)                             |
 | an unknown or mistyped option of `createApp()` or `fondu()`                                | where it is called  | [API](/docs/api)                                                           |
 
