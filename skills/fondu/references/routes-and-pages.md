@@ -27,6 +27,8 @@ Docs: [routes](https://fondu.dev/docs/routes.md), [pages](https://fondu.dev/docs
 - A name with any of `[ ] : * { } ?` must be one of the forms above (a param is letters, digits, `_`): `[user-id].tsx`,
   `[id]x.ts`, `:id.ts` and `a{b}.ts` stop the app at startup.
 - Not routes: files and directories starting with `_`, `*.d.ts`, `*.test.*`, `*.spec.*`.
+- `_middleware.ts`, `_layout.tsx` and `_error.tsx` have those extensions only: `_middleware.tsx` or `_layout.ts` stops the
+  app at startup and fails the build (it would never run).
 
 ## The values of a param
 
