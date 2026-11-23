@@ -186,6 +186,26 @@ describe('the client bundle and the viewTransitions option', () => {
     })
 })
 
+describe('typegen', () => {
+  test('an app with no routes still gets a file that registers routes', async () => {
+    app = tempApp({ 'app/routes/.gitkeep': '' })
+    const dev = await createServer({
+      root: app.root,
+      configFile: false,
+      logLevel: 'silent',
+      server: { middlewareMode: true },
+      plugins: [fondu({ target: 'node' })],
+    })
+    try {
+      await dev.pluginContainer.buildStart({})
+      const types = readFileSync(join(app.root, 'app/fondu.gen.d.ts'), 'utf8')
+      expect(types).toMatch(/interface Register \{\s+routes: \{\s*\}/)
+    } finally {
+      await dev.close()
+    }
+  })
+})
+
 describe('a hidden path under routes/', () => {
   const message =
     'fondu: routes/.well-known/ping.ts: a path starting with "." is not a route; serve it from public/ or answer it in a catch-all route'

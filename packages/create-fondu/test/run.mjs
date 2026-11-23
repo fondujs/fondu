@@ -137,6 +137,22 @@ for (const target of targets) {
     `${target}: fondu's package.json is in the package`,
     existsSync(join(app, 'node_modules/fondu/package.json')),
   )
+  // the file the template ships is what a build of it writes, so a new app type-checks its routes before the first build
+  const shipped = readFileSync(join(app, 'app/fondu.gen.d.ts'), 'utf8')
+  // before any build: a typo in href() is an error, so @ts-expect-error holds
+  if (target === 'cloudflare') sh('bun', ['run', 'cf-typegen'], app)
+  writeFileSync(
+    join(app, 'app/typo.ts'),
+    "import { href } from 'fondu/client'\n\n// @ts-expect-error not a route\nexport const typo = href('/typo')\nexport const home = href('/')\n",
+  )
+  sh('bun', ['run', 'typecheck'], app)
+  rmSync(join(app, 'app/typo.ts'))
+  sh('bun', ['run', 'build'], app)
+  check(
+    `${target} build: app/fondu.gen.d.ts, as the template ships it`,
+    readFileSync(join(app, 'app/fondu.gen.d.ts'), 'utf8') === shipped,
+  )
+  rmSync(join(app, 'dist'), { recursive: true, force: true })
   writeFileSync(join(app, 'app/routes/slow.tsx'), SLOW)
   writeFileSync(join(app, 'app/routes/slow-static.tsx'), SLOW + 'export const prerender = true\n')
   writeFileSync(

@@ -91,7 +91,7 @@ export default function Show({ user }: { user: { name: string } }) {
   `.ts` route. Sessions, auth and the data layer are the app's own (or another library's).
 - **Put a provider in a layout shared by every page that needs it.** An explicit chain can omit the root `_layout.tsx`. The document
   (`app/document.tsx`) is rendered once on the server and never hydrated: no state, context or effects there.
-- **Do not edit** `app/fondu.gen.d.ts` (generated; commit it). After updating a dependency, restart the dev server.
+- **Do not edit** `app/fondu.gen.d.ts` (generated; commit it; without it `href()` fails to type-check, and a package with no app declares `Register { routes: string }`). After updating a dependency, restart the dev server.
 - Errors: `throw new HTTPException(404)` (from `hono/http-exception`) or `c.notFound()`.
 
 ## Topics

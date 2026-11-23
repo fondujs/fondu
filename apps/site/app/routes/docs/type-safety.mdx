@@ -201,5 +201,21 @@ for a type parameter `T` that is not resolved yet, TypeScript reports an error.
 
 ## Setup
 
-None beyond `tsconfig.json`: a new app has it. Keep `app/fondu.gen.d.ts` committed, so a fresh clone or CI has the
-types before the first build.
+None beyond `tsconfig.json`: a new app has it, and ships `app/fondu.gen.d.ts` for its first route. Keep the file
+committed, so a fresh clone or CI has the types before the first build.
+
+Without that file, `href()` and `request()` take no path: the error says `Run vite dev or vite build to generate
+app/fondu.gen.d.ts`. An app with no routes gets the same error.
+
+### A library, or a package with no app
+
+A package that uses `fondu/client` without routes of its own opts out: any string is a path.
+
+```ts
+// types.d.ts
+declare module 'fondu' {
+  interface Register {
+    routes: string
+  }
+}
+```

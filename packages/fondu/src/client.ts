@@ -5,11 +5,14 @@ import { fillPattern } from './paths.js'
 import type { answerOf, schemasOf } from './server/handler.js'
 import type { Routes } from './types.js'
 
+// `routes: string` is the opt-out for a library; no `routes` at all is a project that has not generated them
 type Keys = keyof Routes & string
+type NoRoutes = 'Run vite dev or vite build to generate app/fondu.gen.d.ts'
+type Loose = Routes extends string ? true : string extends Keys ? true : false
 type Actions = {
   [P in Keys]: Routes[P] extends { actions: infer A } ? `${P}?${keyof A & string}` : never
 }[Keys]
-export type Href = [Keys] extends [never] ? string : Keys | Actions
+export type Href = Loose extends true ? string : [Keys] extends [never] ? NoRoutes : Keys | Actions
 
 type ParamNames<P extends string> = P extends `${infer Path}?${string}`
   ? PathParams<Path>
@@ -114,7 +117,6 @@ export { useForm } from './client/form.js'
 export { closeShallow, loadDocument, navigate } from './client/navigation.js'
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
-type Loose = string extends Keys ? true : [Keys] extends [never] ? true : false
 type MethodsOf<P extends string> = Loose extends true
   ? HttpMethod
   : P extends Keys
@@ -123,7 +125,9 @@ type MethodsOf<P extends string> = Loose extends true
 // A page's pattern is not one: its data is its props (loader, `defer()`); `request()` is for effects and events.
 type ApiPath = Loose extends true
   ? string
-  : { [P in Keys]: [MethodsOf<P>] extends [never] ? never : P }[Keys]
+  : [Keys] extends [never]
+    ? NoRoutes
+    : { [P in Keys]: [MethodsOf<P>] extends [never] ? never : P }[Keys]
 type HandlerOf<P extends string, M extends string> = Loose extends true
   ? unknown
   : P extends Keys
