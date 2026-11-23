@@ -2,6 +2,7 @@
 declare module 'fondu' {
   interface Register {
     routes: {
+      "/answers": typeof import("./routes/answers")
       "/boom": typeof import("./routes/boom")
       "/checked-async": typeof import("./routes/checked-async")
       "/checked-file": typeof import("./routes/checked-file")
