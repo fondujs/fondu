@@ -122,6 +122,10 @@ A body of any other type (`text/plain`, or none) is a 415; a request with no bod
 nests, `a=1&a[b]=2` is a 400. A query carries text: a schema that wants a number or a boolean parses it, and a list
 field is `tag[]=a` (`href()` writes it so), as `?tag=a` is a string. A `useForm` GET form reads its fields the same way.
 
+Only a `multipart/form-data` form sends its files (`enctype`, or a submitter's `formenctype`, which comes first). In any
+other form (URL-encoded is the default) a file input sends its file name, empty when no file is chosen. `useForm`
+checks the form as it is sent: the schema sees a `File`, or that string.
+
 The body is read whole, in memory, files too (about twice its size while parsed). Over 10 MB is a 413 by default,
 answered with the error page. The limit is in each route that takes a body (POST, PUT, PATCH, DELETE), after its directories' `_middleware.ts` (the
 error page has their shared props), so a middleware must not read the body. A GET and a URL that is no route are never

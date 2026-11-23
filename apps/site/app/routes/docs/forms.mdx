@@ -170,6 +170,10 @@ object, and `?a=1&a[b]=2` is a 400. A query carries text, so a schema that wants
 (`z.coerce.number()`), and a list field is written `tag[]=a` (`href()` does), as `?tag=a` is a string. A `useForm` that
 sends a GET form reads its fields this way too.
 
+Only a `multipart/form-data` form sends its files (`enctype`, or a submitter's `formenctype`, which comes first). In any
+other form (URL-encoded is the default) a file input sends its file name, empty when no file is chosen. `useForm`
+checks the form as it is sent: your schema sees a `File`, or that string.
+
 ## The body limit
 
 The body is read whole, in memory, files too, and it takes about twice its size while it is parsed. A body over 10 MB

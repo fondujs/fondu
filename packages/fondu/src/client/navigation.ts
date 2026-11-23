@@ -1,4 +1,4 @@
-import { crlf } from '../form.js'
+import { sentFields } from '../form.js'
 import { pageDataPath, SCROLL_KEY, SCROLL_STORAGE } from '../paths.js'
 import { canTransition, instantly, optIn, skipActive, transition } from './transitions.js'
 
@@ -542,7 +542,7 @@ export function startNavigation({
     const transition = optIn(form.getAttribute('data-transition'))
     const data = new FormData(form, submitter)
     // as the browser would send them: a file by its name in a URL or plain text, line breaks as CRLF
-    const fields = [...data].map(([k, v]) => [crlf(k), crlf(typeof v === 'string' ? v : v.name)])
+    const fields = sentFields(data, false)
     if (method === 'post') {
       const enctype = attr('enctype', 'formenctype').toLowerCase()
       const body =

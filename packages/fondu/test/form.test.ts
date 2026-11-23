@@ -3,8 +3,32 @@ import { Hono } from 'hono'
 import { describe, expect, test, vi } from 'vitest'
 import * as z from 'zod/mini'
 
-import { fieldKey, formObject, issueErrors, MalformedForm } from '../src/form.js'
+import { fieldKey, formObject, issueErrors, MalformedForm, sentFields } from '../src/form.js'
 import { readBody } from '../src/server/validate.js'
+
+describe('sentFields()', () => {
+  const data = new FormData()
+  data.append('note', 'a\nb')
+  data.append('doc', new File(['x'], 'a.txt'))
+  data.append('none', new File([], ''))
+
+  test('a file by its name, empty without one, line breaks as CRLF, unless the body is multipart', () => {
+    expect(sentFields(data, false)).toEqual([
+      ['note', 'a\r\nb'],
+      ['doc', 'a.txt'],
+      ['none', ''],
+    ])
+    const [note, doc, none] = sentFields(data, true)
+    expect(note).toEqual(['note', 'a\r\nb'])
+    expect(doc![1]).toBeInstanceOf(File)
+    expect(none![1]).toBeInstanceOf(File)
+  })
+
+  test('what a schema is given: the name where the body is not multipart, no entry for no file where it is', () => {
+    expect(formObject(sentFields(data, false))).toEqual({ note: 'a\r\nb', doc: 'a.txt', none: '' })
+    expect(Object.keys(formObject(sentFields(data, true)))).toEqual(['note', 'doc'])
+  })
+})
 
 describe('formObject()', () => {
   test('lists, nested fields, a name given again', () => {

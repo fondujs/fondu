@@ -9,7 +9,14 @@ import {
   type FormEvent,
 } from 'react'
 
-import { crlf, fieldKey, formObject, issueErrors, MalformedForm, type Issue } from '../form.js'
+import {
+  fieldKey,
+  formObject,
+  issueErrors,
+  MalformedForm,
+  sentFields,
+  type Issue,
+} from '../form.js'
 import { useNavigation, usePage, type Errors } from './app.js'
 
 interface Schema {
@@ -20,18 +27,12 @@ interface Schema {
 type StandardResult = { readonly issues?: ReadonlyArray<Issue> | undefined }
 
 function fieldsOf(form: HTMLFormElement, submitter?: HTMLElement | null): unknown {
-  const data = new FormData(form, submitter ?? undefined)
-  const entries = [...data].map(
-    ([k, v]) => [crlf(k), typeof v === 'string' ? crlf(v) : v] as [string, FormDataEntryValue],
-  )
-  const method = (
-    submitter?.getAttribute('formmethod') ??
-    form.getAttribute('method') ??
-    'get'
-  ).toLowerCase()
-  if (method === 'post') return formObject(entries)
-  // a query, as the server reads it (`withValidator({ query })`): as a body, a file by its name
-  return formObject(entries.map(([k, v]) => [k, typeof v === 'string' ? v : v.name]))
+  const attr = (name: string, own: string) =>
+    submitter?.getAttribute(own) ?? form.getAttribute(name)
+  const multipart =
+    (attr('method', 'formmethod') ?? 'get').toLowerCase() === 'post' &&
+    (attr('enctype', 'formenctype') ?? '').toLowerCase() === 'multipart/form-data'
+  return formObject(sentFields(new FormData(form, submitter ?? undefined), multipart))
 }
 
 function check(schema: Schema, value: () => unknown): Errors | Promise<Errors> {
