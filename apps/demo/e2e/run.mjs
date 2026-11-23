@@ -26,9 +26,12 @@ const ok = (name, cond, extra = '') => {
 }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
+// Puppeteer's headless default --hide-scrollbars hides the scrollbar but not the gutter that `scrollbar-gutter: stable`
+// reserves, so the gallery dialog's scroll lock narrows the page by one scrollbar. A real browser has either both or neither.
 const browser = await puppeteer.launch({
   executablePath: process.env.CHROME_PATH,
   args: ['--no-sandbox'],
+  ignoreDefaultArgs: ['--hide-scrollbars'],
   headless: true,
 })
 const page = await browser.newPage()
