@@ -67,6 +67,37 @@ jobs:
       - run: node test/run.mjs node
         working-directory: packages/create-fondu
 
+  # apps/demo, the end-to-end test of every feature: built, served by `vite preview` (Cloudflare's local Workers), driven
+  # in Chrome (preinstalled on the runner)
+  demo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CHROME_PATH: /usr/bin/google-chrome
+      DEMO_SERVER_LOG: /tmp/demo-preview.log # tells #298's local proxy failure from a real 500
+    defaults:
+      run:
+        working-directory: apps/demo
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bun run build
+      - run: bun run db:migrate:local
+      - run: |
+          bunx vite preview --port 4173 --strictPort > "$DEMO_SERVER_LOG" 2>&1 &
+          curl --silent --fail --output /dev/null --retry 30 --retry-delay 1 --retry-connrefused http://localhost:4173/
+          node e2e/run.mjs http://localhost:4173
+      - uses: actions/upload-artifact@v7
+        if: ${{ failure() }}
+        with:
+          name: demo-preview-log
+          path: /tmp/demo-preview.log
+          if-no-files-found: ignore
+          retention-days: 7
+
   # fondu/client against the browsers themselves (apps/conformance): Chromium, Firefox and WebKit
   conformance:
     runs-on: ubuntu-latest
