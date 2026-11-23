@@ -81,3 +81,5 @@ export function assetTags(component, nonce) {
     + \`<script type="module" src="\${base}\${main}"${nonceAttr}></script>\`
 }`
 }
+
+export const isInstalled = (file: string) => /[\\/]node_modules[\\/]/.test(file)
