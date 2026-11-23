@@ -105,6 +105,8 @@ export function startNavigation({
   // longer there is
   let requests = 0
   let answers = new Map<string, number>()
+  // each prop's newest request: only it ends the prop's pending state, as an older one finishing first leaves it to the newer
+  let asked = new Map<string, number>()
   const showNow = async (page: PageObject, fresh: boolean, stale: () => boolean) =>
     (await show(page, fresh, stale))?.()
   // With `types` (a view transition) all of it is the transition's `update`, which runs when the browser has captured the old
@@ -128,6 +130,7 @@ export function startNavigation({
       answered = page.url
       for (const quiet of asking) quiet.abort()
       answers = new Map()
+      asked = new Map()
       tail()
     }
     if (types)
@@ -181,6 +184,7 @@ export function startNavigation({
     const id = ++requests
     const controller = new AbortController()
     asking.add(controller)
+    for (const n of names) asked.set(n, id)
     // a prop asked for that is neither here nor coming (it failed): pending again, `<Deferred>` shows its fallback
     const absent = names.filter((n) => !Object.hasOwn(page.props, n) && !page.deferred?.includes(n))
     if (absent.length)
@@ -214,7 +218,7 @@ export function startNavigation({
     const next: PageObject = {
       ...on,
       props: { ...on.props, ...Object.fromEntries(take.map((n) => [n, got![n]])) },
-      deferred: on.deferred?.filter((n) => !names.includes(n)),
+      deferred: on.deferred?.filter((n) => asked.get(n) !== id),
     }
     on = next // before the module is awaited: another answer merges into this one
     // asked at the URL of a shallow entry, not at the one the page was loaded at: an answer of its own, and this
@@ -319,8 +323,10 @@ export function startNavigation({
           }
           const disposition = response.headers.get('Content-Disposition') ?? ''
           if (/^\s*attachment/i.test(disposition)) {
+            const blob = await response.blob()
+            if (signal.aborted) return
             const link = document.createElement('a') // with `download`: let through by the click listener
-            link.href = URL.createObjectURL(await response.blob())
+            link.href = URL.createObjectURL(blob)
             link.download = fileName(disposition)
             link.click()
             setTimeout(() => URL.revokeObjectURL(link.href), 60_000) // once the download has it
@@ -328,6 +334,7 @@ export function startNavigation({
           }
           const html = /^\s*text\/html\b/i.test(response.headers.get('Content-Type') ?? '')
           const text = await response.text()
+          if (signal.aborted) return
           document.open() // the page's listeners gone with it, popstate's too
           // anything else as text, never as HTML (an action's `c.text()` with what a user typed)
           document.write(html ? text : '<!doctype html><meta charset="utf-8"><pre></pre>')
