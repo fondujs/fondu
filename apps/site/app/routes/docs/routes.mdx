@@ -1,8 +1,9 @@
 ## Files and URLs
 
 Every file in `app/routes/` is a route: a page (`.tsx`, `.mdx`) or server code only (`.ts`). Files and directories
-starting with `_` are not routes (`_middleware.ts`, `_layout.tsx` and `_error.tsx` are what their names say), nor are
-declarations (`*.d.ts`) and tests (`*.test.ts`, `*.spec.ts`). A route's path is its URL:
+starting with `_` are not routes (`_middleware.ts`, `_layout.tsx` and `_error.tsx` are what their names say, with
+those extensions: `_middleware.tsx` stops the app at startup and fails the build), nor are declarations (`*.d.ts`) and
+tests (`*.test.ts`, `*.spec.ts`). A route's path is its URL:
 
 | File                      | URL                                     |
 | ------------------------- | --------------------------------------- |

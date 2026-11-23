@@ -87,6 +87,24 @@ export function isRouteFile(file: string): boolean {
   )
 }
 
+const SPECIAL = {
+  _middleware: { extension: 'ts', is: "a directory's middleware" },
+  _layout: { extension: 'tsx', is: "a directory's layout" },
+  _error: { extension: 'tsx', is: 'the error page' },
+} as const
+
+/** Throws for `_middleware`, `_layout` or `_error` with another extension: nothing would load it. */
+export function checkSpecialFiles(files: readonly string[]): void {
+  for (const file of files) {
+    const parts = file.split('/')
+    const match = /^(_middleware|_layout|_error)\.([^.]+)$/.exec(parts.at(-1)!)
+    if (!match || parts.slice(0, -1).some((s) => s.startsWith('_'))) continue
+    const { extension, is } = SPECIAL[match[1] as keyof typeof SPECIAL]
+    if (match[2] !== extension)
+      throw new Error(`fondu: routes/${file}: ${is} is ${match[1]}.${extension}`)
+  }
+}
+
 /** what a route file exports for the server, besides its page: HTTP methods, a page's handlers, its settings */
 export const METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'] as const
 export const HANDLERS = ['loader', 'action', 'actions'] as const

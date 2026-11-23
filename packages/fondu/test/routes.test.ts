@@ -17,6 +17,40 @@ describe('route names', () => {
   })
 })
 
+describe("a directory's own files, with another extension", () => {
+  const wrong: Array<[string, string]> = [
+    ['_middleware.tsx', "a directory's middleware is _middleware.ts"],
+    ['admin/_middleware.tsx', "a directory's middleware is _middleware.ts"],
+    ['admin/_middleware.mdx', "a directory's middleware is _middleware.ts"],
+    ['_layout.ts', "a directory's layout is _layout.tsx"],
+    ['docs/_layout.mdx', "a directory's layout is _layout.tsx"],
+    ['_error.ts', 'the error page is _error.tsx'],
+    ['_error.mdx', 'the error page is _error.tsx'],
+  ]
+  test.each(wrong)('%s stops the app at startup', (file, is) => {
+    expect(() => table({ ...files('index.ts'), [file]: {} })).toThrow(
+      `fondu: routes/${file}: ${is}`,
+    )
+  })
+  test('the right names, and files that are not these, start', () => {
+    expect(
+      table({
+        ...files('index.ts'),
+        '_middleware.ts': {},
+        'admin/_middleware.ts': {},
+        '_layout.tsx': {},
+        'admin/_layout.tsx': {},
+        '_error.tsx': {},
+        '_parts/_middleware.tsx': {},
+        '_middleware.test.ts': {},
+        '_layout.test.tsx': {},
+        '_middleware.d.ts': {},
+        '_middlewares.tsx': {},
+      }),
+    ).toEqual(['/'])
+  })
+})
+
 describe('optional segments', () => {
   test('a file, two routes: the same middleware', () => {
     const routes = routeTable(

@@ -21,6 +21,7 @@ import type { ProgressOptions } from '../client/progress.js'
 export type { ProgressOptions }
 import { isPageFile, pageId } from '../paths.js'
 import { nonceAttr, productionAssets } from './assets.js'
+import { checkRoutes } from './check.js'
 import { entryCode, SERVER } from './entry.js'
 import { hmr, PAGE_EXPORTS, PROPS_EVENT } from './hmr.js'
 import { HONO } from './hono.js'
@@ -165,6 +166,7 @@ export default function fondu(options: FonduOptions): PluginOption[] {
     hmr(),
     loadFailure(),
     typegen(),
+    checkRoutes(),
     ...(node ? runtimePlugins(options) : []),
     serverReactDomClient(),
   ]

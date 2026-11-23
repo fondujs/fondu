@@ -27,6 +27,31 @@ describe('server exports of a layout or an error page', () => {
       })
 })
 
+describe("a directory's own file with another extension", () => {
+  for (const [file, is] of [
+    ['admin/_middleware.tsx', "a directory's middleware is _middleware.ts"],
+    ['_layout.ts', "a directory's layout is _layout.tsx"],
+    ['_error.ts', 'the error page is _error.tsx'],
+  ] as const)
+    test(`${file} fails the build`, async () => {
+      app = tempApp({
+        'app/routes/index.tsx': page,
+        [`app/routes/${file}`]: 'export default () => null\n',
+      })
+      await expect(buildClient(app.root)).rejects.toThrow(`fondu: routes/${file}: ${is}`)
+    })
+  test('the right names build', async () => {
+    app = tempApp({
+      'app/routes/index.tsx': page,
+      'app/routes/admin/_middleware.ts': 'export default async (c, next) => next()\n',
+      'app/routes/admin/_layout.tsx':
+        'export default function L({ children }) { return children }\n',
+      'app/routes/_parts/_middleware.tsx': 'export default () => null\n',
+    })
+    await buildClient(app.root)
+  })
+})
+
 describe('a layout that is fine', () => {
   test('builds', async () => {
     app = tempApp({
