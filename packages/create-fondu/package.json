@@ -30,7 +30,7 @@
   ],
   "type": "module",
   "scripts": {
-    "test": "node --test test/body-limit.test.mjs && node test/run.mjs"
+    "test": "node --test test/body-limit.test.mjs test/target.test.mjs && node test/run.mjs"
   },
   "dependencies": {
     "@clack/prompts": "1.8.1"

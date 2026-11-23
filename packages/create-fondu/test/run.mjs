@@ -14,7 +14,6 @@ import { bodyLimit, observeUploads } from './body-limit.mjs'
 const here = fileURLToPath(new URL('..', import.meta.url))
 const windows = process.platform === 'win32'
 const shell = windows // npm, bun and bunx are .cmd shims on Windows; node is a program
-const work = mkdtempSync(join(tmpdir(), 'create-fondu-'))
 const sh = (cmd, args, cwd) =>
   execFileSync(cmd, args, {
     cwd,
@@ -22,10 +21,6 @@ const sh = (cmd, args, cwd) =>
     encoding: 'utf8',
     shell: shell && cmd !== 'node',
   })
-const tarball = join(
-  work,
-  sh('npm', ['pack', '--silent', '--pack-destination', work], join(here, '../fondu')).trim(),
-)
 
 // streamed (not prerendered): the boundary waits 2 s on the server
 const SLOW = `import { Suspense, use } from 'react'
@@ -69,6 +64,17 @@ const production = {
   bun: { script: 'start', port: startPort, says: `Started server: http://localhost:${startPort}` },
   cloudflare: { script: 'preview', port: previewPort, says: `http://localhost:${previewPort}` },
 }
+const [requested, ...extra] = process.argv.slice(2)
+if (extra.length || (requested !== undefined && !Object.hasOwn(production, requested))) {
+  console.error(`Usage: node test/run.mjs [${Object.keys(production).join('|')}]`)
+  process.exit(1)
+}
+const targets = requested === undefined ? Object.keys(production) : [requested]
+const work = mkdtempSync(join(tmpdir(), 'create-fondu-'))
+const tarball = join(
+  work,
+  sh('npm', ['pack', '--silent', '--pack-destination', work], join(here, '../fondu')).trim(),
+)
 let failed = false
 const check = (name, ok, detail = '') => {
   console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${ok || !detail ? '' : `  — ${detail}`}`)
@@ -103,9 +109,7 @@ const check = (name, ok, detail = '') => {
   )
 }
 
-for (const target of Object.keys(production).filter(
-  (t) => !process.argv[2] || t === process.argv[2],
-)) {
+for (const target of targets) {
   // a name with characters a Worker's name may not have, and one a package's may not (~)
   const app = join(work, `my_app~.${target}-2.0`)
   sh('node', [join(here, 'index.js'), app, '--target', target, '--no-install'], work)
@@ -290,7 +294,7 @@ for (const target of Object.keys(production).filter(
   }
 }
 // --checks: oxfmt and oxlint pass on the app as created; AGENTS.md says how to run them; no git hooks
-if (!process.argv[2] || process.argv[2] === 'node') {
+if (targets.includes('node')) {
   const app = join(work, 'checked')
   sh(
     'node',
