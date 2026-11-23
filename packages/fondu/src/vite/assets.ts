@@ -8,7 +8,6 @@ import { isPageFile, pageId } from '../paths.js'
 import type { FonduOptions } from './index.js'
 import { VIEW_QUERY } from './layouts.js'
 
-/** the nonce of a tag in the generated `assetTags()` */
 export const nonceAttr = `\${nonce ? \` nonce="\${nonce}"\` : ''}`
 
 interface ManifestChunk {
@@ -44,7 +43,6 @@ export function productionAssets(config: ResolvedConfig, options: FonduOptions):
     collect(key, css, js)
     return { css: [...css], js: [...js] }
   }
-  // the app's entry: the client build's only one
   const entry = tags(Object.keys(manifest).find((k) => manifest[k]!.isEntry)!)
   const pages: Record<string, { css: string[]; js: string[] }> = {}
   for (const key of Object.keys(manifest)) {
@@ -55,7 +53,7 @@ export function productionAssets(config: ResolvedConfig, options: FonduOptions):
     if (!file || !(isPageFile(file) || /^_error\.tsx$/.test(file))) continue
     // Layouts are static imports of the page, including its inherited chain.
     const page = tags(key)
-    // each file once, and not the entry's: assetTags() adds those to every page (the entry's first)
+    // each file once, without the entry's: assetTags() adds those to every page
     const own = (files: string[], entryFiles: string[]) => [
       ...new Set(files.filter((f) => !entryFiles.includes(f))),
     ]

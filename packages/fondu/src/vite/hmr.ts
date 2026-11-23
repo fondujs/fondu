@@ -4,19 +4,14 @@ import type { EnvironmentModuleNode, Plugin } from 'vite'
 
 import { isPageFile } from '../paths.js'
 
-/** the browser's event for "the current page's props may have changed" (the client entry: `reload()`) */
 export const PROPS_EVENT = 'fondu:props'
 
-/** the global the dev preamble reads: the named exports of each page module (`__getReactRefreshIgnoredExports`) */
+// read by the dev preamble's `__getReactRefreshIgnoredExports`
 export const PAGE_EXPORTS = '__fondu_pageExports'
 
 type Node = { file: string | null; importers: Set<Node> }
 
-/**
- * What a change to a module reaches on the server, through the app's own modules only (app/, not node_modules nor
- * fondu): a route (`app/routes/…`: what it renders may have changed), and the document (`app/server.ts`, reached
- * other than through a route).
- */
+// only the app's own modules (not node_modules or fondu); the document is reached other than through a route
 export function reach(start: Iterable<Node>, root: string): { routes: boolean; document: boolean } {
   const found = { routes: false, document: false }
   const seen = new Set<Node>()
@@ -34,14 +29,8 @@ export function reach(start: Iterable<Node>, root: string): { routes: boolean; d
   return found
 }
 
-/**
- * Dev: a change updates what it changes, without reloading the page where it can.
- * - The browser's code: React Fast Refresh (`@vitejs/plugin-react`), MDX pages too. A page module's other exports
- *   (an MDX page's `toc`) are left out of Fast Refresh's check: the server reads them, and the next rule applies.
- * - What a route depends on: the browser asks for the page's props again (fondu/client's `reload()`), its state
- *   and scroll kept, as React Router's "Hot Data Revalidation".
- * - The document (`server.ts` and what only it imports): the page reloads.
- */
+// A page module's other exports (an MDX page's `toc`) are left out of Fast Refresh's check: the server reads them, so the
+// props are asked for again, keeping state and scroll (React Router's "Hot Data Revalidation"). A document change reloads.
 export function hmr(): Plugin {
   let root = process.cwd()
   return {
@@ -50,7 +39,6 @@ export function hmr(): Plugin {
     configResolved(c) {
       root = c.root
     },
-    // the named exports of a page module, for the dev preamble's `__getReactRefreshIgnoredExports`
     transform: {
       order: 'post',
       handler(code, id) {
@@ -91,7 +79,6 @@ export function hmr(): Plugin {
 type AstNode = { type: string; [key: string]: unknown }
 type Program = { body: AstNode[] }
 
-/** the names a module exports other than `default` */
 function namedExports(program: Program): string[] {
   const names: string[] = []
   for (const node of program.body) {

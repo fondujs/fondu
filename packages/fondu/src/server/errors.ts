@@ -6,7 +6,6 @@ import { settings } from './document.js'
 import { nonceOf, varyAccept, wantsPage } from './http.js'
 import { renderPage } from './protocol.js'
 
-/** the error page's id: `app/routes/_error.tsx` */
 const ERROR_PAGE = '_error'
 
 const TEXT: Record<number, string> = {
@@ -21,12 +20,7 @@ const TEXT: Record<number, string> = {
   503: 'Service Unavailable',
 }
 
-/**
- * The answer to an unmatched URL or a thrown error (installed by `createApp`):
- * - API clients: the `HTTPException`'s response, or plain text
- * - pages, in development: a report of the error (a navigation loads it as a document)
- * - pages: the error page (`app/routes/_error.tsx`, `{ status }`) with the shared props
- */
+// in development a page error is a report (a navigation loads it as a document)
 export async function errorResponse(
   c: Context,
   status: number,
@@ -54,10 +48,7 @@ async function answer(c: Context, status: number, error?: unknown): Promise<Resp
 
 const escape = (s: string) => s.replace(/[&<>"']/g, (ch) => `&#${ch.charCodeAt(0)};`)
 
-/**
- * the development error report: what failed, where (your files first), for which request; reloaded once an edit is
- * saved (Vite's client, as the app's pages have it)
- */
+// reloaded once an edit is saved (Vite's client, as the app's pages have it)
 function report(c: Context, error: unknown): string {
   const err = error instanceof Error ? error : new Error(String(error))
   const frames = (err.stack ?? '')

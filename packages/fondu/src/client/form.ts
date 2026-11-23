@@ -12,7 +12,6 @@ import {
 import { crlf, fieldKey, formObject, issueErrors, MalformedForm, type Issue } from '../form.js'
 import { useNavigation, usePage, type Errors } from './app.js'
 
-/** A Standard Schema (zod, valibot, arktype…), the part `useForm` uses */
 interface Schema {
   readonly '~standard': {
     readonly validate: (value: unknown) => StandardResult | Promise<StandardResult>
@@ -20,7 +19,6 @@ interface Schema {
 }
 type StandardResult = { readonly issues?: ReadonlyArray<Issue> | undefined }
 
-/** a form's fields as the server reads them: its body for a POST (`withValidator({ body })`), its query for a GET: both as `formObject` reads them */
 function fieldsOf(form: HTMLFormElement, submitter?: HTMLElement | null): unknown {
   const data = new FormData(form, submitter ?? undefined)
   const entries = [...data].map(
@@ -36,7 +34,6 @@ function fieldsOf(form: HTMLFormElement, submitter?: HTMLElement | null): unknow
   return formObject(entries.map(([k, v]) => [k, typeof v === 'string' ? v : v.name]))
 }
 
-/** the schema's errors for these fields; none for fields that can't be one object (the server answers those) */
 function check(schema: Schema, value: () => unknown): Errors | Promise<Errors> {
   let fields: unknown
   try {
@@ -50,7 +47,6 @@ function check(schema: Schema, value: () => unknown): Errors | Promise<Errors> {
   return result instanceof Promise ? result.then(errors) : errors(result)
 }
 
-/** a form's fields as one string, files by what identifies them: two snapshots of a form are equal if this is */
 function snapshot(form: HTMLFormElement, submitter?: HTMLElement | null): string | undefined {
   try {
     return JSON.stringify(
@@ -63,30 +59,12 @@ function snapshot(form: HTMLFormElement, submitter?: HTMLElement | null): string
   }
 }
 
-/** a field's errors: its own, and those inside it (`tags` has `tags.0`'s) */
 const within = (key: string, errorKey: string) =>
   errorKey === key || (key !== '' && errorKey.startsWith(`${key}.`))
 
 /**
- * A plain `<form>`, checked in the browser by the schema the server checks it with (any Standard Schema), its fields
- * read as the server reads them (`tags[]`, `user[name]`). Spread `form` on the `<form>`, `field(name)` on each field:
- *
- * - on submit, an invalid form isn't sent, and its first field to fix gets the focus; a valid one is sent by Fondu's
- *   client. Back with the server's errors, the first field to fix gets the focus too
- * - a field is checked as it is left for another with something typed, and again as it changes while it is wrong,
- *   so a fixed one loses its message (not as it is left for the submit button: the message would move it from under
- *   the pointer)
- * - `errors`: the server's (the page's `errors` prop), each until its field is checked again, and the browser's;
- *   by the server's keys (`email`, `user.name`)
- * - an async schema: the form is sent once the schema has said yes to the values it was asked about. A result that
- *   comes late is dropped, and sends nothing: after a newer submit, a visit to another page, or the form leaving the
- *   screen, and when the fields are no longer what was checked (changed while the schema was working). That form is
- *   not sent unchecked, nor checked again for the user: submit it again
- * - `submitting`: this form is being sent
- * - `failed`: this form could not be sent (offline…): it stays, to send again
- *
- * Without a schema: the server's errors, `submitting` and `failed` only. Without JavaScript, the form is sent as it is, and the
- * server's check answers.
+ * A plain `<form>`, checked in the browser by the schema the server checks it with (any Standard Schema). Spread `form` on
+ * the `<form>` and `field(name)` on each field. Without JavaScript, the form is sent as it is and the server checks it.
  */
 export function useForm(schema?: Schema): {
   form: {
@@ -131,7 +109,6 @@ export function useForm(schema?: Schema): {
   // the checks of single fields that began before the whole form's result: that result is the newer word
   const epoch = useRef(0)
 
-  /** what a check found, for the fields it covers (`key`: one field and those inside it; else all) */
   const apply = (found: Errors, from: Errors, key?: string) => {
     if (latest.current !== from) return // a new answer of the server since
     setChecked((now) => {
@@ -184,7 +161,6 @@ export function useForm(schema?: Schema): {
     if (element && Object.keys(server).length) focusFirst(element, server)
   }, [submitting, failed, server, element])
 
-  // a visit to another page (a link, another form) or the form leaving the screen: a pending check can't send
   const visiting = navigation.state === 'loading' || navigation.state === 'submitting'
   useEffect(() => {
     if (visiting) generation.current++
@@ -237,8 +213,7 @@ export function useForm(schema?: Schema): {
         // an async schema: sent again once it says yes
         event.preventDefault()
         void found.then((found) => {
-          // obsolete (a newer submit, a visit, the form gone) or about other values than the form has now: it says
-          // nothing about what would be sent
+          // obsolete (a newer submit, a visit, the form gone) or about other values than the form has now
           if (generation.current !== mine || snapshot(form, submitter) !== before) return
           epoch.current++
           answer(found)

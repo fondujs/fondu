@@ -25,17 +25,13 @@ import { routeTable, type Handlers, type RouteModule } from './routes.js'
 import { ValidationError, validationErrorResponse } from './validate.js'
 
 export interface CreateAppOptions {
-  /** the HTML document around pages (default: a minimal one) */
+  /** The HTML document around pages (default: a minimal one) */
   document?: DocumentTemplate
   /** `/users/` → `/users` (`'trim'`, default) or the other way (`'append'`): a 301 to a relative URL */
   trailingSlash?: 'trim' | 'append'
   /** `hono/csrf`'s options; `false`: off */
   csrf?: Parameters<typeof csrf>[0] | false
-  /**
-   * the largest request body, in bytes (default: 10 MB), then 413: `hono/body-limit`; `false`: no limit. The body is
-   * read whole, in memory (about twice its size): raise it only a little. A limit by path: `false`, and Hono's
-   * `bodyLimit` in the root `_middleware.ts` (docs: Forms, "The body limit")
-   */
+  /** Largest request body in bytes (default 10 MB), then 413; `false`: no limit. The body is read whole, in memory. */
   bodyLimit?: number | false
   /**
    * `hono/secure-headers`' options; `false`: off. Defaults: `referrerPolicy: 'same-origin'` (which `back()` needs) and
@@ -115,7 +111,6 @@ export function checkExports(file: string, mod: Record<string, unknown>) {
     )
 }
 
-/** a thrown `ValidationError` becomes the page it came from with its errors (or 422 for an API client) */
 const handle =
   (h: Handler | MiddlewareHandler): MiddlewareHandler =>
   async (c, next) => {
@@ -128,23 +123,14 @@ const handle =
   }
 const chain = (handlers: Handlers): MiddlewareHandler[] => [handlers].flat().map(handle)
 
-/** the action a POST asks for: `?update` (the first query key, without a value) */
 function actionName(url: string): string | null {
   const first = new URL(url).searchParams.entries().next().value
   return first && first[1] === '' ? first[0] : null
 }
 
 /**
- * The Hono app from `app/routes/` (found by Vite, no generated code). Each file is a URL:
- * - a page, `.tsx` or `.mdx`: its component (default), `loader` (GET; without one, the page with no props of its
- *   own), `action` (POST) or `actions` (POST `?name`); `.mdx` has no handlers
- * - server code, `.ts`: HTTP handlers only, `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS` (not `loader`,
- *   `action`, `actions`: those are a page's)
- * `_middleware.ts` applies to its directory and below (`routes/_middleware.ts`: every request, 404s included).
- * Built in: CSRF protection, security headers, one URL per page (trailing slash), the error page, and a request body
- * limit (413, in each route that takes a body, after its directories' `_middleware.ts`, so its error page has the
- * shared props; CSRF's 403 is plain text).
- * Your own 404 / error handling: Hono's `app.notFound()` / `app.onError()` on the returned app.
+ * The Hono app from `app/routes/`, found by Vite. Built in: CSRF protection, security headers, one URL per page, the error
+ * page and a request body limit. For your own 404 / error handling, use `app.notFound()` / `app.onError()` on the result.
  */
 export function createApp(options: CreateAppOptions = {}): Hono {
   checkAppOptions(options)
@@ -172,7 +158,7 @@ export function createApp(options: CreateAppOptions = {}): Hono {
   checkRouteFiles([...hidden, ...Object.keys(modules)])
   for (const [file, mod] of Object.entries(modules)) {
     if (!isRouteFile(file) && !/(?:^|\/)_(?:middleware\.ts|layout\.tsx|error\.tsx)$/.test(file))
-      continue // a file of a directory's own (`_badge.tsx`)
+      continue
     checkExports(file, mod as Record<string, unknown>)
     if (isPageFile(file)) registerPage(mod.default as object, pageId(file))
   }
@@ -202,8 +188,8 @@ export function createApp(options: CreateAppOptions = {}): Hono {
   app.use(trailingSlash(append), ...protocol)
   app.notFound((c) => errorResponse(c, 404))
   app.onError((error, c) => {
-    // the client left (a body cut off mid-upload, a handler that read it): nobody is there to answer, so no 500 is
-    // logged. Recognised by the request's own signal, not by the error's type or message (they differ by runtime)
+    // the client left (a body cut off mid-upload): nobody is there to answer, so no 500 is logged. Recognised by the request's
+    // own signal, as the error's type and message differ by runtime
     if (!(error instanceof HTTPException) && c.req.raw.signal.aborted)
       return new Response(null, { status: 499 })
     if (error instanceof HTTPException && error.res) return error.getResponse()
@@ -213,11 +199,8 @@ export function createApp(options: CreateAppOptions = {}): Hono {
   // a _middleware.ts may only set what applies to its directory (`prerender`, `params`), without a default export
   const rootMiddleware = modules['_middleware.ts']?.default
   if (rootMiddleware) app.use(...chain(rootMiddleware))
-  // One limit, in the chain of each route for the methods that take a body, after its directories' middleware (so a 413
-  // has their shared props, and a request they refuse is not read) and before its handler. Not for a GET, a HEAD or a
-  // URL that is no route: none of them reads a body. With a Content-Length the header is checked, without one the body
-  // is counted as it is read. A directory's middleware must not read the body itself. CSRF stays above: Hono's 403 has
-  // its own plain response, so no page is rendered for it.
+  // One limit, in the chain of each route that takes a body, after its directories' middleware (so a 413 has their shared
+  // props, and a request they refuse is not read). CSRF stays above: Hono's 403 is plain text, so no page is rendered for it.
   const limit: MiddlewareHandler[] =
     options.bodyLimit === false
       ? []
@@ -235,7 +218,6 @@ export function createApp(options: CreateAppOptions = {}): Hono {
   for (const { file, pattern, path, middleware } of routeTable(modules, append)) {
     const mod = modules[file]!
     const page = isPageFile(file) ? pageId(file) : undefined
-    // a page's route: render() renders that page; with no loader, a GET renders it with no props of its own
     const mws = [
       ...(page ? [routePage(page)] : []),
       ...middleware.flatMap((f) => chain(modules[f]!.default ?? [])),
@@ -275,7 +257,6 @@ export function createApp(options: CreateAppOptions = {}): Hono {
         ...limit,
         async (c, next) => {
           const name = actionName(c.req.url)
-          // actions: the one named (?name), else none; otherwise the one action
           const picked = mod.actions
             ? name !== null && Object.hasOwn(actions, name)
               ? actions[name]

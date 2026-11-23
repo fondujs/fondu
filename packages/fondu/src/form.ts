@@ -1,28 +1,20 @@
-/**
- * Form fields as one object, the same in the server (`readBody`, `withValidator`) and in the browser (`useForm`): a
- * schema checked in the browser sees what the server's will.
- */
+// The same in the server and the browser, so a schema checked in the browser sees what the server's will.
 
-/** how deep form field names nest (`a[b][c]`: 3) */
 const DEPTH = 32
 
-/** how many entries (fields, files, empty file inputs too) a form may have */
 const ENTRIES = 10_000
 
-/** a body that can't be one object: a 400 on the server */
+// a 400 on the server
 export class MalformedForm extends Error {}
 
 type Entry = [string, FormDataEntryValue]
 
-/** a field's text as the browser sends it: line breaks as CRLF (a <textarea>'s) */
+// line breaks as CRLF, as the browser sends a <textarea>
 export const crlf = (text: string) => text.replace(/\r\n|\r|\n/g, '\r\n')
 
 /**
- * Form fields with PHP-style names, as forms write them (`notify[]`, `user[name]`); files are `File`s, empty file
- * inputs are left out. A name given again is a list (`a=1&a=2`, `a[b]=1&a[b]=2`); `[]` is the index after the
- * highest one so far. Names that would change the object itself (`__proto__`…) are ignored. Throws `MalformedForm`
- * for fields that can't be one object (`a=1&a[b]=2`, names nested deeper than 32) and for more than 10,000 entries
- * (files and empty file inputs count).
+ * Form fields with PHP-style names (`notify[]`, `user[name]`) as one object. Throws `MalformedForm` for fields that can't be
+ * one (`a=1&a[b]=2`) and past the depth and entry limits.
  */
 export function formObject(entries: Iterable<Entry>): Record<string, unknown> {
   const body: Record<string, unknown> = Object.create(null)
@@ -62,7 +54,6 @@ export function formObject(entries: Iterable<Entry>): Record<string, unknown> {
 
 const isFile = (v: unknown) => typeof File !== 'undefined' && v instanceof File
 
-/** objects whose keys are 0..n-1 become arrays */
 const arrays = (value: unknown): unknown => {
   if (typeof value !== 'object' || value === null || isFile(value) || Array.isArray(value))
     return value
@@ -71,17 +62,15 @@ const arrays = (value: unknown): unknown => {
   return isList ? entries.map(([, v]) => v) : Object.fromEntries(entries)
 }
 
-/** A Standard Schema's issue, the part used here */
 export interface Issue {
   readonly message: string
   readonly path?: ReadonlyArray<PropertyKey | { readonly key: PropertyKey }> | undefined
 }
 
-/** an issue's field: its path joined with dots (`user.name`, `tags.0`); the form's own issues are `''` */
+// the form's own issues are `''`
 const issueKey = (path: Issue['path']) =>
   (path ?? []).map((p) => String(typeof p === 'object' ? p.key : p)).join('.')
 
-/** a field name's key in the errors: `user[name]` → `user.name`, `tags[]` → `tags` */
 export const fieldKey = (name: string) =>
   name.replace(/\]/g, '').split('[').filter(Boolean).join('.')
 

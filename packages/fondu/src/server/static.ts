@@ -3,24 +3,18 @@ import type { Context, MiddlewareHandler } from 'hono'
 import { endsInIndex, htmlFile, PAGE_DATA } from '../paths.js'
 import { isPageRequest } from './http.js'
 
-/** Hono's `serveStatic` of the runtime (`hono/bun`, `@hono/node-server/serve-static`), given by the built server's entry */
 export type ServeStatic = (options: {
   root: string
   rewriteRequestPath?: (path: string) => string
 }) => MiddlewareHandler
 
-/** the headers on the response a file was served with (the runtimes differ in when `onFound` could set them) */
+// the runtimes differ in when serveStatic's `onFound` could set headers
 const withHeaders = (res: Response, headers: Record<string, string>) => {
   for (const [name, value] of Object.entries(headers)) res.headers.set(name, value)
 }
 
-/**
- * Node / Bun: the prerendered pages as files, before the app: a document request (`Accept: text/html`, no `X-Fondu`)
- * for `/docs/intro` is `docs/intro.html`, a page object (`/_fondu/pages/…`) its `.json`, each with the headers the
- * build decided (`headers`: `dist/server/prerender.json`). No file, or no page request: the next handler (the app).
- * A URL ending in `index` is never a document file (it would be its directory's). A path that still has an escaped
- * reserved character (`%2F`…) after decoding is not served from a file: serveStatic refuses it, and the app answers.
- */
+// Prerendered pages as files, before the app. A URL ending in `index` is never a document file, and a path with an
+// escaped reserved character (`%2F`) after decoding is refused by serveStatic and left to the app.
 export function staticPages(
   serveStatic: ServeStatic,
   clientRoot: string,

@@ -5,5 +5,5 @@ export { flash } from './server/flash.js'
 export { ValidationError } from './server/validate.js'
 export { withoutSsr, type DocumentParts, type DocumentTemplate } from './server/document.js'
 export type { Register } from './types.js'
-// last: createApp imports the app's routes, which import this module (the exports above are ready by then)
+// last: createApp's routes import this module, so the exports above must exist first
 export { createApp, type CreateAppOptions } from './server/app.js'

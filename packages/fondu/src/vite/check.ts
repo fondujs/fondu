@@ -7,7 +7,7 @@ import { checkRouteFiles, isRouteFile } from '../paths.js'
 import { exportedNames } from './strip.js'
 import { walk } from './typegen.js'
 
-/** The checks of the server's startup, on every file of `app/routes/` (Vite's globs don't list them all). */
+// Vite's globs don't list every file of app/routes/
 export function checkRoutes(): Plugin {
   let root = process.cwd()
   return {
@@ -24,11 +24,7 @@ export function checkRoutes(): Plugin {
 
 const MIDDLEWARE = /^(?:[^_.][^/]*\/)*_middleware\.ts$/
 
-/**
- * Whether a route file or a `_middleware.ts` exports `prerender`, from the names in the source: known before the
- * client and server builds, which prerendering changes (the entry, what navigations read). MDX pages have no exports of
- * their own to set it.
- */
+// Read from the source before the builds, which prerendering changes. MDX pages can't set it.
 export function routesPrerender(root: string): boolean {
   const dir = join(root, 'app/routes')
   return walk(dir).some((file) => {

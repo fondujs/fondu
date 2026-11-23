@@ -4,27 +4,20 @@ import { generateCookie, getCookie } from 'hono/cookie'
 import type { Flash } from '../types.js'
 import { appendHeader, isSecure } from './http.js'
 
-/**
- * Flash data and validation errors for the next page, the way Laravel keeps them in the session: here a short
- * cookie (Hono has no session). Set before a redirect, shown by the next page, once. A page rendered in the same
- * request gets them directly (no cookie).
- */
+// Like Laravel's session flash, but a short cookie (Hono has no session). A page rendered in the same request gets them
+// directly.
 interface Carried {
   flash?: Record<string, unknown>
   errors?: Record<string, unknown>
 }
-/** what fits in a cookie (browsers drop one over ~4 KB, name and attributes included, without a word) */
+// browsers drop a cookie over ~4 KB (name and attributes included) without a word
 const COOKIE_LIMIT = 4000
 const cookieSize = (value: object) => encodeURIComponent(JSON.stringify(value)).length
 
 const isPlain = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && Object.getPrototypeOf(value) === Object.prototype
 
-/**
- * The cookie comes back from the client: anyone can write it. What is not `{ flash?, errors? }` is ignored: `flash` a
- * plain object (its values any JSON: an app's flash data can be an object), `errors` a plain object of strings
- * (`ValidationError`'s).
- */
+// The cookie comes back from the client: anyone can write it, so what is not `{ flash?, errors? }` is ignored
 function parseCarried(raw: string | undefined): Carried | undefined {
   try {
     const value: unknown = JSON.parse(raw ?? 'null')
@@ -40,7 +33,7 @@ function parseCarried(raw: string | undefined): Carried | undefined {
   }
 }
 
-/** `outgoing` as a cookie's value: whole if it fits, else without the flash data, else the errors that fit, in order */
+// whole if it fits, else without the flash data, else the errors that fit, in order
 function fit(outgoing: Carried): { value?: string; dropped?: string } {
   const whole = JSON.stringify(outgoing)
   if (encodeURIComponent(whole).length <= COOKIE_LIMIT) return { value: whole }

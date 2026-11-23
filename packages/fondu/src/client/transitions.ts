@@ -1,10 +1,4 @@
-// View transitions: the browser's, around the client's own commit. A navigation opts in (`data-transition`,
-// `navigate(…, { transition })`); `fondu({ viewTransitions: true })` is the default for every navigation.
-
-/**
- * A `data-transition` attribute: none (undefined), `false` (opted out), or the custom types it adds, space-separated
- * (a bare attribute adds none, and `"true"` is a bare one: React writes `data-transition` as `data-transition="true"`)
- */
+// `"true"` is a bare attribute: React writes `data-transition` as `data-transition="true"`
 export function optIn(value: string | null): string[] | false | undefined {
   if (value === null) return
   const types = value.match(/\S+/g) ?? []
@@ -19,20 +13,13 @@ type ViewTransition = {
   skipTransition(): void
 }
 
-/** the view transition that is running: the document has one at a time */
 let active: ViewTransition | undefined
 
-/** the browser has view transitions */
 export const canTransition = () =>
   typeof (document as { startViewTransition?: unknown }).startViewTransition === 'function'
 
-/**
- * `update` (the commit and what follows it) inside `document.startViewTransition`, given a way to skip the transition;
- * settles when it has run, and rejects if it threw (a render error surfaces as it does without a transition). With
- * types where the browser has them (`:active-view-transition-type()`, tested as TanStack Router's `startViewTransition`
- * does), without them otherwise. `update` runs when the browser has captured the old page, and also when the
- * transition is skipped
- */
+// `update` runs when the browser has captured the old page, and also when the transition is skipped. Types are set only
+// where the browser has them (`:active-view-transition-type()`).
 export function transition(update: (skip: () => void) => void, types: string[]): Promise<void> {
   const run = () => update(() => view.skipTransition())
   const typed = CSS.supports('selector(:active-view-transition-type(a))')
@@ -40,8 +27,7 @@ export function transition(update: (skip: () => void) => void, types: string[]):
     document as unknown as { startViewTransition(a: unknown): ViewTransition }
   ).startViewTransition(typed ? { update: run, types } : run)
   active = view
-  // `ready` rejects when the transition is skipped, `finished` when `update` throws: the latter reaches the caller
-  // through `updateCallbackDone`
+  // `ready` rejects on skip, and `finished` when `update` throws: the latter reaches the caller through `updateCallbackDone`
   view.ready.catch(() => {})
   const over = () => {
     if (active === view) active = undefined
@@ -50,10 +36,9 @@ export function transition(update: (skip: () => void) => void, types: string[]):
   return view.updateCallbackDone
 }
 
-/** a newer navigation (Back, Forward) skips the transition on its way */
 export const skipActive = () => active?.skipTransition()
 
-/** `update` with the page's `scroll-behavior: smooth` off: the new page's snapshot is taken at the scroll position */
+// smooth scrolling off, so the new page's snapshot is taken at the scroll position
 export function instantly(update: () => void) {
   const style = document.documentElement.style
   const was = style.scrollBehavior

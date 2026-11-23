@@ -16,7 +16,7 @@ export type Handlers = Handler | MiddlewareHandler | ReadonlyArray<Handler | Mid
 export type Params = Record<string, readonly string[]>
 
 export interface RouteModule {
-  /** written as static files at build time (also in a `_middleware.ts`); any route exporting it turns prerendering on */
+  /** written as static files at build time (also in a `_middleware.ts`) */
   prerender?: Prerender
   /** the values its params take, `{ lang: ['de', 'fr'] }`, any other not its URL (also in a `_middleware.ts`) */
   params?: Params
@@ -48,14 +48,9 @@ export interface Route {
 /** a value of `params`: a URL segment of unreserved characters, matched as it is (Hono decodes the path first) */
 const SEGMENT = /^[\w.~-]+$/
 
-/**
- * The routes of `app/routes/` (`modules`: file inside routes/ → its module), in the order Hono gets them: segment
- * by segment, static before a param with listed values, before any param, before a catch-all. Throws, at startup,
- * on what would answer the wrong way: two files for the same URLs (one would never answer, or answer without the
- * other's middleware), `params` that no route takes or that aren't single segments, an error page other than the
- * app's, a `.jsx` file that would be a route, a layout or the error page (route files are TypeScript), a directory's own
- * file (`_middleware`, `_layout`, `_error`) with another extension.
- */
+// In the order Hono gets them: segment by segment, static, then a param with listed values, then a param, then a
+// catch-all. Throws at startup on what would answer the wrong way (two files for the same URLs, bad `params`, a `.jsx`
+// route file, a directory's own file with another extension).
 export function routeTable(modules: Record<string, RouteModule>, append: boolean): Route[] {
   const files = Object.keys(modules)
   const jsx = files.find(
@@ -74,7 +69,7 @@ export function routeTable(modules: Record<string, RouteModule>, append: boolean
       `fondu: routes/${nested} is never shown: the error page is routes/_error.tsx, one for the app`,
     )
   const middlewareFiles = files.filter((f) => f.endsWith('/_middleware.ts'))
-  const used = new Set<string>() // `${file}:${name}`: a `params` entry that applies to a route
+  const used = new Set<string>()
   const routes: Route[] = []
   for (const file of files.filter(isRouteFile)) {
     // the values of each param: the root's _middleware.ts, its directories', its own; the nearest counts
@@ -158,15 +153,11 @@ function paramsOf(file: string, mod: RouteModule | undefined): Params {
 const withSlash = (pattern: string, append: boolean) =>
   append && pattern !== '/' && !/(?:\*|\{\.\+\})$/.test(pattern) ? pattern + '/' : pattern
 
-/** a segment's specificity: static, then a param with listed values, then a param, then a catch-all */
 const priority = (s: string) =>
   s.endsWith('{.+}') ? 3 : s.includes('{') ? 1 : s.startsWith(':') ? 2 : 0
 
-/**
- * Hono's order: the specificity of each segment, from the first (static segments of another spelling are other
- * URLs: alphabetical); a param's name decides only between patterns equally specific at every segment, so
- * renaming a param never changes which route answers
- */
+// Hono's order: the specificity of each segment, from the first. A param's name decides only between patterns equally
+// specific at every segment, so renaming a param never changes which route answers
 function compare(a: string, b: string): number {
   const x = a.split('/')
   const y = b.split('/')

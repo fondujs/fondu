@@ -17,12 +17,6 @@ import {
   sameOrigin,
 } from './http.js'
 
-/**
- * Fondu's protocol: a document gets the HTML page, a navigation of fondu/client (`X-Fondu`) the page as JSON.
- */
-
-// ---- shared data (`share`): props every page gets, typed by `Register['shared']`
-
 type Shareable<T> = { [K in keyof T]?: T[K] | (() => T[K] | Promise<T[K]>) }
 const shared = new WeakMap<Context, Record<string, unknown>>()
 
@@ -31,10 +25,6 @@ export function share(c: Context, props: Shareable<Shared>) {
   shared.set(c, { ...shared.get(c), ...props })
 }
 
-// ---- deferred props (`defer`): left out of a page, asked for by a request of their own
-// As Inertia's deferred props, with rescue always on (a function that throws is logged and its prop left out); no groups
-
-/** a prop the page gets with a second request: `defer(fn)` in `render()`'s props */
 class DeferredProp<T> {
   declare readonly type?: T // phantom: what `fn` gives (no toJSON: a deferred prop is no JSON input)
   readonly load: () => T | PromiseLike<T>
@@ -52,27 +42,21 @@ Object.defineProperty(DeferredProp.prototype, 'toJSON', {
 export type { DeferredProp }
 
 /**
- * A prop of the page that is not sent with it: `render(c, Page, { user, stats: defer(() => loadStats()) })`. The page
- * renders without it (optional in the component's props); the client asks for it once the page is on the screen, and
- * `fn` runs only for that request.
+ * A prop of the page that is not sent with it: `render(c, Page, { stats: defer(() => loadStats()) })`. The client asks for
+ * it once the page is on the screen.
  */
 export function defer<T>(fn: () => T | PromiseLike<T>): DeferredProp<T> {
   return new DeferredProp(fn)
 }
 
-// ---- render
-
-/** a page: a component, its props what it receives (a function component, or a class one) */
 type PageComponent<P> =
   | ((props: P) => ReactNode | Promise<ReactNode>)
   | (new (props: P) => Component<P>)
-/** the props a page names: not an index signature (a page without props takes `Record<string, never>`) */
 type Named<P> = keyof P &
   keyof {
     [K in keyof P as {} extends Record<K, unknown> ? never : K]: 0
   }
 type SharedKey = Exclude<Named<Shared>, 'errors'>
-/** Shared keys named by at least one page variant (not just the keys common to every variant). */
 type UsedShared<P> = P extends unknown ? Named<P> & SharedKey : never
 /** An index constrains a field's value, not its presence. */
 type Field<P, K extends keyof P> = K extends Named<P> ? Pick<P, K> : Partial<Pick<P, K>>
@@ -86,12 +70,9 @@ type OwnProps<P> = {
   [K in keyof P as K extends 'errors' | SharedKey ? never : K]: P[K]
 }
 
-// ---- props as JSON delivers them: a page's prop types are what it receives; `render` takes what becomes that
-
 type Json = string | number | boolean | null
 /** JSON.stringify leaves these out of an object, and writes null for them in an array */
 type Omitted = undefined | symbol | ((...args: never[]) => unknown)
-/** objects with no own data: JSON writes {} */
 type Hollow =
   | Map<unknown, unknown>
   | Set<unknown>
@@ -102,7 +83,6 @@ type Hollow =
 type NotJson = Date | Hollow | bigint | Exclude<Omitted, undefined>
 /** (not `0 extends 1 & T`: a constraint written with T on the right is a circular one, as AsJson's is) */
 type IsAny<T> = unknown extends T ? ([T] extends [string] ? true : false) : false
-/** does a member of T, at any depth (limited, for recursive types), extend Needle? */
 type Holds<T, Needle, D extends unknown[] = []> =
   IsAny<T> extends true
     ? false
@@ -115,13 +95,9 @@ type Holds<T, Needle, D extends unknown[] = []> =
           : T extends object
             ? Holds<T[keyof T], Needle, [...D, 0]>
             : false
-/** T arrives as itself: nothing in it is a type JSON doesn't deliver as it is */
 type Arrives<T> = true extends Holds<T, NotJson> ? false : true
-/**
- * What a route may pass for a page prop of type T: a value of type T (its parts through JsonInput too), or one whose
- * toJSON() gives that (a Date for a string). Nested, JSON drops what a slot may not hold: an optional property takes
- * undefined, a function or a symbol; a null in an array takes them too (they are written as null).
- */
+// What a route may pass for a page prop of type T: a value of type T, or one whose toJSON() gives that. Nested, JSON drops
+// what a slot may not hold (an optional property takes undefined, a function or a symbol).
 type JsonInput<T> = IsAny<T> extends true ? T : Plain<T> | { toJSON(): Plain<T> }
 /** T without its own toJSON() step (JSON.stringify calls it once: its result's own is not called) */
 type Plain<T> = T extends Json | undefined
@@ -139,7 +115,6 @@ type NoToJson = { toJSON?: never }
 type BigIntError = {
   error: 'fondu: JSON cannot carry a bigint (JSON.stringify throws): convert it first'
 }
-/** T as JSON.stringify writes it, what a page receives (the other side of JsonInput); undefined: left out */
 type Wire<T> = IsAny<T> extends true ? T : T extends { toJSON(): infer R } ? Written<R> : Written<T>
 type Written<T> = unknown extends T
   ? T
@@ -157,10 +132,7 @@ type Written<T> = unknown extends T
               ? WrittenObject<T>
               : T
 type NullForUndefined<W> = W extends undefined ? null : W
-/**
- * A property is left out when its value is undefined (or a function, or a symbol): optional if it may be anything
- * else, none if it is only that. An index signature has no optional keys: its values are the rest.
- */
+// left out when undefined (or a function, or a symbol): optional if it may be anything else; an index signature has no optional keys
 type WrittenObject<T> = Flat<
   {
     [
@@ -189,7 +161,6 @@ type WrittenObject<T> = Flat<
   }
 >
 type Flat<T> = { [K in keyof T]: T[K] }
-/** a bigint anywhere in T: JSON.stringify throws on it, so AsJson<T> is an error */
 type Carrier<T> = true extends Holds<Wire<T>, BigIntError> ? BigIntError['error'] : unknown
 export type AsJson<T extends Carrier<T>> = Wire<T>
 
@@ -253,8 +224,7 @@ type RenderArgs<P> =
     ? [props?: RenderProps<P>, options?: RenderOptions]
     : [props: RenderProps<P>, options?: RenderOptions]
 
-// the pages of app/routes/ (createApp): a component → its ids; and, per request, the page of the route answering it
-// (the ids: a page may be the default export of several, `export { default } from './index.tsx'`)
+// the ids: a page may be the default export of several (`export { default } from './index.tsx'`)
 const pageIds = new WeakMap<object, Set<string>>()
 const ownPages = new WeakMap<Context, string>()
 export const registerPage = (component: object, id: string) => {
@@ -268,17 +238,13 @@ export const routePage =
     await next()
   }
 
-/** This URL as the page's: the request's for a GET, the page the request came from otherwise. */
 function pageUrl(c: Context): string {
   const here = new URL(c.req.url)
   const from = c.req.method === 'GET' ? here : (referer(c) ?? here)
   return pathAndQuery(from)
 }
 
-/**
- * The route file's page (its default export) with these props: JSON for a navigation, the HTML document
- * (server-rendered) otherwise. Props are checked against the component's own, as JSON delivers them.
- */
+/** The route file's page with these props: JSON for a navigation, the server-rendered HTML document otherwise. */
 export function render<P extends object>(
   c: Context,
   page: PageComponent<P>,
@@ -294,7 +260,7 @@ export function render<P extends object>(
   return renderPage(c, own, props as Record<string, unknown>, options)
 }
 
-/** @internal the page `id` (a route file without its extension) with these props: `render()`, the error page */
+/** @internal The page `id` (a route file without its extension) with these props: `render()`, the error page */
 export async function renderPage(
   c: Context,
   id: string,
@@ -375,10 +341,6 @@ export async function renderPage(
     : c.body(document, status, { 'Content-Type': 'text/html; charset=UTF-8' })
 }
 
-/**
- * The props a partial request asks for (`X-Fondu-Only: stats,feed`), if it is one: a navigation, a GET, for the
- * component this route renders
- */
 function askedFor(c: Context, id: string): string[] | undefined {
   const only = c.req.header('x-fondu-only')
   if (
@@ -399,7 +361,6 @@ function askedFor(c: Context, id: string): string[] | undefined {
   ]
 }
 
-/** an http(s) URL, as `to` resolves from the request's */
 function webUrl(c: Context, to: string): boolean {
   try {
     return /^https?:$/.test(new URL(to, c.req.url).protocol)
@@ -419,12 +380,7 @@ function scriptScheme(c: Context, to: string): string | null {
   }
 }
 
-// ---- the protocol middleware (installed by createApp)
-
-/**
- * Every header that selects what a navigation answers: the page object (`X-Fondu`), the 409 of an old build
- * (`X-Fondu-Version`), a partial answer (`X-Fondu-Only`, for `X-Fondu-Component`'s page)
- */
+// every header that selects what a navigation answers
 const NAVIGATION_VARY = 'X-Fondu, X-Fondu-Version, X-Fondu-Only, X-Fondu-Component'
 
 const versionCheck: MiddlewareHandler = async (c, next) => {
@@ -453,8 +409,8 @@ const versionCheck: MiddlewareHandler = async (c, next) => {
   }
   // a URL answers a navigation and a document differently: caches keep them apart
   appendHeader(c, 'Vary', isPageRequest(c) ? NAVIGATION_VARY : 'X-Fondu')
-  // an empty answer to a form (an action that returns nothing to show, `c.body(null)`): back to the page. Its body
-  // isn't read to tell (a stream's would be, to its end)
+  // an empty answer to a form (`c.body(null)`): back to the page. Its body isn't read to tell (a stream's would be, to its
+  // end)
   if (isPageRequest(c) && c.res.status === 200 && !c.res.headers.has('x-fondu') && !c.res.body)
     c.res = back(c)
   const to = c.res.headers.get('location')

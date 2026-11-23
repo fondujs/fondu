@@ -11,7 +11,6 @@ type Actions = {
 }[Keys]
 export type Href = [Keys] extends [never] ? string : Keys | Actions
 
-/** the params of a URL pattern, without its action (`?name`): `/users/:id/files/:path*` → id, path */
 type ParamNames<P extends string> = P extends `${infer Path}?${string}`
   ? PathParams<Path>
   : PathParams<P>
@@ -20,10 +19,8 @@ type PathParams<P extends string> = P extends `${string}:${infer Rest}`
     ? ParamName<Segment> | PathParams<More>
     : ParamName<Rest>
   : never
-/** a param's name, without a catch-all's `*` */
 type ParamName<S extends string> = S extends `${infer Name}*` ? Name : S
 
-/** the handlers answering a GET of the URL (its page's `loader`, a `.ts` file's `GET`), or the action's */
 type HandlersOf<P extends string> = P extends `${infer K}?${infer A}`
   ? K extends Keys
     ? Routes[K] extends { actions: infer As }
@@ -37,7 +34,6 @@ type HandlersOf<P extends string> = P extends `${infer K}?${infer A}`
         ? G
         : never
     : never
-/** a query value: what `href()` writes and `formObject` reads back (`unknown`, as a coercing schema's input: any of these) */
 type QueryValue =
   | string
   | number
@@ -46,7 +42,6 @@ type QueryValue =
   | undefined
   | QueryValue[]
   | { [key: string]: QueryValue }
-/** the query a handler's schema takes (a `withValidator` handler; any query otherwise) */
 type QueryOfHandler<H> = [H] extends [{ readonly [schemasOf]?: infer S }]
   ? S extends { query: { '~standard': { types?: infer T } } }
     ? NonNullable<T> extends { input: infer I extends object }
@@ -55,11 +50,8 @@ type QueryOfHandler<H> = [H] extends [{ readonly [schemasOf]?: infer S }]
     : Record<string, QueryValue>
   : Record<string, QueryValue>
 type QueryOf<P extends string> = QueryOfHandler<HandlersOf<P>>
-/** `query`, required when its schema requires a field */
 type QueryArg<Q> = {} extends Q ? { query?: Q } : { query: Q }
-/** `query` is required when its schema requires a field */
 type Extra<P extends string> = { hash?: string } & QueryArg<QueryOf<P>>
-/** the params of a URL pattern, as the options take them */
 type ParamArgs<P extends string> = { [K in ParamNames<P>]: string | number }
 type Args<P extends string> = [ParamNames<P>] extends [never]
   ? {} extends QueryOf<P>
@@ -68,12 +60,7 @@ type Args<P extends string> = [ParamNames<P>] extends [never]
   : [params: ParamArgs<P> & Extra<P>]
 
 /**
- * Typed URLs from `app/routes/` (as React Router's `href`): `href('/users/:id', { id })` → `'/users/7'`;
- * one of a file's `actions`: `href('/users/:id?delete', { id })`. Only patterns that exist; params are required.
- * A form's action too: `<form method="post" action={href('/logout')}>`. With `query` (typed by the route's
- * `withValidator({ query })`, if it has one) and `hash`: `href('/search', { query: { q }, hash: 'results' })`.
- * The query is written as `withValidator({ query })` reads it: lists as `tag[]=a`, objects as `user[name]=Ada`; numbers
- * and booleans as text. `undefined`, `null`, an empty list and an empty object are left out.
+ * Typed URLs from `app/routes/`: `href('/users/:id', { id })` → `'/users/7'`. Optional `query` and `hash`; also a form's action.
  */
 export function href<P extends Href>(path: P, ...[options]: Args<P>): string {
   const { query, hash, ...params } = (options ?? {}) as {
@@ -84,10 +71,7 @@ export function href<P extends Href>(path: P, ...[options]: Args<P>): string {
   return buildUrl(path, params, query, hash)
 }
 
-/**
- * A query value as `formObject` reads it back: a list is `name[]` (a one-item list too), an object `name[key]`, a list
- * of objects or lists `name[0][key]`; `undefined` and `null` are left out.
- */
+// as `formObject` reads it back: a list is `name[]` (a one-item list too), an object `name[key]`
 function writeQuery(search: URLSearchParams, name: string, value: unknown): void {
   if (value === undefined || value === null) return
   if (Array.isArray(value)) {
@@ -129,25 +113,17 @@ export {
 export { useForm } from './client/form.js'
 export { closeShallow, loadDocument, navigate } from './client/navigation.js'
 
-// ---- request(): a typed call to the app's `.ts` routes (as Void's typed fetch, with Fondu's URL patterns)
-
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
-/** no generated types (or none of routes): everything is loose, as `Href` is */
 type Loose = string extends Keys ? true : [Keys] extends [never] ? true : false
-/** the HTTP methods a route file exports (a page has none) */
 type MethodsOf<P extends string> = Loose extends true
   ? HttpMethod
   : P extends Keys
     ? keyof Routes[P] & HttpMethod
     : never
-/**
- * The URL patterns of route files that export an HTTP method (`.ts` files). A page's pattern is not one: a page's
- * data is its props (its loader, `defer()`), and `request()` is for effects and events.
- */
+// A page's pattern is not one: its data is its props (loader, `defer()`); `request()` is for effects and events.
 type ApiPath = Loose extends true
   ? string
   : { [P in Keys]: [MethodsOf<P>] extends [never] ? never : P }[Keys]
-/** the handler of the route's method */
 type HandlerOf<P extends string, M extends string> = Loose extends true
   ? unknown
   : P extends Keys
@@ -156,7 +132,6 @@ type HandlerOf<P extends string, M extends string> = Loose extends true
       : never
     : never
 
-/** what the handler's `withValidator` body schema takes (any JSON when it has none) */
 type BodyOfHandler<H> = [H] extends [{ readonly [schemasOf]?: infer S }]
   ? S extends { body: { '~standard': { types?: infer T } } }
     ? NonNullable<T> extends { input: infer I }
@@ -171,31 +146,26 @@ type BodyArg<M extends string, B> = M extends 'GET'
     : undefined extends B
       ? { body?: B }
       : { body: B }
-/** `method`: omitted is GET, so it is left out only for a call that is GET: any other method, or a union, names it */
+// omitted is GET, so only a call that is GET leaves it out
 type MethodArg<M extends string> = [M] extends ['GET'] ? { method?: M } : { method: M }
 
 type RequestOptions<P extends string, M extends HttpMethod> = ParamArgs<P> &
   MethodArg<M> &
   QueryArg<QueryOfHandler<HandlerOf<P, M>>> &
   BodyArg<M, BodyOfHandler<HandlerOf<P, M>>> & { headers?: HeadersInit; signal?: AbortSignal }
-/** the options are optional when nothing is required: no params, no `body`, `query` or `method` to give */
 type RequestArgs<P extends string, M extends HttpMethod> =
   {} extends RequestOptions<P, M>
     ? [options?: RequestOptions<P, M>]
     : [options: RequestOptions<P, M>]
 
-/** what a handler returns, in the type: a `defineHandler(...)` tuple, a `withValidator` handler, a function */
 type ReturnedBy<H> = typeof answerOf extends keyof H
   ? NonNullable<H[typeof answerOf & keyof H]>
   : H extends readonly [...unknown[], infer Last]
     ? Returned<Last>
     : Returned<H>
 type Returned<F> = F extends (...args: never[]) => infer R ? Exclude<Awaited<R>, void> : unknown
-/**
- * The answer as JSON delivers it: Hono's `c.json(data)` is a `TypedResponse` whose data is already what JSON makes of
- * it (a `Date` is a string, `undefined` fields are dropped). Any other answer (text, a redirect, a body, or a
- * branch that is not `c.json`) is `unknown`.
- */
+// Hono's `c.json(data)` is a `TypedResponse` whose data is already what JSON makes of it (a `Date` is a string). Any
+// other answer is `unknown`.
 type AnswerOfResponse<R> = [R] extends [never]
   ? unknown
   : [R] extends [TypedResponse<unknown, StatusCode, 'json'>]
@@ -207,7 +177,7 @@ type AnswerOf<P extends string, M extends string> = Loose extends true
   ? unknown
   : AnswerOfResponse<ReturnedBy<HandlerOf<P, M>>>
 
-/** a non-2xx answer: `status`, `data` (the parsed body: a 422's `{ errors }`) and the `response` */
+/** A non-2xx answer: `status`, `data` (the parsed body) and the `response`. */
 export class RequestError extends Error {
   readonly status: number
   readonly data: unknown
@@ -222,15 +192,8 @@ export class RequestError extends Error {
 }
 
 /**
- * Calls a `.ts` route of the app from the browser (an effect, an event), typed by the route file: the params as
- * `href()` takes them, `query` and `body` by the handler's `withValidator` schemas, `method` one the file exports
- * (GET when left out), the answer by what the handler returns with `c.json()`, as JSON delivers it.
- *
- *     const usage = await request('/api/usage')
- *     await request('/api/settings', { method: 'POST', body: { emails: false } })
- *
- * A non-2xx answer throws a `RequestError`. No retry, no cache. A page's data comes from its loader or `defer()`:
- * called during the server render, it throws.
+ * Calls a `.ts` route of the app from the browser, typed by the route file. A non-2xx answer throws a `RequestError`.
+ * Called during the server render, it throws.
  */
 export async function request<
   P extends ApiPath,
@@ -271,7 +234,6 @@ export async function request<
   return data as AnswerOf<P, M>
 }
 
-/** the answer's body: JSON when its content type says so, else text; none for 204 or an empty body */
 async function readAnswer(response: Response): Promise<unknown> {
   const text = await response.text()
   if (!text) return undefined

@@ -13,14 +13,12 @@ import {
   METHODS,
 } from '../paths.js'
 
-/** the exports of a page's route file that are server code: the browser gets the page (default) alone */
 const SERVER_EXPORTS = new Set<string>([...HANDLERS, ...CONFIG, ...METHODS])
 
 type Node = { type: string; start: number; end: number; [key: string]: unknown }
 type Name = { name?: string; value?: string }
 const nameOf = (n: Name) => (n.name ?? n.value)!
 
-/** the names a declaration binds: `const { a, b: [c] } = …` → a, c */
 function bound(node: Node | null | undefined, out: string[] = []): string[] {
   if (!node) return out
   switch (node.type) {
@@ -31,7 +29,7 @@ function bound(node: Node | null | undefined, out: string[] = []): string[] {
       for (const d of node.declarations as Node[]) bound(d.id as Node, out)
       break
     case 'FunctionDeclaration':
-    case 'TSDeclareFunction': // an overload's signature
+    case 'TSDeclareFunction':
     case 'ClassDeclaration':
     case 'TSEnumDeclaration':
     case 'TSImportEqualsDeclaration':
@@ -66,13 +64,8 @@ function bound(node: Node | null | undefined, out: string[] = []): string[] {
 
 type Scope = Set<string>
 
-/**
- * The names a node refers to that it does not bind itself: `function f(a) { return a + b }` → b (and f's own
- * scopes: parameters, `var`s, block declarations, a catch's parameter). What a pattern binds is not a reference;
- * nor a property's name, a label, a member's property, a JSX attribute's name. It reads TSX: a JSX element's name
- * (`<Card>`, `<ui.Card>`; not `<div>`) is a reference; a type is not (it is gone once compiled), what runs is (an enum's
- * values, a namespace's body, `x as T`'s x). Errs on the side of a name referred to, never the other way.
- */
+// Errs on the side of a name referred to, never the other way. It reads TSX: a JSX element's name (`<Card>`, not `<div>`)
+// is a reference; a type is not (gone once compiled), what runs is (an enum's values, a namespace's body, `x as T`'s x).
 function references(node: unknown, out = new Set<string>(), scopes: Scope[] = []): Set<string> {
   const visit = (n: unknown, inner: Scope[] = scopes) => references(n, out, inner)
   if (Array.isArray(node)) {
@@ -110,7 +103,6 @@ function references(node: unknown, out = new Set<string>(), scopes: Scope[] = []
       visit(n.value)
       return out
     case 'JSXOpeningElement': {
-      // `<Card>` and `<ui.Card>` refer to a name; `<div>` is an element of the browser
       const tag = n.name as Node
       let root = tag
       while (root.type === 'JSXMemberExpression') root = root.object as Node
@@ -133,7 +125,6 @@ function references(node: unknown, out = new Set<string>(), scopes: Scope[] = []
       return out
     case 'TSEnumDeclaration': {
       if (n.declare) return out
-      // a member's value sees the enum's own names (`B = A * 2`)
       const members = ((n.body as Node | undefined)?.members ?? n.members) as Node[]
       const own: Scope = new Set(bound(n.id as Node))
       for (const m of members) if (!m.computed) own.add(nameOf(m.id as Name))
@@ -144,7 +135,6 @@ function references(node: unknown, out = new Set<string>(), scopes: Scope[] = []
       return out
     }
     case 'TSImportEqualsDeclaration': {
-      // `import q = A.B.C` refers to A; `import x = require('x')` to nothing
       let root = n.moduleReference as Node
       while (root.type === 'TSQualifiedName') root = root.left as Node
       if (n.importKind !== 'type') visit(root)
@@ -160,8 +150,7 @@ function references(node: unknown, out = new Set<string>(), scopes: Scope[] = []
     case 'FunctionDeclaration':
     case 'FunctionExpression':
     case 'ArrowFunctionExpression': {
-      // the parameters' scope (a function expression's own name, the parameters): what their default expressions
-      // see. The body's own declarations are another scope, inside it: a default never reaches them
+      // the parameters' scope: what their default expressions see. The body's declarations are another scope, inside it
       const params: Scope = new Set()
       if (n.type === 'FunctionExpression') bound(n.id as Node, []).forEach((x) => params.add(x))
       for (const p of n.params as Node[]) bound(p).forEach((x) => params.add(x))
@@ -209,13 +198,11 @@ function references(node: unknown, out = new Set<string>(), scopes: Scope[] = []
       return out
     }
   }
-  // a type (an annotation, an interface, a type alias, type arguments…) refers to nothing at run time
   if (n.type.startsWith('TS')) return out
   for (const key in n) if (key !== 'type' && key !== 'start' && key !== 'end') visit(n[key])
   return out
 }
 
-/** the `var`s of a function's body (and its blocks: they are the function's), not of the functions in it */
 function vars(node: unknown, scope: Scope): void {
   if (Array.isArray(node)) for (const n of node) vars(n, scope)
   else if (node && typeof node === 'object' && typeof (node as Node).type === 'string') {
@@ -226,7 +213,6 @@ function vars(node: unknown, scope: Scope): void {
   }
 }
 
-/** the names a block's statements declare for the block: `let`, `const`, functions, classes, enums, namespaces (exported or not) */
 function lexical(statements: Node[], scope: Scope = new Set()): Scope {
   for (let s of statements) {
     if (s.type === 'ExportNamedDeclaration' && s.declaration) s = s.declaration as Node
@@ -243,7 +229,6 @@ function lexical(statements: Node[], scope: Scope = new Set()): Scope {
   return scope
 }
 
-/** the statements that declare names the browser's copy may do without, when nothing it keeps reaches them */
 const DECLARATIONS = [
   'VariableDeclaration',
   'FunctionDeclaration',
@@ -255,25 +240,15 @@ const DECLARATIONS = [
 
 interface Part {
   node: Node
-  /** the top-level names it declares, if removing it is a matter of nobody using them */
   declares: string[]
-  /** the names it refers to (its own may be among them) */
   uses: Set<string>
-  /** an import's specifiers that are values (a `type` one goes: the compiler would remove it) */
   values?: Array<Node & { local: Name }>
-  /** replaced by: '' (removed), a shorter statement (an import or an export list), or kept as it is */
   text?: string
 }
 
-/**
- * The browser's copy of a page's route file, from its source (TSX, before any transform): its server exports
- * removed (`loader`, `action`, `actions`…), then what only they used: the imports and top-level declarations
- * (functions, classes, enums, namespaces…) the code kept doesn't reach. Type-only imports and exports go too (the
- * compiler would remove them; kept as `import {} from 'x.server'` by `verbatimModuleSyntax`, they would load a
- * server module). Conservative: a name the code kept refers to keeps its declaration, so what is left over is at
- * worst unused code, which Fondu's server-only guard stops when it is server code (`*.server.ts`, `routes/*.ts`).
- * Lines stay where they were.
- */
+// Type-only imports and exports go too: `verbatimModuleSyntax` would keep them as `import {} from 'x.server'` and load a
+// server module. Conservative: a name the code kept refers to keeps its declaration, so what is left over is at worst
+// unused code, which the server-only guard stops when it is server code. Lines stay where they were.
 export function stripServerCode(code: string, program: { body: Node[] }, file: string): string {
   const fail = (why: string): never => {
     throw new Error(`fondu: routes/${file}: ${why}`)
@@ -289,7 +264,6 @@ export function stripServerCode(code: string, program: { body: Node[] }, file: s
     const { node } = part
     if (node.type === 'ExportAllDeclaration') fail('`export *` is not for a route file')
     if (node.type === 'ExportNamedDeclaration') {
-      // `export type X = …`, `export interface`, `export type { X }`: no code
       if (node.exportKind === 'type') {
         part.text = ''
         part.uses = new Set()
@@ -318,7 +292,6 @@ export function stripServerCode(code: string, program: { body: Node[] }, file: s
       part.text = kept.length
         ? `export { ${kept.map((s) => code.slice(s.start, s.end)).join(', ')} }${source};`
         : ''
-      // what it exported is only named here now: an import or a declaration it named may go too
       part.uses = references(kept.map((s) => s.local))
       continue
     }
@@ -378,7 +351,6 @@ export function stripServerCode(code: string, program: { body: Node[] }, file: s
   return out + code.slice(at)
 }
 
-/** an import with these of its specifiers only: `import a, { b as c } from 'x'` */
 function importOf(code: string, node: Node, kept: Array<Node & { local: Name }>): string {
   const source = code.slice((node.source as Node).start, (node.source as Node).end)
   const first = kept[0]!
@@ -395,8 +367,7 @@ function importOf(code: string, node: Node, kept: Array<Node & { local: Name }>)
   return `import ${clauses.join(', ')} from ${source};`
 }
 
-/** A component imported directly does not bring its declared parents. Remove just the declaration and the
- * import bindings used only by it, leaving side effects, other exports and line positions alone. */
+// Remove just the declaration and the import bindings used only by it, leaving side effects, other exports and line positions alone.
 export function withoutLayout(code: string, body: Node[]): string {
   const declaration = body.find(
     (n) => n.type === 'ExportNamedDeclaration' && bound(n.declaration as Node).includes('layout'),
@@ -424,7 +395,6 @@ export function withoutLayout(code: string, body: Node[]): string {
   return out
 }
 
-/** the names a module exports, as its namespace lists them (sorted); `export *` is not followed */
 export function exportedNames(body: Node[]): string[] {
   const names = new Set<string>()
   for (const node of body) {
@@ -439,15 +409,10 @@ export function exportedNames(body: Node[]): string[] {
 
 const SPECIAL_FILE = /(?:^|\/)_(?:middleware\.ts|layout\.tsx|error\.tsx)$/
 
-/** the queries that make another module of a file (`?raw`: its text, `?url`, `?worker`…): Vite's own plugins load those */
 const OTHER_MODULE = /[?&](?:raw|url|inline|no-inline|worker|sharedworker)(?:[&=]|$)/
 
-/**
- * The browser's copy of every page's route file (`.tsx` in `app/routes/`): its server code removed, in `load`, on the
- * source: the stripped text is the module's source from there on, so what a source map holds as `sourcesContent` is
- * the stripped text too (in a build, and in development). `?worker_file`, `?direct`, `?html-proxy` and `?t=` are the
- * same file: stripped alike. The server's copy is the whole file.
- */
+// In `load`, on the source: the stripped text is the module's source from there on, so a source map's `sourcesContent` is
+// stripped too. `?worker_file`, `?direct`, `?html-proxy` and `?t=` are the same file: stripped alike.
 export function stripRoutes(): Plugin {
   let root = process.cwd()
   return {
