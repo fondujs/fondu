@@ -95,6 +95,46 @@ describe('the value of an export', () => {
         /^fondu: routes\/x\.tsx: actions is an object of handlers/,
       )
   })
+  test('an actions entry that is undefined fails, naming the key; a top-level export that is undefined stays', () => {
+    expect(() =>
+      checkExports('x.tsx', { default: Page, actions: { a: handler, save: undefined } }),
+    ).toThrow('fondu: routes/x.tsx: actions.save is a handler (defineHandler), not undefined')
+    expect(() =>
+      checkExports('x.tsx', {
+        default: Page,
+        loader: undefined,
+        action: undefined,
+        actions: undefined,
+        prerender: undefined,
+      }),
+    ).not.toThrow()
+  })
+  test("a _middleware.ts's default is a middleware: a function, or a list of them", () => {
+    for (const file of ['_middleware.ts', 'admin/_middleware.ts'])
+      for (const [value, said] of [
+        [1, 'number'],
+        ['next', 'string'],
+        [null, 'null'],
+        [false, 'boolean'],
+        [{}, 'object'],
+        [[], 'a list'],
+        [[handler, 1], 'a list'],
+      ] as const)
+        expect(() => checkExports(file, { default: value }), `${file} ${said}`).toThrow(
+          `fondu: routes/${file}: default is a middleware, \`async (c, next) => …\`, not ${said}`,
+        )
+    for (const file of ['_middleware.ts', 'admin/_middleware.ts'])
+      for (const mod of [
+        { default: handler },
+        { default: [handler, handler] },
+        { default: undefined },
+        { prerender: true },
+        {},
+      ])
+        expect(() => checkExports(file, mod)).not.toThrow()
+    // a route with `_middleware.ts` at the end of its name is a route
+    expect(() => checkExports('my_middleware.ts', { GET: handler })).not.toThrow()
+  })
   test('prerender is a boolean or a function, in a route and in a _middleware.ts', () => {
     for (const file of ['x.tsx', '_middleware.ts'])
       for (const prerender of ['yes', 1, null, {}, [{ id: 1 }]])

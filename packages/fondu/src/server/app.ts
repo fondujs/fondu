@@ -73,17 +73,25 @@ function checkValues(file: string, mod: Record<string, unknown>) {
   const fail = (message: string): never => {
     throw new Error(`fondu: routes/${file}: ${message}`)
   }
-  const handler = (name: string, value: unknown) => {
-    if (value !== undefined && !isHandler(value))
+  // an `actions` entry is there to be named in `?name`: undefined is a form with no handler, not an absent export
+  const handler = (name: string, value: unknown, entry = false) => {
+    if ((value !== undefined || entry) && !isHandler(value))
       fail(`${name} is a handler (defineHandler), not ${kind(value)}`)
   }
   for (const name of [...HANDLERS.filter((h) => h !== 'actions'), ...METHODS])
     if (name in mod) handler(name, mod[name])
+  if (
+    file.split('/').at(-1) === '_middleware.ts' &&
+    mod.default !== undefined &&
+    !isHandler(mod.default)
+  )
+    fail(`default is a middleware, \`async (c, next) => …\`, not ${kind(mod.default)}`)
   const actions = mod.actions
   if (actions !== undefined) {
     if (typeof actions !== 'object' || actions === null || Array.isArray(actions))
       fail(`actions is an object of handlers, { name: handler }, not ${kind(actions)}`)
-    for (const [name, value] of Object.entries(actions as object)) handler(`actions.${name}`, value)
+    for (const [name, value] of Object.entries(actions as object))
+      handler(`actions.${name}`, value, true)
   }
   const prerender = mod.prerender
   if (prerender !== undefined && typeof prerender !== 'boolean' && typeof prerender !== 'function')

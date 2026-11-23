@@ -457,6 +457,27 @@ describe('prerendering follows the route exports', () => {
     }
   })
 
+  for (const [file, text, message] of [
+    [
+      'app/routes/admin/_middleware.ts',
+      'export default 5\n',
+      'routes/admin/_middleware.ts: default is a middleware',
+    ],
+    [
+      'app/routes/save.tsx',
+      `${home}export const actions = { save: undefined }\n`,
+      'routes/save.tsx: actions.save is a handler (defineHandler), not undefined',
+    ],
+  ] as const)
+    test(`the built server refuses ${file} at startup, naming the file and the key`, async () => {
+      const out = await buildApp(files({ [file]: text }))
+      try {
+        await expect(start(out)).rejects.toThrow(message)
+      } finally {
+        out.remove()
+      }
+    })
+
   test("a .ts route under a directory's prerender is not written, and the build passes", async () => {
     const out = await buildApp(
       files({
