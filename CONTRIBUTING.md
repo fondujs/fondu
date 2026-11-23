@@ -97,6 +97,10 @@ CHROME_PATH=/path/to/chrome node e2e/run.mjs http://localhost:5173
 
 A change to `packages/fondu` should pass both.
 
+Against Cloudflare's dev or preview server, the over-10 MB upload check can fail for the same reason as `XFAIL #298`
+above: the client gets 500 after the Worker answered 413. Write the server's output to a file and name it, and the run
+prints `XFAIL #298` when that log shows both, instead of failing: `DEMO_SERVER_LOG=preview.log node e2e/run.mjs ...`.
+
 ## Commits and pull requests
 
 Commit messages follow [Conventional Commits](https://www.conventionalcommits.org): `feat:`, `fix:`, `docs:`,

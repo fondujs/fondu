@@ -1,6 +1,6 @@
 // Browser end-to-end checks of the Cloudflare example. Start it first (`bun run dev` or `bun run preview`), then:
 //   CHROME_PATH=/path/to/chrome node e2e/run.mjs http://localhost:5173 [label]
-import { mkdtempSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -25,6 +25,9 @@ const ok = (name, cond, extra = '') => {
   console.log(`${cond ? 'PASS' : 'FAIL'}  ${name}${extra ? `  — ${extra}` : ''}`)
 }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+// The server's output, when DEMO_SERVER_LOG names the file it is written to (the only way to tell #298 from a real 500).
+const serverLog = () =>
+  process.env.DEMO_SERVER_LOG ? readFileSync(process.env.DEMO_SERVER_LOG, 'utf8') : ''
 
 // Puppeteer's headless default --hide-scrollbars hides the scrollbar but not the gutter that `scrollbar-gutter: stable`
 // reserves, so the gallery dialog's scroll lock narrows the page by one scrollbar. A real browser has either both or neither.
@@ -1493,13 +1496,30 @@ await checkSettingsLayout({ browser, base: BASE, ok, watchProblems })
   writeFileSync(join(dir, 'huge.txt'), 'x'.repeat(10 * 1024 * 1024 + 1))
   const input = await page.$('[data-testid=upload] input[type=file]')
   await input.uploadFile(join(dir, 'huge.txt'))
+  const logFrom = serverLog().length
   await page.click('[data-testid=upload-send]')
   await page.waitForSelector('[data-testid=error-status]', { timeout: 15000 }).catch(() => {})
-  ok(
-    'uploads: over 10 MB is the error page with 413, its layout rendered (the shared props are there)',
-    (await testid('error-status')) === '413' && (await text()).includes('over the upload limit'),
-    JSON.stringify(await testid('error-status')),
-  )
+  const shown = await testid('error-status')
+  // The local Workers proxy (cloudflare/workerd#7634, create-fondu's #298 case) fails forwarding the body of a request
+  // the Worker already refused with 413, and the client gets 500. Known only when the server's log shows both.
+  let known = false
+  if (shown !== '413') {
+    for (let i = 0; i < 20 && !known; i++) {
+      const log = serverLog().slice(logFrom)
+      known = /POST \/uploads 413 /.test(log) && /fetch failed[^]*dispatchFetch/.test(log)
+      if (!known) await sleep(100)
+    }
+  }
+  if (known)
+    console.log(
+      `XFAIL #298  uploads: over 10 MB: the Worker returned 413, the client did not get it`,
+    )
+  else
+    ok(
+      'uploads: over 10 MB is the error page with 413, its layout rendered (the shared props are there)',
+      shown === '413' && (await text()).includes('over the upload limit'),
+      JSON.stringify(shown),
+    )
 }
 
 // ---- a reload of a #fragment's page scrolled elsewhere: where it was left, as without JavaScript
