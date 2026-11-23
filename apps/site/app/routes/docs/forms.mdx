@@ -52,8 +52,10 @@ out the flash data first, then the errors that don't fit, and logs a warning.
 
 When the body or the query doesn't fit its schema, the handler doesn't run:
 
-- a page's form gets a redirect back to the page it came from, and that page gets the errors in its `errors` prop, one
+- a page's form (a POST, PUT, PATCH or DELETE) gets a redirect back to the page it came from, and that page gets the errors in its `errors` prop, one
   message per field (`{ email: 'Invalid email' }`). What was typed stays in the form.
+- a GET (or HEAD) with an invalid query has no form to go back to, and a redirect could loop: a visitor gets the error
+  page with status 422.
 - an API client gets 422 and `{ errors }`.
 
 Params that don't fit are a 404: the URL names nothing.

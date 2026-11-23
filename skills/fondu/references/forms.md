@@ -48,8 +48,9 @@ export default function NewContact({ errors }: { errors: Errors }) {
 `defineHandler.withValidator({ body, query, params })` takes any Standard Schema (Zod, Valibot, ArkType…). When body
 or query don't fit, the handler doesn't run:
 
-- a page's form goes back to its page with the `errors` prop, one message per field (`{ email: 'Invalid email' }`),
-  and what was typed stays;
+- a page's form (not a GET) goes back to its page with the `errors` prop, one message per field
+  (`{ email: 'Invalid email' }`), and what was typed stays;
+- a GET or HEAD with an invalid query has no form to go back to: a visitor gets the error page with status 422;
 - an API client gets 422 and `{ errors }`;
 - params that don't fit are a 404.
 

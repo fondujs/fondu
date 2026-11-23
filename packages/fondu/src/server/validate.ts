@@ -2,8 +2,9 @@ import type { Context, MiddlewareHandler } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 
 import { formObject, issueErrors, MalformedForm, type Issue } from '../form.js'
+import { errorResponse } from './errors.js'
 import { flashErrors } from './flash.js'
-import { back, wantsPage } from './http.js'
+import { back, varyAccept, wantsPage } from './http.js'
 
 /** The Standard Schema interface (zod, valibot, arktype…), the part used here. */
 export interface StandardSchemaV1<Input = unknown, Output = Input> {
@@ -33,10 +34,14 @@ export class ValidationError extends Error {
   }
 }
 
-export function validationErrorResponse(c: Context, error: ValidationError): Response {
-  if (!wantsPage(c)) return c.json({ errors: error.errors }, 422)
+export async function validationErrorResponse(
+  c: Context,
+  error: ValidationError,
+): Promise<Response> {
+  if (!wantsPage(c)) return varyAccept(c.json({ errors: error.errors }, 422))
+  if (c.req.method === 'GET' || c.req.method === 'HEAD') return errorResponse(c, 422)
   flashErrors(c, error.errors)
-  return back(c)
+  return varyAccept(back(c))
 }
 
 /**
