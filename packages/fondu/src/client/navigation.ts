@@ -1,5 +1,5 @@
 import { sentFields } from '../form.js'
-import { pageDataPath, SCROLL_KEY, SCROLL_STORAGE } from '../paths.js'
+import { decoded, pageDataPath, SCROLL_KEY, SCROLL_STORAGE } from '../paths.js'
 import { canTransition, instantly, optIn, skipActive, transition } from './transitions.js'
 
 /** What the server sends for a page: its id, props, URL and the build's version. */
@@ -736,15 +736,8 @@ function holdUntilLoaded(position: { x: number; y: number }) {
   addEventListener('load', () => setTimeout(() => held && window.scrollTo(position.x, position.y)))
 }
 
-// decoded, or as it is (`#100%` doesn't decode)
 function fragmentTarget(fragment: string): HTMLElement | null {
-  try {
-    return (
-      document.getElementById(decodeURIComponent(fragment)) ?? document.getElementById(fragment)
-    )
-  } catch {
-    return document.getElementById(fragment)
-  }
+  return document.getElementById(decoded(fragment)) ?? document.getElementById(fragment)
 }
 
 let announcer: HTMLElement | undefined
