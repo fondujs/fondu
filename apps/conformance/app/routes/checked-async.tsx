@@ -1,12 +1,16 @@
 import { defineHandler, flash, render } from 'fondu'
 import { useForm, usePage } from 'fondu/client'
 
-// useForm with a schema whose answer is a promise: not supported (e2e/form-async.spec.ts)
+// useForm with a schema whose answer is a promise: no verdict in the browser, the server decides (e2e/form-async.spec.ts).
+// It rejects when `other` is "reject".
 const schema = {
   '~standard': {
     version: 1 as const,
     vendor: 'conformance',
-    validate: (value: unknown) => Promise.resolve({ value, issues: undefined }),
+    validate: (value: unknown) =>
+      (value as { other?: string }).other === 'reject'
+        ? Promise.reject(new Error('the rule failed'))
+        : Promise.resolve({ value, issues: undefined }),
   },
 }
 
@@ -15,7 +19,10 @@ const anything = {
   '~standard': {
     version: 1 as const,
     vendor: 'conformance',
-    validate: (value: unknown) => ({ value }),
+    validate: (value: unknown) =>
+      (value as { name?: string }).name === 'Taken'
+        ? { issues: [{ message: 'Taken already', path: ['name'] }] }
+        : { value },
   },
 }
 export const action = defineHandler.withValidator({ body: anything })((c, { body }) => {
