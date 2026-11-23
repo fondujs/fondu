@@ -20,6 +20,7 @@ export interface PrerenderRoute {
   pattern: string
   /** the route's own setting, then its directories' (`_middleware.ts`), nearest first */
   settings: Array<Prerender | undefined>
+  settingFiles?: string[]
   /** it answers GET (`loader` / `GET`) */
   get: boolean
   /** the other methods it answers: a static file would answer them 405 */
@@ -50,7 +51,8 @@ export async function prerenderPaths(
   const paths = new Set<string>()
   const problems: string[] = []
   for (const route of routes) {
-    const setting = route.settings.find((s) => s !== undefined) ?? false
+    const at = route.settings.findIndex((s) => s !== undefined)
+    const setting = route.settings[at] ?? false
     if (setting === false || !route.get) continue
     const where = `routes/${route.file}`
     if (route.others.length) {
@@ -77,8 +79,22 @@ export async function prerenderPaths(
       else add(route.pattern)
       continue
     }
+    const from = `routes/${route.settingFiles?.[at] ?? route.file}`
+    let list: unknown
     try {
-      for (const params of await setting()) {
+      list = await setting()
+    } catch (error) {
+      problems.push(
+        `${from}: prerender failed: ${error instanceof Error ? error.message : String(error)}`,
+      )
+      continue
+    }
+    if (!Array.isArray(list)) {
+      problems.push(`${from}: prerender returns a list of params, [{ id: 1 }], not ${typeof list}`)
+      continue
+    }
+    try {
+      for (const params of list as Array<Record<string, string | number>>) {
         const path = fillPattern(route.pattern, params)
         fileNames(route.pattern, params)
         add(path)

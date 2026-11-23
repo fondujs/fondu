@@ -53,6 +53,10 @@ export const params = { lang: ['de', 'fr'] }
 | `_error.tsx`     | the component (default)                                                              |
 | `_layout.tsx`    | the component (default), optional `layout`                                           |
 
+Any other export fails `vite build`. A value of the wrong kind stops the app at startup: `loader`, `action`, the values
+of `actions` and the HTTP methods are handlers (`defineHandler(...)`), `prerender` is `true`, `false` or a function, and a
+`layout` lists each component once.
+
 ## A page
 
 ```tsx

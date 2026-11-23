@@ -7,6 +7,7 @@ import { afterEach, describe, expect, test } from 'vitest'
 
 import { checkExports } from '../src/server/app.js'
 import fondu from '../src/vite/index.js'
+import { buildApp } from './build-app.js'
 import { buildClient, tempApp } from './support/build.js'
 
 const page = 'export default function Page() { return <p>page</p> }\n'
@@ -291,5 +292,49 @@ describe('a hidden path under routes/', () => {
     } finally {
       await dev.close()
     }
+  })
+})
+
+describe('the server build checks the exports of every route file', () => {
+  const built = async (files: Record<string, string>) => {
+    const out = await buildApp({ 'app/routes/index.tsx': page, ...files })
+    out.remove()
+  }
+  test('a page with an export that is not its own', async () => {
+    await expect(
+      built({ 'app/routes/about.tsx': `${page}export const foo = 1\n` }),
+    ).rejects.toThrow('fondu: routes/about.tsx exports `foo`')
+  })
+  test('a .ts route with loader: it is GET', async () => {
+    await expect(
+      built({ 'app/routes/api.ts': 'export const loader = () => new Response("x")\n' }),
+    ).rejects.toThrow('fondu: routes/api.ts exports `loader`')
+  })
+  test('a _middleware.ts with loader', async () => {
+    await expect(
+      built({
+        'app/routes/admin/_middleware.ts':
+          'export const loader = () => 1\nexport default async (c, next) => next()\n',
+        'app/routes/admin/index.tsx': page,
+      }),
+    ).rejects.toThrow('fondu: routes/admin/_middleware.ts exports `loader`')
+  })
+  test('a layout that lists a component twice', async () => {
+    await expect(
+      built({
+        'app/routes/about.tsx': `import Site from './_site'\nexport const layout = [Site, Site]\n${page}`,
+        'app/routes/_site.tsx': 'export default function Site({ children }) { return children }\n',
+      }),
+    ).rejects.toThrow('fondu: routes/about.tsx: layout lists the same component twice')
+  })
+  test('valid route files build', async () => {
+    await built({
+      'app/routes/about.tsx': `export const loader = () => ({})\nexport const action = () => ({})\n${page}`,
+      'app/routes/api.ts':
+        'export const GET = () => new Response("x")\nexport const prerender = false\n',
+      'app/routes/docs/_middleware.ts':
+        'export default async (c, next) => next()\nexport const prerender = true\n',
+      'app/routes/docs/index.tsx': page,
+    })
   })
 })

@@ -56,7 +56,12 @@ export function layoutImports(code: string, file: string): LayoutImport[] | unde
         value?.type !== 'ArrayExpression'
       )
         return fail()
-      return value.elements.map((e) => (e?.type === 'Identifier' && imports.get(e.name)) || fail())
+      const refs = value.elements.map(
+        (e) => (e?.type === 'Identifier' && imports.get(e.name)) || fail(),
+      )
+      if (new Set(refs.map((r) => `${r.source}\0${r.name}`)).size !== refs.length)
+        throw new Error(`fondu: routes/${file}: layout lists the same component twice`)
+      return refs
     }
     return fail()
   }
