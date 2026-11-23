@@ -78,6 +78,12 @@ export default function Vt() {
         >
           shallow with a transition
         </button>
+        <button id="keep" onClick={() => navigate('/vt/a', { keep: true })}>
+          navigate(A, keep)
+        </button>
+        <button id="keep-vt" onClick={() => navigate('/vt/a', { keep: true, transition: true })}>
+          navigate(A, keep, transition)
+        </button>
         <button id="replace-b" onClick={() => navigate('/vt/b', { replace: true })}>
           navigate(B, replace)
         </button>

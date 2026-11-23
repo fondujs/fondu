@@ -54,10 +54,12 @@ export interface FonduOptions {
    */
   progress?: ProgressOptions | false
   /**
-   * `true`: every navigation runs inside the browser's `document.startViewTransition`, typed `navigation-forward`,
-   * `navigation-back` or `navigation-replace`; the app styles them in CSS. A link or a call opts out
-   * (`data-transition="false"`, `transition: false`). Off by default: a navigation then opts in on its own
-   * (`data-transition`, `navigate(href, { transition: true })`)
+   * `true`: a navigation that shows another page runs inside the browser's `document.startViewTransition`, typed
+   * `navigation-forward`, `navigation-back` or `navigation-replace`; the app styles them in CSS. That is a link, a
+   * form, `navigate()`, and Back and Forward. A page that stays does not: `navigate()` with `keep` (it opts in with
+   * `transition: true`) and `reload()`; nor a form's answer at its own URL, and never a shallow navigation. A link or a
+   * call opts out (`data-transition="false"`, `transition: false`). Off by default: a navigation then opts in on its
+   * own (`data-transition`, `navigate(href, { transition: true })`)
    */
   viewTransitions?: boolean
 }

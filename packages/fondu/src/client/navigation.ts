@@ -27,7 +27,7 @@ interface Options {
   ) => Promise<(() => void) | undefined>
   /** some route exports `prerender`: GET navigations read `/_fondu/pages/<path>.json` */
   prerender: boolean
-  /** `fondu({ viewTransitions: true })`: a navigation transitions unless it opts out (it opts in on its own otherwise) */
+  /** `fondu({ viewTransitions: true })`: a navigation to another page transitions unless it opts out (it opts in on its own otherwise) */
   viewTransitions: boolean
   /** a navigation started (to `to`: a path, its query and fragment; `form`: a form's submission) or ended (null) */
   pending: (
@@ -425,7 +425,7 @@ export function startNavigation({
               ? 'replace'
               : options.history
         const types =
-          transitions && !stay && !same && !(shown && !fresh)
+          transitions && (!stay || options.transition) && !same && !(shown && !fresh)
             ? [
                 ...(history === 'push'
                   ? ['navigation-forward']
