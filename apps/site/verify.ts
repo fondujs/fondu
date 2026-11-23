@@ -5,6 +5,7 @@ import { existsSync, readFileSync } from 'node:fs'
 
 import { descriptionProblems, docs, docUrl, markdownUrl } from './app/docs.ts'
 import { jsonLd as jsonLdText } from './app/structured-data.ts'
+import { docFile, firstCommit, lastModified } from './markdown.ts'
 
 const problems: string[] = descriptionProblems()
 
@@ -54,6 +55,9 @@ if (existsSync(new URL('index.html', dist))) {
     problems.push('/: og:type is not website')
   if (tag(home, /<link rel="alternate" type="text\/markdown"/))
     problems.push('/: it has no Markdown copy to link')
+  const llmsLink =
+    '<link rel="alternate" type="text/plain" title="LLM docs" href="https://fondu.dev/llms.txt"/>'
+  if (!home.includes(llmsLink)) problems.push('/: no alternate link to llms.txt')
   checkTypes('/', jsonLd('/', home), {
     WebSite: ['name', 'description', 'url'],
     SoftwareSourceCode: [
@@ -69,8 +73,13 @@ if (existsSync(new URL('index.html', dist))) {
   for (const doc of docs) {
     const page = docUrl(doc)
     const html = read(`${page === '/docs' ? 'docs' : page.slice(1)}.html`)
-    if (!html.includes(`<link rel="alternate" type="text/markdown" href="${markdownUrl(doc)}"/>`))
+    if (
+      !html.includes(
+        `<link rel="alternate" type="text/markdown" title="Markdown source" href="${markdownUrl(doc)}"/>`,
+      )
+    )
       problems.push(`${page}: no alternate link to ${markdownUrl(doc)}`)
+    if (!html.includes(llmsLink)) problems.push(`${page}: no alternate link to llms.txt`)
     if (!tag(html, /<meta property="og:type" content="article"\/>/))
       problems.push(`${page}: og:type is not article`)
     const graph = jsonLd(page, html)
@@ -78,6 +87,23 @@ if (existsSync(new URL('index.html', dist))) {
       TechArticle: ['headline', 'description', 'url'],
       BreadcrumbList: ['itemListElement'],
     })
+    // the dates are git's (none in a shallow clone, as in the sitemap): the visible one, and the structured data's
+    const [modified, published] = [lastModified(docFile(doc)), firstCommit(docFile(doc))]
+    const times = [...html.matchAll(/<time datetime="([^"]*)">([^<]*)<\/time>/gi)]
+    const article = graph.find((n) => n['@type'] === 'TechArticle')
+    if (modified) {
+      const shown = new Date(modified).toLocaleDateString('en-US', {
+        dateStyle: 'long',
+        timeZone: 'UTC',
+      })
+      if (times.length !== 1 || times[0]![1] !== modified || times[0]![2] !== shown)
+        problems.push(`${page}: its <time> is not ${modified} (${shown})`)
+      if (article?.dateModified !== modified)
+        problems.push(`${page}: its dateModified is not ${modified}`)
+      if (article?.datePublished !== published)
+        problems.push(`${page}: its datePublished is not ${published}`)
+    } else if (times.length || article?.dateModified || article?.datePublished)
+      problems.push(`${page}: it has a date, and git has none`)
     const crumbs = graph.find((n) => n['@type'] === 'BreadcrumbList')?.itemListElement as
       | Array<{ name: string; item?: string }>
       | undefined
@@ -120,7 +146,7 @@ if (existsSync(new URL('index.html', dist))) {
   for (const [, loc, , lastmod] of entries) {
     if (
       lastmod !== undefined &&
-      !(/^\d{4}-\d\d-\d\dT[\d:]+(Z|[+-]\d\d:\d\d)$/.test(lastmod) && !isNaN(Date.parse(lastmod)))
+      !(/^\d{4}-\d\d-\d\dT[\d:.]+(Z|[+-]\d\d:\d\d)$/.test(lastmod) && !isNaN(Date.parse(lastmod)))
     )
       problems.push(`sitemap.xml: ${loc} has lastmod "${lastmod}", not a date`)
     if (lastmod === undefined && !shallow)

@@ -2,6 +2,7 @@ import geistMono from '@fontsource-variable/geist-mono/files/geist-mono-latin-wg
 import instrumentSerif from '@fontsource/instrument-serif/files/instrument-serif-latin-400-italic.woff2?url'
 import allo from 'allo-font/fonts/webfonts/AlloVariableFriendly.woff2?url'
 import type { DocumentParts } from 'fondu'
+import dates from 'virtual:doc-dates'
 
 import { jsonLd, structuredData } from '#/structured-data.ts'
 
@@ -14,7 +15,7 @@ const THEME =
 
 /** The HTML around every page (server.ts) */
 export default function Document({ head, body, c }: DocumentParts) {
-  const data = structuredData(c.req.path)
+  const data = structuredData(c.req.path, dates)
   return (
     <html lang="en" className="system">
       <head>

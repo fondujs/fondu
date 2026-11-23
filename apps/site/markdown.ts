@@ -12,10 +12,7 @@ import { SITE, SUMMARY } from './app/site.ts'
  */
 function pageMarkdown(doc: Doc): string {
   let fenced = false
-  const body = readFileSync(
-    new URL(`./app/routes/docs/${doc.slug || 'index'}.mdx`, import.meta.url),
-    'utf8',
-  )
+  const body = readFileSync(new URL(`./${docFile(doc)}`, import.meta.url), 'utf8')
     .split('\n')
     .filter((line) => {
       if (/^(```|~~~)/.test(line)) fenced = !fenced
@@ -40,31 +37,47 @@ const git = (...args: string[]) =>
     stdio: ['ignore', 'pipe', 'ignore'],
   }).trim()
 
-const dates = new Map<string, string | undefined>()
+const shallow = () => {
+  try {
+    return git('rev-parse', '--is-shallow-repository') !== 'false'
+  } catch {
+    return false
+  }
+}
+
+const dates = new Map<string, { modified?: string; published?: string }>()
 /**
- * When a source file last changed: its last commit's date. None when it can't be known: no git, a file git doesn't
- * know, or a shallow clone (every file would get the date of its newest commit: wrong, rather than missing).
+ * What git says of a source file: when it last changed (its last commit) and when it first appeared (its first, across
+ * renames), as ISO dates. None when it can't be known: no git, a file git doesn't know, or a shallow clone (every
+ * file would get the date of its newest commit: wrong, rather than missing).
  */
-function lastModified(file: string): string | undefined {
+function history(file: string) {
   if (!dates.has(file))
     dates.set(
       file,
       (() => {
         try {
-          if (git('rev-parse', '--is-shallow-repository') !== 'false') return
-          return git('log', '-1', '--format=%cI', '--', file) || undefined
+          if (shallow()) return {}
+          const log = git('log', '--follow', '--format=%cI', '--', file).split('\n').filter(Boolean)
+          const iso = (date?: string) => (date ? new Date(date).toISOString() : undefined)
+          return { modified: iso(log[0]), published: iso(log.at(-1)) }
         } catch {
-          return
+          return {}
         }
       })(),
     )
-  return dates.get(file)
+  return dates.get(file)!
 }
+export const lastModified = (file: string) => history(file).modified
+export const firstCommit = (file: string) => history(file).published
+
+/** the MDX file of a doc page */
+export const docFile = (doc: Doc) => `app/routes/docs/${doc.slug || 'index'}.mdx`
 
 /** the source of each page of the site: the home page, the docs (MDX) */
 const sources: Array<[path: string, file: string]> = [
   ['/', 'app/routes/index.tsx'],
-  ...docs.map((d): [string, string] => [docUrl(d), `app/routes/docs/${d.slug || 'index'}.mdx`]),
+  ...docs.map((d): [string, string] => [docUrl(d), docFile(d)]),
 ]
 
 const sitemap = () =>
@@ -93,6 +106,8 @@ const files = (): Record<string, string> => ({
   'robots.txt': `User-agent: *\nAllow: /\n\nSitemap: ${SITE}/sitemap.xml\n`,
 })
 
+const DATES = 'virtual:doc-dates'
+
 /**
  * Every page of the docs as Markdown (/docs/routes.md), llms.txt (https://llmstxt.org) and llms-full.txt, every
  * page in one file; sitemap.xml and robots.txt: written with the client build, and served by the dev server
@@ -103,7 +118,25 @@ export function markdown(): Plugin {
     buildStart() {
       const problems = descriptionProblems()
       if (problems.length) this.error(problems.join('\n'))
+      if (this.environment.name === 'client' && shallow()) {
+        this.warn(
+          "site: a shallow git clone has no page dates: the sitemap's lastmod, the pages' Last updated and dateModified are left out (fetch the full history to have them)",
+        )
+      }
     },
+    // the pages' dates, for the layout and the structured data: git is not there when a page is rendered (a Worker)
+    resolveId: (id) => (id === DATES ? `\0${DATES}` : undefined),
+    load: (id) =>
+      id === `\0${DATES}`
+        ? `export default ${JSON.stringify(
+            Object.fromEntries(
+              docs.map((d) => [
+                docUrl(d),
+                { modified: lastModified(docFile(d)), published: firstCommit(docFile(d)) },
+              ]),
+            ),
+          )}`
+        : undefined,
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
         const file = files()[(req.url ?? '').split('?')[0]!.slice(1)]

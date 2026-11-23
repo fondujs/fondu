@@ -35,7 +35,10 @@ export function Meta({
       ) : (
         <link rel="canonical" href={canonical} />
       )}
-      {markdown && <link rel="alternate" type="text/markdown" href={markdown} />}
+      <link rel="alternate" type="text/plain" title="LLM docs" href={`${SITE}/llms.txt`} />
+      {markdown && (
+        <link rel="alternate" type="text/markdown" title="Markdown source" href={markdown} />
+      )}
       <meta property="og:type" content={markdown ? 'article' : 'website'} />
       <meta property="og:site_name" content="Fondu" />
       <meta property="og:title" content={fullTitle(title)} />

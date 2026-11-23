@@ -22,8 +22,10 @@ const home = [
   },
 ]
 
+export type DocDates = Record<string, { modified?: string; published?: string }>
+
 /** the structured data of the page at `path`, or none (the error page, a path that is no page) */
-export function structuredData(path: string): object | undefined {
+export function structuredData(path: string, dates: DocDates = {}): object | undefined {
   if (path === '/') return { '@context': context, '@graph': home }
   const doc = docs.find((d) => docUrl(d) === path)
   if (!doc) return
@@ -31,7 +33,14 @@ export function structuredData(path: string): object | undefined {
   return {
     '@context': context,
     '@graph': [
-      { '@type': 'TechArticle', headline: doc.title, description: doc.description, url },
+      {
+        '@type': 'TechArticle',
+        headline: doc.title,
+        description: doc.description,
+        url,
+        ...(dates[path]?.modified && { dateModified: dates[path].modified }),
+        ...(dates[path]?.published && { datePublished: dates[path].published }),
+      },
       {
         '@type': 'BreadcrumbList',
         // every crumb is a page (a section has none of its own); the docs' own page is the one crumb
