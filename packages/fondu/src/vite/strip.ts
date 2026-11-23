@@ -367,34 +367,6 @@ function importOf(code: string, node: Node, kept: Array<Node & { local: Name }>)
   return `import ${clauses.join(', ')} from ${source};`
 }
 
-// Remove just the declaration and the import bindings used only by it, leaving side effects, other exports and line positions alone.
-export function withoutLayout(code: string, body: Node[]): string {
-  const declaration = body.find(
-    (n) => n.type === 'ExportNamedDeclaration' && bound(n.declaration as Node).includes('layout'),
-  )!
-  const others = body.filter((n) => n !== declaration && n.type !== 'ImportDeclaration')
-  const used = references(others)
-  if (used.has('layout')) return code // the component itself uses them; they really are its dependencies
-  const mentioned = references(declaration)
-  let out = code
-  for (const n of [...body].reverse()) {
-    let text = ''
-    if (n !== declaration) {
-      if (n.type !== 'ImportDeclaration') continue
-      const specs = n.specifiers as Array<Node & { local: Name }>
-      const kept = specs.filter((s) => !mentioned.has(nameOf(s.local)) || used.has(nameOf(s.local)))
-      if (kept.length === specs.length) continue
-      if (kept.length) text = importOf(code, n, kept)
-    }
-    out =
-      out.slice(0, n.start) +
-      text +
-      '\n'.repeat(code.slice(n.start, n.end).split('\n').length - 1) +
-      out.slice(n.end)
-  }
-  return out
-}
-
 export function exportedNames(body: ReturnType<typeof parseAst>['body']): string[] {
   const names = new Set<string>()
   for (const node of body) {
@@ -457,9 +429,8 @@ export function stripRoutes(): Plugin {
       }
       if (isRouteFile(file)) checkRouteName(file)
       // a layout or the error page is not stripped: what the server refuses at startup fails the build
-      if (/(?:^|\/)_(?:layout|error)\.tsx$/.test(file) && !/\?fondu-(?:view|outer)$/.test(id)) {
+      if (/(?:^|\/)_(?:layout|error)\.tsx$/.test(file))
         return void checkExportNames(file, exportedNames(this.parse(code).body))
-      }
     },
   }
 }

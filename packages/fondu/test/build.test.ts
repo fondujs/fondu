@@ -23,7 +23,7 @@ describe('server exports of a layout or an error page', () => {
           'app/routes/index.tsx': page,
           [`app/routes/${file}`]: `export default function X() { return null }\nexport const ${name} = () => ({})\n`,
         })
-        const message = `fondu: routes/${file} exports \`${name}\`. It exports its component (default)${file === '_layout.tsx' ? ' and optional layout chain' : ''}`
+        const message = `fondu: routes/${file} exports \`${name}\`. It exports its component only (default)`
         await expect(buildClient(app.root)).rejects.toThrow(message)
         expect(() => checkExports(file, { default: () => null, [name]: () => ({}) })).toThrow(
           message,
@@ -53,6 +53,19 @@ describe("a directory's own file with another extension", () => {
       'app/routes/_parts/_middleware.tsx': 'export default () => null\n',
     })
     await buildClient(app.root)
+  })
+})
+
+describe('a layout that exports layout', () => {
+  test('fails the build, as the server does at startup', async () => {
+    app = tempApp({
+      'app/routes/index.tsx': page,
+      'app/routes/_layout.tsx':
+        'export const layout = []\nexport default function L({ children }) { return children }\n',
+    })
+    await expect(buildClient(app.root)).rejects.toThrow(
+      'fondu: routes/_layout.tsx exports layout: layout chains were removed in 0.21; use directory _layout.tsx files and route groups',
+    )
   })
 })
 
@@ -344,13 +357,10 @@ describe('the server build checks the exports of every route file', () => {
       }),
     ).rejects.toThrow('fondu: routes/admin/_middleware.ts exports `loader`')
   })
-  test('a layout that lists a component twice', async () => {
+  test('an export of layout, in a page', async () => {
     await expect(
-      built({
-        'app/routes/about.tsx': `import Site from './_site'\nexport const layout = [Site, Site]\n${page}`,
-        'app/routes/_site.tsx': 'export default function Site({ children }) { return children }\n',
-      }),
-    ).rejects.toThrow('fondu: routes/about.tsx: layout lists the same component twice')
+      built({ 'app/routes/about.tsx': `export const layout = []\n${page}` }),
+    ).rejects.toThrow('fondu: routes/about.tsx exports layout: layout chains were removed in 0.21')
   })
   test('valid route files build', async () => {
     await built({

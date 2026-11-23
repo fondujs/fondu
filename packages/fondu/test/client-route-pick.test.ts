@@ -51,11 +51,15 @@ test('the client picks the page the server answers with', async () => {
   const server = new Hono()
   for (const route of routeTable(modules, false))
     server.get(route.pattern, (c) => c.text(route.file))
-  __entry(Object.fromEntries(files.map((f) => [`/app/routes/${f}`, async () => ({})])), {
-    prerender: false,
-    progress: false as const,
-    viewTransitions: false,
-  })
+  __entry(
+    Object.fromEntries(files.map((f) => [`/app/routes/${f}`, async () => ({})])),
+    {},
+    {
+      prerender: false,
+      progress: false as const,
+      viewTransitions: false,
+    },
+  )
   for (const url of urls) {
     const res = await server.request(url)
     const file = res.status === 200 ? await res.text() : undefined

@@ -19,14 +19,13 @@ import {
 import type { ProgressOptions } from '../client/progress.js'
 
 export type { ProgressOptions }
-import { isPageFile, pageId } from '../paths.js'
+import { isPageFile, layoutsOf, pageId } from '../paths.js'
 import { nonceAttr, productionAssets } from './assets.js'
 import { checkRoutes, routesPrerender } from './check.js'
 import { entryCode, SERVER } from './entry.js'
 import { hmr, PAGE_EXPORTS, PROPS_EVENT } from './hmr.js'
 import { HONO } from './hono.js'
 import { fonduInstalled } from './installed.js'
-import { layoutChains, VIEW_QUERY } from './layouts.js'
 import { devServerNodeServer } from './node-server.js'
 import { checkOptions } from './options.js'
 import { nodeServer, prerender, worker } from './prerender.js'
@@ -64,6 +63,7 @@ const PAGES_GLOB = [
   '!/app/routes/**/*.{test,spec}.*',
 ]
 const ERROR_GLOB = '/app/routes/_error.tsx'
+const LAYOUTS_GLOB = ['!/app/routes/**/_*/**', '/app/routes/**/_layout.tsx']
 
 // The scan would find the server's dependencies otherwise, and bundle them for the browser.
 function scanRoutes(root: () => string): Plugin {
@@ -131,7 +131,6 @@ export default function fondu(options: FonduOptions): PluginOption[] {
     // .mdx too: MDX pages and components get Fast Refresh (as MDX's own docs set it up)
     react({ include: /\.(?:[jt]sx?|mdx)$/, ...options.react }),
     core(options, prerendering),
-    layoutChains(),
     stripRoutes(),
     hmr(),
     loadFailure(),
@@ -399,46 +398,36 @@ function core(options: FonduOptions, prerendering: Prerendering): Plugin {
         const css: string[] = []
         try {
           const component = new URL(req.url ?? '/', 'http://localhost').searchParams.get('page')
-          const file = walkFiles(resolve(config.root, 'app/routes')).find(
+          const files = walkFiles(resolve(config.root, 'app/routes'))
+          const page = files.find(
             (f) => (isPageFile(f) || f === '_error.tsx') && pageId(f) === component,
           )
+          // the page and the layouts of its own directories, as the production build bundles them
+          const entries = page
+            ? [
+                ...layoutsOf(page)
+                  .map((dir) => `${dir ? `${dir}/` : ''}_layout.tsx`)
+                  .filter((f) => files.includes(f)),
+                page,
+              ]
+            : []
           const seen = new Set<string>()
-          async function visit(servedUrl: string) {
-            const url = servedUrl
-              .replace(/^\/@id\/(?:__x00__)?/, (prefix) => (prefix.endsWith('__x00__') ? '\0' : ''))
-              .replace(/([?&])import(?=&|$)&?/, '$1')
-              .replace(/([?&])t=\d+(?=&|$)&?/, '$1')
-              .replace(/[?&]$/, '')
-            if (seen.has(url) || /[?&](?:inline|raw|url|worker|sharedworker)(?:[&=]|$)/.test(url))
-              return
-            seen.add(url)
-            if (isCSSRequest(url)) {
-              css.push(url)
-              return
-            }
-            if (
-              url.startsWith('/@vite/') ||
-              url === '__vite-browser-external' ||
-              url.startsWith('__vite-browser-external:') ||
-              env.depsOptimizer?.isOptimizedDepUrl(url)
-            )
-              return
-            const result = await env.transformRequest(url)
-            if (!result) return
-            // Vite rewrites import and re-export sources to served URLs. The module graph also contains dynamic imports.
-            for (const n of parseAst(result.code).body) {
-              if (
-                n.type !== 'ImportDeclaration' &&
-                n.type !== 'ExportNamedDeclaration' &&
-                n.type !== 'ExportAllDeclaration'
+          async function walk(url: string) {
+            await env.transformRequest(url)
+            const mod = await env.moduleGraph.getModuleByUrl(url)
+            for (const dep of mod?.importedModules ?? []) {
+              if (seen.has(dep.url)) continue
+              seen.add(dep.url)
+              if (/[?&](?:inline|raw|url|worker|sharedworker)(?:[&=]|$)/.test(dep.url)) continue
+              if (isCSSRequest(dep.url)) css.push(dep.url)
+              else if (
+                !env.depsOptimizer?.isOptimizedDepUrl(dep.url) &&
+                !dep.id?.includes('/node_modules/')
               )
-                continue
-              const dep = n.source?.value
-              if (dep?.startsWith(config.base) && !dep.startsWith('//'))
-                await visit('/' + dep.slice(config.base.length))
+                await walk(dep.url)
             }
           }
-          if (file) await visit('/app/routes/' + file + VIEW_QUERY)
+          for (const f of entries) await walk('/app/routes/' + f)
           const parts = await Promise.all(
             css.map(
               async (url) =>
@@ -491,13 +480,12 @@ function core(options: FonduOptions, prerendering: Prerendering): Plugin {
           progress: options.progress ?? {},
           viewTransitions: Boolean(options.viewTransitions),
         }
-        const glob = (pattern: string | string[], view = true) =>
-          `import.meta.glob(${JSON.stringify(pattern)}${view ? `, {query:${JSON.stringify(VIEW_QUERY)}}` : ''})`
+        const glob = (pattern: string | string[]) => `import.meta.glob(${JSON.stringify(pattern)})`
         return [
           `import { __entry } from 'fondu/client/internal'`,
           ...(dev ? [`import { reload } from 'fondu/client'`] : []),
           ...(dev ? [`import.meta.hot?.on(${JSON.stringify(PROPS_EVENT)}, () => reload())`] : []),
-          `__entry({ ...${glob(PAGES_GLOB)}, ...${glob(ERROR_GLOB)} }, ${JSON.stringify(settings)}, ${glob(ERROR_GLOB, false)}[${JSON.stringify(ERROR_GLOB)}])`,
+          `__entry({ ...${glob(PAGES_GLOB)}, ...${glob(ERROR_GLOB)} }, ${glob(LAYOUTS_GLOB)}, ${JSON.stringify(settings)})`,
         ].join('\n')
       }
       if (id === resolved(V.ssr))

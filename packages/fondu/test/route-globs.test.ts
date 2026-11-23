@@ -54,6 +54,14 @@ describe('the globs agree with isRouteFile', () => {
     for (const file of files)
       expect(matches(globs, file), file).toBe(isRouteFile(file) && !file.endsWith('.ts'))
   })
+  test("the browser: the layouts are the _layout.tsx of the directories, not of a _directory's", () => {
+    const globs = patterns('vite/index.ts', 'const LAYOUTS_GLOB')
+    const layouts = ['_layout.tsx', 'docs/_layout.tsx', '(site)/a/_layout.tsx']
+    const others = ['_parts/_layout.tsx', 'a/_parts/b/_layout.tsx', 'docs/_layout.ts', 'docs/x.tsx']
+    for (const file of layouts) expect(matches(globs, file), file).toBe(true)
+    for (const file of [...others, ...files])
+      expect(matches(globs, file), file).toBe(file === '_layout.tsx')
+  })
   test('the tests of every extension are no route', () => {
     for (const file of ['a.test.mdx', 'a.spec.mdx', 'a.test.ts', 'a.spec.tsx'])
       expect(isRouteFile(file), file).toBe(false)

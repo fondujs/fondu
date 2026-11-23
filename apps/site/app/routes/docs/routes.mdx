@@ -106,14 +106,13 @@ so `c.req.param()`, `c.req.query()`, `c.json()` and the rest are there.
 Each kind of file exports what it is for, and nothing else: the app stops at startup with what to do instead. Code
 they share goes in a file of its own (`app/lib/`, `app/components/`).
 
-| File             | Exports                                                                              |
-| ---------------- | ------------------------------------------------------------------------------------ |
-| `.tsx`           | the page (default), `layout`, `loader`, `action` or `actions`, `prerender`, `params` |
-| `.ts`            | `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS`, `prerender`, `params`            |
-| `.mdx`           | its content, optional `layout`: an [MDX page](/docs/mdx) has no handlers             |
-| `_middleware.ts` | its middleware (default), `prerender`, `params`                                      |
-| `_layout.tsx`    | the component (default), optional `layout`                                           |
-| `_error.tsx`     | the component (default)                                                              |
+| File                        | Exports                                                                    |
+| --------------------------- | -------------------------------------------------------------------------- |
+| `.tsx`                      | the page (default), `loader`, `action` or `actions`, `prerender`, `params` |
+| `.ts`                       | `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS`, `prerender`, `params`  |
+| `.mdx`                      | its content: an [MDX page](/docs/mdx) has no handlers                      |
+| `_middleware.ts`            | its middleware (default), `prerender`, `params`                            |
+| `_layout.tsx`, `_error.tsx` | the component (default)                                                    |
 
 `vite build` checks the names, and the app checks the values at startup: `loader`, `action`, the values of `actions` and
 the HTTP methods are handlers (`defineHandler(...)`, a function or a list of them), a `_middleware.ts`'s default is a
@@ -126,26 +125,24 @@ The browser gets a page's file without its server code: [Server and client code]
 
 What would answer the wrong way stops the app, with a message that says what to write instead. Nothing is ignored.
 
-| Refused                                                                                    | Stops               | Instead                                                                        |
-| ------------------------------------------------------------------------------------------ | ------------------- | ------------------------------------------------------------------------------ |
-| a `.jsx` route, layout or error file                                                       | startup             | `.tsx`: route files are TypeScript                                             |
-| `_middleware`, `_layout` or `_error` with another extension (`_middleware.tsx`)            | startup, build      | `_middleware.ts`, `_layout.tsx`, `_error.tsx`                                  |
-| a path starting with `.` (`routes/.well-known/ping.ts`)                                    | startup, build      | [`public/`, or a catch-all](#files-and-urls)                                   |
-| a `_error.tsx` in a directory                                                              | startup             | one error page, `app/routes/_error.tsx`: [Errors](/docs/errors)                |
-| an export the kind of file does not have (`loader` in a `.ts` file, `prerender` in `.mdx`) | build, startup      | [what each file exports](#what-a-route-file-exports)                           |
-| an export of the wrong kind (`loader` that is not a handler, `prerender: 'yes'`)           | startup             | [what each file exports](#what-a-route-file-exports)                           |
-| `params` that no route it applies to has as `[name]` or `[[name]]`                         | startup             | [the values of a param](#the-values-of-a-param)                                |
-| `params` for a name that a route has as a catch-all (`[...name]`)                          | startup             | `params` lists the values of one segment                                       |
-| two files for the same URLs                                                                | startup             | [one file per URL](#one-file-per-url)                                          |
-| `action` and `actions` in one file                                                         | startup             | one of them: [loader and actions](#loader-and-actions)                         |
-| a file name with route syntax (`[user-id].tsx`, `a{b}.ts`)                                 | startup             | [files and URLs](#files-and-urls)                                              |
-| `[[...path]]`, or two `[[optional]]` segments in one path                                  | startup             | [files and URLs](#files-and-urls), [optional segments](#optional-segments)     |
-| a param named `query`, `hash`, `method`, `body`, `headers` or `signal`                     | startup             | rename it: `[verb].ts`                                                         |
-| a route under `/_fondu/`, by its file or by a value listed in `params`                     | startup             | [`/_fondu/` is Fondu's](/docs/static-pages#how-it-works): move the route       |
-| `layout` that is not `export const layout = [Site, Feature]` or `[]`, written in the file  | build, startup      | imported components, each once, never the file's own: [Layouts](/docs/layouts) |
-| `export * from` a module that has `layout`, or `export * as layout`                        | build, startup      | declare `layout` in the file itself                                            |
-| a redirect to `javascript:`, `data:` or `vbscript:`                                        | the request (a 500) | [After an action](/docs/forms#after-an-action)                                 |
-| an unknown or mistyped option of `createApp()` or `fondu()`                                | where it is called  | [API](/docs/api)                                                               |
+| Refused                                                                                    | Stops               | Instead                                                                    |
+| ------------------------------------------------------------------------------------------ | ------------------- | -------------------------------------------------------------------------- |
+| a `.jsx` route, layout or error file                                                       | startup             | `.tsx`: route files are TypeScript                                         |
+| `_middleware`, `_layout` or `_error` with another extension (`_middleware.tsx`)            | startup, build      | `_middleware.ts`, `_layout.tsx`, `_error.tsx`                              |
+| a path starting with `.` (`routes/.well-known/ping.ts`)                                    | startup, build      | [`public/`, or a catch-all](#files-and-urls)                               |
+| a `_error.tsx` in a directory                                                              | startup             | one error page, `app/routes/_error.tsx`: [Errors](/docs/errors)            |
+| an export the kind of file does not have (`loader` in a `.ts` file, `prerender` in `.mdx`) | build, startup      | [what each file exports](#what-a-route-file-exports)                       |
+| an export of the wrong kind (`loader` that is not a handler, `prerender: 'yes'`)           | startup             | [what each file exports](#what-a-route-file-exports)                       |
+| `params` that no route it applies to has as `[name]` or `[[name]]`                         | startup             | [the values of a param](#the-values-of-a-param)                            |
+| `params` for a name that a route has as a catch-all (`[...name]`)                          | startup             | `params` lists the values of one segment                                   |
+| two files for the same URLs                                                                | startup             | [one file per URL](#one-file-per-url)                                      |
+| `action` and `actions` in one file                                                         | startup             | one of them: [loader and actions](#loader-and-actions)                     |
+| a file name with route syntax (`[user-id].tsx`, `a{b}.ts`)                                 | startup             | [files and URLs](#files-and-urls)                                          |
+| `[[...path]]`, or two `[[optional]]` segments in one path                                  | startup             | [files and URLs](#files-and-urls), [optional segments](#optional-segments) |
+| a param named `query`, `hash`, `method`, `body`, `headers` or `signal`                     | startup             | rename it: `[verb].ts`                                                     |
+| a route under `/_fondu/`, by its file or by a value listed in `params`                     | startup             | [`/_fondu/` is Fondu's](/docs/static-pages#how-it-works): move the route   |
+| a redirect to `javascript:`, `data:` or `vbscript:`                                        | the request (a 500) | [After an action](/docs/forms#after-an-action)                             |
+| an unknown or mistyped option of `createApp()` or `fondu()`                                | where it is called  | [API](/docs/api)                                                           |
 
 ## HTTP routes
 
