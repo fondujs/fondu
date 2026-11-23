@@ -148,8 +148,9 @@ reload and a shared link all work, and the loader is the one place the results a
 
 A `<form method="post">` is sent by the client too, and its answer is shown in place. When the answer is the same
 page (back with validation errors, or `back(c)`), the page is updated where it is: the scroll position and what was
-typed stay. When it is another page, it is a new entry in the history. [Forms and validation](/docs/forms) covers
-actions, errors and pending states.
+typed stay. When it is another page, it is a new entry in the history. A GET form to a page of the app is the client's
+too: its fields become the query. A GET form to a `.ts` route is the browser's, as a link to one is. [Forms and
+validation](/docs/forms) covers actions, errors and pending states.
 
 ## Scroll positions
 
@@ -161,7 +162,8 @@ actions, errors and pending states.
 | a form's answer at the same URL, `reload()`, or `navigate()` with `keep` | where it is                             |
 | a shallow navigation, and Back or Forward between the entries it shares  | where it is                             |
 
-Back and Forward show the page at once, as it was left, then put the server's fresh page in its place. The pages
+The positions of the last 50 history entries are kept, in `sessionStorage` too, so a reload puts the page back where it
+was. Back and Forward show the page at once, as it was left, then put the server's fresh page in its place. The pages
 kept for this are in memory only, and they are all forgotten once a form is sent, as the form may have changed
 them (or signed the user out).
 

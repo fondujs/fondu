@@ -136,6 +136,11 @@ What would answer the wrong way stops the app, with a message that says what to 
 | `params` that no route it applies to has as `[name]` or `[[name]]`                         | startup             | [the values of a param](#the-values-of-a-param)                                |
 | `params` for a name that a route has as a catch-all (`[...name]`)                          | startup             | `params` lists the values of one segment                                       |
 | two files for the same URLs                                                                | startup             | [one file per URL](#one-file-per-url)                                          |
+| `action` and `actions` in one file                                                         | startup             | one of them: [loader and actions](#loader-and-actions)                         |
+| a file name with route syntax (`[user-id].tsx`, `a{b}.ts`)                                 | startup             | [files and URLs](#files-and-urls)                                              |
+| `[[...path]]`, or two `[[optional]]` segments in one path                                  | startup             | [files and URLs](#files-and-urls), [optional segments](#optional-segments)     |
+| a param named `query`, `hash`, `method`, `body`, `headers` or `signal`                     | startup             | rename it: `[verb].ts`                                                         |
+| a route under `/_fondu/`, by its file or by a value listed in `params`                     | startup             | [`/_fondu/` is Fondu's](/docs/static-pages#how-it-works): move the route       |
 | `layout` that is not `export const layout = [Site, Feature]` or `[]`, written in the file  | build, startup      | imported components, each once, never the file's own: [Layouts](/docs/layouts) |
 | `export * from` a module that has `layout`, or `export * as layout`                        | build, startup      | declare `layout` in the file itself                                            |
 | a redirect to `javascript:`, `data:` or `vbscript:`                                        | the request (a 500) | [After an action](/docs/forms#after-an-action)                                 |

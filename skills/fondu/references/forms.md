@@ -99,6 +99,8 @@ export default function NewContact() {
 | `failed`      | this form could not be sent (offline…); it stays, to send again             |
 
 - The schema must be importable by browser code (no server module). The server checks again.
+- With a schema, `form` sets `noValidate` on the `<form>`: the schema's messages replace the browser's own (`required`,
+  `type="email"`). Without JavaScript the browser's checks stay.
 - Without a schema, `useForm()` gives the server's errors, `submitting` and `failed`.
 - An async schema's yes sends the form only if its fields are still what it checked (changed meanwhile, or a newer submit, visit or unmount came first: nothing is sent, submit again).
 - Without JavaScript, the form is sent as it is and the server's check answers.

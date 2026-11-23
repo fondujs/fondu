@@ -1,10 +1,10 @@
 ---
 name: fondu
 description: >-
-  Building or changing an app on Fondu (a small React meta-framework on Hono and Vite): routes in app/routes/, pages,
-  loaders, actions, forms and validation, links and navigation, layouts, middleware, error pages, static pages,
-  deferred props, shared props, typed URLs (href) and the typed request() for .ts routes, the document, createApp, the Vite
-  plugin. Use it before writing any of these, and for the rules of where code runs.
+  Building or changing an app on Fondu (a small meta-framework for full-stack React apps, built on Hono and Vite):
+  routes in app/routes/, pages, loaders, actions, forms and validation, links and navigation, layouts, middleware,
+  error pages, static pages, deferred props, shared props, typed URLs (href) and the typed request() for .ts routes,
+  the document, createApp, the Vite plugin. Use it before writing any of these, and for the rules of where code runs.
 metadata:
   type: core
   library: fondu

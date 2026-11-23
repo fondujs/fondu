@@ -10,6 +10,7 @@ Each type has one source; nothing is declared twice.
 | the files in `app/routes/`            | `href('/users/:id', { id })`: the URL exists, its params, its actions |
 | a route's query schema                | `href('/search', { query })`: the query the route takes               |
 | a handler's schemas (`withValidator`) | the `body`, `query` and `params` the handler receives                 |
+| a `.ts` route's handlers              | `request()`: the params, `query` and `body` it takes, and its answer  |
 | declarations next to your middleware  | `share()`, `flash()`, `usePage()`, `c.get()`                          |
 
 `app/fondu.gen.d.ts` is written by the dev server and the build as the route files change. Commit it, so a fresh clone
@@ -47,6 +48,12 @@ export const loader = defineHandler.withValidator({ params: idParams })(async (c
   params.id // number
 })
 ```
+
+## Calls to a route
+
+`request()` (`fondu/client`) is typed by the `.ts` route it calls: the path is a `.ts` route of the app, its params are
+`href()`'s, `query` and `body` come from the handler's `withValidator` schemas, and the answer is what the handler
+returns with `c.json()`, as JSON delivers it (`unknown` for any other answer). See [data.md](data.md).
 
 ## Shared props, flash data and context values
 

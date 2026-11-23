@@ -2,7 +2,8 @@
 
 An unknown URL, a `throw new HTTPException(403)` or an error in a handler: a page request gets `app/routes/_error.tsx`
 with the status, inside the root layout, with the shared props. API clients get plain text, or the `HTTPException`'s
-own response.
+own response. A page request is a navigation of Fondu's client or a request that accepts `text/html`, as a browser's
+document load does. Any other request (`curl`, a `fetch()` call) is an API client's.
 
 ```tsx
 // app/routes/_error.tsx
@@ -11,8 +12,9 @@ export default function ErrorPage({ status }: { status: number }) {
 }
 ```
 
-The shared props are what the root `_middleware.ts` shared before the error. If that middleware itself fails, the error
-page has only what it shared before it failed.
+The shared props are what the middleware shared before the error: the root `_middleware.ts`'s, and those of the route's
+directories when the error came after them. If a middleware itself fails, the error page has only what was shared before
+it failed.
 
 A method the route has no handler for (`DELETE` to a route with `GET` and `POST`, `POST` to a page with only a
 `loader`) is a 405 with an `Allow` header listing the route's methods (`HEAD` with `GET`; `OPTIONS` is not added). It

@@ -1,5 +1,6 @@
 Fondu checks the seams between the server and the browser at compile time: what a route sends to a page, the URLs
-your pages link to, the input your handlers read. Rename a prop, move a route or change a schema, and TypeScript points
+your pages link to, the input your handlers read, and what the browser sends to a `.ts` route with `request()` and gets
+back. Rename a prop, move a route or change a schema, and TypeScript points
 at every place that no longer fits, before anything runs.
 
 ## Where the types come from
@@ -12,6 +13,7 @@ There is nothing to declare twice. Each type has one source, and the rest follow
 | the files in `app/routes/`            | `href('/users/:id', { id })`: the URL exists, its params, its actions |
 | a route's query schema                | `href('/search', { query })`: the query the route takes               |
 | a handler's schemas (`withValidator`) | the `body`, `query` and `params` the handler receives                 |
+| a `.ts` route's handlers              | `request()`: the params, `query` and `body` it takes, and its answer  |
 | declarations next to your middleware  | `share()`, `flash()`, `usePage()`, `c.get()`                          |
 
 The dev server and the build write the routes' types into `app/fondu.gen.d.ts` as your files change; commit it.
@@ -79,6 +81,13 @@ export const loader = defineHandler.withValidator({ params: idParams })(async (c
 ```
 
 Any [Standard Schema](https://standardschema.dev) library works: [Forms and validation](/docs/forms).
+
+## Calls to a route
+
+`request()` from `fondu/client` is typed by the route file it calls. The path must be a `.ts` route of the app, its
+params are the ones `href()` takes, `query` and `body` are typed by the handler's `withValidator` schemas, and the answer
+is what the handler returns with `c.json()`, as JSON delivers it. [Routes](/docs/routes#calling-a-route-from-the-browser)
+has the details.
 
 ## Shared props, flash data and context values
 

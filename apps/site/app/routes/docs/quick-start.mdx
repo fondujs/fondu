@@ -36,7 +36,8 @@ It asks where the app runs: Bun, Cloudflare Workers or Node (or pass `--target b
 format on save; and whether to make a git
 repository (`--git`), unless the folder is in one. Then it writes a small app: one page, a layout, the error page,
 Tailwind CSS, editor snippets and an `AGENTS.md` for coding agents, and installs the dependencies with the package
-manager you ran it with. `--yes` takes the defaults for what the options don't say, without asking:
+manager you ran it with (`--no-install` leaves that to you). `--yes` takes the defaults for what the options don't say, without
+asking, except for the target, which has none and must be given:
 
 ```sh
 bun create fondu@latest my-app --target cloudflare --checks --yes
