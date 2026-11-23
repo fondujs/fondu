@@ -59,6 +59,19 @@ app/routes/
 
 A part that should not sit inside a layout goes in a directory beside it: `admin/` is not in `(marketing)/`.
 
+The pattern for most apps: the root `_layout.tsx` is the shell (the CSS, providers), and the site's chrome (header, footer)
+is in `(site)/_layout.tsx`. A page that should render alone, such as a sign-in or a print view, sits outside `(site)/`:
+
+```
+app/routes/
+├─ _layout.tsx           # the shell: CSS, providers
+├─ (site)/
+│  ├─ _layout.tsx        # the header and footer
+│  ├─ index.tsx          # /
+│  └─ about.tsx          # /about
+└─ sign-in.tsx           # /sign-in, without the header and footer
+```
+
 ## Code-split with their pages
 
 A layout is in the JavaScript of its pages only: a visitor of the home page doesn't download the docs' sidebar. The

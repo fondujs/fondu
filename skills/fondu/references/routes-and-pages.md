@@ -62,7 +62,7 @@ Any other export is allowed, but Fondu may reserve new names in a minor release.
 What else stops the app: a `.jsx` route file, a `_error.tsx` in a directory (one error page: `routes/_error.tsx`),
 `params` that no route has as `[name]` or `[[name]]`, `params` for a catch-all's name, a route under `/_fondu/`
 (Fondu's one reserved prefix). A redirect to `javascript:`, `data:` or `vbscript:` is a 500. In a page's route file, an
-`enum`, a `namespace`, `import x = …`, a parameter property or a decorator fails `vite build`: they go to another module.
+`enum`, a `namespace`, `import x = …`, a parameter property or a decorator fails `vite build`: they go to another module. A new app's tsconfig has `"erasableSyntaxOnly": true`, so the editor flags them.
 
 ## A page
 
@@ -129,6 +129,8 @@ export default function Layout({ children }: { children: ReactNode }) {
 
 - A directory's `_layout.tsx` wraps its pages inside the outer ones. A `(group)/` gives pages a layout without a URL
   segment. A part that must not sit in a layout goes in a directory beside it.
+- The pattern: the root `_layout.tsx` is the shell (CSS, providers); the site's chrome (header, footer) is in
+  `(site)/_layout.tsx`; a page that should render alone (`sign-in.tsx`) sits outside `(site)/`.
 - A layout stays mounted while pages change, so its state is kept. It has no loader: `share()` gives it props, and
   `usePage()` reads them. A `loader` or `action` exported from a layout (or `_error.tsx`) fails the build and the
   server's start.
