@@ -112,11 +112,12 @@ export default function NewContact() {
   from under the pointer.
 - A server's error stays until its field is checked again. Back with the server's errors, the first field to fix
   gets the focus.
-- Any [Standard Schema](https://standardschema.dev) works, if it checks synchronously. Without a schema, `useForm()`
+- Any [Standard Schema](https://standardschema.dev) works in the browser if it checks synchronously. Without a schema, `useForm()`
   gives the server's errors, `submitting` and `failed` only.
-- A schema that returns a promise (an async rule, such as a taken email) makes the browser throw an error the first
-  time it checks: `fondu: useForm checks synchronously; check an async rule on the server`. The form is then sent as it
-  is. The server keeps async schemas: put that rule in the action's schema, and its error comes back as any other.
+- A schema that returns a promise (an async rule, such as a taken email) gives no verdict in the browser: the form is
+  sent as it is, and the server's errors come back as any other. In development, one warning per schema says so
+  (`fondu: this schema has an async rule, so useForm leaves it to the server`). The server keeps async schemas: put that
+  rule in the action's schema, and the browser still checks the rest.
 - `errors` has the server's keys: a field's path, joined with dots (`user[name]` is `user.name`).
 - With a schema, `form` sets `noValidate` on the `<form>`: the schema's messages replace the browser's own (`required`,
   `type="email"`). Without JavaScript the browser's checks stay.

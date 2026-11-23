@@ -34,7 +34,10 @@ function fieldsOf(form: HTMLFormElement, submitter?: HTMLElement | null): unknow
   return formObject(sentFields(new FormData(form, submitter ?? undefined), multipart))
 }
 
-function check(schema: Schema, value: () => unknown): Errors {
+const warned = new WeakSet<Schema>()
+
+// exported for its test
+export function check(schema: Schema, value: () => unknown): Errors {
   let fields: unknown
   try {
     fields = value()
@@ -43,9 +46,18 @@ function check(schema: Schema, value: () => unknown): Errors {
     throw error
   }
   const result = schema['~standard'].validate(fields)
-  // any thenable, not only a Promise: its answer would be taken for a pass
-  if ('then' in result)
-    throw new Error('fondu: useForm checks synchronously; check an async rule on the server')
+  // any thenable, not only a Promise: its answer would be taken for a pass. No verdict: the server checks it
+  if ('then' in result) {
+    // a no-op catch: a rejection nobody reads is not an unhandled one
+    Promise.resolve(result).catch(() => {})
+    if (import.meta.env.DEV && !warned.has(schema)) {
+      warned.add(schema)
+      console.warn(
+        'fondu: this schema has an async rule, so useForm leaves it to the server; move the async rule into the action to check the rest in the browser',
+      )
+    }
+    return {}
+  }
   return result.issues ? issueErrors(result.issues) : {}
 }
 
@@ -53,8 +65,8 @@ const within = (key: string, errorKey: string) =>
   errorKey === key || (key !== '' && errorKey.startsWith(`${key}.`))
 
 /**
- * A plain `<form>`, checked in the browser by the schema the server checks it with (any Standard Schema, checked
- * synchronously). Spread `form` on the `<form>` and `field(name)` on each field. Without JavaScript, the form is sent as
+ * A plain `<form>`, checked in the browser by the schema the server checks it with (any Standard Schema; an async one is
+ * left to the server). Spread `form` on the `<form>` and `field(name)` on each field. Without JavaScript, the form is sent as
  * it is and the server checks it.
  */
 export function useForm(schema?: Schema): {
