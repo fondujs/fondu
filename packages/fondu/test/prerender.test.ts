@@ -880,6 +880,37 @@ describe('static pages, served by the built server (Node / Bun)', () => {
     expect(await (await withFile.request('/other.xml')).text()).toBe('app')
     delete files['feed.xml']
   })
+  test('file names match the Hono request path, keeping reserved escapes distinct', async () => {
+    const paths: string[] = []
+    const record: ServeStatic = () => async (c, next) => {
+      paths.push(c.req.path)
+      return c.req.path.includes('%') ? next() : c.text('file')
+    }
+    const withFiles = new Hono()
+    withFiles.use(
+      '*',
+      staticPages(record, '/client', headers, [
+        '/café au lait.json',
+        '/encoded%20space.json',
+        '/literal%2525.json',
+        '/path%2Fname.json',
+      ]),
+    )
+    withFiles.get('*', (c) => c.text('app'))
+    for (const path of ['/caf%c3%a9%20au%20lait.json', '/encoded%20space.json'])
+      expect(await (await withFiles.request(path)).text(), path).toBe('file')
+    for (const path of ['/literal%2525.json', '/path%2Fname.json'])
+      expect(await (await withFiles.request(path)).text(), path).toBe('app')
+    expect(paths.splice(0)).toEqual([
+      '/café au lait.json',
+      '/encoded space.json',
+      '/literal%2525.json',
+      '/path%2Fname.json',
+    ])
+    for (const path of ['/literal%25.json', '/path/name.json'])
+      expect(await (await withFiles.request(path)).text(), path).toBe('app')
+    expect(paths).toEqual([])
+  })
   test("what serveStatic did not serve gets no headers (the app's response)", async () => {
     const res = await get('/items')
     expect(res.headers.has('x-frame-options')).toBe(false)

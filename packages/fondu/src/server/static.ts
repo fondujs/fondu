@@ -1,4 +1,5 @@
 import type { Context, MiddlewareHandler } from 'hono'
+import { getPath } from 'hono/utils/url'
 
 import { endsInIndex, htmlFile, PAGE_DATA } from '../paths.js'
 import { isPageRequest } from './http.js'
@@ -21,7 +22,8 @@ export function staticPages(
   headers: Record<string, string>,
   files: string[] = [],
 ): MiddlewareHandler {
-  const named = new Set(files)
+  // The manifest has URLs, while c.req.path has already been decoded by Hono.
+  const named = new Set(files.map((path) => getPath(new Request('http://localhost' + path))))
   const pageObject = serveStatic({ root: clientRoot })
   const document = serveStatic({ root: clientRoot, rewriteRequestPath: htmlFile })
   const serve =

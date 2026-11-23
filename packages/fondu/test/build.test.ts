@@ -395,6 +395,7 @@ describe('prerendering follows the route exports', () => {
         'app/routes/index.tsx': `${home}export const prerender = true\n`,
         'app/routes/feed.xml.ts': `export const GET = () => new Response('<rss/>', { headers: { 'Content-Type': 'application/xml; charset=utf-8' } })\nexport const prerender = true\n`,
         'app/routes/data.json.ts': `export const GET = (c) => c.json({ n: 1 })\nexport const prerender = true\n`,
+        'app/routes/files/[name]/data.json.ts': `export const GET = (c) => c.json({ built: process.env.FONDU_PRERENDER === '1' })\nexport const prerender = () => [{ name: 'café au lait' }]\n`,
       }),
     )
     const server = await start(out)
@@ -402,22 +403,38 @@ describe('prerendering follows the route exports', () => {
       const client = join(out.dir, 'dist/client')
       expect(readFileSync(join(client, 'feed.xml'), 'utf8')).toBe('<rss/>')
       expect(readFileSync(join(client, 'data.json'), 'utf8')).toBe('{"n":1}')
+      expect(readFileSync(join(client, 'files/café au lait/data.json'), 'utf8')).toBe(
+        '{"built":true}',
+      )
       for (const file of ['feed.xml.html', 'data.json.html', '_fondu/pages/feed.xml.json'])
         expect(existsSync(join(client, file)), file).toBe(false)
       expect(existsSync(join(client, 'index.html'))).toBe(true)
       expect(
         JSON.parse(readFileSync(join(out.dir, 'dist/server/prerender.json'), 'utf8')).files,
-      ).toEqual(['/data.json', '/feed.xml'])
+      ).toEqual(['/data.json', '/feed.xml', '/files/caf%C3%A9%20au%20lait/data.json'])
       for (const [path, type, body] of [
         ['/feed.xml', 'application/xml', '<rss/>'],
         ['/data.json', 'application/json', '{"n":1}'],
+        ['/files/caf%C3%A9%20au%20lait/data.json', 'application/json', '{"built":true}'],
+        [
+          '/files/%63af%c3%a9%20au%20lait/data.json?download=1',
+          'application/json',
+          '{"built":true}',
+        ],
       ] as const) {
         const res = await fetch(server.url + path)
         expect(res.status, path).toBe(200)
         expect(res.headers.get('content-type'), path).toContain(type)
         expect(await res.text(), path).toBe(body)
         expect(res.headers.get('x-frame-options'), path).toBe('SAMEORIGIN')
+        expect(res.headers.get('cache-control'), path).toBe('private, no-cache')
       }
+      const head = await fetch(server.url + '/files/caf%C3%A9%20au%20lait/data.json?download=1', {
+        method: 'HEAD',
+      })
+      expect(head.status).toBe(200)
+      expect(head.headers.get('cache-control')).toBe('private, no-cache')
+      expect(await head.text()).toBe('')
     } finally {
       await server.stop()
       out.remove()
