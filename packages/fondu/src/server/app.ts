@@ -10,6 +10,7 @@ import { checkExportNames, isPageFile, isRouteFile, METHODS, pageId } from '../p
 import { settings, type DocumentTemplate } from './document.js'
 import { errorResponse } from './errors.js'
 import { csrfOrigin, trailingSlash } from './http.js'
+import { checkAppOptions } from './options.js'
 import { prerenderRoutes, type PrerenderRoute } from './prerender.js'
 import { protocol, registerPage, renderPage, routePage } from './protocol.js'
 import { routeTable, type Handlers, type RouteModule } from './routes.js'
@@ -105,6 +106,7 @@ function actionName(url: string): string | null {
  * Your own 404 / error handling: Hono's `app.notFound()` / `app.onError()` on the returned app.
  */
 export function createApp(options: CreateAppOptions = {}): Hono {
+  checkAppOptions(options)
   const app = new Hono()
   const modules = Object.fromEntries(
     Object.entries(

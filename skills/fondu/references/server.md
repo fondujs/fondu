@@ -29,6 +29,9 @@ Returns the Hono app made of `app/routes/`. It has CSRF protection, security hea
 | `bodyLimit`     | the largest request body in bytes (default 10 MB, then 413), or `false` |
 | `secureHeaders` | `hono/secure-headers`' options, or `false`                              |
 
+The options are checked when `createApp()` is called: an unknown option (there is no `port`), a wrong type, or a
+`bodyLimit` that is not a positive number or `false` throws `fondu: createApp(): …`.
+
 `bodyLimit` reads the body in memory: raise it only a little. A limit by path: [forms.md](forms.md#files-and-nested-fields).
 
 The default Content Security Policy: `default-src 'self'`; scripts of the site or with the request's nonce; inline

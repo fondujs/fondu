@@ -52,3 +52,7 @@ test('the app has no limit of its own: the recipe is the only one', async () => 
   })
   expect(res.status).toBe(413)
 })
+
+test("a limit that is not a number is refused, not read as no limit (bodyLimit: '10mb')", () => {
+  expect(() => createApp({ bodyLimit: '10mb' as never })).toThrow('`bodyLimit` must be a number')
+})
