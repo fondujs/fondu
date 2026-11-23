@@ -12,7 +12,7 @@ type Pagefind = {
   } | null>
 }
 
-// Pagefind's index of the docs, written by `bun run build` (package.json) next to the static pages
+// Pagefind's index, written by `bun run build`
 const PAGEFIND = '/pagefind/pagefind.js'
 let pagefind: Promise<Pagefind | null> | undefined
 const load = () =>
@@ -21,7 +21,6 @@ const load = () =>
     () => null,
   ))
 
-/** The search dialog (components/search.tsx loads it when it is first opened) */
 export default function SearchDialog({
   open,
   onOpenChange,
@@ -31,7 +30,6 @@ export default function SearchDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      {/* at the same height whether results are shown or not: it doesn't move as they come */}
       <DialogPopup
         showCloseButton={false}
         className="max-w-xl"
@@ -44,7 +42,6 @@ export default function SearchDialog({
   )
 }
 
-// a page found: its best part when that is a heading's section (Pagefind's sub-results), the page otherwise
 function result(page: Page): Result {
   const title = page.meta.title ?? page.url
   const part = page.sub_results.find((s) => s.url.includes('#'))
@@ -63,7 +60,7 @@ function Results({ onPick }: { onPick: () => void }) {
   const [state, setState] = useState<'ready' | 'unavailable'>('ready')
   const [active, setActive] = useState(0)
   const list = useRef<HTMLUListElement>(null)
-  // a query typed, its results not in yet (the index loads with the first one)
+  // the index loads with the first query
   const searching = state === 'ready' && query !== '' && query !== searched
   useEffect(() => {
     let current = true
@@ -83,7 +80,7 @@ function Results({ onPick }: { onPick: () => void }) {
   }, [query])
   const go = (url: string) => {
     onPick()
-    location.assign(url) // a navigation, as a link's
+    location.assign(url)
   }
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
@@ -144,7 +141,6 @@ function Results({ onPick }: { onPick: () => void }) {
               className="cursor-pointer rounded-lg px-3 py-2 aria-selected:bg-accent"
             >
               <p className="font-medium">{r.title}</p>
-              {/* Pagefind's excerpt: the page's text, escaped, the matches in <mark> */}
               <p
                 className="line-clamp-2 text-muted-foreground [&_mark]:bg-transparent [&_mark]:font-medium [&_mark]:text-brand-foreground"
                 dangerouslySetInnerHTML={{ __html: r.excerpt }}

@@ -25,7 +25,7 @@ const ok = (name, cond, extra = '') => {
   console.log(`${cond ? 'PASS' : 'FAIL'}  ${name}${extra ? `  — ${extra}` : ''}`)
 }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
-// The server's output, when DEMO_SERVER_LOG names the file it is written to (the only way to tell #298 from a real 500).
+// The server's output when DEMO_SERVER_LOG names its file: the only way to tell #298 from a real 500.
 const serverLog = () =>
   process.env.DEMO_SERVER_LOG ? readFileSync(process.env.DEMO_SERVER_LOG, 'utf8') : ''
 
@@ -68,7 +68,6 @@ page.on('request', (r) => {
   if (r.headers()['x-fondu'])
     fetches.push({ url: r.url().replace(BASE, ''), method: r.method(), headers: r.headers() })
 })
-// the page objects fondu/client receives
 const pageJson = []
 page.on('response', async (r) => {
   if (!r.request().headers()['x-fondu']) return
@@ -103,7 +102,7 @@ const testid = (id, p = page) =>
 const nav = (href, p = page) =>
   p.evaluate((h) => document.querySelector(`aside a[href="${h}"]`).click(), href)
 const setValue = async (sel, v, p = page) => {
-  await p.click(sel, { count: 3 }) // select what is there: typing replaces it, as a person would
+  await p.click(sel, { count: 3 })
   await p.keyboard.press('Backspace')
   await p.type(sel, v)
 }
@@ -120,7 +119,7 @@ const signIn = async (p = page) => {
 const signOut = async (p = page) => {
   await p.goto(BASE + '/', { waitUntil: 'networkidle0' })
   if (await p.$('[data-testid=user]')) {
-    await p.click('[data-testid=user]') // the account menu
+    await p.click('[data-testid=user]')
     await (await p.waitForSelector('[data-testid=sign-out]')).click()
     await p.waitForSelector('[data-testid=sign-in]')
   }
@@ -327,7 +326,6 @@ ok(
     (await page.$eval('[data-testid=add-contact] input[name=name]', (e) => e.value)) === '',
 )
 {
-  // sent as the browser would: a form without enctype, URL-encoded
   const sent = fetches.findLast((f) => f.method === 'POST')
   ok(
     "a form's fields, as the browser sends them: application/x-www-form-urlencoded by default",
@@ -336,7 +334,6 @@ ok(
   )
 }
 {
-  // the same address again, typed in capitals: refused by the server's schema
   await setValue('[data-testid=add-contact] input[name=name]', 'Grace Again')
   await setValue('[data-testid=add-contact] input[name=email]', graceEmail.toUpperCase())
   await page.focus('[data-testid=add-contact] input[name=name]')
@@ -615,7 +612,6 @@ ok(
     'a browser-only part: the fallback is in the server HTML, the browser part is not',
     ssr.includes('Rendered on the server: no window here.') && !ssr.includes('Window width'),
   )
-  // the document is streamed: the shell at once, the <Suspense> part (the server waits 1.5 s) in the same response
   {
     const t0 = Date.now()
     const res = await fetch(BASE + '/ssr')
@@ -731,7 +727,6 @@ ok('a link to the same page mounts it anew', (await testid('clicks')) === '0')
       ? r.respond({ status: 200, contentType: 'image/png', body: pixel })
       : r.continue(),
   )
-  // every document.startViewTransition(…) call, with the types it was given
   await gp.evaluateOnNewDocument(() => {
     window.__vt = []
     const original = document.startViewTransition
@@ -1172,7 +1167,6 @@ await page.waitForFunction(
     'settings: closed after two tabs: one step back, to the page',
     (await hash()) === '' && (await path()) === '/account',
   )
-  // the usage tab: request() of fondu/client, a GET of the .ts route /api/usage (routes/api/usage.ts)
   const usageRequests = []
   const onUsage = (r) => {
     if (new URL(r.url()).pathname === '/api/usage') usageRequests.push(r)
@@ -1323,7 +1317,6 @@ await checkSettingsLayout({ browser, base: BASE, ok, watchProblems })
     '… for an API client: plain text',
     api500.status === 500 && (await api500.text()) === 'Internal Server Error',
   )
-  // a proxy's own page (here, the app's route standing in for one): what the browser would show
   docs.length = 0
   await page.click('[data-testid=visit-502-proxy]')
   await page
@@ -1350,7 +1343,6 @@ await checkSettingsLayout({ browser, base: BASE, ok, watchProblems })
     (await page.evaluate(() => document.querySelector('h1')?.textContent)) === 'Bad gateway',
   )
   await page.goto(BASE + '/errors', { waitUntil: 'networkidle0' })
-  // an action's answer that isn't HTML (here, the form's request answered so): text, what a user typed in it; a file
   await page.setRequestInterception(true)
   let answer = null
   const fake = (r) => {
@@ -1375,7 +1367,6 @@ await checkSettingsLayout({ browser, base: BASE, ok, watchProblems })
     ),
   )
   await page.goto(BASE + '/errors', { waitUntil: 'networkidle0' })
-  // the download's link, seen instead of followed
   await page.evaluate(() => {
     HTMLAnchorElement.prototype.click = function () {
       window.__download = [this.download, this.href.split(':')[0]]
@@ -1488,9 +1479,9 @@ await checkSettingsLayout({ browser, base: BASE, ok, watchProblems })
   )
 }
 
-// ---- a body over the limit (10 MB): the error page, in the root layout, with the shared props (#181)
+// ---- a body over the limit (10 MB): the error page, in the root layout, with the shared props
 {
-  await page.goto(BASE + '/uploads', { waitUntil: 'networkidle0' }) // a fresh form: the one above was just sent
+  await page.goto(BASE + '/uploads', { waitUntil: 'networkidle0' })
   await h1('File uploads')
   const dir = mkdtempSync(join(tmpdir(), 'upload-'))
   writeFileSync(join(dir, 'huge.txt'), 'x'.repeat(10 * 1024 * 1024 + 1))
@@ -1636,7 +1627,6 @@ await checkSettingsLayout({ browser, base: BASE, ok, watchProblems })
     page.click('main form button'),
   ])
   await page.setExtraHTTPHeaders({})
-  // the URL is the account's as the navigation starts: its page once it is on the screen
   await page.waitForSelector('[data-testid=account-role]', { timeout: 5000 }).catch(() => {})
   ok('Better Auth: the admin account, its role', (await testid('account-role')) === 'admin')
   const doc = await (await fetchAs(BASE + '/admin/dashboard')).text()
@@ -1667,7 +1657,6 @@ await checkSettingsLayout({ browser, base: BASE, ok, watchProblems })
   await waitText('Role changed to user')
   ok("an admin action (Better Auth's setRole), there and back", true)
   await checkSettingsHistory({ page, ok })
-  // signed out from here, Back: the admin page is not shown again (asked again: the sign-in page)
   await page.click('[data-testid=user]')
   await (await page.waitForSelector('[data-testid=sign-out]')).click()
   await page.waitForSelector('[data-testid=sign-in]')
@@ -1701,7 +1690,7 @@ await checkSettingsLayout({ browser, base: BASE, ok, watchProblems })
 
 // ---- sign up: turned off in the demo (Better Auth's disableSignUp); its answer shows under the field
 {
-  const sp = await (await browser.createBrowserContext()).newPage() // signed out
+  const sp = await (await browser.createBrowserContext()).newPage()
   await sp.goto(BASE + '/signup', { waitUntil: 'networkidle0' })
   await sp.type('[data-testid=signup] input[name=name]', 'New Person')
   await sp.type('[data-testid=signup] input[name=email]', `new-${Date.now()}@x.org`)
@@ -1787,7 +1776,7 @@ await checkSettingsLayout({ browser, base: BASE, ok, watchProblems })
     before === 'system' && now[0] === 'dark' && now[1] === 'dark' && served === 'dark',
     JSON.stringify([before, now, served]),
   )
-  await tp.evaluate(() => fetch('/redirects?back', { method: 'POST', redirect: 'manual' })) // a flash for the next document
+  await tp.evaluate(() => fetch('/redirects?back', { method: 'POST', redirect: 'manual' }))
   await tp.goto(BASE + '/', { waitUntil: 'networkidle0' })
   const toast = await tp
     .waitForSelector('[data-slot=toast-title]', { timeout: 4000 })
@@ -1877,7 +1866,6 @@ await checkSettingsLayout({ browser, base: BASE, ok, watchProblems })
     JSON.stringify(statuses),
   )
 
-  // a first visit: the browser's language; once one is picked, that one
   const ctx2 = await browser.createBrowserContext()
   const fp = await ctx2.newPage()
   watchProblems(fp)
@@ -2056,7 +2044,7 @@ await checkSettingsLayout({ browser, base: BASE, ok, watchProblems })
       '/app/routes/logout.ts?raw',
       '/app/server.ts?raw',
       '/app/routes/logout.ts?import&raw',
-      '/app/routes/(demos)/login.tsx?raw', // a page's route file, its loader and action in it
+      '/app/routes/(demos)/login.tsx?raw',
     ].map(async (u) => [u, (await fetch(BASE + u)).status]),
   )
   ok(
@@ -2117,7 +2105,6 @@ await checkSettingsLayout({ browser, base: BASE, ok, watchProblems })
     flashCookie.startsWith('__Host-fondu-flash=') && /;\s*Secure/i.test(flashCookie),
     flashCookie.slice(0, 60),
   )
-  // what fondu/client reads when the content has a page-data element of its own (it takes the first one)
   const fp = await browser.newPage()
   await fp.setRequestInterception(true)
   const real = await (await fetch(BASE + '/props')).text()
@@ -2209,7 +2196,6 @@ await checkSettingsLayout({ browser, base: BASE, ok, watchProblems })
 // ---- dev only: an edit to a route's code updates the page's props in place, without reloading it
 if ((await fetch(BASE + '/@vite/client').catch(() => null))?.ok) {
   const { readFileSync, writeFileSync } = await import('node:fs')
-  // the browser's copy of a page's route file: the page, not its loader nor actions, nor what only they import
   const copy = await (await fetch(BASE + '/app/routes/(demos)/login.tsx')).text()
   ok(
     "dev: a page's route file in the browser, without its server code",
@@ -2232,8 +2218,6 @@ if ((await fetch(BASE + '/@vite/client').catch(() => null))?.ok) {
     writeFileSync(file, source)
     await hp.close()
   }
-  // a route that throws as it is imported: the app doesn't load. Vite's overlay shows it, as a whole page; fixed, the
-  // page is back
   const broken = await browser.newPage()
   try {
     await broken.goto(BASE + '/props', { waitUntil: 'networkidle0' })

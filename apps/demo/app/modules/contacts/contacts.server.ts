@@ -7,7 +7,6 @@ import { contactSchema } from '#/modules/contacts/schemas.ts'
 
 export const EMAIL_TAKEN = 'Already in your contacts'
 
-/** No other contact has this address: the message for what the unique index on `contacts.email` guarantees */
 export async function emailFree(email: string, except?: number) {
   const [taken] = await db
     .select({ id: contacts.id })
@@ -19,7 +18,6 @@ export async function emailFree(email: string, except?: number) {
   return !taken
 }
 
-/** A new contact: the shared schema, and on the server a new address */
 export const newContactSchema = z.extend(contactSchema, {
   email: contactSchema.shape.email.check(z.refine((email) => emailFree(email), EMAIL_TAKEN)),
 })

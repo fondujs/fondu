@@ -44,7 +44,6 @@ interface Props {
   accounts: Array<{ id: string; name: string; email: string; role: string }>
 }
 
-// A different layout (admin/_layout.tsx, the directory's), rendered in the browser only
 export default function Dashboard({ accounts }: Props) {
   const me = usePage().props.auth.user
   return (

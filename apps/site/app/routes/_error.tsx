@@ -5,7 +5,6 @@ const messages: Record<number, [title: string, text: string]> = {
   500: ['Something went wrong', 'Try again in a moment.'],
 }
 
-// The error page: a URL of no page (404), or an error in the Worker
 export default function ErrorPage({ status }: { status: number }) {
   const [title, text] = messages[status] ?? messages[500]!
   return (

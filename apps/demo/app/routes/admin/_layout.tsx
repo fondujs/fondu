@@ -4,8 +4,6 @@ import type { ReactNode } from 'react'
 import { AccountMenu } from '#/components/account-menu.tsx'
 import { Logo } from '#/components/logo.tsx'
 
-// The admin pages' layout (routes/admin/_layout.tsx, outside the demos' group): a top bar instead of the demos'
-// sidebar
 export default function AdminLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-dvh">

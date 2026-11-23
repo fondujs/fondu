@@ -2,8 +2,6 @@ import { href } from 'fondu/client'
 
 export type Demo = [url: string, title: string, text: string]
 
-// The demos, grouped by what you would be doing (the menu and the overview). Which part is Fondu's or Hono's,
-// each page says.
 export const groups: Array<[group: string, demos: Demo[]]> = [
   [
     'Routing',

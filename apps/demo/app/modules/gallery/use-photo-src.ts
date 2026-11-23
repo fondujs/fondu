@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 
 import { imageUrl, type Photo } from '#/modules/gallery/photos.ts'
 
-/** Reuse the gallery's cached thumbnail until the large image has decoded, including during a page transition. */
 export function usePhotoSrc(photo: Photo) {
   const [decoded, setDecoded] = useState<string>()
   useEffect(() => {

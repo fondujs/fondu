@@ -1,7 +1,6 @@
 import type { SVGProps } from 'react'
 
-// Brands' marks (24 × 24, in currentColor): Simple Icons (CC0, simpleicons.org), and the agents' own. Decorative:
-// the name is next to each.
+// Simple Icons (CC0, simpleicons.org), and the agents' own
 const mark = (d: string, evenOdd = false) =>
   function Mark(props: SVGProps<SVGSVGElement>) {
     return (

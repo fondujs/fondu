@@ -17,7 +17,6 @@ const upload = z.object({
     ),
 })
 
-// POST /uploads — the file is a File in the body, checked by the schema; it is not kept
 export const action = defineHandler.withValidator({ body: upload })((c, { body }) => {
   flash(c, { message: `Received ${body.file.name}, ${Math.ceil(body.file.size / 1024)} kB` })
   return back(c)

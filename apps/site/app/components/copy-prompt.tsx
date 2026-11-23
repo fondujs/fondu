@@ -5,7 +5,6 @@ import { Claude, Codex, Cursor, Pi } from '#/components/brands.tsx'
 import { Button } from '#/components/ui/button.tsx'
 import { PROMPT } from '#/prompt.ts'
 
-/** Copies the prompt that sets up Fondu with a coding agent (the quick start's "Automatic installation") */
 export function CopyPrompt() {
   const [copied, setCopied] = useState(false)
   const copy = async () => {

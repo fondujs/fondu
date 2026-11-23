@@ -4,10 +4,8 @@ import tailwindcss from '@tailwindcss/vite'
 import fondu from 'fondu/vite'
 import { defineConfig } from 'vite'
 
-// The Cloudflare plugin runs the Worker (wrangler.jsonc `main`: app/server.ts) in workerd, in dev too, with its
-// bindings (D1). One `vite build` writes the client and the Worker; `wrangler deploy` ships it. Paraglide compiles
-// messages/ to app/paraglide/ (the /i18n page): the URL decides the language; setLocale() keeps a choice in a
-// cookie too, which only a first visit reads (routes/[[locale]]/_middleware.ts). Its links end without a slash.
+// The Cloudflare plugin runs the Worker in workerd in dev too, with its bindings (D1). setLocale() keeps a choice in a
+// cookie too, which only a first visit reads (routes/[[locale]]/_middleware.ts).
 export default defineConfig({
   plugins: [
     cloudflare({ viteEnvironment: { name: 'ssr' } }),

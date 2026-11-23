@@ -5,10 +5,6 @@ import { getLocale } from '#/paraglide/runtime.js'
 
 const DESCRIPTION = 'Every Fondu feature, running live, with the code that makes it work.'
 
-/**
- * The HTML around every page (server.ts): the page's language, the theme a visitor chose at the first paint, and what
- * link previews show (public/og.png, from .github/assets/og-demo.svg)
- */
 export default function Document({ head, body, c }: DocumentParts) {
   return (
     <html lang={getLocale()} className={themeOf(c)}>

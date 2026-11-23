@@ -7,18 +7,16 @@ import { Button } from '#/components/ui/button.tsx'
 
 type Stats = { visits: number; computedAt: string }
 
-// `stats` is a second request's: the page is sent without it, and the browser asks for it once the page is shown
 export const loader = defineHandler((c) =>
   render(c, DeferredDemo, {
     servedAt: new Date().toISOString().slice(11, 23),
     stats: defer(async () => {
-      await new Promise((r) => setTimeout(r, 600)) // a slow query
+      await new Promise((r) => setTimeout(r, 600))
       return {
         visits: Math.floor(Math.random() * 1000),
         computedAt: new Date().toISOString().slice(11, 23),
       }
     }),
-    // a function that throws is logged on the server and left out: the page shows its `failed` content
     broken: defer((): string => {
       throw new Error('the query failed')
     }),
@@ -34,9 +32,7 @@ export default function DeferredDemo({
   broken?: string
 }) {
   const { state } = useNavigation()
-  // a request for deferred props is quiet: once this page is shown (a navigation to it ends as it mounts),
-  // useNavigation() is never anything but idle
-  // (written to the DOM: React renders the text once and leaves it alone)
+  // Written to the DOM: React renders the text once and leaves it alone.
   const busy = useRef<HTMLSpanElement>(null)
   const idled = useRef(false)
   useEffect(() => {

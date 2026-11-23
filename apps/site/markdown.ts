@@ -6,10 +6,6 @@ import type { Plugin } from 'vite'
 import { descriptionProblems, docs, docUrl, markdownUrl, type Doc } from './app/docs.ts'
 import { SITE, SUMMARY } from './app/site.ts'
 
-/**
- * A page as Markdown: its title, its URL (a reader of the text alone can cite it) and description, then the MDX source less its import / export lines and its
- * components' tags (outside code blocks), links to the docs made absolute, to their Markdown
- */
 function pageMarkdown(doc: Doc): string {
   let fenced = false
   const body = readFileSync(new URL(`./${docFile(doc)}`, import.meta.url), 'utf8')
@@ -46,11 +42,8 @@ const shallow = () => {
 }
 
 const dates = new Map<string, { modified?: string; published?: string }>()
-/**
- * What git says of a source file: when it last changed (its last commit) and when it first appeared (its first, across
- * renames), as ISO dates. None when it can't be known: no git, a file git doesn't know, or a shallow clone (every
- * file would get the date of its newest commit: wrong, rather than missing).
- */
+// ISO dates of a file's last and first commit. None without git, for a file git doesn't know, or in a shallow
+// clone, where every file would get its newest commit's date.
 function history(file: string) {
   if (!dates.has(file))
     dates.set(
@@ -71,10 +64,8 @@ function history(file: string) {
 export const lastModified = (file: string) => history(file).modified
 export const firstCommit = (file: string) => history(file).published
 
-/** the MDX file of a doc page */
 export const docFile = (doc: Doc) => `app/routes/docs/${doc.slug || 'index'}.mdx`
 
-/** the source of each page of the site: the home page, the docs (MDX) */
 const sources: Array<[path: string, file: string]> = [
   ['/', 'app/routes/index.tsx'],
   ...docs.map((d): [string, string] => [docUrl(d), docFile(d)]),
@@ -101,17 +92,12 @@ const files = (): Record<string, string> => ({
     ].join('\n\n') + '\n',
   'llms-full.txt': [`# Fondu\n\n> ${SUMMARY}\n`, ...docs.map(pageMarkdown)].join('\n'),
   ...Object.fromEntries(docs.map((d) => [markdownUrl(d).slice(1), pageMarkdown(d)])),
-  // for search engines: every page, and where the list is
   'sitemap.xml': sitemap(),
   'robots.txt': `User-agent: *\nAllow: /\n\nSitemap: ${SITE}/sitemap.xml\n`,
 })
 
 const DATES = 'virtual:doc-dates'
 
-/**
- * Every page of the docs as Markdown (/docs/routes.md), llms.txt (https://llmstxt.org) and llms-full.txt, every
- * page in one file; sitemap.xml and robots.txt: written with the client build, and served by the dev server
- */
 export function markdown(): Plugin {
   return {
     name: 'site:markdown',

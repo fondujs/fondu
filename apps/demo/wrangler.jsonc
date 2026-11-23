@@ -1,14 +1,12 @@
-// Worker config, used by the Cloudflare Vite plugin (dev / build / preview) and by `wrangler deploy`.
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "fondu-demo",
-  // The Worker is the app: app/server.ts exports a Hono app (a Worker module) and the demo's data reset.
   "main": "./app/server.ts",
   "compatibility_date": "2026-10-01",
   "observability": {
     "enabled": true,
   },
-  // demo.fondu.dev only (the fondu.dev zone is on the same account): no *.workers.dev or preview URLs
+  // no *.workers.dev or preview URLs: the fondu.dev zone is on the same account
   "routes": [
     {
       "pattern": "demo.fondu.dev",
@@ -17,12 +15,10 @@
   ],
   "workers_dev": false,
   "preview_urls": false,
-  // Every 6 hours: the demo data back to the seed (app/server.ts `scheduled`)
   "triggers": {
     "crons": ["0 */6 * * *"],
   },
   // The first `wrangler deploy` creates the database and writes its id here (commit it); then `bun run db:migrate`.
-  // dev / preview apply the migrations locally.
   "d1_databases": [
     {
       "binding": "DB",

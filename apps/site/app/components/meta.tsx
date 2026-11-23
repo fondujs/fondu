@@ -2,16 +2,9 @@ import { usePage } from 'fondu/client'
 
 import { SITE } from '#/site.ts'
 
-/** a page's <title>; the home page's is the site's own */
 export const fullTitle = (title?: string) =>
   title ? `${title} · Fondu` : 'Fondu · Server routes. React pages. No API in between.'
 
-/**
- * A page's title and the tags search engines and link previews read: the description, the canonical URL (no query),
- * Open Graph with the site's image (public/og.png, from .github/assets/og.svg). `markdown`: the URL of the page's
- * Markdown copy, which the page links to (crawlers and agents follow it) and which makes it an article. `noindex`:
- * kept out of search results (the error page).
- */
 export function Meta({
   title,
   description,

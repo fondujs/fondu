@@ -6,7 +6,6 @@ import { contacts } from '#/db/schema/index.ts'
 import { requireApiUser } from '#/modules/auth/api.server.ts'
 import { newContactSchema } from '#/modules/contacts/contacts.server.ts'
 
-// signed-in users only (guests: 401 JSON); invalid input: 422 { errors }
 export const GET = defineHandler(requireApiUser, async (c) => {
   await new Promise((r) => setTimeout(r, 500)) // makes the loading state visible
   return c.json({ contacts: await db.select().from(contacts).orderBy(desc(contacts.id)) })

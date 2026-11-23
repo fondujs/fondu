@@ -3,11 +3,6 @@ import { useEffect } from 'react'
 
 import { toastManager, ToastProvider } from '#/components/ui/toast.tsx'
 
-/**
- * The flash data (`flash(c, { message })` or `{ error }` on the server) as toasts: each page brings its own, the first
- * one too, so one effect covers navigations, redirects after an action and full page loads. Without JavaScript (a
- * plain form post), the message is in the page.
- */
 export function Toasts() {
   const { flash } = usePage()
   useEffect(() => {

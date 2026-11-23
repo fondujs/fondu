@@ -13,10 +13,6 @@ import {
 const themes = { system: [Monitor, 'System'], light: [Sun, 'Light'], dark: [Moon, 'Dark'] } as const
 type Theme = keyof typeof themes
 
-/**
- * System, light or dark: a cookie the server reads to write `<html class>` (app/server.ts), so the first paint has
- * it; here the class changes at once.
- */
 export function ThemeMenu() {
   return (
     <Menu>

@@ -10,8 +10,6 @@ const messages: Record<number, [title: string, text: string]> = {
   503: ['Down for maintenance', 'Back shortly.'],
 }
 
-// The error page: Fondu renders it for 404 / 403 / 500… with the status, inside the root layout (shared props
-// included)
 export default function ErrorPage({ status }: { status: number }) {
   const [title, text] = messages[status] ?? ['Something went wrong', 'Try again in a moment.']
   return (

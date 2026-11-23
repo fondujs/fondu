@@ -5,7 +5,6 @@ import { Button } from '#/components/ui/button.tsx'
 
 export default function Versioning() {
   const [answer, setAnswer] = useState<unknown>(null)
-  // what a tab still running the previous deploy sends on its next navigation
   const navigateAsOldDeploy = async () => {
     const response = await fetch(location.pathname, {
       headers: { 'X-Fondu': 'true', 'X-Fondu-Version': 'a-previous-deploy' },

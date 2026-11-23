@@ -6,14 +6,10 @@ import dates from 'virtual:doc-dates'
 
 import { jsonLd, structuredData } from '#/structured-data.ts'
 
-/**
- * Sets the theme chosen in the theme menu (a cookie) on <html> before the page paints. Fondu gives the document's
- * scripts the nonce, and allows them on static pages by their hashes.
- */
+// Fondu gives a document's scripts the nonce, and static pages their hashes.
 const THEME =
   "document.documentElement.className=/(?:^|; )theme=(light|dark)/.exec(document.cookie)?.[1]??'system'"
 
-/** The HTML around every page (server.ts) */
 export default function Document({ head, body, c }: DocumentParts) {
   const data = structuredData(c.req.path, dates)
   return (
@@ -25,16 +21,14 @@ export default function Document({ head, body, c }: DocumentParts) {
         <link rel="icon" href="/favicon.ico" sizes="32x32" />
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-        {/* the fonts of every page, fetched with the stylesheet rather than after it: the text is laid out once,
-            in them, not in a fallback first (a layout shift on a slow network) */}
+        {/* preloaded: the text is laid out once in them, not in a fallback first (a layout shift) */}
         <link rel="preload" href={allo} as="font" type="font/woff2" crossOrigin="" />
         <link rel="preload" href={geistMono} as="font" type="font/woff2" crossOrigin="" />
-        {/* the home page's headline serif: in its document only (a page's own <link> would be added again on a
-            navigation to it, once the page is loaded, for a font its stylesheet has asked for already) */}
+        {/* in the home page's document only: a page's own <link> would be added again on a navigation to it */}
         {c.req.path === '/' && (
           <link rel="preload" href={instrumentSerif} as="font" type="font/woff2" crossOrigin="" />
         )}
-        {/* structured data (structured-data.ts): a data block, so Fondu gives it no nonce and no hash */}
+        {/* a data block: Fondu gives it no nonce and no hash */}
         {data && (
           <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(data) }} />
         )}

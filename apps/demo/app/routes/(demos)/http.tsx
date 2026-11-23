@@ -7,7 +7,6 @@ import { Button } from '#/components/ui/button.tsx'
 
 type Contact = { id: number; name: string; email: string }
 
-// No props: the page calls the JSON API (plain Hono handlers in routes/api/) with fetch.
 export default function Http() {
   const signedIn = usePage().props.auth.user !== null
   const [contacts, setContacts] = useState<Contact[] | null>(null)

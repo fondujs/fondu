@@ -1,5 +1,4 @@
-// The docs, in reading order: the sidebar, the previous / next links, the titles, llms.txt. A page here is
-// app/routes/docs/<slug>.mdx at /docs/<slug> ('' is /docs: routes/docs/index.mdx).
+// '' is /docs: routes/docs/index.mdx
 
 export interface Doc {
   slug: string
@@ -7,7 +6,6 @@ export interface Doc {
   description: string
 }
 
-/** a heading of a page, in its table of contents */
 export type TocItem = { id: string; title: string; depth: 2 | 3 }
 
 export const sections: Array<{ title: string; docs: Doc[] }> = [
@@ -155,10 +153,9 @@ export const sections: Array<{ title: string; docs: Doc[] }> = [
 
 export const docs: Doc[] = sections.flatMap((s) => s.docs)
 
-/** the length of a description, in characters: long enough to say what the page covers, short enough for a search result */
+// long enough to say what a page covers, short enough for a search result
 export const DESCRIPTION = { min: 70, max: 160 }
 
-/** the docs whose description is out of range, as messages */
 export const descriptionProblems = () =>
   docs
     .filter((d) => d.description.length < DESCRIPTION.min || d.description.length > DESCRIPTION.max)
@@ -169,10 +166,8 @@ export const descriptionProblems = () =>
 
 export const docUrl = (doc: Doc) => (doc.slug ? `/docs/${doc.slug}` : '/docs')
 
-/** the page as Markdown (vite: markdown.ts): /docs/routes.md, /docs.md */
 export const markdownUrl = (doc: Doc) => `${docUrl(doc)}.md`
 
-/** the doc of a page (its id: 'docs/routes', 'docs/index') */
 export const docOf = (component: string) => {
   const slug = component.replace(/^docs\/?/, '').replace(/^index$/, '')
   return docs.find((d) => d.slug === slug)

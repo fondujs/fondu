@@ -17,12 +17,10 @@ import { Input, type InputProps } from '#/components/ui/input.tsx'
 import { Skeleton } from '#/components/ui/skeleton.tsx'
 import { cn } from '#/lib/utils.ts'
 
-/** The page's title, after the demo's name (React puts it in <head>) */
 export const Title = ({ children }: { children: string }) => (
   <title>{`${children} · Fondu demo`}</title>
 )
 
-/** A card of the demo: what it shows, and the API it uses (`tag`) */
 export function DemoCard({
   title,
   tag,
@@ -69,8 +67,8 @@ export const Loading = () => (
   </div>
 )
 
-// How this document was rendered: the server snapshot is used while hydrating (so the markup matches), then the
-// browser's: whether the first page came server-rendered (#app had the page before React ran) and React hydrated it.
+// The server snapshot is used while hydrating, so the markup matches; then the browser's: whether #app had the page
+// before React ran.
 const ssrAtLoad =
   typeof document !== 'undefined' && document.getElementById('app')?.hasChildNodes() === true
 const noop = () => () => {}
@@ -90,7 +88,6 @@ export function RenderBadge() {
   )
 }
 
-/** A labelled input and its error (Base UI's Field: the input is marked invalid and described by the error) */
 export function TextField({
   label,
   error,
@@ -110,15 +107,11 @@ export function TextField({
   )
 }
 
-/**
- * A form's submit button, busy while its form is sent: `loading`, from `useForm().submitting` or a request of the
- * page's own (fetch); else the form Fondu's client is sending (`useNavigation().form`) when it is this button's.
- */
 export function SubmitButton({ loading, ...props }: ButtonProps) {
   const [form, setForm] = useState<HTMLFormElement | null>(null)
   const ref = useCallback((button: HTMLButtonElement | null) => setForm(button?.form ?? null), [])
   const { form: sent, state } = useNavigation()
-  const sending = state === 'failed' ? null : sent // a form not sent is not busy
+  const sending = state === 'failed' ? null : sent
   return (
     <Button
       ref={ref}
@@ -129,7 +122,6 @@ export function SubmitButton({ loading, ...props }: ButtonProps) {
   )
 }
 
-/** For guests, in place of forms whose actions need an account (requireUser): the way in, and back here */
 export function SignInFirst({ children }: { children: ReactNode }) {
   const { url } = usePage()
   return (

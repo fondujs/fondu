@@ -1,11 +1,9 @@
-/** The gallery's photos (the view transitions demo), from Unsplash: its license asks for the photographer's name and a link */
+/** From Unsplash: its license asks for the photographer's name and a link */
 export interface Photo {
   id: string
   title: string
   text: string
-  /** the image's id at images.unsplash.com: photo-<unsplash> */
   unsplash: string
-  /** the photo's page on unsplash.com */
   page: string
   photographer: string
 }
@@ -61,6 +59,5 @@ export const photos: Photo[] = [
   },
 ]
 
-/** The image at a width, in the frame it is shown in (object-fit: cover): the sizes are the frame's, 4:3 or 3:2 */
 export const imageUrl = (photo: Photo, width: number) =>
   `https://images.unsplash.com/photo-${photo.unsplash}?w=${width}&q=80&auto=format&fit=crop`

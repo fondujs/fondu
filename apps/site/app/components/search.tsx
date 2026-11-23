@@ -3,14 +3,12 @@ import { lazy, Suspense, useEffect, useState, useSyncExternalStore } from 'react
 
 import { Button } from '#/components/ui/button.tsx'
 
-// The dialog and its results are loaded when the search is first opened (or about to be), not with every page
 const importDialog = () => import('#/components/search-dialog.tsx')
 const SearchDialog = lazy(importDialog)
 
 const noop = () => () => {}
 const isMac = () => /Mac|iPhone|iPad/.test(navigator.platform)
 
-/** The docs search: a button the width of the header's Docs (an icon on small screens), ⌘K / Ctrl K or / */
 export function Search() {
   const [open, setOpen] = useState(false)
   const [loaded, setLoaded] = useState(false)

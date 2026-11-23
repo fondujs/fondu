@@ -1,4 +1,4 @@
-// Keep Account and Usage aligned, including while the usage request is in flight (#289).
+// Keep Account and Usage aligned, including while the usage request is in flight.
 export async function checkSettingsLayout({ browser, base, ok, watchProblems }) {
   const page = await browser.newPage()
   watchProblems(page)
