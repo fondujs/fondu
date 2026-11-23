@@ -1,10 +1,8 @@
 // The size of fondu's browser code (what `fondu/client` gives an app's bundle), minified, from source.
 //   bun scripts/client-size.ts [dir] [--json]     dir: a checkout (default: this one)
 //   bun scripts/client-size.ts --summary head.json [base.json]     a Markdown table, for CI's job summary
-// An app's bundle has `fondu/client` and `fondu/client/internal` (the virtual client entry's `__entry`: vite/index.ts),
-// over the one module of the client: both are built as one bundle (a checkout without `client/internal.ts` has the
-// one entry). A report: it exits 0 unless the build itself fails.
-// `fondu({ viewTransitions })` only sets a default at runtime: the view transitions' code is in every build.
+// `fondu/client` and `fondu/client/internal` are built as one bundle, over the one module of the client. A report: it exits
+// 0 unless the build itself fails.
 import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'

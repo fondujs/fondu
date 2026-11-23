@@ -1,6 +1,5 @@
 @import 'tailwindcss';
 
-/* Colors for light and dark (as the system is): light-dark() per token */
 :root {
   color-scheme: light dark;
   --canvas: light-dark(oklch(98.5% 0.002 247.839), oklch(17% 0.006 285.885));

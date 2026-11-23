@@ -1,6 +1,5 @@
-// Scaffolds an app for each target with the fondu of this repository (packed, as npm would ship it), installs it,
-// runs it in development (`dev`), then builds, typechecks and runs it in production (`start` / `preview`): the home
-// page server-rendered, a 404 page, the server saying where it listens. `bun run test [target]` here.
+// Scaffolds an app for each target with the fondu of this repository (packed, as npm would ship it), installs it, runs it in
+// development, then builds, typechecks and runs it in production. `bun run test [target]` here.
 import { execFileSync, spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
@@ -76,7 +75,6 @@ const check = (name, ok, detail = '') => {
   failed ||= !ok
 }
 
-// without a terminal (stdin not one), or with --yes: nothing asked; where the app runs has to be given
 {
   const run = (...args) => {
     const cwd = mkdtempSync(join(work, 'cli-'))
@@ -116,7 +114,7 @@ for (const target of Object.keys(production).filter(
     `${target}: AGENTS.md filled in, no code checks unless asked`,
     !agents.includes('{{') && !agents.includes('Code checks'),
   )
-  const greeting = target === 'cloudflare' ? 'Hello from Cloudflare' : 'Hello from Fondu' // a Worker variable
+  const greeting = target === 'cloudflare' ? 'Hello from Cloudflare' : 'Hello from Fondu'
   const pkg = JSON.parse(readFileSync(join(app, 'package.json'), 'utf8'))
   check(
     `${target}: engines.node is >=22.12.0 for Node, none for the others`,
@@ -135,7 +133,6 @@ for (const target of Object.keys(production).filter(
     `${target}: fondu's package.json is in the package`,
     existsSync(join(app, 'node_modules/fondu/package.json')),
   )
-  // a page with a Suspense boundary that is slow on the server: streamed; and a copy of it that is prerendered
   writeFileSync(join(app, 'app/routes/slow.tsx'), SLOW)
   writeFileSync(join(app, 'app/routes/slow-static.tsx'), SLOW + 'export const prerender = true\n')
   // a route that takes a body: the body limit is in the routes' chains, so a URL of no route is never read
@@ -143,7 +140,6 @@ for (const target of Object.keys(production).filter(
     join(app, 'app/routes/upload.ts'),
     "import { defineHandler } from 'fondu'\n\nexport const POST = defineHandler((c) => c.text('received'))\n",
   )
-  // Node / Bun: the app's .env is in process.env, in development and in production; a variable already set wins
   if (target === 'cloudflare') observeUploads(app)
   else {
     writeFileSync(join(app, 'app/routes/env.ts'), ENV_ROUTE)
@@ -170,7 +166,6 @@ for (const target of Object.keys(production).filter(
     if (target !== 'cloudflare') await dotenv(base, target, 'dev', 'from-file')
   })
 
-  // the home page prerendered
   writeFileSync(
     join(app, 'app/routes/index.tsx'),
     readFileSync(join(app, 'app/routes/index.tsx'), 'utf8') + 'export const prerender = true\n',
@@ -268,7 +263,6 @@ for (const target of Object.keys(production).filter(
     check(`${target} ${script}: says where it listens`, output().includes(says), output())
     if (target !== 'cloudflare') await dotenv(base, target, script, 'from-file')
   })
-  // no .env file: it starts all the same, and has nothing from it
   if (target !== 'cloudflare') {
     rmSync(join(app, '.env'))
     await run(app, script, port, async (base) => {
@@ -328,10 +322,7 @@ if (!process.argv[2] || process.argv[2] === 'node') {
 rmSync(work, { recursive: true, force: true })
 process.exit(failed ? 1 : 0)
 
-/**
- * Node / Bun: the prerendered home page is a file with the build's headers (dist/server/prerender.json), served by
- * the built server's serveStatic before the app; what it must not serve, and what the app answers instead
- */
+// Node / Bun: the prerendered home page is a file with the build's headers (dist/server/prerender.json), served before the app
 async function staticPages(base, app, target, script, home, html, check) {
   // the 10 MB upload above may have left a connection the server closed: undici would reuse it once
   const send = async (url, init) => {
@@ -406,7 +397,6 @@ async function staticPages(base, app, target, script, home, html, check) {
     answers.every(Boolean),
     String(answers),
   )
-  // the client's manifest: a string only it has
   const manifest = file('dist/client/.vite/manifest.json')
   const only = '"isEntry"'
   const url = new URL(base)
@@ -441,7 +431,6 @@ async function staticPages(base, app, target, script, home, html, check) {
   )
 }
 
-/** the app's .env in process.env (`file`: its value, null without the file); a variable set in the shell is not replaced */
 async function dotenv(base, target, script, file) {
   const res = await fetch(base + '/env')
   const body = await res.json().catch(() => ({}))
@@ -452,7 +441,7 @@ async function dotenv(base, target, script, file) {
   )
 }
 
-/** a request with its path exactly as given (`fetch` would normalize `%2e%2e`) */
+/** `fetch` would normalize `%2e%2e` */
 function raw(url, path, headers) {
   return new Promise((resolve, reject) => {
     const req = request(
@@ -469,7 +458,6 @@ function raw(url, path, headers) {
   })
 }
 
-/** `bun run <script>` in the app until `test` is done, with what it printed */
 async function run(app, script, port, test) {
   const args = script === 'start' ? ['run', script] : ['run', script, '--port', String(port)] // start: PORT, default 3000
   const env = script === 'start' ? { ...process.env, PORT: String(port) } : process.env
@@ -482,16 +470,14 @@ async function run(app, script, port, test) {
   } finally {
     if (windows)
       execFileSync('taskkill', ['/pid', String(server.pid), '/T', '/F'], { stdio: 'ignore' })
-    else process.kill(-server.pid) // the process group
+    else process.kill(-server.pid)
     await new Promise((r) => server.on('exit', r))
   }
 }
 
-/**
- * A document read chunk by chunk: the shell is sent at once and the boundary 2 s later, so the first chunk has the
- * fallback and not the content, and the last comes at least 1.5 s after it (a gap: a cold start doesn't matter).
- * Where a target buffers, assert the full body only, and say which target in a comment.
- */
+// The shell is sent at once and the boundary 2 s later, so the first chunk has the fallback and the last comes at least
+// 1.5 s after it (a gap: a cold start doesn't matter). Where a target buffers, assert the full body only, and say which
+// target in a comment.
 async function streams(base, target, script) {
   await (await page(base + '/slow')).text() // dev compiles the page on its first request
   const res = await page(base + '/slow')
@@ -519,7 +505,6 @@ async function streams(base, target, script) {
   )
 }
 
-/** a document request, retried while the server starts */
 async function page(url) {
   for (let i = 0; ; i++) {
     try {
@@ -531,7 +516,6 @@ async function page(url) {
   }
 }
 
-/** requests the page's scripts and what they import, as a browser would */
 async function crawl(base, html) {
   const seen = new Set()
   const queue = [...html.matchAll(/<script type="module" src="([^"]+)"/g)].map((m) => m[1])

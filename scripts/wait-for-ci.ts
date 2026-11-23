@@ -1,5 +1,5 @@
 // Release gate: only the CI workflow's main-branch push run on the tagged SHA counts, not PR or Release checks.
-// Run with Node 24 (release.yml); no install or third-party action is needed. The wait includes API requests.
+// Run with Node 24 (release.yml); no install or third-party action is needed.
 import { setTimeout as sleep } from 'node:timers/promises'
 
 interface Run {
