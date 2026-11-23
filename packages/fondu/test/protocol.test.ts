@@ -574,6 +574,26 @@ describe('withValidator', () => {
       })
       expect(empty.status, type).toBe(422)
     }
+    // what the request has, not what its headers say: a stream has neither Content-Length nor Transfer-Encoding
+    const stream = (text: string) =>
+      new ReadableStream({
+        start(controller) {
+          if (text) controller.enqueue(new TextEncoder().encode(text))
+          controller.close()
+        },
+      })
+    for (const [text, status] of [
+      ['{"n":3}', 415],
+      ['', 422],
+    ] as const) {
+      const res = await app.request('/api/data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain', Origin: ORIGIN },
+        body: stream(text),
+        duplex: 'half',
+      } as RequestInit)
+      expect(res.status, JSON.stringify(text)).toBe(status)
+    }
     const bad = await app.request('/api/data', {
       method: 'POST',
       headers: { 'Content-Type': 'application/merge-patch+json', Origin: ORIGIN },

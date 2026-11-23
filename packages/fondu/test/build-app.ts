@@ -1,16 +1,19 @@
-// A small app built for Node by fondu's plugin (from src/), and the built server started. It is in a directory of its own
-// under test/, which finds its dependencies in apps/conformance.
+// A small app built for Node, Bun or Cloudflare by fondu's plugin (from src/), and the built server started. It is in a
+// directory of its own under test/, which finds its dependencies in apps/conformance (apps/site for Cloudflare: it has
+// @cloudflare/vite-plugin and wrangler).
 import { type ChildProcess, spawn } from 'node:child_process'
 import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import { createServer } from 'node:net'
 import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 
 import { createBuilder } from 'vite'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const plugin = join(here, '../src/vite/index.ts')
 const modules = join(here, '../../../apps/conformance/node_modules')
+const workerModules = join(here, '../../../apps/site/node_modules')
 
 export const freePort = () =>
   new Promise<number>((resolve, reject) => {
@@ -30,19 +33,31 @@ export interface BuiltApp {
 
 export async function buildApp(
   files: Record<string, string>,
-  { assetsDir, target = 'node' }: { assetsDir?: string; target?: 'node' | 'bun' } = {},
+  {
+    assetsDir,
+    target = 'node',
+  }: { assetsDir?: string; target?: 'node' | 'bun' | 'cloudflare' } = {},
 ): Promise<BuiltApp> {
   const dir = mkdtempSync(join(here, '.built-'))
-  symlinkSync(modules, join(dir, 'node_modules'))
+  const worker = target === 'cloudflare'
+  symlinkSync(worker ? workerModules : modules, join(dir, 'node_modules'))
   const all: Record<string, string> = {
     'package.json': JSON.stringify({
       type: 'module',
       dependencies: { '@hono/node-server': '*', hono: '*', react: '*', 'react-dom': '*' },
     }),
+    ...(worker && {
+      'wrangler.jsonc': JSON.stringify({
+        name: 'test',
+        main: './app/server.ts',
+        compatibility_date: '2026-10-01',
+      }),
+    }),
     'vite.config.ts': [
       `import fondu from ${JSON.stringify(plugin)}`,
+      ...(worker ? [`import { cloudflare } from '@cloudflare/vite-plugin'`] : []),
       `import { defineConfig } from 'vite'`,
-      `export default defineConfig({ logLevel: 'silent', ${assetsDir ? `build: { assetsDir: ${JSON.stringify(assetsDir)} }, ` : ''}plugins: [fondu({ target: '${target}', progress: false })] })`,
+      `export default defineConfig({ logLevel: 'silent', ${assetsDir ? `build: { assetsDir: ${JSON.stringify(assetsDir)} }, ` : ''}plugins: [${worker ? `cloudflare({ viteEnvironment: { name: 'ssr' } }), ` : ''}fondu({ target: '${target}', progress: false })] })`,
     ].join('\n'),
     'app/server.ts': `import { createApp } from 'fondu'\nexport default createApp()\n`,
     ...files,
@@ -60,7 +75,7 @@ export async function buildApp(
   }
   return {
     dir,
-    server: join(dir, 'dist/server'),
+    server: join(dir, worker ? 'dist/ssr' : 'dist/server'),
     remove: () => rmSync(dir, { recursive: true, force: true }),
   }
 }
@@ -104,5 +119,31 @@ export async function start(
       child.kill()
       await exited
     },
+  }
+}
+
+export interface RunningWorker {
+  fetch(path: string, init?: RequestInit): Promise<Response>
+  stop(): Promise<void>
+}
+
+/** A Cloudflare build, run in workerd by wrangler (as the prerender step does) */
+export async function startWorker(app: BuiltApp): Promise<RunningWorker> {
+  const entry = createRequire(join(app.dir, 'package.json')).resolve('wrangler')
+  const wrangler = (await import(pathToFileURL(entry).href)) as {
+    unstable_startWorker(options: object): Promise<{
+      ready: Promise<void>
+      fetch(url: string, init?: RequestInit): Promise<Response>
+      dispose(): Promise<void>
+    }>
+  }
+  const worker = await wrangler.unstable_startWorker({
+    config: join(app.server, 'wrangler.json'),
+    dev: { server: { port: 0 }, inspector: false, logLevel: 'error' },
+  })
+  await worker.ready
+  return {
+    fetch: (path, init) => worker.fetch(new URL(path, 'http://localhost').href, init),
+    stop: () => worker.dispose(),
   }
 }

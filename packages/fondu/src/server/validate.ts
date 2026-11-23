@@ -53,10 +53,8 @@ export async function readBody(c: Context): Promise<unknown> {
     !type.includes('multipart/form-data') &&
     !type.includes('application/x-www-form-urlencoded')
   ) {
-    // a body is what Content-Length or Transfer-Encoding says: one of an unknown type is refused, not read as `{}`
-    const hasBody =
-      Number(c.req.header('content-length')) > 0 || c.req.header('transfer-encoding') !== undefined
-    if (hasBody)
+    // one of an unknown type is refused, not read as `{}`
+    if (await hasBody(c))
       throw new HTTPException(415, {
         message: 'Unsupported request body: send JSON or form data',
       })
@@ -66,6 +64,23 @@ export async function readBody(c: Context): Promise<unknown> {
     .formData()
     .catch(() => Promise.reject(malformedBody('invalid form data')))
   return fields(form.entries(), malformedBody)
+}
+
+// Whether the request has any bytes, not what its headers say: HTTP/2 and HTTP/3 send a body with neither Content-Length nor
+// Transfer-Encoding, and so can `fetch`. Reads up to the first byte and leaves the rest, as the request is refused.
+async function hasBody(c: Context): Promise<boolean> {
+  const body = c.req.raw.body
+  if (!body) return false
+  const reader = body.getReader()
+  try {
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) return false
+      if (value.byteLength > 0) return true
+    }
+  } finally {
+    reader.releaseLock()
+  }
 }
 
 const malformedBody = (why: string) =>
