@@ -116,10 +116,14 @@ test('editing a visited MDX page reloads its compiled layout selection', async (
     await chain(true)
     for (const title of ['# Print', '# Plain']) {
       sent.mockClear()
-      writeFileSync(join(routes, 'topic.mdx'), title)
-      await vi.waitFor(() => expect(sent).toHaveBeenCalledWith({ type: 'full-reload' }), {
-        timeout: 5000,
-      })
+      // chokidar drops a change within 50 ms of the file's previous one: write again until the edit is seen
+      await vi.waitFor(
+        () => {
+          if (!sent.mock.calls.length) writeFileSync(join(routes, 'topic.mdx'), title)
+          expect(sent).toHaveBeenCalledWith({ type: 'full-reload' })
+        },
+        { timeout: 4000 },
+      )
       await chain(title === '# Plain')
     }
   } finally {
