@@ -14,7 +14,10 @@ export async function checkSettingsHistory({ page, ok }) {
   const close = async () => {
     await page.click(`${dialog} button[aria-label=Close]`)
     await page.waitForFunction(() => !document.querySelector('[data-testid=settings]'))
-    await page.waitForNetworkIdle({ idleTime: 100 })
+    await page.waitForFunction(
+      () => location.pathname === '/admin/dashboard' && location.hash === '',
+    )
+    await new Promise((resolve) => setTimeout(resolve, 100)) // a late dashboard request would count
   }
   const closed = () =>
     page.evaluate(() => location.pathname === '/admin/dashboard' && location.hash === '')
