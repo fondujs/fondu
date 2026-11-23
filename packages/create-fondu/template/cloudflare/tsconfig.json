@@ -11,6 +11,7 @@
     "isolatedModules": true,
     "verbatimModuleSyntax": true,
     "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true,
     "noEmit": true
   },
   "include": ["app", "vite.config.ts", "worker-configuration.d.ts"]

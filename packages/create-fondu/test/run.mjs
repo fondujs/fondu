@@ -147,6 +147,16 @@ for (const target of targets) {
   )
   sh('bun', ['run', 'typecheck'], app)
   rmSync(join(app, 'app/typo.ts'))
+  // what route files may not use (an enum): the editor flags it, as the build does
+  writeFileSync(join(app, 'app/enum.ts'), 'export enum Color {\n  Red,\n}\n')
+  let flagged = false
+  try {
+    sh('bun', ['run', 'typecheck'], app)
+  } catch {
+    flagged = true
+  }
+  rmSync(join(app, 'app/enum.ts'))
+  check(`${target} tsconfig: erasableSyntaxOnly flags an enum`, flagged)
   sh('bun', ['run', 'build'], app)
   check(
     `${target} build: app/fondu.gen.d.ts, as the template ships it`,
