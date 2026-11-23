@@ -128,7 +128,7 @@ describe('failures', () => {
     vi.unstubAllGlobals()
     const spy = stub(() => json({}))
     await expect(call('/api/usage')).rejects.toThrow(
-      "fondu: request() from fondu/client is for the browser (effects, events); a page's data comes from its loader or defer()",
+      "fondu: request() from fondu/client is for the browser (effects, events); a page's data comes from its loader",
     )
     expect(spy).not.toHaveBeenCalled()
   })

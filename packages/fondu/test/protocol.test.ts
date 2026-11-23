@@ -96,7 +96,7 @@ describe('pages', () => {
     expect(next.props.errors).toEqual({ name: 'Too short' })
   })
   test('Vary: a document varies on X-Fondu, a navigation on every header that selects its answer', async () => {
-    const navigation = 'X-Fondu, X-Fondu-Version, X-Fondu-Only, X-Fondu-Component'
+    const navigation = 'X-Fondu, X-Fondu-Version'
     const answers = [
       await app.request('/', { headers: html }),
       await app.request('/', { headers: fondu() }),
@@ -110,18 +110,13 @@ describe('pages', () => {
       navigation,
     ])
   })
-  test('Vary: a partial answer names X-Fondu-Component, as the full page of another component is not the same', async () => {
-    const only = { 'X-Fondu-Only': 'stats' }
-    const same = await app.request('/deferred', {
-      headers: fondu({ ...only, 'X-Fondu-Component': 'deferred' }),
+  test('X-Fondu-Only and X-Fondu-Component are not read: the whole page, as for any navigation', async () => {
+    const res = await app.request('/promises', {
+      headers: fondu({ 'X-Fondu-Only': 'title', 'X-Fondu-Component': 'promises' }),
     })
-    const other = await app.request('/deferred', {
-      headers: fondu({ ...only, 'X-Fondu-Component': 'other' }),
-    })
-    expect(Object.keys((await page(same)).props)).toEqual(['stats'])
-    expect(Object.keys((await page(other)).props)).not.toEqual(['stats'])
-    for (const res of [same, other])
-      expect(res.headers.get('vary')!.split(', ')).toContain('X-Fondu-Component')
+    const body = await page(res)
+    expect(Object.keys(body.props).sort()).toEqual(['app', 'errors', 'lazy', 'title'])
+    expect(res.headers.get('vary')).toBe('X-Fondu, X-Fondu-Version')
   })
 })
 

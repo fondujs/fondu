@@ -82,7 +82,7 @@ URL keeps its own headers), and on Cloudflare through a generated `_headers` (un
 are not cached: `Cache-Control: private, no-cache`.
 
 If you make pages cacheable, a cache must keep a document and a navigation apart. A document answers with
-`Vary: X-Fondu`, a navigation with `Vary: X-Fondu, X-Fondu-Version, X-Fondu-Only, X-Fondu-Component`. Some CDNs
+`Vary: X-Fondu`, a navigation with `Vary: X-Fondu, X-Fondu-Version`. Some CDNs
 ignore custom `Vary` headers, so check yours before caching pages publicly.
 
 ## A new version

@@ -11,6 +11,7 @@ import type {
   href,
   navigate,
   Page,
+  reload,
   useForm,
   useNavigation,
   usePage,
@@ -29,7 +30,7 @@ import {
   type Validated,
 } from '../src/server/handler.js'
 import { back } from '../src/server/http.js'
-import type { defer, render, share } from '../src/server/protocol.js'
+import type { render, share } from '../src/server/protocol.js'
 import type { Shared } from '../src/types.js'
 import type { FonduOptions, ProgressOptions } from '../src/vite/index.js'
 
@@ -121,9 +122,9 @@ declare module '../src/types.js' {
 // type-checked only, never called
 type Api = {
   render: typeof render
-  defer: typeof defer
   href: typeof href
   navigate: typeof navigate
+  reload: typeof reload
   closeShallow: typeof closeShallow
   request: typeof request
   share: typeof share
@@ -148,7 +149,6 @@ declare function OptionalResult(props: { kind?: 'empty' } | Result): null
 type Stats = { total: number }
 declare function Dashboard(props: { title: string; stats?: Stats; at?: string }): null
 declare function Maybe(props: { stats: Stats | undefined }): null
-declare function Dated(props: { when?: Date }): null
 
 const renders = [
   typed(({ render }, c) => render(c, SearchResult, { kind: 'hit', title: 'Found' })),
@@ -186,30 +186,16 @@ const renders = [
   // @ts-expect-error not a component
   typed(({ render }, c) => render(c, 'titled', { title: 'Hello' })),
   typed(({ render }, c) => render(c, Errors)),
-  // defer(): a prop the page takes as optional; the function gives what the prop is, sync or async, or what JSON makes it
-  typed(({ render, defer }, c) =>
-    render(c, Dashboard, { title: 'x', stats: defer(() => ({ total: 1 })) }),
-  ),
-  typed(({ render, defer }, c) =>
-    render(c, Dashboard, { title: 'x', stats: defer(async () => ({ total: 1 })) }),
-  ),
-  typed(({ render, defer }, c) =>
-    render(c, Dashboard, { title: 'x', at: defer(() => new Date()) }),
-  ),
+  // a prop is given as its value: an optional one may be left out
   typed(({ render }, c) => render(c, Dashboard, { title: 'x', stats: { total: 1 } })),
   typed(({ render }, c) => render(c, Dashboard, { title: 'x' })),
-  // @ts-expect-error a required prop is not deferred: the page renders without it
-  typed(({ render, defer }, c) => render(c, Dashboard, { title: defer(() => 'x') })),
+  // a promise is no prop's value (the server throws): await it
+  typed(({ render }, c) =>
+    // @ts-expect-error a promise is not the prop's type
+    render(c, Dashboard, { title: 'x', stats: Promise.resolve({ total: 1 }) }),
+  ),
   // @ts-expect-error required, though it may be undefined
-  typed(({ render, defer }, c) => render(c, Maybe, { stats: defer(() => ({ total: 1 })) })),
-  // @ts-expect-error what the function gives is not the prop's type
-  typed(({ render, defer }, c) => render(c, Dashboard, { title: 'x', stats: defer(() => 1) })),
-  // @ts-expect-error a prop JSON can't deliver can't be deferred either
-  typed(({ render, defer }, c) => render(c, Dated, { when: defer(() => 1) })),
-  // @ts-expect-error defer() takes a function
-  typed(({ defer }) => defer({ total: 1 })),
-  // @ts-expect-error a shared prop is on every page: not deferred
-  typed(({ share, defer }, c) => share(c, { auth: defer(async () => ({ user: null })) })),
+  typed(({ render }, c) => render(c, Maybe, {})),
 ]
 
 declare function Pair(props: { pair: [string, number]; auth: Auth }): null
@@ -465,6 +451,13 @@ const navigation = [
   }),
 ]
 
+// reload() takes no argument: the page's props again, all of them
+const reloads = [
+  typed(({ reload }) => reload()),
+  // @ts-expect-error there is no `only`: a prop is not asked for alone
+  typed(({ reload }) => reload({ only: ['stats'] })),
+]
+
 // navigate(): replace, keep and shallow are optional booleans; shallow: true takes no keep, no transition
 const flags = { shallow: Math.random() > 0.5, keep: Math.random() > 0.5 }
 const navigations = [
@@ -542,7 +535,6 @@ test('fondu/client exports exactly the documented values', () => {
     | 'useNavigation'
     | 'useForm'
     | 'reload'
-    | 'Deferred'
     | 'navigate'
     | 'closeShallow'
     | 'loadDocument'
@@ -716,7 +708,7 @@ test('a page prop that clashes with a shared prop names the cause', () => {
 })
 
 test('Page<P> is what usePage<P>() returns', () => {
-  expect(pageTypes).toHaveLength(7)
+  expect(pageTypes).toHaveLength(6)
 })
 
 test('the types above are checked by tsc', () => {
@@ -728,8 +720,9 @@ test('the types above are checked by tsc', () => {
     ...requests,
     ...answers,
     ...navigation,
+    ...reloads,
     ...navigations,
-  ]).toHaveLength(185)
+  ]).toHaveLength(180)
 })
 
 test('FonduOptions: the port is PORT, not an option; server rendering is turned off by withoutSsr()', () => {
@@ -817,8 +810,6 @@ const pageTypes = [
   same<Page['props']['auth'], Auth>(),
   // @ts-expect-error
   typed(({ usePage }) => usePage().version),
-  // @ts-expect-error
-  typed(({ usePage }) => usePage().deferred),
 ]
 
 const asJson = [
@@ -932,9 +923,9 @@ declare function Anything(props: {
 declare const chain: { toJSON(): { at: Date; gone: undefined } }
 declare function Strict(props: { rows: AsJson<{ a: string }[]> }): null
 
-// render() accepts X for AsJson<X>: whole, from a query's own type, readonly, as an optional prop (deferred), with
+// render() accepts X for AsJson<X>: whole, from a query's own type, readonly, as an optional prop, with
 // the shared props given or left out, with options
-typed(({ render, defer }, c) => {
+typed(({ render }, c) => {
   render(c, ContactList, { contacts })
   render(c, ContactList, { contacts: readonlyContacts.slice() })
   render(c, ContactList, { contacts: [], auth: { user: null } }, { status: 201 })
@@ -942,8 +933,6 @@ typed(({ render, defer }, c) => {
   render(c, ContactCard, { contact: null })
   render(c, LazyContacts, { total: 1 })
   render(c, LazyContacts, { total: 1, contacts })
-  render(c, LazyContacts, { total: 1, contacts: defer(() => contacts) })
-  render(c, LazyContacts, { total: 1, contacts: defer(async () => contacts) })
   render(c, ByQuery, { found: listed })
   render(c, Anything, {
     m: new Map([['a', new Date()]]),

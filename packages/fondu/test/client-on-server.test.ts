@@ -13,7 +13,6 @@ describe('in the node environment', () => {
     ['navigate', () => navigate('/about')],
     ['navigate', () => navigate('/about', { shallow: true })],
     ['reload', () => reload()],
-    ['reload', () => reload({ only: ['stats'] })],
     ['loadDocument', () => loadDocument('/about')],
     ['closeShallow', () => closeShallow('/')],
   ])('%s() throws a fondu error', (name, call) => {

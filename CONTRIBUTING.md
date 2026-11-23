@@ -37,8 +37,7 @@ How a change is decided:
 - **One way to write a thing.** A page's route file has `loader` and `action` or `actions`; a `.ts` file has the HTTP
   methods. A second spelling of something is removed, not documented.
 - **The protocol stays as it is.** A page is one JSON object, the same for a document and for a navigation. A feature
-  that needs a second format for one of them is designed again until it doesn't (deferred props: a second request,
-  not a stream of its own).
+  that needs a second format for one of them is designed again until it doesn't.
 - **The loader decides the answer.** The status, a redirect, the cookies are known before the first byte is sent.
   Nothing that renders later may need to change them.
 - **What would answer the wrong way fails at startup**, with a message that says what to write instead. Nothing is

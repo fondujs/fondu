@@ -124,7 +124,7 @@ export const GET = defineHandler((c) => c.json({ ok: true }))
 - On Node and Bun, compression and conditional requests (`If-None-Match`…) are the proxy's or CDN's job.
 - Pages are streamed: a proxy in front must not buffer responses (nginx: `proxy_buffering off`).
 - Built assets in `/assets/` are cached for a year; pages are `Cache-Control: private, no-cache`.
-  A document is `Vary: X-Fondu`; a navigation also varies on `X-Fondu-Version`, `X-Fondu-Only` and `X-Fondu-Component`.
+  A document is `Vary: X-Fondu`; a navigation also varies on `X-Fondu-Version`.
   Some CDNs ignore custom `Vary` headers: check yours before caching pages publicly.
 
 ## For proxies, CDNs and tests

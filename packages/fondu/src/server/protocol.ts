@@ -25,30 +25,6 @@ export function share(c: Context, props: Shareable<Shared>) {
   shared.set(c, { ...shared.get(c), ...props })
 }
 
-class DeferredProp<T> {
-  declare readonly type?: T // phantom: what `fn` gives (no toJSON: a deferred prop is no JSON input)
-  readonly load: () => T | PromiseLike<T>
-  constructor(load: () => T | PromiseLike<T>) {
-    this.load = load
-  }
-}
-Object.defineProperty(DeferredProp.prototype, 'toJSON', {
-  value() {
-    throw new Error(
-      'fondu: defer() is for a prop of render(), at the top (not in share(), not inside a prop)',
-    )
-  },
-})
-export type { DeferredProp }
-
-/**
- * A prop of the page that is not sent with it: `render(c, Page, { stats: defer(() => loadStats()) })`. The client asks for
- * it once the page is on the screen.
- */
-export function defer<T>(fn: () => T | PromiseLike<T>): DeferredProp<T> {
-  return new DeferredProp(fn)
-}
-
 type PageComponent<P> =
   | ((props: P) => ReactNode | Promise<ReactNode>)
   | (new (props: P) => Component<P>)
@@ -166,15 +142,9 @@ export type AsJson<T extends Carrier<T>> = Wire<T>
 
 type NotJsonError =
   'fondu: the page receives this prop as JSON (a Date as a string, a Map as {}): type it as such'
-/** Only defer a value when the page can render without the override. */
-type PropInput<T, Optional extends boolean = false> =
-  Arrives<T> extends true
-    ?
-        | JsonInput<T>
-        | (Optional extends true ? DeferredProp<JsonInput<Exclude<T, undefined>>> : never)
-    : NotJsonError
+type PropInput<T> = Arrives<T> extends true ? JsonInput<T> : NotJsonError
 export type Delivered<P> = {
-  [K in keyof P]: PropInput<P[K], {} extends Pick<P, K> ? true : false>
+  [K in keyof P]: PropInput<P[K]>
 }
 
 export interface RenderOptions {
@@ -198,16 +168,14 @@ type Live<T, From> = T extends unknown
       : T
   : never
 type Primitive = string | number | boolean | bigint | symbol
-type OverrideInput<A, B, Optional extends boolean = false> = [Live<Both<A, B>, A | B>] extends [
-  never,
-]
+type OverrideInput<A, B> = [Live<Both<A, B>, A | B>] extends [never]
   ? ClashError
-  : PropInput<Both<A, B>, Optional>
+  : PropInput<Both<A, B>>
 /** Mark the override optional *after* checking its explicit JSON value (omitting it keeps the shared value). */
 type Overrides<P, Required extends keyof P & SharedKey> = {
   [K in Required]: OverrideInput<P[K], Shared[K]>
 } & {
-  [K in Exclude<keyof P & SharedKey, Required>]?: OverrideInput<P[K], Shared[K], true>
+  [K in Exclude<keyof P & SharedKey, Required>]?: OverrideInput<P[K], Shared[K]>
 }
 type RenderBranch<P, Keys extends keyof P & SharedKey> =
   Exclude<keyof P, 'errors'> extends never
@@ -271,62 +239,21 @@ export async function renderPage(
   for (const [key, value] of Object.entries(props))
     if (typeof (value as { then?: unknown } | null | undefined)?.then === 'function')
       throw new Error(
-        `fondu: the prop "${key}" of "${id}" is a promise, which JSON would send as {}. Await it, or pass defer(() => ...)`,
+        `fondu: the prop "${key}" of "${id}" is a promise, which JSON would send as {}. Await it`,
       )
-  const only = askedFor(c, id)
-  const deferred = Object.keys(props).filter((k) => props[k] instanceof DeferredProp)
-  let page: PageObject
-  if (only) {
-    // a partial request: what was asked for, and nothing the page already has (no shared props, no errors, no flash:
-    // the cookie is the next page's)
-    const wanted = only.filter((k) => Object.hasOwn(props, k))
-    const entries = await Promise.all(
-      wanted.map(async (key) => {
-        const value = props[key]
-        if (!(value instanceof DeferredProp)) return [[key, value]]
-        try {
-          return [[key, await value.load()]]
-        } catch (error) {
-          console.error(`[fondu] the deferred prop "${key}" of "${id}" failed:`, error)
-          return []
-        }
-      }),
-    )
-    page = {
-      component: id,
-      props: Object.fromEntries(entries.flat()),
-      url: pageUrl(c),
-      version,
-      flash: {},
-    }
-  } else {
-    const carried = takeCarried(c)
-    const fromShared = await Promise.all(
-      Object.entries(shared.get(c) ?? {}).map(async ([key, value]) => [
-        key,
-        typeof value === 'function' ? await value() : value,
-      ]),
-    )
-    // a static page has all its data: what is deferred is awaited
-    const now = isPrerendering(c)
-    const own = Object.fromEntries(
-      await Promise.all(
-        Object.entries(props)
-          .filter(([key]) => now || !deferred.includes(key))
-          .map(async ([key, value]) => [
-            key,
-            value instanceof DeferredProp ? await value.load() : value,
-          ]),
-      ),
-    )
-    page = {
-      component: id,
-      props: { ...Object.fromEntries(fromShared), ...own, errors: carried.errors },
-      url: pageUrl(c),
-      version,
-      flash: carried.flash,
-      ...(deferred.length && !now && { deferred }),
-    }
+  const carried = takeCarried(c)
+  const fromShared = await Promise.all(
+    Object.entries(shared.get(c) ?? {}).map(async ([key, value]) => [
+      key,
+      typeof value === 'function' ? await value() : value,
+    ]),
+  )
+  const page: PageObject = {
+    component: id,
+    props: { ...Object.fromEntries(fromShared), ...props, errors: carried.errors },
+    url: pageUrl(c),
+    version,
+    flash: carried.flash,
   }
   // a page is this visitor's: not stored by shared caches, revalidated by the browser (unless the route said otherwise)
   if (!c.res.headers.has('Cache-Control')) c.header('Cache-Control', 'private, no-cache')
@@ -339,26 +266,6 @@ export async function renderPage(
   return typeof document === 'string'
     ? c.html(document, status)
     : c.body(document, status, { 'Content-Type': 'text/html; charset=UTF-8' })
-}
-
-function askedFor(c: Context, id: string): string[] | undefined {
-  const only = c.req.header('x-fondu-only')
-  if (
-    !only ||
-    c.req.method !== 'GET' ||
-    !isPageRequest(c) ||
-    c.req.header('x-fondu-component') !== id
-  )
-    return
-  // each name once, in the order first given: a name asked twice does not run its loader twice
-  return [
-    ...new Set(
-      only
-        .split(',')
-        .map((name) => name.trim())
-        .filter(Boolean),
-    ),
-  ]
 }
 
 function webUrl(c: Context, to: string): boolean {
@@ -381,7 +288,7 @@ function scriptScheme(c: Context, to: string): string | null {
 }
 
 // every header that selects what a navigation answers
-const NAVIGATION_VARY = 'X-Fondu, X-Fondu-Version, X-Fondu-Only, X-Fondu-Component'
+const NAVIGATION_VARY = 'X-Fondu, X-Fondu-Version'
 
 const versionCheck: MiddlewareHandler = async (c, next) => {
   // a navigation of a client built from other assets: the page loads as a document

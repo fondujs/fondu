@@ -46,13 +46,12 @@ only for a reason, and keep a policy that sends `Referer` to this site.
 
 ### Responses
 
-| Export                              | Is                                                                                                   |
-| ----------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `render(c, Page, props?, options?)` | its file's page; options: `status`                                                                   |
-| `share(c, props)`                   | props every page of this request gets                                                                |
-| `defer(fn)`                         | a prop of `render()` the page gets in a second request: [Deferred props](/docs/pages#deferred-props) |
-| `flash(c, data)`                    | data for the next page (`usePage().flash`)                                                           |
-| `back(c, fallback?)`                | a redirect to the page the request came from                                                         |
+| Export                              | Is                                           |
+| ----------------------------------- | -------------------------------------------- |
+| `render(c, Page, props?, options?)` | its file's page; options: `status`           |
+| `share(c, props)`                   | props every page of this request gets        |
+| `flash(c, data)`                    | data for the next page (`usePage().flash`)   |
+| `back(c, fallback?)`                | a redirect to the page the request came from |
 
 ### Types
 
@@ -92,7 +91,7 @@ only for a reason, and keep a policy that sends `Referer` to this site.
 
 ## `fondu/client`
 
-Hooks, `<Deferred>` and `href()` run on the server too, in a page's server render (so does `RequestError`, a class).
+Hooks and `href()` run on the server too, in a page's server render (so does `RequestError`, a class).
 `request()`, `reload()`, `navigate()`, `closeShallow()` and `loadDocument()` are for the browser, from events and effects: on
 the server they throw.
 
@@ -102,8 +101,7 @@ the server they throw.
 | `usePage()`                                        | the page on screen, a `Page`: `component` (its id: its route file's path), `props`, `url` (path and query), `flash`                                                                                                                                                                                 |
 | `useNavigation()`                                  | the navigation on its way: `{ state, to, form }`, `state` `'idle'`, `'loading'`, `'submitting'` or `'failed'` (a form not sent)                                                                                                                                                                     |
 | `useForm(schema?)`                                 | a form checked in the browser by its action's schema: `{ form, field, errors, submitting, failed }` ([Forms](/docs/forms#the-same-schema-in-the-browser))                                                                                                                                           |
-| `reload({ only? })`                                | the page's props again, its state and scroll position kept; `only: ['stats']`: those props alone, quietly                                                                                                                                                                                           |
-| `<Deferred data fallback failed>`                  | children once the deferred props `data` are there, `fallback` while asked for, `failed` if they could not be had                                                                                                                                                                                    |
+| `reload()`                                         | the page's props again, its state and scroll position kept                                                                                                                                                                                                                                          |
 | `navigate(href, { replace?, keep?, transition? })` | goes to `href` as a link would: a page in place, anything else as a document; `keep`: the page keeps its state and scroll, as `reload()` does; `transition`: `true` or the types to add, a [view transition](/docs/navigation#view-transitions) ([Navigation](/docs/navigation#navigating-in-code)) |
 | `navigate(href, { shallow: true, replace? })`      | changes the page on the screen to a page URL of this app, keeping its component and props, asking for nothing, with no transition; `usePage().url` follows ([Shallow navigation](/docs/navigation#shallow-navigation))                                                                              |
 | `closeShallow(to)`                                 | closes what a shallow navigation opened, one step: Back, or `to` in place of the current entry ([A dialog or a drawer](/docs/navigation#a-dialog-or-a-drawer))                                                                                                                                      |

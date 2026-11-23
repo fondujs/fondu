@@ -142,7 +142,6 @@ reload and a shared link all work, and the loader is the one place the results a
 | `closeShallow(to)`                                 | closes what a shallow navigation opened, one step: Back, or `to` in place of this entry                                                               |
 | `loadDocument(url)`                                | loads `url` as a document (a full page load)                                                                                                          |
 | `reload()`                                         | asks for the current page's props again; state and scroll stay                                                                                        |
-| `reload({ only: ['stats'] })`                      | asks for those props alone, quietly: [deferred props](/docs/pages#deferred-props)                                                                     |
 
 ## Forms
 
@@ -281,8 +280,7 @@ export default function Orders({ orders }: { orders: Order[] }) {
 - The browser's own `#fragment` entries are not shallow entries. A native `#fragment` link clicked over an open drawer
   adds an entry that `closeShallow()` replaces, as it replaces any other.
 
-If the drawer needs data the list does not have, ask for it with `reload({ only: ['order'] })` (the loader sees the
-query), or with `request()` from a `.ts` route.
+If the drawer needs data the list does not have, ask for it with `request()` from a `.ts` route.
 
 A form in the dialog is posted as any form. Its answer at the same page (back with errors, or `back(c)`) keeps the
 `#fragment` on the screen, so the dialog stays open, with its errors or its result. The entries that shared the page
@@ -332,12 +330,8 @@ redirect to another pathname, starts a new group instead.
 Other answers from the server on a shallow entry belong to that entry alone. They end the sharing, and the other
 entries become normal ones: Back to them asks, as it does for any page. This is the case for:
 
-- `reload()` and `reload({ only })`, asked at the entry's URL, so the loader sees its path and query;
-  `reload()` at another page's URL shows that page, rather than keeping the gallery or dialog;
-- deferred props asked at that URL.
-
-Deferred props already on their way when the shallow navigation happens are the loader's answer for the page. They
-arrive in it, and the entries keep sharing it.
+- `reload()`, asked at the entry's URL, so the loader sees its path and query; `reload()` at another page's URL shows
+  that page, rather than keeping the gallery or dialog.
 
 A browser reload of a shallow URL is a document load, and the entries before it are documents of their own. A close
 that goes Back to one of them loads it.
@@ -455,7 +449,7 @@ Forward to it. When Back or Forward skips several entries, it is the later of th
   in that entry, and one without a transition clears what the entry had.
 
 No transition is made for a page that stays: `reload()`, `navigate()` with `keep` (unless it has `transition`), a form's
-answer at its own URL, and a page's deferred props arriving. A swipe back that the browser animates itself has none
+answer at its own URL. A swipe back that the browser animates itself has none
 either. A shallow navigation (`data-shallow`, `shallow: true`) never transitions, whatever else is on it.
 
 ### What to know

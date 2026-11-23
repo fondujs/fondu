@@ -63,6 +63,8 @@ test('the type exports of each entry are the documented ones', async () => {
   expect(documented('fondu', true)).toContain('AsJson')
   expect(documented('fondu')).not.toContain('AsJson')
   expect(await import('../src/index.js')).not.toHaveProperty('AsJson')
+  expect(await import('../src/index.js')).not.toHaveProperty('defer')
+  expect(client).not.toHaveProperty('Deferred')
   // the plumbing is not exported (ApiPath, AnswerOf, RequestArgs: request()'s types; StandardSchemaV1: validate.ts's)
   for (const name of ['ApiPath', 'AnswerOf', 'RequestArgs', 'StandardSchemaV1'])
     for (const file of ['../src/index.ts', '../src/client.ts', '../src/vite/index.ts'])
@@ -85,7 +87,6 @@ test('both entries re-export the one module of the client', () => {
   expect(internal.__entry).toBe(app.__entry)
   expect(internal.renderPage).toBe(app.renderPage)
   expect(client.usePage).toBe(app.usePage)
-  expect(client.Deferred).toBe(app.Deferred)
 })
 
 test("package.json's exports: fondu/client/internal is declared", () => {

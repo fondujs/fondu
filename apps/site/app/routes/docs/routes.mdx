@@ -196,7 +196,7 @@ What is checked:
 A non-2xx answer throws a `RequestError`, with `status`, `data` (the parsed body, typed `unknown`: narrow it before you read it; a 422's is `{ errors }`) and `response`. A
 network error is thrown as it is. There is no retry and no cache: use `use()`, an effect or a library of your own, and
 `AbortSignal.timeout()` for a timeout. `request()` is for the browser: during the server render it throws, as a page's data
-comes from its loader or `defer()`.
+comes from its loader.
 
 ## Validated input
 

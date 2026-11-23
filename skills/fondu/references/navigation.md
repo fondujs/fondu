@@ -57,7 +57,6 @@ are handed to the browser.
 | `closeShallow(to)`                                 | closes what a shallow navigation opened, one step                                       |
 | `loadDocument(url)`                                | loads `url` as a document                                                               |
 | `reload()`                                         | asks for the page's props again; state and scroll stay                                  |
-| `reload({ only: ['stats'] })`                      | asks for those props alone, quietly (see [data.md](data.md))                            |
 
 ## Forms
 
@@ -112,10 +111,9 @@ closeShallow(url) // closes one level
   Back and Forward between them change `url` only, with no request. A form's answer for the same component at the
   same pathname keeps the group, even if its query or fragment differs: the entries share the answer's props, and
   closing asks for nothing more. Flash is not shown again. Another component or a redirect to another pathname starts
-  a new group. Other answers on a shallow entry (`reload()`, `reload({ only })`, deferred props asked at that URL) end
+  a new group. Other answers on a shallow entry (`reload()` asked at that URL) end
   the sharing: Back to the other entries asks, as any Back does. Leaving for another page also ends the sharing: Back
   or Forward into a former shallow entry loads its URL's own page. `reload()` at another page's URL shows that page.
-  Deferred props already on their way arrive in the shared page.
 - A prerendered page's `usePage().url` has the visitor's query once it has hydrated, and after a link, Back or `reload()`
   too (and its `#fragment` is in the address bar); its loader never saw the query. A redirect is the server's answer.
 - A form in a dialog that answers at the same page keeps the `#fragment`, so the dialog stays open with its errors.
@@ -172,7 +170,7 @@ In JSX, `<a data-transition>` is written as `data-transition="true"`: the same a
   (also across several), the later one's record counts. Back from a page reached without a transition does not animate;
   with `viewTransitions: true` it does, with the direction alone.
 - Never a transition for `reload()`, shallow navigations (`data-shallow`, `shallow: true`), a form's answer at its
-  own URL, deferred props, or a swipe back the browser animates itself; `keep` only with `transition`. Without `document.startViewTransition`
+  own URL, or a swipe back the browser animates itself; `keep` only with `transition`. Without `document.startViewTransition`
   navigations are as they were.
 - React's `<ViewTransition>` does not animate Fondu's navigations (it works for the app's own `startTransition`
   updates), and its `name` is not applied for them. Shared elements: `view-transition-name` in CSS, one element per

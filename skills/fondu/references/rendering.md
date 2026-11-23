@@ -15,7 +15,7 @@ fallback and is sent when it resolves.
   JavaScript the fallback stays.
 - A component that suspends outside any boundary holds the whole page: wrap what is slow in `<Suspense>`.
 - When the visitor leaves (the request is aborted), the server render stops, and nothing is logged.
-- A page's own data that comes with a second request is a [deferred prop](data.md).
+- A slow prop that must not hold the page: [data.md](data.md).
 - If a page throws while rendering on the server, Fondu logs it and sends the page to render in the browser. Fix it all
   the same. A boundary that throws after the shell is sent renders in the browser, and the status stays.
 - A component that needs the browser (`window`, a chart library) renders after an effect, or with
@@ -49,7 +49,7 @@ export const prerender = () => posts.map((post) => ({ slug: post.slug }))
   the app goes under it (the app stops at startup if one does). In development, Fondu also serves `/@fondu/dev.css`
   (the CSS the layouts import, for the first paint).
 - A static page is the same for everyone: rendered once, for a visitor with no cookies and no query, shared props
-  included, every Suspense boundary resolved, deferred props evaluated.
+  included, every Suspense boundary resolved.
 - The build stops, naming the route, when a page answers with a status other than 200 (a redirect), takes POSTs (an
   `action` or `actions`), has a URL ending in `index` (`routes/blog/index.tsx` at `/blog` is fine), or lists a param
   value that is not a file name (`/` or `\` in it, or `.` / `..`; a `[...catch-all]`'s segments are each one), or two

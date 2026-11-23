@@ -9,15 +9,12 @@ export interface PageObject {
   url: string
   version: string | null
   flash: Record<string, unknown>
-  /** The props left out, to come with a request of their own (`defer()`). */
-  deferred?: string[]
 }
 
 interface Options {
   initial: PageObject
   /**
-   * Loads the page's modules and gives what puts it on the screen. The page is built when that has run, not before: what the
-   * page on the screen asked for in between is in it. Nothing once `stale()`.
+   * Loads the page's modules and gives what puts it on the screen. Nothing once `stale()`.
    */
   show: (
     page: PageObject,
@@ -57,7 +54,6 @@ interface Visit {
 let visit: ((url: string, options: Visit) => void) | undefined
 let shallowTo: ((url: URL, replace: boolean) => void) | undefined
 let shownUrl: (() => URL) | undefined
-let ask: ((names: string[]) => void) | undefined
 let isAppPage: ((pathname: string) => boolean) | undefined
 
 // After Void's client (MIT). Scroll positions are Fondu's own, per history entry: the browsers' differ. What isn't for it
@@ -100,13 +96,6 @@ export function startNavigation({
   let group = new Set<string>()
   // the URL the page's props are the loader's answer for: `on.url` changes with a shallow navigation, this does not
   let answered = initial.url
-  const asking = new Set<AbortController>()
-  // each prop's newest answer: an older request answering after it is dropped for that prop, as an answer for a page no
-  // longer there is
-  let requests = 0
-  let answers = new Map<string, number>()
-  // each prop's newest request: only it ends the prop's pending state, as an older one finishing first leaves it to the newer
-  let asked = new Map<string, number>()
   const showNow = async (page: PageObject, fresh: boolean, stale: () => boolean) =>
     (await show(page, fresh, stale))?.()
   // With `types` (a view transition) all of it is the transition's `update`, which runs when the browser has captured the old
@@ -128,9 +117,6 @@ export function startNavigation({
       if (!shared) group = new Set()
       group.add(scroll.key()!)
       answered = page.url
-      for (const quiet of asking) quiet.abort()
-      answers = new Map()
-      asked = new Map()
       tail()
     }
     if (types)
@@ -176,62 +162,6 @@ export function startNavigation({
     if (prefetched.size > 20) prefetched.delete(prefetched.keys().next().value!)
   }
 
-  // Quiet: no navigation state, no history entry, no scroll. Aborted when another page is put on the screen; an answer for a
-  // page no longer there is dropped, and what isn't the page's answer is a failure, never a navigation.
-  ask = async (names) => {
-    const at = shows
-    const page = on
-    const id = ++requests
-    const controller = new AbortController()
-    asking.add(controller)
-    for (const n of names) asked.set(n, id)
-    // a prop asked for that is neither here nor coming (it failed): pending again, `<Deferred>` shows its fallback
-    const absent = names.filter((n) => !Object.hasOwn(page.props, n) && !page.deferred?.includes(n))
-    if (absent.length)
-      void showNow(
-        (on = { ...page, deferred: [...(page.deferred ?? []), ...absent] }),
-        false,
-        () => shows !== at,
-      )
-    let got: Record<string, unknown> | undefined
-    try {
-      const response = await fetch(source(new URL(page.url, location.href)), {
-        headers: {
-          ...headers(),
-          'X-Fondu-Only': names.join(','),
-          'X-Fondu-Component': page.component,
-        },
-        signal: controller.signal,
-      })
-      const answer =
-        response.ok && response.headers.has('X-Fondu')
-          ? ((await response.json()) as PageObject)
-          : null
-      if (answer?.component === page.component) got = answer.props
-    } catch {} // offline, aborted
-    asking.delete(controller)
-    if (controller.signal.aborted || shows !== at) return
-    // asked at the URL of a shallow entry, which the page has left since: not its answer
-    if (page.url !== answered && page.url !== on.url) return
-    const take = names.filter((n) => got && Object.hasOwn(got, n) && id > (answers.get(n) ?? 0))
-    for (const n of take) answers.set(n, id)
-    const next: PageObject = {
-      ...on,
-      props: { ...on.props, ...Object.fromEntries(take.map((n) => [n, got![n]])) },
-      deferred: on.deferred?.filter((n) => asked.get(n) !== id),
-    }
-    on = next // before the module is awaited: another answer merges into this one
-    // asked at the URL of a shallow entry, not at the one the page was loaded at: an answer of its own, and this
-    // entry's alone (those asked before the shallow navigation are the loader's answer still)
-    if (got && page.url !== answered) {
-      group = new Set([scroll.key()!])
-      answered = page.url
-    }
-    // not once another answer has merged into the page since: its own show() has these props too
-    const stale = () => shows !== at || on !== next
-    await showNow(next, false, stale)
-    if (!stale()) keep(next)
-  }
   const documentLoad = (url: string, replace: boolean) => {
     // http(s) only: a header's URL never runs as `javascript:` (an app's redirect to a URL it was given)
     if (!isWebUrl(url)) return console.error(`fondu: not loading ${url}: not an http(s) URL`)
@@ -367,10 +297,6 @@ export function startNavigation({
         // kept: the same component answers (another one mounts anew, and is scrolled to the top as a navigation's)
         const stay = options.keep && page.component === on.component
         const fresh = shown ? asked !== page.url : !stay && !(same && errors)
-        // the page stays (reload(), Back's, a form's answer): what it asked for isn't taken away while it is asked again
-        if (!fresh && page.deferred)
-          for (const name of page.deferred)
-            if (Object.hasOwn(on.props, name)) page.props[name] ??= on.props[name]
         // its URL first, as the browser's own navigations: a page's render reads it (`location`, a URL's language);
         // a redirect's, the fragment asked for if it is still this page's; a form's answer to the page it was sent
         // from: its #fragment stays, a dialog the fragment opened with it
@@ -400,7 +326,6 @@ export function startNavigation({
           () => signal.aborted,
           () => {
             keep(page)
-            if (page.deferred?.length) ask!(page.deferred)
             if (shown && !fresh) return
             if (!stay) announce()
             if (stay || same) return
@@ -412,11 +337,7 @@ export function startNavigation({
         )
       } catch (error) {
         if ((error as Error).name === 'AbortError') return
-        if (shown) {
-          // offline, Back: the kept page stays; what it was still waiting for is asked now, to fail rather than wait
-          if (on.deferred?.length) ask!(on.deferred)
-          return
-        }
+        if (shown) return // offline, Back: the kept page stays
         if (post) {
           failed = true
           return
@@ -617,7 +538,6 @@ export function startNavigation({
   // A prerendered page's file is made without a query, and so is the document it hydrates: once hydrated, its URL is the
   // browser's (a state the query holds works at a direct load; its loader never saw the query)
   if (location.pathname + location.search !== on.url) settle(false)
-  if (initial.deferred?.length) ask(initial.deferred)
 }
 
 // What this client adds to `history.state` outlives a deploy: the build running when the browser comes back to an entry
@@ -951,8 +871,7 @@ export function closeShallow(to: string) {
   } else navigate(to, { shallow: true, replace: true })
 }
 
-export function again(only?: string[]) {
+export function again() {
   if (!visit) return location.reload()
-  if (!only) return visit(location.href, { history: 'none', keep: true })
-  if (only.length) ask!(only)
+  visit(location.href, { history: 'none', keep: true })
 }

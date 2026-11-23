@@ -11,7 +11,7 @@ import { htmlFile, pageDataPath, pathOfPageData, staticFiles } from '../src/path
 import { prerenderPaths, type PrerenderRoute } from '../src/server/prerender.js'
 import { staticPages, type ServeStatic } from '../src/server/static.js'
 import { ownScripts, prerender, staticPolicy, withHeaderRules } from '../src/vite/prerender.js'
-import { calls } from './app/routes/_deferred/calls.js'
+import { calls } from './app/routes/_calls/calls.js'
 
 const route = (
   file: string,
