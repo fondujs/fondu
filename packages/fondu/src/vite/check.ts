@@ -33,7 +33,7 @@ export function routesPrerender(root: string): boolean {
     if (!code.includes('prerender')) return false
     try {
       const { body } = parseAst(code, { lang: file.endsWith('.tsx') ? 'tsx' : 'ts' })
-      return exportedNames(body as never).includes('prerender')
+      return exportedNames(body).includes('prerender')
     } catch (error) {
       throw new Error(`fondu: routes/${file}: ${(error as Error).message}`, { cause: error })
     }

@@ -35,6 +35,12 @@ test.each([
   )
 })
 
+test('a type-only export named layout does not override the inherited layout', () => {
+  expect(layoutImports('export { type Theme as layout } from "./theme"', 'blog/post.tsx')).toBe(
+    undefined,
+  )
+})
+
 test('rejects a cycle between directory layout declarations before running their modules', async () => {
   const app = tempApp({
     'app/routes/index.tsx': page,

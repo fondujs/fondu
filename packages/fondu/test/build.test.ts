@@ -306,6 +306,15 @@ describe('the server build checks the exports of every route file', () => {
       built({ 'app/routes/api.ts': 'export const loader = () => new Response("x")\n' }),
     ).rejects.toThrow('fondu: routes/api.ts exports `loader`')
   })
+  test('a .ts route with a named namespace re-export', async () => {
+    await expect(
+      built({
+        'app/routes/api.ts':
+          'export * as extra from "../metadata"; export const GET = () => new Response()',
+        'app/metadata.ts': 'export const title = "about"',
+      }),
+    ).rejects.toThrow('fondu: routes/api.ts exports `extra`')
+  })
   test('a _middleware.ts with loader', async () => {
     await expect(
       built({
@@ -351,6 +360,10 @@ describe('prerendering follows the route exports', () => {
       [files({ 'app/routes/_parts/x.ts': 'export const prerender = true\n' }), false],
       [files({ 'app/routes/x.test.ts': 'export const prerender = true\n' }), false],
       [files({ 'app/routes/other.ts': 'export { a as prerender } from "./a"\n' }), true],
+      [files({ 'app/routes/api.ts': 'export type { Mode as prerender } from "../types"' }), false],
+      [files({ 'app/routes/api.ts': 'export { type Mode as prerender } from "../types"' }), false],
+      [files({ 'app/routes/api.ts': 'export declare const prerender: boolean' }), false],
+      [files({ 'app/routes/api.ts': 'export type * as prerender from "../types"' }), false],
     ]
     for (const [tree, expected] of cases) {
       app = tempApp(tree)

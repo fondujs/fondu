@@ -37,12 +37,7 @@ export function layoutImports(code: string, file: string): LayoutImport[] | unde
     )
   }
   for (const n of body) {
-    if (
-      n.type !== 'ExportNamedDeclaration' ||
-      n.exportKind === 'type' ||
-      !exportedNames([n as never]).includes('layout')
-    )
-      continue
+    if (n.type !== 'ExportNamedDeclaration' || !exportedNames([n]).includes('layout')) continue
     const decl = n.declaration
     if (decl?.type !== 'VariableDeclaration') return fail()
     for (const item of decl.declarations) {
