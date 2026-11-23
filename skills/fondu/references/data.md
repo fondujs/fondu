@@ -18,10 +18,12 @@ Docs: [pages](https://fondu.dev/docs/pages.md#a-slow-prop), [routes](https://fon
 ## A slow prop
 
 A page is sent with all its props. To keep a slow one from holding it, render the page without it and call a `.ts` route
-from the page with `request()`:
+from the page with `request()`. Put the `.ts` route in the page's directory (`dashboard/stats.ts` beside
+`dashboard/index.tsx`), under the same `_middleware.ts`. A `.ts` route is guarded only by the `_middleware.ts` files above
+it: one outside the directory is open to anyone who asks for its URL.
 
 ```tsx
-// app/routes/dashboard.tsx
+// app/routes/dashboard/index.tsx
 import { defineHandler, render } from 'fondu'
 import { request } from 'fondu/client'
 import { useEffect, useState } from 'react'
@@ -32,7 +34,8 @@ export default function Dashboard({ user }: { user: User }) {
   const [stats, setStats] = useState<Stats | null>()
   useEffect(() => {
     const ask = new AbortController()
-    request('/api/stats', { signal: ask.signal }).then(setStats, () => setStats(null))
+    // an error shows as "not available"; leaving the page aborts the request
+    request('/dashboard/stats', { signal: ask.signal }).then(setStats, () => setStats(null))
     return () => ask.abort()
   }, [])
   return (
@@ -44,9 +47,10 @@ export default function Dashboard({ user }: { user: User }) {
 }
 ```
 
-The route is `app/routes/api/stats.ts` with `export const GET = defineHandler(async (c) => c.json(await loadStats()))`.
+The route is `app/routes/dashboard/stats.ts` with `export const GET = defineHandler(async (c) => c.json(await loadStats()))`.
 
-- The document and a page without JavaScript show the loading state.
+- The document and a page without JavaScript show the loading state (`undefined`); a failed request shows the error state
+  (`null`), and leaving the page aborts the request.
 - What decides the status or a redirect is awaited in the loader.
 - A promise as a prop of `render()` (`{ stats: loadStats() }`) throws: JSON would send `{}`. `await` it. A promise inside
   a prop is not checked.
