@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 
 import '../styles/app.css'
 
-// Around every page (a directory's _layout.tsx: around its pages), kept mounted while pages change
+// Around every page, kept mounted while pages change
 export default function Layout({ children }: { children: ReactNode }) {
   return (
     <>

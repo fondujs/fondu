@@ -64,7 +64,6 @@ if (values.help) {
   console.log(HELP)
   process.exit(0)
 }
-// --yes, or no terminal to ask in: a question not answered by an option takes its default
 const asking = !values.yes && process.stdin.isTTY
 const done = (value) => {
   if (p.isCancel(value)) {
@@ -214,7 +213,6 @@ if (target === 'cloudflare') {
   )
 }
 
-// a git repository: asked for unless the app is in one already (or git isn't there)
 const git = (args) => spawnSync('git', args, { cwd: root, stdio: 'ignore' })
 const inRepo = git(['rev-parse', '--is-inside-work-tree']).status === 0
 const gitThere = inRepo || !git(['--version']).error

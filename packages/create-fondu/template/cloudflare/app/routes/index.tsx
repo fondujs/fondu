@@ -7,8 +7,7 @@ export const loader = defineHandler((c) =>
   render(c, Index, { greeting: env.GREETING, path: c.req.path }),
 )
 
-// The page: the only part of a route file the browser gets (loader, action and actions are
-// server code, removed from its copy)
+// The page is all of a route file the browser gets: loader and action are server code, removed from its copy
 export default function Index({ greeting, path }: { greeting: string; path: string }) {
   return (
     <>
