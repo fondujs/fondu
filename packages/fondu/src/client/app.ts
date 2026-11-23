@@ -182,6 +182,12 @@ const subscribe = (listener: () => void) => {
 function setNavigation(
   next: { to: string; form: HTMLFormElement | null; post: boolean; failed?: boolean } | null,
 ) {
+  const wasBusy = navigation.state === 'failed' ? null : navigation.form
+  const busy = next && !next.failed ? next.form : null
+  if (wasBusy !== busy) {
+    wasBusy?.removeAttribute('aria-busy')
+    busy?.setAttribute('aria-busy', 'true')
+  }
   navigation = next
     ? {
         state: next.failed ? 'failed' : next.post ? 'submitting' : 'loading',

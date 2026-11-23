@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 
-import { expect, test, type Browser, type Page } from '@playwright/test'
+import { expect, test, type Browser, type Page, type Request } from '@playwright/test'
 
 // fondu/client against the browser itself: each case runs with the client and without JavaScript (the browser's own
 // navigation, the expected outcome), and the two must end the same: URL, page, history, scroll position.
@@ -271,6 +271,37 @@ test.describe('useForm: the browser checks a form as the server does', () => {
     await expect(page.locator('#state')).toHaveText('idle')
     await expect(page.locator('#failed')).toHaveText('false')
     expect(errors).toEqual([])
+  })
+
+  test('a second submit keeps the form busy after the first is cancelled', async ({ page }) => {
+    await open(page, '/checked')
+    const form = page.locator('#checked')
+    const submit = form.locator('button')
+    const isSubmit = (request: Request) =>
+      request.method() === 'POST' && new URL(request.url()).pathname === '/checked'
+    let release!: () => void
+    const gate = new Promise<void>((resolve) => (release = resolve))
+    await page.route('**/checked', async (route) => {
+      if (isSubmit(route.request())) await gate
+      await route.continue()
+    })
+    try {
+      const first = page.waitForRequest(isSubmit)
+      await submit.click()
+      const firstRequest = await first
+      await expect(form).toHaveAttribute('aria-busy', 'true')
+
+      const cancelled = page.waitForEvent('requestfailed', (request) => request === firstRequest)
+      const second = page.waitForRequest(isSubmit)
+      await submit.click()
+      await Promise.all([cancelled, second])
+      await expect(page.locator('#state')).toHaveText('submitting')
+      await expect(form).toHaveAttribute('aria-busy', 'true')
+    } finally {
+      release()
+    }
+    await expect(page.locator('#received')).toContainText('Ada')
+    await expect(form).not.toHaveAttribute('aria-busy')
   })
 })
 

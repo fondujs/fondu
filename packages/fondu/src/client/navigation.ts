@@ -246,13 +246,10 @@ export function startNavigation({
     // a kept page is on the screen at once: the server's comes quietly, no pending state (the navigation it
     // interrupted, aborted, ends here)
     const shown = options.kept
-    // aria-busy: for its submit buttons' pending state (CSS, or useNavigation()), and for assistive technology
-    form?.setAttribute('aria-busy', 'true')
     const to = url.pathname + url.search + url.hash
     pending(shown ? null : { to, form, post })
     let failed = false
     const done = () => {
-      form?.removeAttribute('aria-busy')
       if (!shown && current === controller)
         pending(failed ? { to, form, post, failed: true } : null)
     }
