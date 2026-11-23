@@ -91,6 +91,33 @@ test.describe('<base target>', () => {
   })
 })
 
+for (const javaScriptEnabled of [true, false]) {
+  test.describe(`<base href> and forms ${javaScriptEnabled ? 'with' : 'without'} JavaScript`, () => {
+    test.use({ javaScriptEnabled })
+    for (const override of [false, true])
+      test(
+        override ? 'a relative submitter formaction' : 'a relative form action',
+        async ({ page }) => {
+          await page.goto('/vt/a')
+          if (javaScriptEnabled) await hydrated(page)
+          await page.evaluate((override) => {
+            const base = document.createElement('base')
+            base.href = '/'
+            document.head.append(base)
+            const form = document.querySelector<HTMLFormElement>('#form')!
+            if (override) {
+              form.method = 'post'
+              form.querySelector('button')!.setAttribute('formaction', 'echo')
+            } else form.setAttribute('action', 'echo')
+          }, override)
+          await page.locator('#form button').click()
+          await expect(page).toHaveURL((url) => url.pathname === '/echo')
+          await expect(page.locator('#received')).toContainText(override ? '"POST"' : '"GET"')
+        },
+      )
+  })
+}
+
 test.describe('<base target> and forms', () => {
   // /form: its GET form `#get` (to /echo), with a base added; `#get-self` has target="_self", `#self` is a submitter
   // with formtarget="_self"
