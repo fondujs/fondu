@@ -3,6 +3,7 @@ import { relative, sep } from 'node:path'
 import type { EnvironmentModuleNode, Plugin } from 'vite'
 
 import { isPageFile } from '../paths.js'
+import { exportedNames } from './strip.js'
 
 export const PROPS_EVENT = 'fondu:props'
 
@@ -47,7 +48,7 @@ export function hmr(): Plugin {
         const file = id.split('?')[0]!
         const rel = relative(`${root}/app/routes`, file).split(sep).join('/')
         if (rel.startsWith('..') || !isPageFile(rel)) return
-        const names = namedExports(this.parse(code) as unknown as Program)
+        const names = exportedNames(this.parse(code).body).filter((name) => name !== 'default')
         if (!names.length) return
         return {
           code: `${code}\n;(window.${PAGE_EXPORTS} ??= {})[${JSON.stringify(file)}] = ${JSON.stringify(names)};\n`,
@@ -74,25 +75,4 @@ export function hmr(): Plugin {
       if (!inBrowser) return []
     },
   }
-}
-
-type AstNode = { type: string; [key: string]: unknown }
-type Program = { body: AstNode[] }
-
-function namedExports(program: Program): string[] {
-  const names: string[] = []
-  for (const node of program.body) {
-    if (node.type !== 'ExportNamedDeclaration') continue
-    const declaration = node.declaration as {
-      id?: { name: string } | null
-      declarations?: Array<{ id: { type: string; name?: string } }>
-    } | null
-    if (declaration?.id) names.push(declaration.id.name)
-    for (const d of declaration?.declarations ?? [])
-      if (d.id.type === 'Identifier') names.push(d.id.name!)
-    for (const s of (node.specifiers as Array<{ exported: { name?: string; value?: string } }>) ??
-      [])
-      names.push(s.exported.name ?? s.exported.value!)
-  }
-  return names.filter((n) => n !== 'default')
 }

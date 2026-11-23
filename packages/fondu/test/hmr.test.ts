@@ -1,6 +1,8 @@
+import { createServer } from 'vite'
 import { describe, expect, test } from 'vitest'
 
-import { reach } from '../src/vite/hmr.js'
+import { hmr, reach } from '../src/vite/hmr.js'
+import { tempApp } from './support/build.js'
 
 type Node = { file: string | null; importers: Set<Node> }
 function graph(edges: Record<string, string[]>) {
@@ -58,4 +60,31 @@ describe('what a change reaches on the server', () => {
     })
     expect(reach(modules(at('app/lib/shared.ts')), root)).toEqual({ routes: true, document: true })
   })
+})
+
+test('Fast Refresh ignores destructured metadata exported by an MDX page', async () => {
+  const app = tempApp({ 'app/routes/docs.mdx': '# Docs' })
+  const dev = await createServer({
+    root: app.root,
+    configFile: false,
+    logLevel: 'silent',
+    server: { middlewareMode: true, ws: false },
+    plugins: [
+      {
+        name: 'test-mdx',
+        transform(_code, id) {
+          if (id.endsWith('.mdx'))
+            return 'export const { title } = { title: "Docs" }; export default function Docs() {}'
+        },
+      },
+      hmr(),
+    ],
+  })
+  try {
+    const result = await dev.environments.client!.transformRequest('/app/routes/docs.mdx')
+    expect(result?.code).toMatch(/__fondu_pageExports.*\["title"\]/s)
+  } finally {
+    await dev.close()
+    app.remove()
+  }
 })

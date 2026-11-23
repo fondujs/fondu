@@ -395,14 +395,21 @@ export function withoutLayout(code: string, body: Node[]): string {
   return out
 }
 
-export function exportedNames(body: Node[]): string[] {
+export function exportedNames(body: ReturnType<typeof parseAst>['body']): string[] {
   const names = new Set<string>()
   for (const node of body) {
-    if (node.type === 'ExportDefaultDeclaration') names.add('default')
-    if (node.type !== 'ExportNamedDeclaration') continue
-    for (const name of bound(node.declaration as Node | null)) names.add(name)
-    for (const s of node.specifiers as Array<Node & { exported: Name }>)
-      names.add(nameOf(s.exported))
+    if ('exportKind' in node && node.exportKind === 'type') continue
+    if (node.type === 'ExportDefaultDeclaration') {
+      const { type } = node.declaration
+      if (type !== 'TSInterfaceDeclaration' && type !== 'TSDeclareFunction') names.add('default')
+    } else if (node.type === 'ExportAllDeclaration') {
+      if (node.exported) names.add(nameOf(node.exported))
+    } else if (node.type === 'ExportNamedDeclaration') {
+      if (node.declaration?.type !== 'TSDeclareFunction')
+        for (const name of bound(node.declaration as Node | null)) names.add(name)
+      for (const specifier of node.specifiers)
+        if (specifier.exportKind !== 'type') names.add(nameOf(specifier.exported))
+    }
   }
   return [...names].sort()
 }
@@ -446,14 +453,12 @@ export function stripRoutes(): Plugin {
       if (this.environment.config.consumer === 'server') {
         if (this.environment.mode !== 'build') return
         if (id.includes('?') || !(isRouteFile(file) || SPECIAL_FILE.test(file))) return
-        const program = this.parse(code) as unknown as { body: Node[] }
-        return void checkExportNames(file, exportedNames(program.body))
+        return void checkExportNames(file, exportedNames(this.parse(code).body))
       }
       if (isRouteFile(file)) checkRouteName(file)
       // a layout or the error page is not stripped: what the server refuses at startup fails the build
       if (/(?:^|\/)_(?:layout|error)\.tsx$/.test(file) && !/\?fondu-(?:view|outer)$/.test(id)) {
-        const program = this.parse(code) as unknown as { body: Node[] }
-        return void checkExportNames(file, exportedNames(program.body))
+        return void checkExportNames(file, exportedNames(this.parse(code).body))
       }
     },
   }
