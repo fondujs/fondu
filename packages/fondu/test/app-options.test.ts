@@ -9,15 +9,13 @@ describe('createApp() options', () => {
       undefined,
       {},
       { document: () => '' },
-      { trailingSlash: 'trim' },
-      { trailingSlash: 'append' },
       { csrf: false },
       { csrf: { origin: 'https://example.com' } },
       { bodyLimit: 1000 },
       { bodyLimit: false },
       { secureHeaders: false },
       { secureHeaders: { contentSecurityPolicy: false } },
-      { document: undefined, trailingSlash: undefined, bodyLimit: undefined },
+      { document: undefined, bodyLimit: undefined },
     ])
       expect(make(options), JSON.stringify(options)).not.toThrow()
   })
@@ -56,10 +54,11 @@ describe('createApp() options', () => {
     )
   })
 
-  test('trailingSlash is trim or append', () => {
-    expect(make({ trailingSlash: 'bogus' })).toThrow(
-      "`trailingSlash` must be 'trim' or 'append', not 'bogus'",
-    )
+  test('trailingSlash was removed: any value fails, with what to do', () => {
+    for (const value of ['trim', 'append', undefined])
+      expect(make({ trailingSlash: value }), String(value)).toThrow(
+        'fondu: createApp(): `trailingSlash` was removed; URLs are always trimmed: `/about/` redirects to `/about`. Delete the option',
+      )
   })
 
   test('csrf and secureHeaders are false or an object', () => {

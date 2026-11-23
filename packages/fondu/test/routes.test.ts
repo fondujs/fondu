@@ -5,8 +5,7 @@ import { routeTable, type RouteModule } from '../src/server/routes.js'
 
 const page: RouteModule = { GET: (c) => c.text('page') }
 const files = (...names: string[]) => Object.fromEntries(names.map((n) => [n, page]))
-const table = (modules: Record<string, RouteModule>, append = false) =>
-  routeTable(modules, append).map((r) => r.pattern)
+const table = (modules: Record<string, RouteModule>) => routeTable(modules).map((r) => r.pattern)
 
 describe('route names', () => {
   test('a name with syntax characters that is no route form stops the app at startup', () => {
@@ -52,14 +51,11 @@ describe("a directory's own files, with another extension", () => {
 
 describe('optional segments', () => {
   test('a file, two routes: the same middleware', () => {
-    const routes = routeTable(
-      {
-        ...files('[[lang]]/about.ts'),
-        '_middleware.ts': {},
-        '[[lang]]/_middleware.ts': {},
-      },
-      false,
-    )
+    const routes = routeTable({
+      ...files('[[lang]]/about.ts'),
+      '_middleware.ts': {},
+      '[[lang]]/_middleware.ts': {},
+    })
     expect(routes).toEqual([
       {
         file: '[[lang]]/about.ts',
@@ -114,11 +110,9 @@ describe('params: the values a param takes', () => {
     ).toEqual(['/', '/about', '/:lang{(?:de|zh-Hant)}', '/:slug', '/:rest{.+}'])
   })
   test('a catch-all is `:name*` as a key and `:name{.+}` for Hono', () => {
-    const [route] = routeTable(files('files/[...path].ts'), false)
+    const [route] = routeTable(files('files/[...path].ts'))
     expect(route!.path).toBe('/files/:path*')
     expect(route!.pattern).toBe('/files/:path{.+}')
-    const [slashed] = routeTable(files('files/[...path].ts'), true)
-    expect(slashed!.path).toBe('/files/:path*')
   })
   test('in Hono: a listed value or another route, never part of a segment', async () => {
     const app = new Hono()
@@ -126,7 +120,7 @@ describe('params: the values a param takes', () => {
       ...files('[[lang]]/index.ts', '[[lang]]/about.ts', '[slug].ts', '[slug]/about.ts'),
       '[[lang]]/_middleware.ts': lang,
     }
-    for (const { file, pattern } of routeTable(modules, false))
+    for (const { file, pattern } of routeTable(modules))
       app.get(pattern, (c) => c.text(`${file} ${JSON.stringify(c.req.param())}`))
     const answer = async (path: string) => (await app.request(path)).text()
     expect(await answer('/de')).toBe('[[lang]]/index.ts {"lang":"de"}')
@@ -136,14 +130,6 @@ describe('params: the values a param takes', () => {
     expect(await answer('/xde')).toBe('[slug].ts {"slug":"xde"}')
     expect(await answer('/DE')).toBe('[slug].ts {"slug":"DE"}')
     expect(await answer('/zh/about')).toBe('[slug]/about.ts {"slug":"zh"}')
-  })
-  test('trailing slashes (append) for a listed param too, never for a catch-all', () => {
-    expect(
-      table(
-        { ...files('[[lang]]/index.ts', 'docs/[...p].ts'), '[[lang]]/_middleware.ts': lang },
-        true,
-      ),
-    ).toEqual(['/', '/docs/:p{.+}', '/:lang{(?:de|zh-Hant)}/'])
   })
   test('no values: the URLs without the segment only, and a route with none fails', () => {
     expect(
@@ -193,7 +179,7 @@ describe('params: the values a param takes', () => {
 describe('precedence: specificity of each segment, never the spelling of a param', () => {
   const serve = (modules: Record<string, RouteModule>) => {
     const app = new Hono()
-    for (const { file, pattern, middleware } of routeTable(modules, false))
+    for (const { file, pattern, middleware } of routeTable(modules))
       app.get(
         pattern,
         async (c, next) => {
@@ -220,7 +206,7 @@ describe('precedence: specificity of each segment, never the spelling of a param
     }
   })
   test('the order does not depend on how params are spelled', () => {
-    const order = (a: string, b: string) => routeTable(files(a, b), false).map((r) => r.file)
+    const order = (a: string, b: string) => routeTable(files(a, b)).map((r) => r.file)
     expect(order('[z]/new.ts', '[a]/[id].ts')).toEqual(['[z]/new.ts', '[a]/[id].ts'])
     expect(order('[a]/new.ts', '[z]/[id].ts')).toEqual(['[a]/new.ts', '[z]/[id].ts'])
     expect(order('[a]/[id].ts', '[z]/new.ts')).toEqual(['[z]/new.ts', '[a]/[id].ts'])
@@ -258,8 +244,8 @@ describe('precedence: specificity of each segment, never the spelling of a param
   })
   test('equal specificity: the order is the same for any input order', () => {
     const all = names('[b]/x.ts', '[a]/y.ts', 'm.ts', 'n.ts')
-    const order = routeTable(files(...all), false).map((r) => r.file)
-    expect(routeTable(files(...[...all].reverse()), false).map((r) => r.file)).toEqual(order)
+    const order = routeTable(files(...all)).map((r) => r.file)
+    expect(routeTable(files(...[...all].reverse())).map((r) => r.file)).toEqual(order)
   })
 })
 
@@ -343,8 +329,6 @@ describe('in the app', async () => {
   test('trailing slashes', async () => {
     const trimmed = await app.request('/de/hello/')
     expect([trimmed.status, trimmed.headers.get('location')]).toEqual([301, '/de/hello'])
-    const appended = createApp({ trailingSlash: 'append' })
-    expect(await answer('/de/hello/', appended)).toBe('200 de hello de')
   })
 })
 

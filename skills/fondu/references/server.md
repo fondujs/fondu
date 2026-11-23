@@ -19,12 +19,11 @@ of `app/` is the app's: one arrangement is `components/`, `modules/<domain>/` (s
 ## `createApp(options?)`
 
 Returns the Hono app made of `app/routes/`. It has CSRF protection, security headers, a Content Security Policy,
-`/users/` redirecting to `/users` and error pages built in.
+`/users/` redirecting to `/users` (301 for GET and HEAD, 308 for other methods, the query kept; there is no option) and error pages built in.
 
 | Option          | Is                                                                      |
 | --------------- | ----------------------------------------------------------------------- |
 | `document`      | the HTML around pages (see [rendering.md](rendering.md))                |
-| `trailingSlash` | `'trim'` (default) or `'append'`                                        |
 | `csrf`          | `hono/csrf`'s options, or `false`                                       |
 | `bodyLimit`     | the largest request body in bytes (default 10 MB, then 413), or `false` |
 | `secureHeaders` | `hono/secure-headers`' options, or `false`                              |

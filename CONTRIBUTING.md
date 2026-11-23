@@ -47,8 +47,8 @@ How a change is decided:
   one rule become one, not two kept in step.
 - **A proven design before a new one.** Inertia, Laravel and React Router have solved most of this: follow the one
   that fits, and say which.
-- **An option earns its place.** Kept, though small: `trailingSlash: 'append'` (an app can't set it up itself) and
-  `loadDocument()` (the name for a document load of a page). Removed: `.jsx` route files, `loader` in a `.ts` file.
+- **An option earns its place.** Kept, though small: `loadDocument()` (the name for a document
+  load of a page). Removed: `.jsx` route files, `loader` in a `.ts` file, `trailingSlash`.
 - **Breaking changes come together**, in one minor version before 1.0, each with the message that tells an app what
   to change.
 

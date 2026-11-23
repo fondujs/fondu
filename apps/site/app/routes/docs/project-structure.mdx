@@ -38,7 +38,7 @@ plugins: [cloudflare({ viteEnvironment: { name: 'ssr' } }), fondu({ target: 'clo
 ## `app/server.ts`
 
 The server: `createApp()` returns a Hono app made of `app/routes/`, with CSRF protection, security headers (a Content
-Security Policy included), one URL per page (`/users/` redirects to `/users`) and error pages built in.
+Security Policy included), one URL per page (`/users/` redirects to `/users`: 301 for GET and HEAD, 308 for other methods, with no option for it) and error pages built in.
 
 ```ts
 import { createApp } from 'fondu'
@@ -46,7 +46,7 @@ import { createApp } from 'fondu'
 export default createApp()
 ```
 
-Its options: `document` (the HTML around pages, as in [The document](/docs/document)), `trailingSlash: 'append'`, `csrf` and `secureHeaders`
+Its options: `document` (the HTML around pages, as in [The document](/docs/document)), `csrf` and `secureHeaders`
 (Hono's options, or `false`), and `bodyLimit` (bytes, or `false`). The [API](/docs/api#createapp) lists them.
 
 ## Server code
