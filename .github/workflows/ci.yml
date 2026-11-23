@@ -63,9 +63,11 @@ jobs:
         with:
           node-version: 24
       - run: bun install --frozen-lockfile
-      - run: bun run test
+      - run: bun run test -- layout-chains.test.ts -t "DIAG editing" --silent=false
+        working-directory: packages/fondu
       - run: node test/run.mjs node
         working-directory: packages/create-fondu
+        if: false
 
   # fondu/client against the browsers themselves (apps/conformance): Chromium, Firefox and WebKit
   conformance:

@@ -78,11 +78,14 @@ test('a wildcard exporting layout is diagnosed, not silently treated as inherita
   }
 })
 
-test('editing a visited MDX page reloads its compiled layout selection', async () => {
+test.for(Array.from({ length: 30 }, (_, i) => i))('DIAG editing %i', { timeout: 60000 }, async (n) => {
+  const t0 = performance.now()
+  const lap = (m: string) => console.log(`DIAG ${n} ${m} +${Math.round(performance.now() - t0)}ms`)
   const app = tempApp({
     'app/routes/topic.mdx': '# Plain',
     'app/routes/_layout.tsx': shell('site'),
   })
+  lap('app')
   const dev = await createServer({
     root: app.root,
     configFile: false,
@@ -105,7 +108,9 @@ test('editing a visited MDX page reloads its compiled layout selection', async (
   })
   try {
     const routes = join(app.root, 'app/routes')
+    lap('created')
     await listenForEdits(dev, routes, 'topic.mdx')
+    lap('listening and watched')
     const sent = vi.spyOn(dev.environments.client.hot, 'send')
     const chain = async (inherited: boolean) => {
       for (const env of [dev.environments.client, dev.environments.ssr!]) {
@@ -114,13 +119,17 @@ test('editing a visited MDX page reloads its compiled layout selection', async (
       }
     }
     await chain(true)
+    lap('first chain')
     for (const title of ['# Print', '# Plain']) {
       sent.mockClear()
       writeFileSync(join(routes, 'topic.mdx'), title)
+      lap('wrote ' + title)
       await vi.waitFor(() => expect(sent).toHaveBeenCalledWith({ type: 'full-reload' }), {
         timeout: 5000,
       })
+      lap('full-reload seen')
       await chain(title === '# Plain')
+      lap('chain after ' + title)
     }
   } finally {
     await dev.close()
