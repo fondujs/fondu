@@ -23,13 +23,8 @@ fallback and is sent when it resolves.
 
 ## No server render
 
-```ts
-// vite.config.ts: no server render is built for the app
-fondu({ target: 'node', ssr: false })
-```
-
-For some routes: `withoutSsr()` as a middleware, in a directory's `_middleware.ts` (`export default withoutSsr()`), or in a
-handler: `defineHandler(withoutSsr(), (c) => render(c, Dashboard))`. Such a page is empty until its JavaScript runs.
+`withoutSsr()` is a middleware: in a directory's `_middleware.ts` (`export default withoutSsr()`; in the root one, for
+every route), or in a handler: `defineHandler(withoutSsr(), (c) => render(c, Dashboard))`. Such a page is empty until its JavaScript runs.
 
 ## Static pages
 

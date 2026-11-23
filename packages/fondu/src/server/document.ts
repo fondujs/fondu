@@ -29,7 +29,7 @@ export const settings = new WeakMap<Context, { document?: DocumentTemplate; erro
 
 const browserOnly = new WeakSet<Context>()
 
-/** Renders the pages of these requests in the browser only. For no server rendering at all: `fondu({ ssr: false })`. */
+/** Renders the pages of these requests in the browser only. */
 export const withoutSsr = (): MiddlewareHandler => async (c, next) => {
   browserOnly.add(c)
   await next()
@@ -113,7 +113,7 @@ export async function renderDocument(
   }
   try {
     // a HEAD: Hono drops its body without cancelling it, so React would keep rendering for nothing
-    if (renderPage && !browserOnly.has(c) && c.req.method !== 'HEAD') {
+    if (!browserOnly.has(c) && c.req.method !== 'HEAD') {
       // through JSON (a Date a string) so the markup is the same on both sides; a copy of its own, as what the render changes is not page data
       const stream = await renderPage(JSON.parse(json), {
         nonce,

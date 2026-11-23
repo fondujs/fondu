@@ -10,8 +10,7 @@ describe('fondu() options', () => {
       { target: 'node' },
       { target: 'bun' },
       { target: 'cloudflare' },
-      { target: 'node', ssr: false },
-      { target: 'node', ssr: undefined, react: undefined, progress: undefined },
+      { target: 'node', react: undefined, progress: undefined },
       { target: 'node', progress: false },
       { target: 'node', viewTransitions: true },
       { target: 'node', viewTransitions: false },
@@ -45,7 +44,7 @@ describe('fondu() options', () => {
   test('port is no option: it says to set PORT', () => {
     for (const target of ['node', 'bun', 'cloudflare'])
       expect(make({ target, port: 3000 }), target).toThrow(
-        'fondu(): unknown option `port`. The options are target, ssr, react, progress, viewTransitions. There is no `port` option: the built server listens on the environment variable `PORT`, else 3000',
+        'fondu(): unknown option `port`. The options are target, react, progress, viewTransitions. There is no `port` option: the built server listens on the environment variable `PORT`, else 3000',
       )
     expect(make({ target: 'node', port: 3000, a: 1 })).toThrow('unknown options `port`, `a`')
     expect(make({ target: 'node', progress: { port: 1 } })).not.toThrow('PORT')
@@ -53,13 +52,16 @@ describe('fondu() options', () => {
 
   test('unknown keys', () => {
     expect(make({ target: 'node', prot: 3000 })).toThrow(
-      'fondu(): unknown option `prot`. The options are target, ssr, react, progress',
+      'fondu(): unknown option `prot`. The options are target, react, progress',
     )
     expect(make({ target: 'node', a: 1, b: 2 })).toThrow('unknown options `a`, `b`')
   })
 
-  test('ssr is a boolean', () => {
-    expect(make({ target: 'node', ssr: 'no' })).toThrow('fondu(): `ssr` must be true or false')
+  test('ssr is no option: withoutSsr() in the root _middleware.ts', () => {
+    for (const ssr of [true, false, 'no', undefined])
+      expect(make({ target: 'node', ssr })).toThrow(
+        'fondu: the ssr option is gone: use `withoutSsr()` in the root _middleware.ts (`export default withoutSsr()`)',
+      )
   })
 
   test('prerender is no option: a route exports it', () => {

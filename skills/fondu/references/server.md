@@ -65,7 +65,6 @@ no `port` option: the built server (Bun and Node) listens on `PORT`, else 3000.
 | Option            | Is                                                                                                                                                        |
 | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `target`          | `'bun'`, `'cloudflare'` or `'node'`                                                                                                                       |
-| `ssr`             | `false`: pages render in the browser only                                                                                                                 |
 | `progress`        | the progress bar: `{ color, delay, forms }` (default: the text color, 350 ms, forms included), or `false`                                                 |
 | `viewTransitions` | `true`: a navigation to another page has a view transition by default (not `keep` or `reload()`); a link or call opts out: [navigation.md](navigation.md) |
 | `react`           | passed to `@vitejs/plugin-react` (its `include` has `.mdx` by default): https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react       |

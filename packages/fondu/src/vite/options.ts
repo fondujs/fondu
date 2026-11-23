@@ -1,7 +1,7 @@
 import type { FonduOptions } from './index.js'
 
 const TARGETS = ['node', 'bun', 'cloudflare']
-const KEYS = ['target', 'ssr', 'react', 'progress', 'viewTransitions']
+const KEYS = ['target', 'react', 'progress', 'viewTransitions']
 const PROGRESS_KEYS = ['delay', 'color', 'forms']
 
 const isObject = (v: unknown): v is Record<string, unknown> =>
@@ -31,14 +31,17 @@ export function checkOptions(options: unknown): asserts options is FonduOptions 
     throw new Error(
       "fondu: the prerender option is gone: a route's export const prerender turns prerendering on",
     )
+  if ('ssr' in options)
+    throw new Error(
+      'fondu: the ssr option is gone: use `withoutSsr()` in the root _middleware.ts (`export default withoutSsr()`)',
+    )
   unknown(Object.keys(options), KEYS)
-  const { target, ssr, progress, react, viewTransitions } = options
+  const { target, progress, react, viewTransitions } = options
   if (target === undefined) fail("`target` is required: 'node', 'bun' or 'cloudflare'")
   if (!TARGETS.includes(target as string))
     fail(`\`target\` must be 'node', 'bun' or 'cloudflare', not ${show(target)}`)
-  for (const [name, value] of Object.entries({ ssr, viewTransitions }))
-    if (value !== undefined && typeof value !== 'boolean')
-      fail(`\`${name}\` must be true or false, not ${show(value)}`)
+  if (viewTransitions !== undefined && typeof viewTransitions !== 'boolean')
+    fail(`\`viewTransitions\` must be true or false, not ${show(viewTransitions)}`)
   if (progress !== undefined && progress !== false) {
     if (!isObject(progress))
       fail(`\`progress\` must be false or an object: ${PROGRESS_KEYS.join(', ')}`)

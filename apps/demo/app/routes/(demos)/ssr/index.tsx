@@ -108,9 +108,10 @@ export default function Ssr({ ssr }: { ssr: boolean }) {
         </DemoCard>
         <DemoCard title="No SSR at all" className="sm:col-span-2">
           <p className="mb-3 text-muted-foreground">
-            An app that never needs it (a dashboard): no server render is built.
+            An app that never needs it (a dashboard): the same middleware, in the root{' '}
+            <code>_middleware.ts</code>.
           </p>
-          {code(["fondu({ target: 'cloudflare', ssr: false })"])}
+          {code(['// routes/_middleware.ts — every route', 'export default withoutSsr()'])}
         </DemoCard>
       </div>
     </>

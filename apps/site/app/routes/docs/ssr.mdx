@@ -22,13 +22,7 @@ There is no separate render server to run, on any target: on Cloudflare the rend
 
 ## Turning it off
 
-For the whole app, in `vite.config.ts`: no server render is built.
-
-```ts
-fondu({ target: 'node', ssr: false })
-```
-
-For some routes, with `withoutSsr()`: their pages are rendered in the browser only. In a `_middleware.ts`, for a
+With `withoutSsr()`, the pages of some routes are rendered in the browser only. In a `_middleware.ts`, for a
 directory:
 
 ```ts
@@ -38,7 +32,7 @@ import { withoutSsr } from 'fondu'
 export default withoutSsr()
 ```
 
-Or in one handler: `defineHandler(withoutSsr(), (c) => render(c, Dashboard))`.
+In the root `app/routes/_middleware.ts`, for the whole app. Or in one handler: `defineHandler(withoutSsr(), (c) => render(c, Dashboard))`.
 
 A page rendered in the browser only is empty until its JavaScript runs, on a reload too, so the browser can paint a
 blank frame first. Keep the server render for pages whose first paint matters.
