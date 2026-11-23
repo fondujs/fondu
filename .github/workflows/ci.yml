@@ -27,6 +27,8 @@ jobs:
       - run: bun run typecheck
       - run: bun run test
       - run: bun run --filter create-fondu test # an app per target, built and served
+      - run: bun run build # fondu.dev: prerender, Pagefind and verify.ts
+        working-directory: apps/site
 
   # a report, never a gate: the size of fondu's browser code, and on a pull request its change against the base branch
   size:
