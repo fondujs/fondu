@@ -112,6 +112,10 @@ they share goes in a file of its own (`app/lib/`, `app/components/`).
 | `_layout.tsx`    | the component (default), optional `layout`                                           |
 | `_error.tsx`     | the component (default)                                                              |
 
+`vite build` checks the names, and the app checks the values at startup: `loader`, `action`, the values of `actions` and
+the HTTP methods are handlers (`defineHandler(...)`, a function or a list of them), and `prerender` is `true`, `false` or a
+function.
+
 The browser gets a page's file without its server code: [Server and client code](/docs/server-and-client).
 
 ## HTTP routes

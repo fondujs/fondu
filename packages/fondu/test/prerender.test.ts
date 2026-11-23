@@ -201,6 +201,25 @@ describe('paths', () => {
   })
 })
 
+describe('paths: prerender itself fails', () => {
+  test('a function that throws: the file of the export, and the export', async () => {
+    const { problems } = await prerenderPaths([
+      route('items/[id].tsx', '/items/:id', [undefined, () => Promise.reject(new Error('no db'))], {
+        settingFiles: ['items/[id].tsx', '_middleware.ts'],
+      }),
+    ])
+    expect(problems).toEqual(['routes/_middleware.ts: prerender failed: no db'])
+  })
+  test('a function that does not return a list', async () => {
+    const { problems } = await prerenderPaths([
+      route('items/[id].tsx', '/items/:id', [(() => 5) as never]),
+    ])
+    expect(problems).toEqual([
+      'routes/items/[id].tsx: prerender returns a list of params, [{ id: 1 }], not number',
+    ])
+  })
+})
+
 describe('paths: a param is one file name', () => {
   const pages = (pattern: string, ...values: Array<Record<string, string>>) =>
     prerenderPaths([route('x/[id].ts', pattern, [() => values])])

@@ -9,6 +9,7 @@ import { prerender, version } from 'virtual:fondu/assets'
 import {
   checkExportNames,
   checkRouteFiles,
+  HANDLERS,
   isPageFile,
   isRouteFile,
   METHODS,
@@ -64,8 +65,39 @@ const ROOT = '/app/routes/'
 const layoutComponent = (value: unknown) =>
   typeof value === 'function' || (typeof value === 'object' && value !== null)
 
+const kind = (value: unknown) =>
+  value === null ? 'null' : Array.isArray(value) ? 'a list' : typeof value
+
+const isHandler = (value: unknown) =>
+  typeof value === 'function' ||
+  (Array.isArray(value) && value.length > 0 && value.every((h) => typeof h === 'function'))
+
+function checkValues(file: string, mod: Record<string, unknown>) {
+  const fail = (message: string): never => {
+    throw new Error(`fondu: routes/${file}: ${message}`)
+  }
+  const handler = (name: string, value: unknown) => {
+    if (value !== undefined && !isHandler(value))
+      fail(`${name} is a handler (defineHandler), not ${kind(value)}`)
+  }
+  for (const name of [...HANDLERS.filter((h) => h !== 'actions'), ...METHODS])
+    if (name in mod) handler(name, mod[name])
+  const actions = mod.actions
+  if (actions !== undefined) {
+    if (typeof actions !== 'object' || actions === null || Array.isArray(actions))
+      fail(`actions is an object of handlers, { name: handler }, not ${kind(actions)}`)
+    for (const [name, value] of Object.entries(actions as object)) handler(`actions.${name}`, value)
+  }
+  const prerender = mod.prerender
+  if (prerender !== undefined && typeof prerender !== 'boolean' && typeof prerender !== 'function')
+    fail(
+      `prerender is true, false or a function returning the params of its pages, not ${kind(prerender)}`,
+    )
+}
+
 export function checkExports(file: string, mod: Record<string, unknown>) {
   checkExportNames(file, Object.keys(mod))
+  checkValues(file, mod)
   if (
     'layout' in mod &&
     (!Array.isArray(mod.layout) ||
@@ -74,6 +106,8 @@ export function checkExports(file: string, mod: Record<string, unknown>) {
     throw new Error(
       `fondu: routes/${file}: layout must list React components other than the module's own default export`,
     )
+  if ('layout' in mod && new Set(mod.layout as unknown[]).size !== (mod.layout as unknown[]).length)
+    throw new Error(`fondu: routes/${file}: layout lists the same component twice`)
   if (/\.(?:tsx|mdx)$/.test(file) && typeof mod.default !== 'function')
     throw new Error(
       `fondu: routes/${file} is a page: its default export is the component (code for the server only: a .ts file)`,
@@ -203,12 +237,12 @@ export function createApp(options: CreateAppOptions = {}): Hono {
       ...(page ? [routePage(page)] : []),
       ...middleware.flatMap((f) => chain(modules[f]!.default ?? [])),
     ]
+    const settingFiles = [file, ...[...middleware].reverse(), '_middleware.ts']
     prerendered.push({
       file,
       pattern: path,
-      settings: [file, ...[...middleware].reverse(), '_middleware.ts'].map(
-        (f) => modules[f]?.prerender,
-      ),
+      settings: settingFiles.map((f) => modules[f]?.prerender),
+      settingFiles,
       get: Boolean(mod.loader ?? mod.GET ?? page),
       others: [
         ...(mod.action || mod.actions || mod.POST ? ['POST'] : []),

@@ -437,6 +437,8 @@ export function exportedNames(body: Node[]): string[] {
   return [...names].sort()
 }
 
+const SPECIAL_FILE = /(?:^|\/)_(?:middleware\.ts|layout\.tsx|error\.tsx)$/
+
 /** the queries that make another module of a file (`?raw`: its text, `?url`, `?worker`…): Vite's own plugins load those */
 const OTHER_MODULE = /[?&](?:raw|url|inline|no-inline|worker|sharedworker)(?:[&=]|$)/
 
@@ -474,10 +476,15 @@ export function stripRoutes(): Plugin {
       },
     },
     transform(code, id) {
-      if (this.environment.config.consumer !== 'client') return
       const file = relative(`${root}/app/routes`, id.split('?')[0]!).split(sep).join('/')
       if (file.startsWith('..')) return
-      if (isRouteFile(file)) checkRouteName(file) // as the server's start does
+      if (this.environment.config.consumer === 'server') {
+        if (this.environment.mode !== 'build') return
+        if (id.includes('?') || !(isRouteFile(file) || SPECIAL_FILE.test(file))) return
+        const program = this.parse(code) as unknown as { body: Node[] }
+        return void checkExportNames(file, exportedNames(program.body))
+      }
+      if (isRouteFile(file)) checkRouteName(file)
       // a layout or the error page is not stripped: what the server refuses at startup fails the build
       if (/(?:^|\/)_(?:layout|error)\.tsx$/.test(file) && !/\?fondu-(?:view|outer)$/.test(id)) {
         const program = this.parse(code) as unknown as { body: Node[] }
