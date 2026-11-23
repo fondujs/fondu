@@ -1,5 +1,3 @@
-// The server's route manifest (virtual:fondu/assets, production): each page's files once, and not the entry's, which
-// assetTags() adds to every page; the tags of a page are what the full lists made
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'

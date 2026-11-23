@@ -8,7 +8,6 @@ import { isRouteFile } from '../src/paths.js'
 
 const source = (file: string) => readFileSync(new URL(`../src/${file}`, import.meta.url), 'utf8')
 
-/** the patterns of the array literal that follows `marker`, as `import.meta.glob` reads them (`!`: an exclusion) */
 function patterns(file: string, marker: string): string[] {
   const text = source(file)
   const start = text.indexOf(marker)

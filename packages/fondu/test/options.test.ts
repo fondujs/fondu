@@ -2,7 +2,6 @@ import { describe, expect, test } from 'vitest'
 
 import fondu from '../src/vite/index.js'
 
-// the options are checked when the plugin is created, as vite.config.ts is read
 const make = (options?: unknown) => () => (fondu as (o?: unknown) => unknown)(options)
 
 describe('fondu() options', () => {

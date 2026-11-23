@@ -1,5 +1,4 @@
-// request() of fondu/client: the request it builds, the answer it reads, the errors it throws. The types are in
-// types.test.ts; the registry there declares routes, so the call is loose here.
+// the registry in types.test.ts declares routes, so the call is loose here
 import { createApp } from 'fondu'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
@@ -147,7 +146,6 @@ describe('against the app', () => {
     expect(refused).toBeInstanceOf(RequestError)
     expect(refused.status).toBe(422)
     expect(Object.keys(refused.data.errors)).toEqual(['n'])
-    // the answer of the handler: its c.json(…, 201), parsed
     expect(await call('/api/data', { method: 'POST', body: { n: 3 } })).toEqual({ n: 3 })
     expect(await call('/api/data')).toEqual({ ok: true })
     const missing = await call('/api/data', { method: 'PUT' }).catch((e) => e)

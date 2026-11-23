@@ -6,13 +6,12 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 import { ownScripts } from '../src/vite/prerender.js'
 import { arm, release } from './app/routes/_stream/gate.js'
 
-// the scroll-restoring script of the document before it was streamed (origin/main), as written
+// the scroll-restoring script as it was written before the document was streamed
 const TODAYS_SCRIPT = `try{var k=history.state&&history.state["__fondu"],p=k&&JSON.parse(sessionStorage.getItem("fondu-scroll:"+k));if(p){var go=function(){scrollTo(+p.x||0,+p.y||0)},off=function(){go=0};go();["wheel","touchstart","keydown","mousedown"].forEach(function(t){addEventListener(t,off,{once:!0,passive:!0})});addEventListener("load",function(){setTimeout(function(){go&&go()})})}}catch(e){}`
 
 const app = createApp()
 const html = { Accept: 'text/html' }
 
-/** the next chunk of a response's body, as text (`''` when it has ended) */
 const reader = (res: Response) => {
   const read = res.body!.getReader()
   const decoder = new TextDecoder()
@@ -80,7 +79,6 @@ describe('a streamed document', () => {
     const nonce = /'nonce-([\w+/=]+)'/.exec(res.headers.get('content-security-policy')!)![1]
     const next = reader(res)
     const first = (await next())!
-    // the shell is several chunks of React's: the first is already past what one chunk holds
     expect(first.length).toBeGreaterThan(12_800)
     setTimeout(release, 20)
     let text = first
@@ -150,7 +148,6 @@ describe('a streamed document', () => {
 })
 
 describe('a client that leaves (#223)', () => {
-  /** reads to the end of a stream or gives up: a render that never stops would hang the test */
   const ends = async (res: Response, next = reader(res), ms = 1500) => {
     let text = ''
     const done = (async () => {
@@ -173,7 +170,6 @@ describe('a client that leaves (#223)', () => {
     gone.abort()
     const { closed, text: rest } = await ends(res, next)
     expect(closed).toBe(true)
-    // React hands the boundary to the browser to render, and the document is complete
     expect(rest.endsWith('</body></html>')).toBe(true)
     expect(error).not.toHaveBeenCalled()
     release() // the next test's boundary is its own

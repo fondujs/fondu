@@ -14,7 +14,7 @@ test('the scripts the browser runs: no type, JavaScript, module, importmap, spec
     ' type="MODULE"',
     ' type="importmap"',
     ' type="speculationrules"',
-    ' data-type="application/ld+json"', // another attribute
+    ' data-type="application/ld+json"',
     ' data-x="type=json"',
   ])
     expect(runsAsScript(attrs), attrs).toBe(true)

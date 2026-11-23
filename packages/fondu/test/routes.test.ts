@@ -1,4 +1,3 @@
-// The routes of app/routes/: their URLs for Hono, in order, and what fails at startup.
 import { Hono } from 'hono'
 import { describe, expect, test } from 'vitest'
 
@@ -192,7 +191,6 @@ describe('params: the values a param takes', () => {
 })
 
 describe('precedence: specificity of each segment, never the spelling of a param', () => {
-  // each route answers with its file and the middleware it was given (as app.ts chains them)
   const serve = (modules: Record<string, RouteModule>) => {
     const app = new Hono()
     for (const { file, pattern, middleware } of routeTable(modules, false))

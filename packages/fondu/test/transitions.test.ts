@@ -1,7 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
-// The browser's view transition around the client's commit (src/client/transitions.ts), with a stub of
-// `document.startViewTransition` whose `update` the test calls when it wants
 type Stub = {
   update: () => void
   types?: string[]
@@ -113,13 +111,13 @@ describe('transition()', () => {
 
   test('skipActive() skips the one on its way, and only that', async () => {
     const t = await load()
-    t.skipActive() // none yet
+    t.skipActive()
     const done = t.transition(() => {}, [])
     t.skipActive()
     expect(started[0]!.skipTransition).toHaveBeenCalledOnce()
     started[0]!.fire()
     await done
-    await settle() // finished: `active` is cleared
+    await settle()
   })
 
   test('instantly() runs the update with smooth scrolling off, and puts it back, also if it throws', async () => {
@@ -148,7 +146,6 @@ describe('transition()', () => {
     expect(optIn('true')).toEqual([])
     expect(optIn('false')).toBe(false)
     expect(optIn(' false ')).toBe(false)
-    // only the whole value opts out
     expect(optIn('zoom false')).toEqual(['zoom', 'false'])
     expect(optIn('zoom true')).toEqual(['zoom', 'true'])
   })

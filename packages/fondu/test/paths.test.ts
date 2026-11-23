@@ -1,5 +1,4 @@
 import { Hono } from 'hono'
-// The routes/ conventions, form bodies, typed URLs.
 import { describe, expect, test } from 'vitest'
 
 import { href } from '../src/client.js'
@@ -18,12 +17,11 @@ describe('routes/ files', () => {
   test('file -> URL pattern', () => {
     expect(routePatterns('index.ts')).toEqual(['/'])
     expect(routePatterns('users/index.ts')).toEqual(['/users'])
-    // a directory named index is a segment
     expect(routePatterns('index/detail.tsx')).toEqual(['/index/detail'])
     expect(routePatterns('search/index/results.tsx')).toEqual(['/search/index/results'])
     expect(routePatterns('index/index.tsx')).toEqual(['/index'])
     expect(routePatterns('users/[id].ts')).toEqual(['/users/:id'])
-    expect(routePatterns('users/[id].tsx')).toEqual(['/users/:id']) // a page
+    expect(routePatterns('users/[id].tsx')).toEqual(['/users/:id'])
     expect(routePatterns('docs/index.mdx')).toEqual(['/docs'])
     expect(routePatterns('docs/[...path].ts')).toEqual(['/docs/:path*'])
     expect(routePatterns('(marketing)/about.ts')).toEqual(['/about'])
@@ -48,7 +46,7 @@ describe('routes/ files', () => {
       '*.ts',
       'a{b}.ts',
       'x?.ts',
-      'users/[id]x/index.tsx', // a directory too
+      'users/[id]x/index.tsx',
       '[[a]]b.ts',
       '[a]].ts',
       '[[a].ts',
@@ -59,7 +57,6 @@ describe('routes/ files', () => {
       expect(() => checkRouteName(file), file).toThrow(/is not a route name/)
     expect(() => checkRouteName('[user-id].tsx')).toThrow('`[user-id]` is not a route name')
     expect(() => checkRouteName('[user-id].tsx')).toThrow('routes/[user-id].tsx')
-    // valid names
     for (const file of [
       '[user_id].ts',
       '[id1]/[[lang]]/[...rest].ts',
@@ -73,14 +70,12 @@ describe('routes/ files', () => {
     expect(routePatterns('[user-id].ts')).toEqual(['/[user-id]'])
   })
   test("reserved param names: href()'s and request()'s options, in every kind of route file", () => {
-    // href()'s options
     expect(() => routePatterns('[query].tsx')).toThrow("can't be named query")
     expect(() => routePatterns('a/[[hash]]/b.ts')).toThrow("can't be named hash")
     expect(() => routePatterns('[...query].ts')).toThrow("can't be named query")
     expect(() => routePatterns('[query].tsx')).toThrow("(href()'s option)")
     expect(() => routePatterns('[hash].ts')).toThrow("(href()'s option)")
     expect(routePatterns('query/[queryId].tsx')).toEqual(['/query/:queryId'])
-    // request()'s options: in every kind of route file, as a param, an optional one or a catch-all
     for (const name of ['method', 'body', 'headers', 'signal']) {
       for (const file of [`api/[${name}].ts`, `[[${name}]]/index.tsx`, `a/[...${name}].mdx`])
         expect(() => routePatterns(file)).toThrow(
@@ -89,7 +84,6 @@ describe('routes/ files', () => {
       expect(routePatterns(`api/[${name}Id].ts`)).toEqual([`/api/:${name}Id`])
       expect(routePatterns(`${name}/[id].ts`)).toEqual([`/${name}/:id`])
     }
-    // names that are only like them, and the object's own
     expect(routePatterns('[Method].ts')).toEqual(['/:Method'])
     expect(routePatterns('[constructor]/[toString].ts')).toEqual(['/:constructor/:toString'])
   })
@@ -100,10 +94,10 @@ describe('routes/ files', () => {
     expect(isRouteFile('users/_helpers.ts')).toBe(false)
     expect(isRouteFile('users/_parts/form.tsx')).toBe(false)
     expect(isRouteFile('users/index.test.ts')).toBe(false)
-    expect(isRouteFile('users/form.tsx')).toBe(true) // a page
+    expect(isRouteFile('users/form.tsx')).toBe(true)
     expect(isRouteFile('docs/intro.mdx')).toBe(true)
     expect(isRouteFile('users/form.test.tsx')).toBe(false)
-    expect(isRouteFile('users/form.jsx')).toBe(false) // route files are TypeScript
+    expect(isRouteFile('users/form.jsx')).toBe(false)
   })
   test('a hidden path and a test of any extension are no route', () => {
     for (const file of ['.well-known/ping.ts', 'a/.hidden.ts', '.x/y/z.tsx', '.a.mdx'])

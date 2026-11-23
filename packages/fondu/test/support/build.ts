@@ -9,7 +9,6 @@ import fondu, { type FonduOptions } from '../../src/vite/index.js'
 /** inside the package, so the app finds react, hono and fondu in node_modules as a workspace app does */
 const TMP = fileURLToPath(new URL('../../.tmp-build/', import.meta.url))
 
-/** an app's files (`app/routes/…`) in a directory of its own, removed by `remove()` */
 export function tempApp(files: Record<string, string>) {
   mkdirSync(TMP, { recursive: true })
   const root = mkdtempSync(join(TMP, 'app-'))
@@ -22,7 +21,6 @@ export function tempApp(files: Record<string, string>) {
   return { root, remove: () => rmSync(root, { recursive: true, force: true, maxRetries: 5 }) }
 }
 
-/** the client build of the app at `root` (dist/client), as `vite build` makes it */
 export async function buildClient(
   root: string,
   options: Partial<FonduOptions> = {},

@@ -1,5 +1,3 @@
-// Properties, over generated inputs: the page objects' URLs (one for one with the pages'), and request bodies read
-// as forms write them, whatever their names and values (never a 500, never the prototype changed)
 import fc from 'fast-check'
 import { Hono } from 'hono'
 import { describe, expect, test } from 'vitest'
@@ -56,7 +54,6 @@ describe('form bodies', () => {
     const res = await app.request('/', { method: 'POST', body, headers: { 'Content-Type': type } })
     return { status: res.status, body: res.status === 200 ? await res.json() : null }
   }
-  // a field's name without brackets, and its value: anything a form may hold
   const name = fc.string({ minLength: 1, maxLength: 8 }).filter((n) => !/[[\]]/.test(n))
   const fields = fc.array(fc.tuple(name, fc.string({ maxLength: 12 })), { maxLength: 8 })
 
@@ -99,7 +96,6 @@ describe('form bodies', () => {
   })
 })
 
-/** an object whose keys are 0..n-1, as readBody returns it: an array */
 function arrayLike(value: Record<string, unknown>): unknown {
   const keys = Object.keys(value)
   return keys.length > 0 && keys.every((k, i) => k === String(i)) ? Object.values(value) : value

@@ -9,8 +9,6 @@ import fondu from '../src/vite/index.js'
 import { stripRoutes } from '../src/vite/strip.js'
 import { tempApp } from './support/build.js'
 
-// A page's route file in development: the browser's copy is made in `load`, on the source, so the module and its
-// source map (inline, with `sourcesContent`) carry the stripped text; the server's copy is the whole file.
 const canary = 'CANARY_LOADER_SECRET_7f3a'
 const route = [
   `import { db } from '../db.server'`,
@@ -48,7 +46,6 @@ async function start(target: 'node' | 'cloudflare' = 'node') {
   return { port, url: `http://127.0.0.1:${port}` }
 }
 
-/** the module the dev server sends for `path`, and its inline source map */
 async function module(url: string, path: string) {
   const res = await fetch(url + path)
   expect(res.status).toBe(200)
@@ -71,7 +68,6 @@ describe('the browser’s copy of a route file in development', () => {
       expect(code).toContain('KEPT_IN_THE_BROWSER')
       expect(code).not.toContain(canary)
       expect(code).not.toContain('db.server')
-      // the map still maps the page, and its source is the stripped text, on the lines it had
       expect(map.mappings).not.toBe('')
       expect(map.sources).toHaveLength(1)
       expect(map.sourcesContent).toHaveLength(1)
@@ -133,7 +129,6 @@ describe('the browser’s copy of a route file in development', () => {
       expect.objectContaining({ type: 'js-update', path: '/app/routes/index.tsx' }),
     ])
     expect(messages.map((m) => m.type)).not.toContain('full-reload')
-    // what the browser asks for next: the new page, the new loader still out of it
     const { code, map } = await module(url, '/app/routes/index.tsx?t=1')
     expect(code).toContain('CHANGED_PAGE')
     expect(code).not.toContain('CANARY_TWO_9c1e')
@@ -161,11 +156,11 @@ describe('the dependency scan', () => {
       server: { port: 0, host: '127.0.0.1' },
       plugins: [fondu({ target: 'node' })],
     })
-    await dev.listen() // the scan starts with the server
+    await dev.listen()
     const optimizer = dev.environments.client.depsOptimizer!
     await optimizer.scanProcessing
     const found = Object.keys(optimizer.metadata.discovered)
-    expect(found).toContain('react/jsx-dev-runtime') // the page's own
+    expect(found).toContain('react/jsx-dev-runtime')
     for (const server of ['react-dom/server', 'react-dom/static', 'react-dom/test-utils'])
       expect(found).not.toContain(server)
   })
@@ -190,14 +185,11 @@ describe('the hook', () => {
     expect(await load(`${id}?direct`)).not.toContain(canary)
     expect(await load(`${id}?html-proxy&index=0.js`)).not.toContain(canary)
     expect(await load(`${id}?t=1`)).not.toContain(canary)
-    // `?raw`, `?url`, `?worker`: another module, which Vite's own plugins load
     for (const query of ['?raw', '?url', '?inline', '?worker', '?sharedworker', '?no-inline'])
       expect(await load(id + query), query).toBeUndefined()
     expect(await load(id, 'server')).toBeUndefined()
-    // a syntax error names the file
     writeFileSync(id, 'export default function Page() { return <p> }')
     await expect(load(id)).rejects.toThrow(/^fondu: routes\/index\.tsx: Parse failed/)
-    // not a page: a layout, a component of the routes, a file outside them
     for (const other of ['app/routes/_layout.tsx', 'app/routes/_parts/x.tsx', 'app/badge.tsx'])
       expect(await load(join(app.root, other)), other).toBeUndefined()
   })

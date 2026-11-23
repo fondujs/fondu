@@ -2,7 +2,6 @@ import { describe, expect, test } from 'vitest'
 
 import { reach } from '../src/vite/hmr.js'
 
-// a server's module graph, as file → its importers
 type Node = { file: string | null; importers: Set<Node> }
 function graph(edges: Record<string, string[]>) {
   const nodes = new Map<string, Node>()

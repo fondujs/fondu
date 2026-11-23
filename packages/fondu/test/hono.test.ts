@@ -6,8 +6,6 @@ import { expect, test } from 'vitest'
 
 import { HONO } from '../src/vite/hono.js'
 
-// The Worker's dependency optimizer is told what fondu imports from Hono (fondu itself is not pre-bundled): every
-// runtime import of src/ is in the list
 test('HONO lists the Hono modules fondu imports', () => {
   const src = fileURLToPath(new URL('../src', import.meta.url))
   const files = readdirSync(src, { recursive: true, encoding: 'utf8' }).filter((f) =>

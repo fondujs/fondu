@@ -1,4 +1,4 @@
-// render()'s props as JSON delivers them (type checks: `tsc`; each @ts-expect-error must be an error)
+// type checks (`tsc`): each @ts-expect-error must be an error
 import { expect, test } from 'vitest'
 
 import type { Delivered } from '../src/server/protocol.js'
@@ -12,7 +12,6 @@ type Post = {
 }
 type Tree = { name: string; children: Tree[] }
 
-// what becomes the page's types as JSON: a Date for a string, a toJSON(), nested and in arrays
 const post: Delivered<Post> = {
   title: 'Hello',
   publishedAt: new Date(),

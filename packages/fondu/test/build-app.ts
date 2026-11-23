@@ -1,6 +1,5 @@
-// A small app, built for Node by fondu's plugin (from src/), and the built server started: what the tests of the
-// generated entry (dist/server/index.js) run. The app is in a directory of its own under test/, which finds its
-// dependencies in apps/conformance (react, hono, @hono/node-server, vite, fondu).
+// A small app built for Node by fondu's plugin (from src/), and the built server started. It is in a directory of its own
+// under test/, which finds its dependencies in apps/conformance.
 import { type ChildProcess, spawn } from 'node:child_process'
 import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:net'
@@ -25,15 +24,10 @@ export const freePort = () =>
 
 export interface BuiltApp {
   dir: string
-  /** the app's files, in dist/server */
   server: string
   remove(): void
 }
 
-/**
- * Builds the app made of `files` (paths from its root: `app/routes/index.tsx`) for `target`, with `assetsDir` (the
- * client's) and the plugin's `options`.
- */
 export async function buildApp(
   files: Record<string, string>,
   { assetsDir, target = 'node' }: { assetsDir?: string; target?: 'node' | 'bun' } = {},
@@ -76,7 +70,7 @@ export interface Running {
   stop(): Promise<void>
 }
 
-/** `node dist/server/index.js` (or Bun), with `env` added to the test's own, but for `NODE_ENV`, which `env` decides (unset: not there) */
+/** `env` is added to the test's own, but for `NODE_ENV`, which `env` decides (unset: not there) */
 export async function start(
   app: BuiltApp,
   env: Record<string, string> = {},

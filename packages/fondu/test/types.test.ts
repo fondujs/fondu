@@ -1,6 +1,5 @@
-// The public types, as an app with its own declarations sees them (type checks: `tsc`; each @ts-expect-error must
-// be an error): render() by the page component, href() by the routes, share() and flash() by Register's shared and flash,
-// withValidator() by its schemas. CONTRIBUTING: "Types are behavior".
+// the public types as an app with its own declarations sees them (type checks: `tsc`; each @ts-expect-error must be an
+// error). CONTRIBUTING: "Types are behavior".
 import type { Context } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 import { expect, test } from 'vitest'
@@ -136,7 +135,6 @@ type Api = {
 }
 const typed = (call: (api: Api, c: Context) => unknown) => call
 
-// pages: a route file's default export
 declare function Bare(): null
 declare function Titled(props: { title: string; auth: Auth }): null
 declare function Clashing(props: { auth: string }): null
@@ -171,11 +169,10 @@ const renders = [
   // @ts-expect-error the empty branch cannot supply a missing title for a hit
   typed(({ render }, c) => render(c, OptionalResult, { kind: 'hit' })),
   typed(({ render }, c) => render(c, Bare)),
-  // a page without props, with options: its props are {} whatever is shared (#83)
+  // a page without props, with options: its props are {} whatever is shared
   typed(({ render }, c) => render(c, Bare, {}, { status: 404 })),
   // @ts-expect-error a page without props takes none
   typed(({ render }, c) => render(c, Bare, { title: 'Hello' })),
-  // the shared props a page takes may be left out, or given
   typed(({ render }, c) => render(c, Titled, { title: 'Hello' })),
   typed(({ render }, c) => render(c, Titled, { title: 'Hello', auth: { user: null } })),
   // @ts-expect-error a prop is a value (a function is for share(): called when a page renders)
@@ -188,7 +185,6 @@ const renders = [
   typed(({ render }, c) => render(c, Clashing, { auth: 'Ada' })),
   // @ts-expect-error not a component
   typed(({ render }, c) => render(c, 'titled', { title: 'Hello' })),
-  // a page's errors come from the form's action: not given
   typed(({ render }, c) => render(c, Errors)),
   // defer(): a prop the page takes as optional; the function gives what the prop is, sync or async, or what JSON makes it
   typed(({ render, defer }, c) =>
@@ -200,7 +196,6 @@ const renders = [
   typed(({ render, defer }, c) =>
     render(c, Dashboard, { title: 'x', at: defer(() => new Date()) }),
   ),
-  // a deferred prop's own value, or none, as for any optional prop
   typed(({ render }, c) => render(c, Dashboard, { title: 'x', stats: { total: 1 } })),
   typed(({ render }, c) => render(c, Dashboard, { title: 'x' })),
   // @ts-expect-error a required prop is not deferred: the page renders without it
@@ -224,7 +219,7 @@ declare function Lists(props: {
   tags: string[]
 }): null
 
-// Type-checked at the render call, never run: JSON inputs keep tuple positions and lengths (#295).
+// Type-checked at the render call, never run: JSON inputs keep tuple positions and lengths.
 typed(({ render }, c) => {
   const pair = ['Ada', 1] as const
   render(c, Pair, { pair })
@@ -314,7 +309,6 @@ const hrefs = [
   typed(({ href }) => href('/')),
   typed(({ href }) => href('/users/:id', { id: 7 })),
   typed(({ href }) => href('/users/:id', { id: '7' })),
-  // one of a route's actions
   typed(({ href }) => href('/users/:id?rename', { id: 7 })),
   // an optional segment: both URLs
   typed(({ href }) => href('/about')),
@@ -323,7 +317,6 @@ const hrefs = [
   typed(({ href }) => href('/files/:path*', { path: 'a/b' })),
   // @ts-expect-error the old key, Hono's regex, is no route
   typed(({ href }) => href('/files/:path{.+}', { path: 'a/b' })),
-  // a param before a catch-all: each its own name, with an action too
   typed(({ href }) => href('/users/:id/files/:path*', { id: 7, path: 'a/b' })),
   typed(({ href }) => href('/users/:id/files/:path*?remove', { id: 7, path: 'a/b' })),
   // @ts-expect-error the param before the catch-all is missing
@@ -364,9 +357,7 @@ const hrefs = [
   typed(({ href }) => href('/', { query: { tag: [] } })),
   typed(({ href }) => href('/', { query: { user: { name: 'Ada', tags: ['x'], age: 7 } } })),
   typed(({ href }) => href('/', { query: { rows: [{ a: 1 }, { a: 2 }], grid: [['a'], ['b']] } })),
-  // a coerced field (any input) takes them too
   typed(({ href }) => href('/search', { query: { q: 'ada', page: [1, 2] } })),
-  // a schema's own types stay: its list, its object
   typed(({ href }) => href('/filter', { query: { tag: ['a', 'b'] } })),
   typed(({ href }) => href('/filter', { query: { tag: ['a'], user: { name: 'Ada' } } })),
   // @ts-expect-error a list the schema takes as strings
@@ -385,7 +376,6 @@ const hrefs = [
 
 const shared = [
   typed(({ share }, c) => share(c, { auth: { user: 'Ada' } })),
-  // computed when a page is sent
   typed(({ share }, c) => share(c, { auth: async () => ({ user: null }) })),
   // @ts-expect-error a shared prop of the wrong type
   typed(({ share }, c) => share(c, { auth: { user: 7 } })),
@@ -396,7 +386,6 @@ const shared = [
   typed(({ flash }, c) => flash(c, { message: 7 })),
   // @ts-expect-error only the declared flash data
   typed(({ flash }, c) => flash(c, { mesage: 'Saved' })),
-  // the page on screen: the shared props, the errors, the flash data
   typed(({ usePage }) => {
     const { props, flash } = usePage()
     const user: string | null = props.auth.user
@@ -544,7 +533,7 @@ const exactly =
     value
 
 // fondu/client's public values are exactly the documented list (apps/site/app/routes/docs/api.mdx), without the
-// internals (`__entry`, `renderPage`: fondu/client/internal) or the old names (`fetch`, `FetchError`)
+// internals (`__entry`, `renderPage`)
 test('fondu/client exports exactly the documented values', () => {
   const names = null as unknown as keyof typeof import('../src/client.js')
   exactly<
@@ -606,7 +595,6 @@ const requests = [
   typed(({ request }) => request('/api/search', { query: { q: 1 } })),
   // @ts-expect-error the schema requires q: the query is required
   typed(({ request }) => request('/api/search')),
-  // headers and signal pass through
   typed(({ request }) =>
     request('/api/usage', { headers: { 'X-Mode': 'x' }, signal: AbortSignal.timeout(1000) }),
   ),
@@ -669,7 +657,6 @@ const requests = [
       }),
     ),
   ),
-  // GET stays the default: inferred, or named, with no method
   typed(({ request }) => request('/api/settings')),
   typed(({ request }) => request<'/api/settings', 'GET'>('/api/settings')),
   typed(({ request }) => request<'/api/settings', 'GET'>('/api/settings', { method: 'GET' })),
@@ -693,7 +680,6 @@ const requests = [
   typed(async ({ request }) => exactly<unknown>()(await request('/api/maybe'))),
   // a handler without a validator or with one that throws: the json (a throw is not an answer)
   typed(async ({ request }) => exactly<{ ok: boolean }>()(await request('/api/throws'))),
-  // a handler with two json answers: either
   typed(async ({ request }) =>
     exactly<{ a: number } | { b: string }>()(await request('/api/outcome')),
   ),
@@ -709,14 +695,12 @@ const answers = [
     const accepted: Validated<{ params: typeof params }> = handler
     return accepted
   }),
-  // a redirect, back(), a text, a body: any Response
   typed(({ defineHandler }, c) => defineHandler.withValidator({ params })(() => c.redirect('/'))),
   typed(({ defineHandler }, c) => defineHandler.withValidator({ params })(() => back(c))),
   typed(({ defineHandler }) => defineHandler.withValidator({ params })((c) => c.text('x'))),
   typed(({ defineHandler }) =>
     defineHandler.withValidator({ params })(async (c) => c.json({ a: 1 })),
   ),
-  // with middleware first
   typed(({ defineHandler }) =>
     defineHandler.withValidator({ params })(
       async (_, next) => next(),
@@ -784,9 +768,8 @@ test('FonduOptions: viewTransitions is true or false', () => {
   expect(options).toHaveLength(4)
 })
 
-// AsJson<T>: T as a page receives it. Two sides, tested together: the mapping (each rule of the issue, #301), and its
-// pairing with render(), the input side: what render() accepts for a prop of type AsJson<X> is X, and nothing whose
-// JSON is not AsJson<X>.
+// AsJson<T>: T as a page receives it. Two sides, tested together: the mapping, and its pairing with render(), the input
+// side: what render() accepts for a prop of type AsJson<X> is X, and nothing whose JSON is not AsJson<X>.
 const same = <A, B>(..._: Equal<A, B> extends true ? [] : [error: { got: A; want: B }]) => true
 
 const clashMessage = 'fondu: this page prop has the name of a shared prop (share()); rename it'
@@ -867,7 +850,6 @@ const asJson = [
   same<AsJson<RegExp>, {}>(),
   same<AsJson<Promise<number>>, {}>(),
   same<AsJson<Map<string, number>[]>, {}[]>(),
-  // unions, tuples, readonly arrays keep their shape
   same<
     AsJson<{ k: 'a'; at: Date } | { k: 'b'; n?: number }>,
     { k: 'a'; at: string } | { k: 'b'; n?: number }
@@ -913,7 +895,6 @@ type BigFromJson = AsJson<{ toJSON(): bigint }>
 // toJSON() replaces it; a function is left out
 type BigIgnored = [AsJson<{ big: bigint; toJSON(): number }>, AsJson<{ f(n: bigint): void }>]
 
-// a row with a column of every kind, as a query returns it
 type Contact = {
   id: number
   name: string

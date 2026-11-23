@@ -1,7 +1,6 @@
 import { createApp } from 'fondu'
 import { afterEach, expect, test, vi } from 'vitest'
 
-// #221: the page data in the document: stringified once, `<` escaped, `/` as it is
 const app = createApp()
 const html = { Accept: 'text/html' }
 const TRICKY = '</script><!-- <script>alert(1)</script> \u2028 \u2029 a/b \\/ -->'
@@ -9,7 +8,6 @@ const OPEN = '<script data-page="app" type="application/json">'
 
 afterEach(() => vi.restoreAllMocks())
 
-/** the text between the page data's own tags: where the browser's parser ends it, not where we think it does */
 const embedded = (text: string) => {
   const start = text.indexOf(OPEN)
   const end = text.indexOf('</script>', start)
@@ -25,7 +23,6 @@ test('the page data holds </script>, <!--, U+2028 and U+2029 and still parses; i
   )
   expect(json).not.toMatch(/<[!/]/)
   expect(json).not.toContain('<script')
-  // what the client reads: the script's text, parsed
   expect(JSON.parse(json)).toMatchObject({ component: 'payload', props: { text: TRICKY } })
 })
 test('a / is written as it is (the < escape covers </script> and <!--)', async () => {
