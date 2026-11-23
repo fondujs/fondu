@@ -264,6 +264,40 @@ test.describe('no transition', () => {
   })
 })
 
+test.describe('which navigations transition by default', () => {
+  // from /vt/o: /vt/a is the same component, so `keep` leaves the page on the screen
+  test('a link does', async ({ page }) => {
+    await start(page)
+    test.skip(!(await hasApi(page)), 'no document.startViewTransition in this browser')
+    const before = (await log(page)).length
+    await press(page, '#to-a')
+    await shows(page, 'a')
+    await quiet(page)
+    expect((await log(page)).length).toBe(before + 1)
+  })
+
+  test('navigate(url, { keep: true }) does not', async ({ page }) => {
+    await start(page)
+    test.skip(!(await hasApi(page)), 'no document.startViewTransition in this browser')
+    const before = (await log(page)).length
+    await press(page, '#keep')
+    await shows(page, 'a')
+    await expect(page.locator('#state')).toHaveText('idle')
+    await frames(page)
+    expect((await log(page)).length).toBe(before)
+  })
+
+  test('navigate(url, { keep: true, transition: true }) does', async ({ page }) => {
+    await start(page)
+    test.skip(!(await hasApi(page)), 'no document.startViewTransition in this browser')
+    const before = (await log(page)).length
+    await press(page, '#keep-vt')
+    await shows(page, 'a')
+    await quiet(page)
+    expect((await log(page)).length).toBe(before + 1)
+  })
+})
+
 test.describe('the types of the transitions', () => {
   const types = async (page: Page) => (await log(page)).map((e) => e.types)
 

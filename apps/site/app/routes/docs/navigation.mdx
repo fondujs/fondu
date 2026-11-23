@@ -87,7 +87,8 @@ navigate(href('/orders', { query: { page: 2 } }))
   the scroll position, and nothing is announced. The loader still runs for `url`. If another page answers, it is shown
   as any navigation's, from the top.
 - `{ transition: true }`, or `{ transition: ['zoom'] }` to add types, animates the navigation
-  ([View transitions](#view-transitions)). `false` opts out where every navigation transitions by default.
+  ([View transitions](#view-transitions)). `false` opts out where `viewTransitions` is on. With `keep`, the page
+  stays and does not transition unless it opts in like this.
 - Any other URL loads as a document: `mailto:` and other sites too. A `javascript:` URL throws an `Error`, in
   `navigate()` and in `loadDocument()`.
 
@@ -381,8 +382,11 @@ An app where most navigations animate sets the default in `vite.config.ts`:
 fondu({ target: 'node', viewTransitions: true })
 ```
 
-Every navigation then transitions, and one opts out with `data-transition="false"` or `transition: false`. The option
-sets the default and nothing else: the code is in the client either way, and a link can opt in without it.
+A navigation that shows another page then transitions: a link, a form, `navigate()`, and Back and Forward. One opts out
+with `data-transition="false"` or `transition: false`. A page that stays does not transition: `navigate()` with `keep`
+(search as you type), `reload()`, and a form's answer at its own URL. `navigate(url, { keep: true, transition: true })`
+opts in. A shallow navigation never transitions. The option sets the default and nothing else: the code is in the
+client either way, and a link can opt in without it.
 
 ### Types
 
@@ -443,14 +447,14 @@ Of the two entries a traversal goes between, the one that was reached later is t
 Forward to it. When Back or Forward skips several entries, it is the later of the two it goes between.
 
 - Back from a page reached without a transition does not animate.
-- With `viewTransitions: true`, every Back and Forward animates: with the remembered types if the entry has them, with
+- With `viewTransitions: true`, every Back and Forward to another page animates: with the remembered types if the entry has them, with
   the direction alone if it does not (a page reached by a navigation that opted out).
 - A navigation that replaces an entry (`replace: true`, a link to the page's own URL) with a transition stores its types
   in that entry, and one without a transition clears what the entry had.
 
-No transition is made for what does not restore the scroll: `reload()`, `navigate()` with `keep`, a form's answer at
-its own URL, a page's deferred props arriving, and a swipe back that the browser animates itself. A shallow navigation
-(`data-shallow`, `shallow: true`) never transitions, whatever else is on it.
+No transition is made for a page that stays: `reload()`, `navigate()` with `keep` (unless it has `transition`), a form's
+answer at its own URL, and a page's deferred props arriving. A swipe back that the browser animates itself has none
+either. A shallow navigation (`data-shallow`, `shallow: true`) never transitions, whatever else is on it.
 
 ### What to know
 

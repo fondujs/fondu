@@ -129,13 +129,13 @@ any release.
 The Vite plugin: `fondu(options)`. The options are checked when the plugin is created: `target` is required, and an unknown option fails. There is
 no `port` option: the built server (Bun and Node) listens on `PORT`, else 3000.
 
-| Option            | Is                                                                                                                                                          |
-| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `target`          | `'bun'`, `'cloudflare'` or `'node'`                                                                                                                         |
-| `ssr`             | `false`: pages render in the browser only                                                                                                                   |
-| `progress`        | the navigations' progress bar: `{ color, delay, forms }` (default: the text color, 350 ms, forms included), or `false`                                      |
-| `viewTransitions` | `true`: every navigation runs inside the browser's view transition by default, and a link or call opts out; [navigation](/docs/navigation#view-transitions) |
-| `react`           | passed to [`@vitejs/plugin-react`](https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react) (its `include` has `.mdx` by default)       |
+| Option            | Is                                                                                                                                                                                                         |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `target`          | `'bun'`, `'cloudflare'` or `'node'`                                                                                                                                                                        |
+| `ssr`             | `false`: pages render in the browser only                                                                                                                                                                  |
+| `progress`        | the navigations' progress bar: `{ color, delay, forms }` (default: the text color, 350 ms, forms included), or `false`                                                                                     |
+| `viewTransitions` | `true`: a navigation that shows another page runs inside the browser's view transition by default (not `keep` or `reload()`), and a link or call opts out; [navigation](/docs/navigation#view-transitions) |
+| `react`           | passed to [`@vitejs/plugin-react`](https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react) (its `include` has `.mdx` by default)                                                      |
 
 ### Types
 

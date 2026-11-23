@@ -159,9 +159,11 @@ navigate('/photos/7', { transition: ['zoom'] })
 
 In JSX, `<a data-transition>` is written as `data-transition="true"`: the same as the bare attribute.
 
-- Default for every navigation: `fondu({ target, viewTransitions: true })`. A link or call opts out with
-  `data-transition="false"` or `transition: false`. The option sets the default only: the code is in the client either
-  way, and a link opts in without it.
+- Default for navigations that show another page (a link, a form, `navigate()`, Back and Forward):
+  `fondu({ target, viewTransitions: true })`. A link or call opts out with `data-transition="false"` or
+  `transition: false`. A page that stays does not transition: `navigate()` with `keep`, `reload()`, a form's answer at
+  its own URL; `navigate(url, { keep: true, transition: true })` opts in. The option sets the default only: the code is
+  in the client either way, and a link opts in without it.
 - Types, for `:root:active-view-transition-type(zoom)`: the direction (`navigation-forward` for a new entry and
   Forward, `navigation-back`, `navigation-replace`), then the navigation's own. Untyped where the browser has no
   `:active-view-transition-type()`.
@@ -169,8 +171,8 @@ In JSX, `<a data-transition>` is written as `data-transition="true"`: the same a
   Forward to it, run it again with the direction (`navigation-back zoom`). Of the two entries a traversal goes between
   (also across several), the later one's record counts. Back from a page reached without a transition does not animate;
   with `viewTransitions: true` it does, with the direction alone.
-- Never a transition for `reload()`, `keep`, shallow navigations (`data-shallow`, `shallow: true`), a form's answer at
-  its own URL, deferred props, or a swipe back the browser animates itself. Without `document.startViewTransition`
+- Never a transition for `reload()`, shallow navigations (`data-shallow`, `shallow: true`), a form's answer at its
+  own URL, deferred props, or a swipe back the browser animates itself; `keep` only with `transition`. Without `document.startViewTransition`
   navigations are as they were.
 - React's `<ViewTransition>` does not animate Fondu's navigations (it works for the app's own `startTransition`
   updates), and its `name` is not applied for them. Shared elements: `view-transition-name` in CSS, one element per
