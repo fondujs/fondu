@@ -725,6 +725,10 @@ const answers = [
   typed(({ defineHandler }) => defineHandler.withValidator({ params })(() => 'x')),
 ]
 
+test('a page prop that clashes with a shared prop names the cause', () => {
+  expect(clashes).toHaveLength(9)
+})
+
 test('the types above are checked by tsc', () => {
   expect([
     ...renders,
@@ -778,6 +782,32 @@ test('FonduOptions: viewTransitions is true or false', () => {
 // pairing with render(), the input side: what render() accepts for a prop of type AsJson<X> is X, and nothing whose
 // JSON is not AsJson<X>.
 const same = <A, B>(..._: Equal<A, B> extends true ? [] : [error: { got: A; want: B }]) => true
+
+const clashMessage = 'fondu: this page prop has the name of a shared prop (share()); rename it'
+declare function ClashObject(props: { auth: string }): null
+declare function ClashNumber(props: { auth: number; title: string }): null
+declare function ClashLiteral(props: { mode: 'other' }): null
+declare function ClashOptional(props: { auth?: string }): null
+declare function ClashBranch(
+  props: { mode: 'other'; body: string } | { mode: 'count'; total: number },
+): null
+type RenderProps<P extends object> = Parameters<typeof render<P>>[2]
+const clashes = [
+  same<RenderProps<{ auth: string }>['auth'], typeof clashMessage>(),
+  same<RenderProps<{ auth: number; title: string }>['auth'], typeof clashMessage>(),
+  same<RenderProps<{ mode: 'other' }>['mode'], typeof clashMessage>(),
+  same<RenderProps<{ auth?: string }>['auth'], typeof clashMessage>(),
+  // @ts-expect-error
+  typed(({ render }, c) => render(c, ClashObject, { auth: 'Ada' })),
+  // @ts-expect-error
+  typed(({ render }, c) => render(c, ClashNumber, { auth: 1, title: 'x' })),
+  // @ts-expect-error
+  typed(({ render }, c) => render(c, ClashLiteral, { mode: 'other' })),
+  // @ts-expect-error
+  typed(({ render }, c) => render(c, ClashOptional, { auth: 'Ada' })),
+  // @ts-expect-error
+  typed(({ render }, c) => render(c, ClashBranch, { mode: 'other', body: 'x' })),
+]
 
 const asJson = [
   // Date, or anything with toJSON(): what it gives. JSON calls it once: the result's own toJSON() is not called

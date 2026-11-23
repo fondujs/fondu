@@ -209,11 +209,34 @@ export type Delivered<P> = {
 export interface RenderOptions {
   status?: number
 }
+type ClashError = 'fondu: this page prop has the name of a shared prop (share()); rename it'
+type Live<T, From> = T extends unknown
+  ? [T] extends [never]
+    ? never
+    : T extends Primitive
+      ? [
+          Exclude<
+            keyof T,
+            keyof string | keyof number | keyof boolean | keyof bigint | keyof symbol
+          >,
+        ] extends [never]
+        ? T
+        : [Extract<From, T>] extends [never]
+          ? never
+          : T
+      : T
+  : never
+type Primitive = string | number | boolean | bigint | symbol
+type OverrideInput<A, B, Optional extends boolean = false> = [Live<Both<A, B>, A | B>] extends [
+  never,
+]
+  ? ClashError
+  : PropInput<Both<A, B>, Optional>
 /** Mark the override optional *after* checking its explicit JSON value (omitting it keeps the shared value). */
 type Overrides<P, Required extends keyof P & SharedKey> = {
-  [K in Required]: PropInput<Both<P[K], Shared[K]>>
+  [K in Required]: OverrideInput<P[K], Shared[K]>
 } & {
-  [K in Exclude<keyof P & SharedKey, Required>]?: PropInput<Both<P[K], Shared[K]>, true>
+  [K in Exclude<keyof P & SharedKey, Required>]?: OverrideInput<P[K], Shared[K], true>
 }
 type RenderBranch<P, Keys extends keyof P & SharedKey> =
   Exclude<keyof P, 'errors'> extends never
