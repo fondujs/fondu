@@ -33,7 +33,7 @@ export function entryCode(
           `const { existsSync, readFileSync } = await import('node:fs')`,
           `const { staticPages } = await import(${JSON.stringify(staticModule)})`,
           `const prerendered = fileURLToPath(new URL('./prerender.json', import.meta.url))`,
-          `if (existsSync(prerendered)) main.use('*', staticPages(serveStatic, clientRoot, JSON.parse(readFileSync(prerendered, 'utf8')).headers))`,
+          `if (existsSync(prerendered)) { const { headers, files } = JSON.parse(readFileSync(prerendered, 'utf8')); main.use('*', staticPages(serveStatic, clientRoot, headers, files)) }`,
         ]
       : []),
     ...(hashed

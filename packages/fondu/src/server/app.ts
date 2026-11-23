@@ -229,6 +229,7 @@ export function createApp(options: CreateAppOptions = {}): Hono {
       settings: settingFiles.map((f) => modules[f]?.prerender),
       settingFiles,
       get: Boolean(mod.loader ?? mod.GET ?? page),
+      page: page !== undefined,
       others: [
         ...(mod.action || mod.actions || mod.POST ? ['POST'] : []),
         ...METHODS.filter((m) => m !== 'GET' && m !== 'POST' && mod[m]),

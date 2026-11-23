@@ -1,4 +1,5 @@
 import type { ExecutionContext, Hono } from 'hono'
+import { getMimeType } from 'hono/utils/mime'
 
 import {
   endsInIndex,
@@ -22,6 +23,8 @@ export interface PrerenderRoute {
   settings: Array<Prerender | undefined>
   settingFiles?: string[]
   get: boolean
+  /** false for a `.ts` route: it is written as the file it answers, not as a page */
+  page: boolean
   /** the other methods it answers: a static file would answer them 405 */
   others: string[]
 }
@@ -40,13 +43,19 @@ function fileNames(pattern: string, params: Record<string, string | number>) {
   }
 }
 
+// a static file is served by its extension
+const hasExtension = (path: string) =>
+  /^[^/]+\.[A-Za-z0-9]+$/.test(path.slice(path.lastIndexOf('/') + 1))
+
 export async function prerenderPaths(
   routes: PrerenderRoute[],
-): Promise<{ paths: string[]; problems: string[] }> {
+): Promise<{ paths: string[]; files: string[]; problems: string[] }> {
   const paths = new Set<string>()
+  const files = new Set<string>()
   const problems: string[] = []
   for (const route of routes) {
-    const at = route.settings.findIndex((s) => s !== undefined)
+    // a `.ts` route is prerendered by its own export only: a directory's setting is for the pages below it
+    const at = route.page ? route.settings.findIndex((s) => s !== undefined) : 0
     const setting = route.settings[at] ?? false
     if (setting === false || !route.get) continue
     const where = `routes/${route.file}`
@@ -60,12 +69,20 @@ export async function prerenderPaths(
     const dynamic = route.pattern.includes(':')
     // a page whose URL ends in index: its file would be its directory's page's (index.html), another page
     const add = (path: string) =>
-      endsInIndex(path)
-        ? problems.push(
-            `${where}: ${path} ends in index, so its static file would be the page of its directory: ` +
-              `leave it out of \`prerender\``,
-          )
-        : paths.add(path)
+      !route.page
+        ? !hasExtension(path)
+          ? problems.push(
+              `${where}: a prerendered .ts route writes a file: its URL needs an extension (feed.xml.ts)`,
+            )
+          : getMimeType(path) === undefined
+            ? problems.push(`${where}: no content type is known for .${path.split('.').at(-1)}`)
+            : files.add(path)
+        : endsInIndex(path)
+          ? problems.push(
+              `${where}: ${path} ends in index, so its static file would be the page of its directory: ` +
+                `leave it out of \`prerender\``,
+            )
+          : paths.add(path)
     if (setting === true) {
       if (dynamic)
         problems.push(
@@ -98,7 +115,7 @@ export async function prerenderPaths(
       problems.push(`${where}: ${error instanceof Error ? error.message : String(error)}`)
     }
   }
-  return { paths: [...paths].sort(), problems }
+  return { paths: [...paths].sort(), files: [...files].sort(), problems }
 }
 
 // the page object of a page without a static file (`/_fondu/pages/x.json` → `/x`), and while the build prerenders, the paths to write
